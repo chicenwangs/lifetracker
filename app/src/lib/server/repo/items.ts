@@ -1,0 +1,2 @@
+// PSEUDO — owner-scoped repo
+// inRange(calId, from, to) ; get(id) ; create(me, data): calendar = my default, check course/parent same owner, created_by=updated_by=me ; patch(me, id, data, access): owner full schema / grantee strict schema ; cycle(me, id): todo->doing(started_at=now)->done(completed_at=now)->todo(clear both) ; softDelete(me,id): batch=newId; item+steps(parent_id)+linked blocks deleted_at=now, deleted_batch ; restore(me,batch) ; trash(me) ; unscheduled(me) ; steps(id) ; alsoInCourse(id) ; history(id)

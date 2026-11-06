@@ -1,0 +1,1 @@
+// PSEUDO: redirect /settings/account

@@ -1,0 +1,7 @@
+/* tokens TECHNICAL §9. No Tailwind. */
+/* :root { --ground:#F5F5F4; --card:#FFF; --border:#D6D3D1; --rule:#E7E5E4; --ink:#1C1917; --quiet:#57534E;
+           --input:#78716C; radius card 14 chip 6 btn 10; font Inter }
+   .t-work{bg #DBEAFE ink #1E3A8A} .t-exam{#FEE2E2/#7F1D1D} .t-event{#DCFCE7/#14532D}
+   .t-hobby{#FEF3C7/#713F12} .t-dating{#FCE7F3/#831843} .t-none{#E7E5E4/#292524} .busy{#E7E5E4/#44403C stripes}
+   .theirs { stripes 135deg + 1px dashed ink }   .done { line-through, NO opacity }
+   :focus-visible { outline 2px var(--ink) offset 2px } */

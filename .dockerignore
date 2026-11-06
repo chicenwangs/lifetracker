@@ -1,0 +1,11 @@
+**/node_modules
+app/build
+app/.svelte-kit
+data/app.db*
+data/backups
+data/notion-raw
+.env*
+.git
+wireframes
+docs
+test-results

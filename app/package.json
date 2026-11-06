@@ -1,0 +1,23 @@
+{
+  "name": "life-tracker",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": { "node": ">=22 <23" },
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "lint": "prettier --check . && eslint .",
+    "format": "prettier --write .",
+    "db:generate": "drizzle-kit generate",
+    "db:seed": "tsx scripts/seed.ts",
+    "reset-password": "node scripts/reset-password.mjs",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "//": "deps added in Phase 1 by: npx sv create + npm i (see docs/DEPLOYMENT.md stage A)"
+}

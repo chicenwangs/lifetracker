@@ -6,4 +6,7 @@ data/*
 app/build
 app/.svelte-kit
 test-results
-*.db*
+playwright-report
+*.db
+*.db-wal
+*.db-shm
