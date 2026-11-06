@@ -1,1 +1,9 @@
-// PSEUDO: GET -> {ok:true, db: healthy()} ; 503 if db bad. no auth.
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { handle, healthy } from '$lib/server/db';
+
+// No auth, no setup redirect. Docker HEALTHCHECK + homelab monitor.
+export const GET: RequestHandler = () => {
+	const ok = healthy(handle());
+	return json({ ok, db: ok }, { status: ok ? 200 : 503, headers: { 'cache-control': 'no-store' } });
+};

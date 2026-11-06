@@ -1,0 +1,6 @@
+build
+.svelte-kit
+node_modules
+drizzle
+package-lock.json
+src/lib/server/common-passwords.txt

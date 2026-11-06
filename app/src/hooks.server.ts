@@ -1,24 +1,63 @@
-// PSEUDO — runs on every request
-//
-// init():                              // once, before first request
-//   env = parseEnv()                    // fail fast
-//   mkdir dirname(DATABASE_PATH)
-//   db = openDb(); migrate(db, './drizzle')
-//   purgeTrash(); purgeExpiredKeys(); purgeExpiredSessions()
-//   setInterval(purgeExpiredKeys, 1h); setInterval(purgeTrash, 24h)
-//
-// handle({event, resolve}):
-//   1 proxy:   if env.ADDRESS_HEADER and header missing -> 400   (fail closed, not via tunnel)
-//   2 origin:  if method not GET/HEAD and Origin != env.ORIGIN -> 403 (missing Origin = 403)
-//   3 session: {user, session} = auth.loadSession(event.cookies) ; auth.slide(session) (max 1 write / 5 min)
-//              event.locals.user = user ; event.locals.session = session
-//   4 guard:   public = /login /signup /setup /healthz /cal/*.ics + static
-//              if !user and !public:
-//                 /api/*  -> 401 json
-//                 else    -> redirect /login?next=<path>   (path only)
-//   5 res = resolve(event)
-//   6 headers: Referrer-Policy same-origin, X-Content-Type-Options nosniff,
-//              Permissions-Policy camera=(), microphone=(), geolocation=()
-//   return res
-//
-// handleError: log code + path only (never tokens/cookies/body). return {code:'internal', message:'Something broke'}
+// Step 1: init (env + db + migrate) + proxy check + origin check + security headers.
+// Step 2 adds: session load, slide, guard (see pseudocode below).
+import type { Handle, HandleServerError, ServerInit } from '@sveltejs/kit';
+import { env } from '$lib/server/env';
+import { migrateDb, openDb, setHandle } from '$lib/server/db';
+
+export const init: ServerInit = async () => {
+	const e = env(); // throws -> boot fails (fail fast)
+	const h = openDb(e.DATABASE_PATH);
+	migrateDb(h);
+	setHandle(h);
+	console.log(`[boot] db ready, origin=${e.ORIGIN}, secureCookies=${e.secureCookies}`);
+	// TODO step 2+: purgeTrash, purgeExpiredSessions, purgeExpiredKeys + timers
+};
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+export const handle: Handle = async ({ event, resolve }) => {
+	const e = env();
+
+	// 1 proxy: behind tunnel, header must exist (fail closed)
+	if (e.ADDRESS_HEADER && !event.request.headers.get(e.ADDRESS_HEADER)) {
+		return new Response('Bad request', { status: 400 });
+	}
+
+	// 2 origin: every non-GET must come from ORIGIN. Missing Origin = 403.
+	if (!SAFE_METHODS.has(event.request.method)) {
+		const origin = event.request.headers.get('origin');
+		if (origin !== e.ORIGIN) {
+			return json403(event.url.pathname.startsWith('/api/'));
+		}
+	}
+
+	// 3 session + 4 guard: step 2
+	//   {user, session} = loadSession(cookies); slide(session)
+	//   if !user && !public(path): /api -> 401 ; else redirect /login?next=
+	event.locals.user = null;
+	event.locals.session = null;
+
+	const res = await resolve(event);
+
+	// 6 headers (CSP comes from kit.csp)
+	res.headers.set('Referrer-Policy', 'same-origin');
+	res.headers.set('X-Content-Type-Options', 'nosniff');
+	res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+	return res;
+};
+
+function json403(api: boolean): Response {
+	return api
+		? new Response(JSON.stringify({ error: { code: 'bad_origin', message: 'Bad origin' } }), {
+				status: 403,
+				headers: { 'content-type': 'application/json' },
+			})
+		: new Response('Forbidden', { status: 403 });
+}
+
+export const handleError: HandleServerError = ({ error, event, status }) => {
+	// log path + status only. never body, cookies, tokens.
+	const msg = error instanceof Error ? error.message : 'unknown';
+	console.error(`[error] ${status} ${event.request.method} ${event.url.pathname}: ${msg}`);
+	return { code: 'internal', message: 'Something broke' };
+};

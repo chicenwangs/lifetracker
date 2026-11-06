@@ -1,7 +1,56 @@
-// PSEUDO
-// sqlite = new Database(env.DATABASE_PATH)
-// pragma journal_mode=WAL; foreign_keys=ON; busy_timeout=5000; synchronous=NORMAL
-// db = drizzle(sqlite, { schema })
-// tx(fn) = sqlite.transaction(fn)            ; txImmediate(fn) = transaction(fn).immediate
-// migrateOnBoot() = migrate(db, { migrationsFolder: './drizzle' })
-// healthy() -> try select 1 -> bool
+import Database from 'better-sqlite3';
+import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { mkdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import * as schema from './schema';
+
+export type DB = BetterSQLite3Database<typeof schema>;
+
+export interface Handle {
+	sqlite: Database.Database;
+	db: DB;
+}
+
+/** Open + pragmas. Creates parent dir. ':memory:' allowed (tests). */
+export function openDb(path: string): Handle {
+	if (path !== ':memory:') mkdirSync(dirname(resolve(path)), { recursive: true });
+	const sqlite = new Database(path);
+	sqlite.pragma('journal_mode = WAL');
+	sqlite.pragma('foreign_keys = ON');
+	sqlite.pragma('busy_timeout = 5000');
+	sqlite.pragma('synchronous = NORMAL');
+	return { sqlite, db: drizzle(sqlite, { schema }) };
+}
+
+/** Forward-only. Folder = ./drizzle relative to process cwd (app/ in dev, /app in Docker). */
+export function migrateDb(h: Handle, folder = resolve(process.cwd(), 'drizzle')): void {
+	migrate(h.db, { migrationsFolder: folder });
+}
+
+export function healthy(h: Handle): boolean {
+	try {
+		return h.sqlite.prepare('SELECT 1 AS ok').get() !== undefined;
+	} catch {
+		return false;
+	}
+}
+
+// ---- app singleton (set in hooks init) ----
+let current: Handle | null = null;
+
+export function setHandle(h: Handle): void {
+	current = h;
+}
+
+export function handle(): Handle {
+	if (!current) throw new Error('DB not open. hooks init must run first.');
+	return current;
+}
+
+export const db = (): DB => handle().db;
+
+/** BEGIN IMMEDIATE transaction (setup, redeem, signup). */
+export function txImmediate<T>(fn: () => T): T {
+	return handle().sqlite.transaction(fn).immediate();
+}
