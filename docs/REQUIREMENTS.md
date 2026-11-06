@@ -78,12 +78,14 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 - FR-H15 Header: nav (only pages already built), quick add, search (P2), avatar → Settings.
 - FR-H16 Undated items = "Unscheduled" list (Week right panel). Imported: "Her Birthday".
 
-### 4.3 Quick add (P1 basic, P3 extras)
+### 4.3 Quick add (P1, rev 2026-11-06 "N palette"; P3 extras)
 
-- FR-Q1 Box in header. Key `N` focuses. Enter saves. Esc clears.
-- FR-Q2 Live preview line under box (parsed title/date/time/type/course + warnings) before Enter.
-- FR-Q3 Grammar + rules = TECHNICAL §8 QuickAdd (whole-token match, dd/mm, rollover to next future date, unknown tags stay in title, default Type Work if course else Event, no date = today). Course tags from Settings > Courses aliases (`#fyp #sp #sysprog #ds #sulam #ss #socsci`).
-- FR-Q4 (P3) `for 90m|1h30` → also block. `every mon,wed` → recurring (rrule + skip dates).
+- FR-Q1 Header "+ Add N" button. Key `N` (not while typing in a field) opens a chat-style palette: log of what was added (Undo each), input, slots, footer keys. Enter adds, Esc closes menu → clears text → closes palette, ↑ on empty = last line. Palette stays open for batch adding.
+- FR-Q2 Grey ghost text in the input = format guide `/type  title  /calendar or /planner  day  time`, shrinks to only the missing slots as you type, and completes a half-typed option. Labelled slots (Type, Title, Goes to, Day, Time, Course) fill live; defaults dashed + "default". **No errors while typing.** On Enter, each problem shown at the bottom: what's wrong + how to fix (e.g. "Add a title first…").
+- FR-Q3 Any order. Options start with `/`: types `/work /exam /event /hobby /date`, destinations `/calendar` (`/cal`) `/planner` (`/plan`). Typing `/` (or `#` for courses) opens a small menu at the cursor (↑↓, Enter/Tab, click; filters as you type; tick on picked). Days + times need no slash. Leftover words = title. Defaults: Event (Work if `#course`), calendar, today. Unknown `/x` = problem. Full grammar TECHNICAL §8.
+- FR-Q3a `/planner` = item + linked block (one transaction). Needs a time. Snap 15 min. Single time = 60 min. Ranges `6pm to 10pm`, `6-10pm`, `for 2h`. End ≤ start = crosses midnight. `/calendar` ignores end time.
+- FR-Q3b Days: `next mon` = the coming Monday (never today); each extra `next` = +1 week. Bare weekday = next occurrence incl. today (+7 if today and time passed). Explicit date (`16 nov`, `16/11`) always exact.
+- FR-Q4 (P3) `every mon,wed` → recurring (rrule + skip dates).
 
 ### 4.4 Item detail (P1)
 
@@ -200,7 +202,7 @@ P1:
 - [ ] Nov 2026 month shows colour blocks. Square cycles + persists.
 - [ ] Planner: drag 13:00–14:30 block, resize to 14:45 (15-min snap). Block 23:00–06:00 shows on both days.
 - [ ] Drag "DS Quiz" chip to 13:00 → linked red block.
-- [ ] Quick add `ds quiz fri 2pm !exam #ds` → Exam, Fri 14:00 (next Fri if past), course DS.
+- [x] Quick add `ds quiz fri 2pm /exam #ds` → Exam, Fri 14:00 (next Fri if past), course DS. `/hobby gym /planner tmr 6:07pm to 8pm` → item + linked block 18:00–20:00.
 - [ ] reset-password script works.
 
 P2:

@@ -417,15 +417,17 @@ DayPlanner (custom):
 
 StatusSquare: `<button>` 16 px chips / 20 px blocks. todo = empty border; doing = ▶ inside; done = filled ink + ✓. aria-label "Not started. Click to start" etc. Space/Enter.
 
-QuickAdd: keys (FR-Q1) `N` focuses (ignored while typing in a field), Enter saves, Esc clears. Parser `lib/server/quickadd.ts` (pure, imported by client for preview line FR-Q2; server re-parses = truth). Rules:
-1. Tokenise on whitespace. Tokens matched whole only (case-insensitive). `#x` / `!x` only if whole token AND known (course alias / type word); unknown stays title text.
-2. Types: `!work !exam !event !hobby !date !dating`.
-3. Date tokens: `today`, `tmr`/`tomorrow`, weekday `mon..sun` or full name, `D MON` / `MON D` (month names `jan..dec` + full; bare `may` only when next to a day number), `D/M` (always day/month), `YYYY-MM-DD`. Only the LAST date token counts; earlier ones stay in title.
-4. Time: `2pm`, `2:30pm`, `14:00`, `14.30` (hh 0–23 two-digit mm only; `v1.30` not time because attached to letters).
-5. Rollover: weekday → next occurrence incl. today, but if today AND a time given that already passed → +7 d. `D MON` / `D/M` → this year, if before today → next year. No date token → today (if time given and passed → still today; show warning in preview).
-6. Default type: `#course` present → Work, else Event. Title = remaining tokens joined, trimmed; empty → reject.
-7. P3: `for 90m|1h|1h30` → also block; `every mon[,wed]` → rrule.
-Test table ≥ 30 cases incl. "Sun Tzu reading tmr", "lab 5 fri", "dinner #spot", "clo3d v1.30 fri", "5 jan" on 2026-12-01.
+QuickAdd (FR-Q1..Q3b, rev 2026-11-06): `QuickAdd.svelte` = header button + palette (fixed scrim, dialog). Parser `lib/quickadd.ts` (pure, client preview + server truth). Returns `QAParse` always (never throws): fields + `*Set` flags (slot defaults) + `notes` + `warnings` + `problems[]` (backtick = code in UI; shown only on Enter; server 400 with first problem). Helpers same file: `activeOptionToken`, `optionsFor` (menu), `ghostHint`.
+Rules:
+1. Tokenise on whitespace, whole-token, case-insensitive. Any order.
+2. `/x` options: types `work exam event hobby date dating`; destinations `calendar cal` → calendar, `planner plan timeline` → planner. Unknown `/x` → problem. `#x` = course alias/code; unknown `#x` stays title. `!x` no longer special (stays title).
+3. Days: `today tdy tonight`, `tmr tmrw tomorrow`, `in N days|weeks`, weekday `mon..sun`/full, `this <wd>`, `next <wd>` (coming one, never today), `next next <wd>` (+7 per extra), `D MON`/`MON D` (+ ordinals), `D/M[/YYYY]` (day/month), `YYYY-MM-DD`. LAST date wins; earlier stay title.
+4. Times: `2pm 2:30pm 14:00 14.30 noon midnight`, `5 pm`. Ranges: `6pm-10pm`, `6-10pm` (am/pm borrowed from end), `6pm to|till|until|- 10pm`, `6 to 10pm`, `18:00-22:00`. Duration `for 2h|90m|1h30|1.5h`. LAST time wins.
+5. Rollover: bare weekday → next occurrence incl. today, +7 if today and time passed. `D MON`/`D/M` → this year, if before today → next year. No date → today (warning if time passed).
+6. Defaults: type `#course` ? Work : Event; destination calendar. Title = leftover tokens; empty → problem.
+7. Planner: time required (problem). Snap start/end to 15 (`notes: rounded to 15 min`). No end → +60 (`60 min default`). end ≤ start → +1440 (crosses midnight), min 15 min. Server (`quickadd-server.ts`): one `sqlite.transaction` → `items.create` + `blocks.create({itemId, startAt, endAt})` via `localToUtc` (minutes > 1440 = next day). Calendar: end dropped (`notes: end time is only used by /planner`).
+8. P3: `every mon[,wed]` → rrule.
+Test table ≥ 30 (now 60+) incl. "Sun Tzu reading tmr", "lab 5 fri", "dinner #spot", "clo3d v1.30 fri", "next next monday", "9pm to 3am", "6:07pm to 7:52pm" snap, server item+block UTC.
 
 Places open-now (FR-P4), in user tz: Morning 06:00–12:00; All Day 06:00–24:00; Night 17:00–02:00 next day. A Night window after midnight belongs to the PREVIOUS day (closed_on checked on that day). `open_when=[]` → "hours unknown", excluded from Open now filter, shown with grey tag. `closed_on=[]` → open daily.
 

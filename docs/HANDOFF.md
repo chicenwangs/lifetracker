@@ -5,7 +5,8 @@ Caveman doc. State as of 2026-11-06. Repo: `github.com/chicenwangs/lifetracker` 
 ## State
 
 - **P1 done + working on Jeremy PC** (Stage A, localhost:5173). Real Notion data imported.
-- Tests: 103 unit (`npm run test:unit`), 8 e2e (`npm run test:e2e`). Lint + svelte-check clean.
+- Tests: 139 unit (`npm run test:unit`), 11 e2e (`npm run test:e2e`). Lint + svelte-check clean.
+- Quick add = N palette (2026-11-06): `/type title /calendar|/planner day time` any order, slash menu, errors on Enter, `/planner` = item + linked block. Spec REQUIREMENTS §4.3, TECHNICAL §8.
 - Read order for coding: README → REQUIREMENTS → TECHNICAL → P1-NOTES (spec deviations) → this.
 
 ## Env facts (bit us before)

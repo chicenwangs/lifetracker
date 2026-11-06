@@ -141,14 +141,49 @@ test('drag "DS Quiz" chip to planner -> linked red block', async () => {
 	await expect(b).toHaveCSS('background-color', 'rgb(69, 10, 10)');
 });
 
-test('quick add "ds quiz fri 2pm !exam #ds"', async () => {
+test('quick add palette "ds quiz fri 2pm /exam #ds" + /planner', async () => {
 	await page.locator('body').click({ position: { x: 5, y: 880 } });
 	await page.keyboard.press('n');
-	await page.keyboard.type('ds quiz fri 2pm !exam #ds');
-	await expect(page.locator('#qa-preview')).toContainText('Exam');
-	await expect(page.locator('#qa-preview')).toContainText('#DS');
+	const dlg = page.getByRole('dialog', { name: 'Quick add' });
+	await expect(dlg).toBeVisible();
+	// slash menu
+	await page.keyboard.type('ds quiz fri 2pm /ex');
+	await expect(dlg.getByRole('listbox')).toContainText('/exam');
+	await page.keyboard.press('Tab');
+	await page.keyboard.type('#ds');
+	await expect(page.locator('#qa-slots')).toContainText('Exam');
+	await expect(page.locator('#qa-slots')).toContainText('#DS');
+	// problems only on Enter
+	await page.keyboard.press('Escape'); // close menu
+	await page.keyboard.press('Escape'); // clear text
+	await page.keyboard.type('/hobby');
+	await expect(page.locator('#qa-err')).toHaveCount(0);
+	await page.keyboard.press('Escape'); // close menu
 	await page.keyboard.press('Enter');
-	await expect(page.locator('.toast')).toContainText('Added "ds quiz"');
+	await expect(page.locator('#qa-err')).toContainText('Add a title first');
+	await page.keyboard.press('Escape'); // clear text
+	await page.keyboard.type('ds quiz fri 2pm /exam #ds ');
+	await page.keyboard.press('Enter');
+	await expect(dlg.locator('.log')).toContainText('Added ds quiz to calendar');
+	// planner = item + linked block, snapped
+	await page.keyboard.type('/hobby e2e gym /planner tmr 6:07pm to 8pm');
+	await page.keyboard.press('Enter');
+	await expect(dlg.locator('.log')).toContainText('Added e2e gym to calendar + planner');
+	await page.keyboard.press('Escape');
+	await expect(dlg).toHaveCount(0);
+	{
+		const d = await today();
+		const r = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 3)}`);
+		const j = r.j as {
+			items: { id: string; title: string; time: string }[];
+			blocks: { itemId: string | null; startAt: string; endAt: string }[];
+		};
+		const gym = j.items.find((i) => i.title === 'e2e gym');
+		expect(gym?.time).toBe('18:00');
+		const b = j.blocks.find((x) => x.itemId === gym?.id);
+		expect(b?.startAt.slice(11, 16)).toBe('10:00'); // 18:00 KL
+		expect(b?.endAt.slice(11, 16)).toBe('12:00');
+	}
 	const d = await today();
 	const r = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 8)}`);
 	const it = (
