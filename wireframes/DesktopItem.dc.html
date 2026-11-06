@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Item detail (desktop)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; display: flex; flex-direction: column">
+  <header style="min-height: 64px; box-sizing: border-box; padding: 12px 24px; background: #fff; border-bottom: 1px solid #D6D3D1; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+    <span style="font-size: 16px; font-weight: 700">Life Tracker</span>
+    <nav aria-label="Main" style="display: flex; gap: 4px; flex-wrap: wrap">
+      <a href="Desktop.dc.html" style="padding: 8px 12px; border-radius: 8px; background: #E7E5E4; color: #1C1917; font-size: 13px; font-weight: 600">Home</a>
+      <a href="DesktopPlaces.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Places</a>
+      <a href="DesktopLists.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Lists</a>
+      <a href="DesktopPeople.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">People</a>
+      <a href="DesktopIdeas.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Ideas</a>
+      <a href="DesktopWorkouts.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Workouts</a>
+    </nav>
+  </header>
+
+  <main style="flex: 1; padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+    <section style="flex: 2 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+      <nav aria-label="Breadcrumb" style="font-size: 13px; display: flex; gap: 6px; align-items: center">
+        <a href="Desktop.dc.html">Home</a><span style="color: #A8A29E">/</span><span style="color: #1C1917">Submission of Assignment</span>
+      </nav>
+
+      <div style="background: #FEE2E2; color: #7F1D1D; border-radius: 14px; padding: 20px 24px; display: flex; gap: 16px; align-items: flex-start">
+        <button aria-label="In progress. Click to complete" title="In progress. Click to complete" style="flex: none; width: 32px; height: 32px; margin-top: 4px; box-sizing: border-box; border-radius: 6px; border: 2px solid #7F1D1D; background: #fff; color: #7F1D1D; padding: 0; display: flex; align-items: center; justify-content: center">
+          <svg width="14" height="14" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5l6 3.5-6 3.5z" fill="currentColor"></path></svg></button>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+          <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em">EXAM · IN PROGRESS</span>
+          <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #1C1917">Submission of Assignment</h1>
+        </div>
+      </div>
+
+      <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr))">
+        <button style="min-height: 64px; border: 0; border-right: 1px solid #E7E5E4; background: #fff; padding: 12px 16px; text-align: left; font: 13px Inter, sans-serif; color: #1C1917; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 11px; color: #57534E">Type</span><span style="font-weight: 600">Exam</span></button>
+        <button style="min-height: 64px; border: 0; border-right: 1px solid #E7E5E4; background: #fff; padding: 12px 16px; text-align: left; font: 13px Inter, sans-serif; color: #1C1917; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 11px; color: #57534E">Date</span><span style="font-weight: 600">Fri 6 Nov · today</span></button>
+        <button style="min-height: 64px; border: 0; border-right: 1px solid #E7E5E4; background: #fff; padding: 12px 16px; text-align: left; font: 13px Inter, sans-serif; color: #1C1917; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 11px; color: #57534E">Course</span><span style="font-weight: 600">System Programming</span></button>
+        <button style="min-height: 64px; border: 0; background: #fff; padding: 12px 16px; text-align: left; font: 13px Inter, sans-serif; color: #1C1917; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 11px; color: #57534E">Days left</span><span style="font-weight: 600">0</span></button>
+      </div>
+
+      <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <h2 style="margin: 0; font-size: 16px; font-weight: 700">Steps</h2>
+          <div style="display: flex; gap: 8px">
+            <button style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; font: 500 12px Inter, sans-serif; color: #1C1917">Apply template</button>
+            <button style="height: 32px; padding: 0 12px; border-radius: 8px; border: 0; background: #1C1917; color: #fff; font: 600 12px Inter, sans-serif">+ Add step</button>
+          </div>
+        </div>
+        <div style="height: 6px; border-radius: 3px; background: #E7E5E4"><div style="width: 100%; height: 6px; border-radius: 3px; background: #1E3A8A"></div></div>
+        <sc-for list="{{steps}}" as="s" hint-placeholder-count="3">
+          <div style="min-height: 40px; padding: 0 12px; border-radius: 8px; background: #DBEAFE; color: #1E3A8A; opacity: 0.6; display: flex; align-items: center; gap: 10px; font-size: 13px">
+            <span aria-label="Completed" style="width: 18px; height: 18px; box-sizing: border-box; border-radius: 4px; background: #1E3A8A; color: #fff; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg></span>
+            <span style="flex: 1; font-weight: 600; text-decoration: line-through">{{s.t}}</span>
+            <span style="font-size: 12px">Work · {{s.d}}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
+        <label for="notes" style="font-size: 16px; font-weight: 700">Notes</label>
+        <textarea id="notes" placeholder="Write in Markdown: requirements, links, submission portal…" style="min-height: 160px; box-sizing: border-box; border: 1px solid #E7E5E4; border-radius: 10px; padding: 12px; font: 14px Inter, sans-serif; resize: vertical"></textarea>
+      </div>
+    </section>
+
+    <aside style="flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding-top: 34px">
+      <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Time blocks</h2>
+        <span style="font-size: 13px; color: #57534E">No time blocked for this yet.</span>
+        <a href="Desktop.dc.html" style="height: 40px; border: 1.5px dashed #A8A29E; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; color: #1C1917">Block time in the planner</a>
+      </div>
+      <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Also in System Programming</h2>
+        <div style="min-height: 40px; padding: 0 12px; border-radius: 8px; background: #FEE2E2; color: #7F1D1D; display: flex; align-items: center; gap: 10px; font-size: 13px">
+          <span aria-label="Not started" style="width: 18px; height: 18px; box-sizing: border-box; border-radius: 4px; border: 1.5px solid #7F1D1D; background: #fff"></span>
+          <span style="flex: 1; font-weight: 600">Sys prog midsem test</span><span style="font-size: 12px">16 Nov</span>
+        </div>
+      </div>
+      <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #57534E">
+        <h2 style="margin: 0 0 4px; font-size: 16px; font-weight: 700; color: #1C1917">History</h2>
+        <span>Created 12 Oct 2026</span>
+        <span>Started [date]</span>
+      </div>
+    </aside>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { steps: [{ t: 'Start Assignment', d: '16 Oct' }, { t: 'Complete draft assignment sys prog v1', d: '30 Oct' }, { t: 'Submission of Sys programming draft', d: '3 Nov' }] };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Item detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; overflow: hidden">
+  <header style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between">
+    <a href="Calendar.dc.html" style="display: flex; align-items: center; gap: 4px; font-size: 15px; padding: 8px 0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>Calendar</a>
+    <button aria-label="More actions" style="width: 40px; height: 40px; border-radius: 20px; border: 1px solid #D6D3D1; background: #fff; padding: 0; color: #1C1917; display: flex; align-items: center; justify-content: center">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="5" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle></svg></button>
+  </header>
+
+  <div style="padding: 0 20px 14px; display: flex; flex-direction: column; gap: 10px">
+    <span style="align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 4px; background: #FEE2E2; color: #7F1D1D">EXAM · SYSTEM PROGRAMMING</span>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; background: #FEE2E2; color: #7F1D1D">
+      <button aria-label="In progress. Tap to complete" title="In progress. Tap to complete" style="width: 32px; height: 32px; flex: none; box-sizing: border-box; border-radius: 6px; border: 2px solid #7F1D1D; background: #fff; padding: 0; color: #7F1D1D; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5l6 3.5-6 3.5z" fill="currentColor"></path></svg></button>
+      <h1 style="margin: 0; font-size: 22px; font-weight: 700; line-height: 1.2">Submission of Assignment</h1>
+    </div>
+  </div>
+
+  <section style="margin: 0 20px; background: #fff; border: 1px solid #D6D3D1; border-radius: 12px; overflow: hidden">
+    <button style="width: 100%; min-height: 44px; border: 0; border-bottom: 1px solid #E7E5E4; background: #fff; padding: 0 14px; display: flex; justify-content: space-between; align-items: center; font: 14px Inter, sans-serif; color: #1C1917"><span style="color: #57534E">Due</span><span style="font-weight: 600">Fri 6 Nov 2026 · today</span></button>
+    <button style="width: 100%; min-height: 44px; border: 0; border-bottom: 1px solid #E7E5E4; background: #fff; padding: 0 14px; display: flex; justify-content: space-between; align-items: center; font: 14px Inter, sans-serif; color: #1C1917"><span style="color: #57534E">Course</span><span style="font-weight: 600">System Programming</span></button>
+    <button style="width: 100%; min-height: 44px; border: 0; background: #fff; padding: 0 14px; display: flex; justify-content: space-between; align-items: center; font: 14px Inter, sans-serif; color: #1C1917"><span style="color: #57534E">Type</span><span style="font-weight: 600; padding: 2px 8px; border-radius: 4px; background: #FEE2E2; color: #7F1D1D">Exam</span></button>
+  </section>
+
+  <section style="padding: 16px 20px 0; display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 700">Steps</h2>
+      <span style="font-size: 12px; color: #57534E">3 of 3 done</span>
+    </div>
+    <div style="height: 6px; border-radius: 3px; background: #E7E5E4; overflow: hidden"><div style="width: 100%; height: 6px; background: #1C1917"></div></div>
+    <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 12px; overflow: hidden">
+      <div style="min-height: 44px; padding: 0 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #E7E5E4; font-size: 14px"><button aria-label="Completed. Tap to reset" title="Completed. Tap to reset" style="width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 4px; border: 1.5px solid #7F1D1D; background: #7F1D1D; padding: 0; color: #fff; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg></button><span style="flex: 1; color: #57534E; text-decoration: line-through">Start Assignment</span><span style="font-size: 11px; color: #57534E">16 Oct</span></div>
+      <div style="min-height: 44px; padding: 0 14px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #E7E5E4; font-size: 14px"><button aria-label="Completed. Tap to reset" title="Completed. Tap to reset" style="width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 4px; border: 1.5px solid #7F1D1D; background: #7F1D1D; padding: 0; color: #fff; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg></button><span style="flex: 1; color: #57534E; text-decoration: line-through">Complete draft v1</span><span style="font-size: 11px; color: #57534E">30 Oct</span></div>
+      <div style="min-height: 44px; padding: 0 14px; display: flex; align-items: center; gap: 10px; font-size: 14px"><button aria-label="Completed. Tap to reset" title="Completed. Tap to reset" style="width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 4px; border: 1.5px solid #7F1D1D; background: #7F1D1D; padding: 0; color: #fff; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg></button><span style="flex: 1; color: #57534E; text-decoration: line-through">Submit draft</span><span style="font-size: 11px; color: #57534E">3 Nov</span></div>
+    </div>
+    <div style="display: flex; gap: 8px">
+      <button style="flex: 1; height: 40px; border: 1px dashed #A8A29E; border-radius: 10px; background: transparent; font: 500 13px Inter, sans-serif; color: #1C1917">+ Add step</button>
+      <button style="flex: 1; height: 40px; border: 1px solid #D6D3D1; border-radius: 10px; background: #fff; font: 500 13px Inter, sans-serif; color: #1C1917">Apply template</button>
+    </div>
+  </section>
+
+  <section style="padding: 16px 20px 0; display: flex; flex-direction: column; gap: 8px">
+    <h2 style="margin: 0; font-size: 15px; font-weight: 700">Time blocks</h2>
+    <a href="Main.dc.html" style="height: 44px; box-sizing: border-box; border: 1px dashed #A8A29E; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; color: #1C1917">Schedule a block on Today</a>
+  </section>
+
+  <section style="padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; flex: 1">
+    <label for="notes" style="font-size: 15px; font-weight: 700">Notes</label>
+    <textarea id="notes" placeholder="Markdown notes, links, submission portal…" style="flex: 1; box-sizing: border-box; border: 1px solid #D6D3D1; border-radius: 12px; padding: 12px; font: 14px Inter, sans-serif; background: #fff; resize: none"></textarea>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

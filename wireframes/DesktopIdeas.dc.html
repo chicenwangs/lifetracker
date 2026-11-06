@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ideas (desktop)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; display: flex; flex-direction: column">
+  <header style="min-height: 64px; box-sizing: border-box; padding: 12px 24px; background: #fff; border-bottom: 1px solid #D6D3D1; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+    <span style="font-size: 16px; font-weight: 700">Life Tracker</span>
+    <nav aria-label="Main" style="display: flex; gap: 4px; flex-wrap: wrap">
+      <a href="Desktop.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Home</a>
+      <a href="DesktopPlaces.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Places</a>
+      <a href="DesktopLists.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Lists</a>
+      <a href="DesktopPeople.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">People</a>
+      <a href="DesktopIdeas.dc.html" style="padding: 8px 12px; border-radius: 8px; background: #E7E5E4; color: #1C1917; font-size: 13px; font-weight: 600">Ideas</a>
+      <a href="DesktopWorkouts.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Workouts</a>
+    </nav>
+  </header>
+
+  <div style="padding: 20px 24px 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+    <h1 style="margin: 0 8px 0 0; font-size: 22px; font-weight: 700">Content ideas</h1>
+    <div role="group" aria-label="Channel" style="display: flex; border: 1px solid #D6D3D1; border-radius: 8px; overflow: hidden; background: #fff">
+      <button style="height: 34px; padding: 0 12px; border: 0; background: #1C1917; color: #fff; font: 600 12px Inter, sans-serif">All</button>
+      <button style="height: 34px; padding: 0 12px; border: 0; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">chicenwangs</button>
+      <button style="height: 34px; padding: 0 12px; border: 0; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">chicenwangs2</button>
+    </div>
+    <div style="flex: 1"></div>
+    <label for="idea" style="position: absolute; left: -9999px">New idea</label>
+    <input id="idea" placeholder="Dump an idea and press Enter" style="flex: 0 1 380px; min-width: 0; height: 38px; box-sizing: border-box; border: 1px solid #D6D3D1; border-radius: 10px; padding: 0 12px; font: 13px Inter, sans-serif; background: #fff">
+  </div>
+
+  <main style="flex: 1; padding: 16px 24px 20px; display: grid; grid-template-columns: repeat(4, minmax(240px, 1fr)); gap: 14px; overflow-x: auto; align-items: start">
+    <sc-for list="{{cols}}" as="c" hint-placeholder-count="4">
+      <section style="background: #E7E5E4; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; min-height: 620px; box-sizing: border-box">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px">
+          <h2 style="margin: 0; font-size: 14px; font-weight: 700">{{c.name}}</h2>
+          <span style="font-size: 12px; color: #57534E">{{c.n}}</span>
+        </div>
+        <sc-for list="{{c.cards}}" as="k" hint-placeholder-count="3">
+          <article style="background: #fff; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; cursor: grab">
+            <span style="font-size: 13px; font-weight: 600">[Idea title]</span>
+            <span style="align-self: flex-start; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: {{k.bg}}; color: {{k.fg}}">{{k.ch}}</span>
+          </article>
+        </sc-for>
+        <sc-if value="{{c.empty}}" hint-placeholder-val="{{false}}">
+          <div style="border: 1.5px dashed #A8A29E; border-radius: 10px; padding: 16px; font-size: 12px; color: #57534E; text-align: center">Drag a card here</div>
+        </sc-if>
+      </section>
+    </sc-for>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    // channel tags neutral (FR-ID2), never Type colours
+    var a = { ch: 'chicenwangs', bg: '#E7E5E4', fg: '#292524' };
+    var b = { ch: 'chicenwangs2', bg: '#1C1917', fg: '#FFFFFF' };
+    return {
+      cols: [
+        { name: 'Idea', n: 63, cards: [a, b, a, a, b, a, a], empty: false },
+        { name: 'Filmed', n: 0, cards: [], empty: true },
+        { name: 'Edited', n: 0, cards: [], empty: true },
+        { name: 'Posted', n: 0, cards: [], empty: true }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

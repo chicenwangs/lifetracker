@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lists (desktop)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; display: flex; flex-direction: column">
+  <header style="min-height: 64px; box-sizing: border-box; padding: 12px 24px; background: #fff; border-bottom: 1px solid #D6D3D1; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+    <span style="font-size: 16px; font-weight: 700">Life Tracker</span>
+    <nav aria-label="Main" style="display: flex; gap: 4px; flex-wrap: wrap">
+      <a href="Desktop.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Home</a>
+      <a href="DesktopPlaces.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Places</a>
+      <a href="DesktopLists.dc.html" style="padding: 8px 12px; border-radius: 8px; background: #E7E5E4; color: #1C1917; font-size: 13px; font-weight: 600">Lists</a>
+      <a href="DesktopPeople.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">People</a>
+      <a href="DesktopIdeas.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Ideas</a>
+      <a href="DesktopWorkouts.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Workouts</a>
+    </nav>
+  </header>
+
+  <main style="flex: 1; padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+    <aside aria-label="Your lists" style="flex: 0 1 260px; min-width: 220px; background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 8px; display: flex; flex-direction: column; gap: 2px">
+      <a href="DesktopLists.dc.html" style="min-height: 40px; padding: 0 12px; border-radius: 8px; background: #E7E5E4; color: #1C1917; display: flex; align-items: center; justify-content: space-between; font-size: 14px; font-weight: 600"><span>Watchlist</span><span style="color: #57534E; font-weight: 500">6</span></a>
+      <a href="DesktopLists.dc.html" style="min-height: 40px; padding: 0 12px; border-radius: 8px; color: #1C1917; display: flex; align-items: center; justify-content: space-between; font-size: 14px"><span>Date ideas</span><span style="color: #57534E">14</span></a>
+      <a href="DesktopLists.dc.html" style="min-height: 40px; padding: 0 12px; border-radius: 8px; color: #1C1917; display: flex; align-items: center; justify-content: space-between; font-size: 14px"><span>Games to play</span><span style="color: #57534E">33</span></a>
+      <a href="DesktopLists.dc.html" style="min-height: 40px; padding: 0 12px; border-radius: 8px; color: #1C1917; display: flex; align-items: center; justify-content: space-between; font-size: 14px"><span>Soundtrack inspiration</span><span style="color: #57534E">26</span></a>
+      <a href="DesktopLists.dc.html" style="min-height: 40px; padding: 0 12px; border-radius: 8px; color: #1C1917; display: flex; align-items: center; justify-content: space-between; font-size: 14px"><span>chicenwangs2 rules</span><span style="color: #57534E">2</span></a>
+      <button style="min-height: 40px; margin-top: 6px; border: 1.5px dashed #A8A29E; border-radius: 8px; background: transparent; font: 500 13px Inter, sans-serif; color: #1C1917">+ New list</button>
+    </aside>
+
+    <section style="flex: 1 1 640px; min-width: 0; max-width: 820px; background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <h1 style="margin: 0; font-size: 22px; font-weight: 700">Watchlist</h1>
+        <span style="display: flex; gap: 8px; align-items: center"><span style="font-size: 13px; color: #57534E">5 to watch · 1 watched</span><button aria-label="List options" style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; font: 600 14px Inter, sans-serif; color: #1C1917">⋯</button></span>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <label for="add" style="position: absolute; left: -9999px">Add an item</label>
+        <input id="add" placeholder="Add an item and press Enter" style="flex: 1; height: 42px; box-sizing: border-box; border: 1px solid #D6D3D1; border-radius: 10px; padding: 0 12px; font: 14px Inter, sans-serif">
+      </div>
+      <div style="display: flex; flex-direction: column">
+        <sc-for list="{{todo}}" as="m" hint-placeholder-count="8">
+          <div style="min-height: 46px; padding: 0 8px; border-top: 1px solid #E7E5E4; display: flex; align-items: center; gap: 12px">
+            <span aria-hidden="true" title="Drag to reorder" style="color: #A8A29E; cursor: grab">⋮⋮</span>
+            <input type="checkbox" aria-label="Done" style="width: 18px; height: 18px; margin: 0">
+            <span style="flex: 1; font-size: 14px">{{m.t}}</span>
+            <button style="height: 30px; padding: 0 12px; border-radius: 8px; border: 0; background: #FCE7F3; color: #831843; font: 600 12px Inter, sans-serif">Plan as a date</button>
+          </div>
+        </sc-for>
+      </div>
+      <details style="border-top: 1px solid #E7E5E4; padding-top: 12px">
+        <summary style="font-size: 13px; font-weight: 600; color: #57534E; cursor: pointer">Watched (1) · Django Unchained</summary>
+      </details>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { todo: ['The Odyssey', 'Lord of War', 'Secret Life of Walter Mitty', 'War Dogs', 'Spiderman Brand New Day'].map(function (t) { return { t: t }; }) };
+  }
+}
+</script>
+</body>
+</html>

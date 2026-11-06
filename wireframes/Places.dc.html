@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Places</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; overflow: hidden">
+  <header style="padding: 20px 20px 12px; display: flex; align-items: center; justify-content: space-between">
+    <h1 style="margin: 0; font-size: 24px; font-weight: 700">Places</h1>
+    <div role="group" aria-label="City" style="display: flex; border: 1px solid #D6D3D1; border-radius: 8px; overflow: hidden; background: #fff">
+      <button style="height: 32px; padding: 0 12px; border: 0; background: #1C1917; color: #fff; font: 600 12px Inter, sans-serif">Kuching</button>
+      <button style="height: 32px; padding: 0 12px; border: 0; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Johor</button>
+    </div>
+  </header>
+
+  <div style="padding: 0 20px 10px">
+    <label for="ps" style="position: absolute; left: -9999px">Search places</label>
+    <input id="ps" placeholder="Search name, cuisine, area" style="width: 100%; height: 44px; box-sizing: border-box; border: 1px solid #D6D3D1; border-radius: 12px; padding: 0 14px; font: 14px Inter, sans-serif; background: #fff">
+  </div>
+
+  <div style="padding: 0 20px 12px; display: flex; gap: 6px; flex-wrap: wrap">
+    <button style="height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid #1C1917; background: #1C1917; color: #fff; font: 600 12px Inter, sans-serif">Open now</button>
+    <button style="height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Not visited</button>
+    <button style="height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Halal</button>
+    <button style="height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Cuisine ▾</button>
+    <button style="height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Area ▾</button>
+  </div>
+
+  <div style="padding: 0 20px 10px; display: flex; justify-content: space-between; align-items: center">
+    <span style="font-size: 12px; color: #57534E">119 places · [N] open now</span>
+    <button style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid #D6D3D1; background: #fff; font: 600 12px Inter, sans-serif; color: #1C1917">Pick one for me</button>
+  </div>
+
+  <section style="flex: 1; padding: 0 20px; display: flex; flex-direction: column; gap: 8px; overflow: hidden">
+    <sc-for list="{{places}}" as="p" hint-placeholder-count="5">
+      <article style="background: #fff; border: 1px solid #D6D3D1; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 15px; font-weight: 600">[Place name]</span>
+            <span style="font-size: 12px; color: #57534E">{{p.meta}}</span>
+          </div>
+          <span style="font-size: 10px; font-weight: 600; padding: 3px 6px; border-radius: 4px; background: #E7E5E4; white-space: nowrap">{{p.when}}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center">
+          <div role="group" aria-label="Rating" style="display: flex; gap: 2px">
+            <sc-for list="{{p.stars}}" as="s" hint-placeholder-count="5">
+              <button aria-label="{{s.label}}" style="width: 28px; height: 28px; border: 0; background: transparent; padding: 0; color: {{s.color}}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"></path></svg>
+              </button>
+            </sc-for>
+          </div>
+          <sc-if value="{{p.approved}}" hint-placeholder-val="{{false}}"><span style="font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 10px; background: #1C1917; color: #fff">✓ Approved</span></sc-if>
+          <span style="font-size: 12px; color: #57534E">{{p.visited}}</span>
+        </div>
+      </article>
+    </sc-for>
+  </section>
+
+  <nav aria-label="Main" style="height: 72px; flex: none; box-sizing: border-box; border-top: 1px solid #D6D3D1; background: #fff; display: flex; align-items: center; justify-content: space-around; padding: 0 8px 10px">
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; min-width: 56px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Today</a>
+    <a href="Calendar.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; min-width: 56px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Calendar</a>
+    <a href="QuickAdd.dc.html" aria-label="Quick add" style="width: 48px; height: 48px; border-radius: 24px; background: #1C1917; color: #fff; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></a>
+    <a href="Places.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; color: #1C1917; min-width: 56px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"></path><circle cx="12" cy="9" r="2.5"></circle></svg>Places</a>
+    <a href="More.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; min-width: 56px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="5" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle></svg>More</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var rows = [
+      // imported places have no rating (Notion had none); approved = Stamp of Approval
+      { meta: 'Kueh Chap · Padungan', when: 'NIGHT', rating: 0, approved: true, visited: 'Been · [last visit]' },
+      { meta: 'Mee Kolok · Carpenter Street', when: 'ALL DAY', rating: 0, approved: true, visited: 'Been · [last visit]' },
+      { meta: 'Laksa · Satok', when: 'MORNING', rating: 0, approved: false, visited: 'Been · [last visit]' },
+      { meta: 'Claypot Rice · Tabuan', when: 'NIGHT', rating: 0, approved: false, visited: 'Not yet · Been here?' },
+      { meta: 'Dayak Food · Samarahan', when: 'ALL DAY', rating: 0, approved: false, visited: 'Not yet · Been here?' }
+    ];
+    return {
+      places: rows.map(function (r) {
+        var stars = [];
+        for (var i = 1; i <= 5; i++) stars.push({ label: 'Rate ' + i + ' of 5', color: i <= r.rating ? '#1C1917' : '#D6D3D1' });
+        return { meta: r.meta, when: r.when, visited: r.visited, stars: stars, approved: r.approved };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

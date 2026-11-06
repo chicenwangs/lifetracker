@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick add</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; overflow: hidden">
+  <header style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; background: #fff; border-bottom: 1px solid #D6D3D1">
+    <a href="Main.dc.html" style="font-size: 15px; padding: 8px 0">Cancel</a>
+    <h1 style="margin: 0; font-size: 16px; font-weight: 700">Quick add</h1>
+    <a href="Calendar.dc.html" style="height: 36px; padding: 0 16px; border-radius: 18px; background: #1C1917; color: #fff; font-size: 14px; font-weight: 600; display: flex; align-items: center">Add</a>
+  </header>
+
+  <div style="padding: 16px 20px 0; display: flex; flex-direction: column; gap: 6px">
+    <label for="qa" style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #57534E">TYPE ONE LINE</label>
+    <input id="qa" value="ds quiz fri 2pm !exam #ds" style="height: 52px; box-sizing: border-box; border: 2px solid #1C1917; border-radius: 12px; padding: 0 14px; font: 500 17px Inter, sans-serif; color: #1C1917; background: #fff">
+  </div>
+
+  <section style="padding: 16px 20px 0; display: flex; flex-direction: column; gap: 8px">
+    <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #57534E">WILL CREATE · TAP TO CHANGE</span>
+    <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 12px; overflow: hidden">
+      <button style="width: 100%; min-height: 44px; border: 0; border-bottom: 1px solid #E7E5E4; background: #fff; padding: 0 14px; display: flex; justify-content: space-between; align-items: center; font: 14px Inter, sans-serif; color: #1C1917"><span style="color: #57534E">Title</span><span style="font-weight: 600">DS quiz</span></button>
+      <button style="width: 100%; min-height: 44px; border: 0; border-bottom: 1px solid #E7E5E4; background: #fff; padding: 0 14px; display: flex; justify-content: space-between; align-items: center; font: 14px Inter, sans-serif; color: #1C1917"><span style="color: #57534E">Due</span><span style="font-weight: 600">Fri 6 Nov, 14:00</span></button>
+      <button style="width: 100%; min-height: 44px; border: 0; border-bottom: 1px solid #E7E5E4; background: #fff; padding: 0 14px; display: flex; justify-content: space-between; align-items: center; font: 14px Inter, sans-serif; color: #1C1917"><span style="color: #57534E">Type</span><span style="font-weight: 600; padding: 2px 8px; border-radius: 4px; background: #FEE2E2; color: #7F1D1D">Exam</span></button>
+      <button style="width: 100%; min-height: 44px; border: 0; background: #fff; padding: 0 14px; display: flex; justify-content: space-between; align-items: center; font: 14px Inter, sans-serif; color: #1C1917"><span style="color: #57534E">Course</span><span style="font-weight: 600">Distributed Systems</span></button>
+    </div>
+    <label style="display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px">
+      <input type="checkbox" style="width: 20px; height: 20px; margin: 0">
+      Also block time on the Today grid
+    </label>
+  </section>
+
+  <section style="padding: 8px 20px 0; display: flex; flex-direction: column; gap: 8px">
+    <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #57534E">SHORTCUTS</span>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; font-size: 12px">
+      <span style="background: #fff; border: 1px solid #E7E5E4; border-radius: 8px; padding: 8px"><b>tmr · fri · 20 nov</b><br><span style="color: #57534E">date</span></span>
+      <span style="background: #fff; border: 1px solid #E7E5E4; border-radius: 8px; padding: 8px"><b>2pm · 14:30</b><br><span style="color: #57534E">time</span></span>
+      <span style="background: #fff; border: 1px solid #E7E5E4; border-radius: 8px; padding: 8px"><b>!work !exam !event !hobby !dating</b><br><span style="color: #57534E">type (default: Work if #course, else Event)</span></span>
+      <span style="background: #fff; border: 1px solid #E7E5E4; border-radius: 8px; padding: 8px"><b>#fyp #sp #ds #sulam #ss</b><br><span style="color: #57534E">course</span></span>
+    </div>
+  </section>
+
+  <div aria-hidden="true" style="margin-top: auto; height: 260px; background: #D6D3D1; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #44403C">Phone keyboard</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

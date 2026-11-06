@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Today</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; overflow: hidden">
+  <header style="padding: 20px 20px 12px; display: flex; align-items: flex-end; justify-content: space-between">
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 13px; color: #57534E">Friday</span>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 700">6 November</h1>
+    </div>
+    <button style="height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid #D6D3D1; background: #fff; font: 500 12px Inter, sans-serif; color: #1C1917">Q4 goals 3/5</button>
+  </header>
+
+  <section style="padding: 0 0 12px 20px; display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; justify-content: space-between; padding-right: 20px">
+      <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #57534E">DUE SOON · NO TIME BLOCKED</span>
+      <span style="font-size: 11px; color: #57534E">Drag a card onto the grid</span>
+    </div>
+    <div style="display: flex; gap: 8px; overflow: hidden">
+      <div style="flex: 0 0 150px; box-sizing: border-box; background: #FEE2E2; color: #7F1D1D; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; align-items: center; gap: 6px">
+          <button aria-label="Not started. Tap to start" title="Not started. Tap to start" style="width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 4px; border: 1.5px solid #7F1D1D; background: #fff; padding: 0"></button>
+          <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.04em">EXAM</span>
+        </div>
+        <span style="font-size: 14px; font-weight: 600">DS Quiz</span>
+        <span style="font-size: 11px; opacity: 0.85">Today · Distributed Sys</span>
+      </div>
+      <div style="flex: 0 0 150px; box-sizing: border-box; background: #FEE2E2; color: #7F1D1D; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; align-items: center; gap: 6px">
+          <button aria-label="In progress. Tap to complete" title="In progress. Tap to complete" style="width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 4px; border: 1.5px solid #7F1D1D; background: #fff; padding: 0; color: #7F1D1D; display: flex; align-items: center; justify-content: center"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5l6 3.5-6 3.5z" fill="currentColor"></path></svg></button>
+          <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.04em">EXAM</span>
+        </div>
+        <span style="font-size: 14px; font-weight: 600">Submission of Assignment</span>
+        <span style="font-size: 11px; opacity: 0.85">Today · System Prog</span>
+      </div>
+      <div style="flex: 0 0 150px; box-sizing: border-box; background: #FEE2E2; color: #7F1D1D; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; align-items: center; gap: 6px">
+          <button aria-label="Not started. Tap to start" title="Not started. Tap to start" style="width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 4px; border: 1.5px solid #7F1D1D; background: #fff; padding: 0"></button>
+          <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.04em">EXAM</span>
+        </div>
+        <span style="font-size: 14px; font-weight: 600">Sys prog midsem test</span>
+        <span style="font-size: 11px; opacity: 0.85">16 Nov · 10 days</span>
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Day grid" style="flex: 1; position: relative; background: #fff; border-top: 1px solid #D6D3D1; overflow: hidden">
+    <sc-for list="{{hours}}" as="h" hint-placeholder-count="9">
+      <div style="height: 64px; box-sizing: border-box; border-top: 1px solid #E7E5E4; display: flex">
+        <span style="width: 52px; padding: 4px 0 0 12px; box-sizing: border-box; font-size: 11px; color: #57534E">{{h.label}}</span>
+      </div>
+    </sc-for>
+
+    <div style="position: absolute; top: 32px; left: 44px; right: 0; display: flex; align-items: center">
+      <span style="width: 8px; height: 8px; border-radius: 4px; background: #1C1917"></span>
+      <span style="flex: 1; height: 2px; background: #1C1917"></span>
+    </div>
+
+    <div style="position: absolute; top: 65px; left: 60px; right: 12px; height: 94px; box-sizing: border-box; border-radius: 8px; background: #DBEAFE; color: #1E3A8A; padding: 6px 8px; display: flex; gap: 8px">
+      <button aria-label="Not started. Tap to start" title="Not started. Tap to start" style="width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 4px; border: 1.5px solid #1E3A8A; background: #fff; padding: 0"></button>
+      <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+        <span style="font-size: 13px; font-weight: 600">Social Science class</span>
+        <span style="font-size: 11px; opacity: 0.85">09:00 – 10:30</span>
+      </div>
+    </div>
+
+    <div style="position: absolute; top: 161px; left: 60px; right: 12px; height: 62px; box-sizing: border-box; border-radius: 8px; background: #FEF3C7; color: #713F12; padding: 6px 8px; display: flex; gap: 8px">
+      <button aria-label="Not started. Tap to start" title="Not started. Tap to start" style="width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 4px; border: 1.5px solid #713F12; background: #fff; padding: 0"></button>
+      <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+        <span style="font-size: 13px; font-weight: 600">Workout</span>
+        <span style="font-size: 11px; opacity: 0.85">10:30 – 11:30 · opens Workouts</span>
+      </div>
+    </div>
+
+    <div style="position: absolute; top: 257px; left: 60px; right: 12px; height: 62px; box-sizing: border-box; border-radius: 8px; background: #DBEAFE; color: #1E3A8A; padding: 6px 8px; display: flex; gap: 8px">
+      <button aria-label="Not started. Tap to start" title="Not started. Tap to start" style="width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 4px; border: 1.5px solid #1E3A8A; background: #fff; padding: 0"></button>
+      <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+        <span style="font-size: 13px; font-weight: 600">Go through DS assignment</span>
+        <span style="font-size: 11px; opacity: 0.85">12:00 – 13:00 · DS Assignment, 20 Nov</span>
+      </div>
+    </div>
+
+    <div style="position: absolute; top: 321px; left: 60px; right: 12px; height: 94px; box-sizing: border-box; border: 2px solid #7F1D1D; border-radius: 8px; background: #FEE2E2; color: #7F1D1D; padding: 6px 8px; display: flex; gap: 8px">
+      <span style="position: absolute; top: -5px; left: 50%; margin-left: -12px; width: 24px; height: 8px; border-radius: 4px; background: #7F1D1D"></span>
+      <button aria-label="Not started. Tap to start" title="Not started. Tap to start" style="width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 4px; border: 1.5px solid #7F1D1D; background: #fff; padding: 0"></button>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 13px; font-weight: 600">Prep for DS quiz</span>
+        <span style="font-size: 11px; opacity: 0.85">13:00 – 14:30 · DS Quiz</span>
+        <span style="font-size: 11px; font-weight: 600">Dragging edge · snaps to 15 min</span>
+      </div>
+      <span style="position: absolute; bottom: -5px; left: 50%; margin-left: -12px; width: 24px; height: 8px; border-radius: 4px; background: #7F1D1D"></span>
+    </div>
+
+    <div style="position: absolute; top: 449px; left: 60px; right: 12px; height: 46px; box-sizing: border-box; border: 1.5px dashed #A8A29E; border-radius: 8px; padding: 6px 8px; display: flex; align-items: center">
+      <span style="font-size: 12px; color: #57534E">Drag on empty space to add a block</span>
+    </div>
+  </section>
+
+  <nav aria-label="Main" style="height: 72px; flex: none; box-sizing: border-box; border-top: 1px solid #D6D3D1; background: #fff; display: flex; align-items: center; justify-content: space-around; padding: 0 8px 10px">
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; color: #1C1917; min-width: 56px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Today</a>
+    <a href="Calendar.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; min-width: 56px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Calendar</a>
+    <a href="QuickAdd.dc.html" aria-label="Quick add" style="width: 48px; height: 48px; border-radius: 24px; background: #1C1917; color: #fff; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></a>
+    <a href="Places.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; min-width: 56px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"></path><circle cx="12" cy="9" r="2.5"></circle></svg>Places</a>
+    <a href="More.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; min-width: 56px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="5" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle></svg>More</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      hours: ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'].map(function (l) { return { label: l }; })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1E3A8A;text-decoration:none}a:hover{color:#1C1917;text-decoration:underline}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; display: flex; align-items: center; justify-content: center; padding: 40px 16px">
+  <div style="width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 10px">
+      <div aria-hidden="true" style="display: grid; grid-template-columns: repeat(2, 14px); gap: 4px">
+        <span style="width: 14px; height: 14px; border-radius: 3px; background: #DBEAFE; border: 1.5px solid #1E3A8A; box-sizing: border-box"></span>
+        <span style="width: 14px; height: 14px; border-radius: 3px; background: #FEE2E2; border: 1.5px solid #7F1D1D; box-sizing: border-box"></span>
+        <span style="width: 14px; height: 14px; border-radius: 3px; background: #DCFCE7; border: 1.5px solid #14532D; box-sizing: border-box"></span>
+        <span style="width: 14px; height: 14px; border-radius: 3px; background: #FCE7F3; border: 1.5px solid #831843; box-sizing: border-box"></span>
+      </div>
+      <h1 style="margin: 0; font-size: 22px; font-weight: 700">Life Tracker</h1>
+    </div>
+
+    <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 18px">
+      <div role="tablist" aria-label="Account" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #F5F5F4; border-radius: 10px; padding: 3px; gap: 3px">
+        <button role="tab" aria-selected="{{isSignIn}}" onClick="{{showSignIn}}" style="{{signInTab}}">Sign in</button>
+        <button role="tab" aria-selected="{{isSignUp}}" onClick="{{showSignUp}}" style="{{signUpTab}}">Create account</button>
+      </div>
+
+      <sc-if value="{{isSignIn}}" hint-placeholder-val="{{true}}">
+        <form method="post" action="/login" style="display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <label for="u" style="font-size: 13px; font-weight: 600">Username</label>
+            <input id="u" name="username" autocomplete="username" value="jeremy" style="height: 44px; box-sizing: border-box; border: 1px solid #78716C; border-radius: 10px; padding: 0 12px; font: 15px Inter, sans-serif">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <label for="p" style="font-size: 13px; font-weight: 600">Password</label>
+            <input id="p" name="password" type="password" autocomplete="current-password" placeholder="••••••••••" style="height: 44px; box-sizing: border-box; border: 1px solid #78716C; border-radius: 10px; padding: 0 12px; font: 15px Inter, sans-serif">
+          </div>
+          <label style="display: flex; align-items: flex-start; gap: 10px; padding: 12px; border-radius: 10px; background: #F5F5F4; cursor: pointer">
+            <input type="checkbox" name="remember" checked style="width: 18px; height: 18px; margin: 1px 0 0; flex: none">
+            <span style="display: flex; flex-direction: column; gap: 2px">
+              <span style="font-size: 14px; font-weight: 600">Remember me on this device</span>
+              <span style="font-size: 12px; color: #57534E">Stay signed in for 30 days. Each visit extends it. Leave off on shared computers.</span>
+            </span>
+          </label>
+          <a href="Desktop.dc.html" style="height: 46px; border-radius: 10px; background: #1C1917; color: #fff; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; text-decoration: none">Sign in</a>
+          <div role="alert" style="font-size: 12px; color: #7F1D1D; background: #FEE2E2; border-radius: 8px; padding: 8px 10px">Example error: Wrong username or password. 4 tries left. (Locked state: "Too many tries. Try again in 14 min.")</div>
+        </form>
+      </sc-if>
+
+      <sc-if value="{{isSignUp}}" hint-placeholder-val="{{false}}">
+        <form method="post" action="/signup" style="display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <label for="code" style="font-size: 13px; font-weight: 600">Invite code</label>
+            <input id="code" name="invite" placeholder="INV-XXXX-XXXX-XXXX (from the person who runs this app)" style="height: 44px; box-sizing: border-box; border: 1px solid #78716C; border-radius: 10px; padding: 0 12px; font: 15px Inter, sans-serif">
+            <span style="font-size: 12px; color: #57534E">Sign-up is closed to the public. Ask Jeremy for a code.</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <label for="nu" style="font-size: 13px; font-weight: 600">Username</label>
+            <input id="nu" name="username" autocomplete="username" style="height: 44px; box-sizing: border-box; border: 1px solid #78716C; border-radius: 10px; padding: 0 12px; font: 15px Inter, sans-serif">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <label for="dn" style="font-size: 13px; font-weight: 600">Display name</label>
+            <input id="dn" name="display_name" placeholder="Shown to people you share with" style="height: 44px; box-sizing: border-box; border: 1px solid #78716C; border-radius: 10px; padding: 0 12px; font: 15px Inter, sans-serif">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <label for="np" style="font-size: 13px; font-weight: 600">Password</label>
+            <input id="np" name="password" type="password" autocomplete="new-password" style="height: 44px; box-sizing: border-box; border: 1px solid #78716C; border-radius: 10px; padding: 0 12px; font: 15px Inter, sans-serif">
+            <span style="font-size: 12px; color: #57534E">At least 10 characters.</span>
+          </div>
+          <a href="Desktop.dc.html" style="height: 46px; border-radius: 10px; background: #1C1917; color: #fff; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; text-decoration: none">Create account</a>
+        </form>
+      </sc-if>
+    </div>
+
+    <p style="margin: 0; font-size: 12px; color: #57534E; text-align: center">Self-hosted. Your data stays on your server.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var mode = (this.state && this.state.mode) || 'in';
+    var on = 'height: 38px; border: 0; border-radius: 8px; background: #fff; font: 600 14px Inter, sans-serif; color: #1C1917; box-shadow: 0 1px 2px rgba(0,0,0,0.08); cursor: pointer';
+    var off = 'height: 38px; border: 0; border-radius: 8px; background: transparent; font: 500 14px Inter, sans-serif; color: #57534E; cursor: pointer';
+    return {
+      isSignIn: mode === 'in',
+      isSignUp: mode === 'up',
+      signInTab: mode === 'in' ? on : off,
+      signUpTab: mode === 'up' ? on : off,
+      showSignIn: function () { self.setState({ mode: 'in' }); },
+      showSignUp: function () { self.setState({ mode: 'up' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

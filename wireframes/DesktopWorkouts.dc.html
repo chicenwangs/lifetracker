@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workouts (desktop)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; display: flex; flex-direction: column">
+  <header style="min-height: 64px; box-sizing: border-box; padding: 12px 24px; background: #fff; border-bottom: 1px solid #D6D3D1; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+    <span style="font-size: 16px; font-weight: 700">Life Tracker</span>
+    <nav aria-label="Main" style="display: flex; gap: 4px; flex-wrap: wrap">
+      <a href="Desktop.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Home</a>
+      <a href="DesktopPlaces.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Places</a>
+      <a href="DesktopLists.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Lists</a>
+      <a href="DesktopPeople.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">People</a>
+      <a href="DesktopIdeas.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Ideas</a>
+      <a href="DesktopWorkouts.dc.html" style="padding: 8px 12px; border-radius: 8px; background: #E7E5E4; color: #1C1917; font-size: 13px; font-weight: 600">Workouts</a>
+    </nav>
+  </header>
+
+  <main style="flex: 1; padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+    <section style="flex: 2 1 640px; min-width: 0; background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; overflow: hidden">
+      <div style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid #E7E5E4">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <h1 style="margin: 0; font-size: 20px; font-weight: 700">Weekly split</h1>
+          <span style="font-size: 12px; color: #57534E">Weights fill in from your logs · last 4 ISO weeks · Notion weeks kept under "Before app"</span>
+        </div>
+        <button style="height: 34px; padding: 0 12px; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; font: 500 12px Inter, sans-serif; color: #1C1917">Edit split</button>
+      </div>
+      <div style="overflow-x: auto">
+        <table style="width: 100%; min-width: 640px; border-collapse: collapse; font-size: 13px">
+          <thead>
+            <tr style="text-align: left; color: #57534E; font-size: 11px; letter-spacing: 0.06em">
+              <th style="padding: 10px 20px; font-weight: 600">DAY</th>
+              <th style="padding: 10px 8px; font-weight: 600">EXERCISE</th>
+              <th style="padding: 10px 8px; font-weight: 600">CURRENT (KG)</th>
+              <th style="padding: 10px 8px; font-weight: 600">W42</th>
+              <th style="padding: 10px 8px; font-weight: 600">W43</th>
+              <th style="padding: 10px 8px; font-weight: 600">W44</th>
+              <th style="padding: 10px 20px 10px 8px; font-weight: 600">W45 (now)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="11">
+              <tr style="{{r.rowStyle}}">
+                <td style="padding: 10px 20px; font-weight: 700">{{r.day}}</td>
+                <td style="padding: 10px 8px">{{r.ex}}</td>
+                <td style="padding: 10px 8px; font-weight: 600">{{r.cur}}</td>
+                <td style="padding: 10px 8px">{{r.w1}}</td>
+                <td style="padding: 10px 8px">{{r.w2}}</td>
+                <td style="padding: 10px 8px">{{r.w3}}</td>
+                <td style="padding: 10px 20px 10px 8px">{{r.w4}}</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside aria-label="Today's session" style="flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+      <div style="background: #FEF3C7; color: #713F12; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em">TODAY · FRI 6 NOV · 10:30</span>
+        <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: #1C1917">Chest + Back</h2>
+      </div>
+      <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 15px; font-weight: 600">Chest</span><span style="font-size: 12px; color: #57534E">Last: 27.2 kg · light</span></div>
+        <div style="display: flex; gap: 8px; align-items: center">
+          <button aria-label="Decrease weight" style="width: 40px; height: 40px; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; font: 600 16px Inter, sans-serif; color: #1C1917">−</button>
+          <input aria-label="Chest weight in kg" value="27.2" style="flex: 1; min-width: 0; height: 40px; box-sizing: border-box; border: 1px solid #D6D3D1; border-radius: 8px; text-align: center; font: 700 18px Inter, sans-serif">
+          <button aria-label="Increase weight" style="width: 40px; height: 40px; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; font: 600 16px Inter, sans-serif; color: #1C1917">+</button>
+          <select aria-label="Effort" style="height: 40px; border: 1px solid #D6D3D1; border-radius: 8px; padding: 0 8px; font: 13px Inter, sans-serif; background: #fff"><option>Light</option><option selected>Moderate</option><option>Heavy</option></select>
+        </div>
+      </div>
+      <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline"><span style="font-size: 15px; font-weight: 600">Back</span><span style="font-size: 12px; color: #57534E">No previous log</span></div>
+        <div style="display: flex; gap: 8px; align-items: center">
+          <button aria-label="Decrease weight" style="width: 40px; height: 40px; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; font: 600 16px Inter, sans-serif; color: #1C1917">−</button>
+          <input aria-label="Back weight in kg" placeholder="kg" style="flex: 1; min-width: 0; height: 40px; box-sizing: border-box; border: 1px solid #D6D3D1; border-radius: 8px; text-align: center; font: 700 18px Inter, sans-serif">
+          <button aria-label="Increase weight" style="width: 40px; height: 40px; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; font: 600 16px Inter, sans-serif; color: #1C1917">+</button>
+          <select aria-label="Effort" style="height: 40px; border: 1px solid #D6D3D1; border-radius: 8px; padding: 0 8px; font: 13px Inter, sans-serif; background: #fff"><option>Light</option><option>Moderate</option><option>Heavy</option></select>
+        </div>
+      </div>
+      <button style="height: 44px; border-radius: 10px; border: 0; background: #1C1917; color: #fff; font: 600 14px Inter, sans-serif">Log session and complete the Workout block</button>
+    </aside>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var d = '—';
+    var rows = [
+      ['Mon', 'Chest', '27.2 moderate', '27.2 light', d, d, d],
+      ['', 'Triceps', '7.5', '7.5', '7.5', '8.5', '8.5'],
+      ['Tue', 'Back', d, d, d, d, d],
+      ['', 'Biceps', '8.5', '11', d, d, d],
+      ['Wed', 'Shoulders', d, d, d, d, d],
+      ['', 'Abs', d, d, d, d, d],
+      ['Thu', 'Traps', d, d, d, d, d],
+      ['', 'Biceps', '8.5', '11', d, d, d],
+      ['', 'Triceps', '7.5', d, d, d, d],
+      ['Fri', 'Chest', d, d, d, d, d],
+      ['', 'Back', d, d, d, d, d]
+    ];
+    return {
+      rows: rows.map(function (r) {
+        var today = r[0] === 'Fri' || (r[0] === '' && r[1] === 'Back' && rows.indexOf(r) === 10);
+        return { day: r[0], ex: r[1], cur: r[2], w1: r[3], w2: r[4], w3: r[5], w4: r[6],
+          rowStyle: (r[0] ? 'border-top: 1px solid #D6D3D1' : 'border-top: 1px solid #F5F5F4') + (today ? '; background: #FEF3C7' : '') };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

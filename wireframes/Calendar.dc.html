@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Calendar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; overflow: hidden">
+  <header style="padding: 20px 20px 12px; display: flex; align-items: center; justify-content: space-between">
+    <div style="display: flex; align-items: center; gap: 4px">
+      <button aria-label="Previous month" style="width: 32px; height: 32px; border-radius: 16px; border: 1px solid #D6D3D1; background: #fff; padding: 0; color: #1C1917; display: flex; align-items: center; justify-content: center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>
+      <h1 style="margin: 0 6px; font-size: 20px; font-weight: 700">November 2026</h1>
+      <button aria-label="Next month" style="width: 32px; height: 32px; border-radius: 16px; border: 1px solid #D6D3D1; background: #fff; padding: 0; color: #1C1917; display: flex; align-items: center; justify-content: center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+    </div>
+    <div role="group" aria-label="View" style="display: flex; border: 1px solid #D6D3D1; border-radius: 8px; overflow: hidden; background: #fff">
+      <button style="height: 30px; padding: 0 10px; border: 0; background: #1C1917; color: #fff; font: 600 12px Inter, sans-serif">Month</button>
+      <button style="height: 30px; padding: 0 10px; border: 0; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Week</button>
+    </div>
+  </header>
+
+  <div style="display: flex; gap: 6px; padding: 0 20px 10px; font-size: 11px; flex-wrap: wrap">
+    <span style="padding: 2px 8px; border-radius: 4px; background: #DBEAFE; color: #1E3A8A; font-weight: 600">Work</span>
+    <span style="padding: 2px 8px; border-radius: 4px; background: #FEE2E2; color: #7F1D1D; font-weight: 600">Exam</span>
+    <span style="padding: 2px 8px; border-radius: 4px; background: #DCFCE7; color: #14532D; font-weight: 600">Event</span>
+    <span style="padding: 2px 8px; border-radius: 4px; background: #FEF3C7; color: #713F12; font-weight: 600">Hobby</span>
+    <span style="padding: 2px 8px; border-radius: 4px; background: #FCE7F3; color: #831843; font-weight: 600">Dating</span>
+  </div>
+
+  <section aria-label="Month" style="background: #fff; border-top: 1px solid #D6D3D1; border-bottom: 1px solid #D6D3D1">
+    <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 6px 0; font-size: 11px; font-weight: 600; color: #57534E; text-align: center">
+      <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr))">
+      <sc-for list="{{days}}" as="d" hint-placeholder-count="42">
+        <div style="height: 56px; box-sizing: border-box; border-top: 1px solid #E7E5E4; padding: 3px 2px; display: flex; flex-direction: column; align-items: stretch; gap: 2px; min-width: 0">
+          <span style="{{d.numStyle}}">{{d.num}}</span>
+          <sc-for list="{{d.blocks}}" as="b" hint-placeholder-count="1">
+            <span style="{{b.style}}">{{b.t}}</span>
+          </sc-for>
+          <sc-if value="{{d.more}}" hint-placeholder-val="{{false}}"><span style="font-size: 8px; color: #57534E; text-align: center">{{d.moreText}}</span></sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="flex: 1; padding: 14px 20px; display: flex; flex-direction: column; gap: 8px; overflow: hidden">
+    <div style="display: flex; justify-content: space-between; align-items: baseline">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 700">Fri 6 Nov</h2>
+      <span style="font-size: 11px; color: #57534E">Drag an item to another day to move it</span>
+    </div>
+    <sc-for list="{{today}}" as="e" hint-placeholder-count="2">
+      <div style="{{e.cardStyle}}">
+        <button aria-label="{{e.aria}}" title="{{e.aria}}" onClick="{{e.cycle}}" style="{{e.btnStyle}}">
+          <sc-if value="{{e.isDoing}}" hint-placeholder-val="{{false}}"><svg width="12" height="12" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5l6 3.5-6 3.5z" fill="currentColor"></path></svg></sc-if>
+          <sc-if value="{{e.isDone}}" hint-placeholder-val="{{false}}"><svg width="12" height="12" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg></sc-if>
+        </button>
+        <a href="ItemEditor.dc.html" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; color: inherit">
+          <span style="{{e.titleStyle}}">{{e.t}}</span>
+          <span style="font-size: 11px; opacity: 0.85">{{e.sub}}</span>
+        </a>
+      </div>
+    </sc-for>
+    <div style="display: flex; gap: 14px; align-items: center; padding-top: 4px; font-size: 11px; color: #57534E">
+      <span>Tap the square:</span>
+      <span style="display: flex; align-items: center; gap: 4px"><span style="width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid #57534E; box-sizing: border-box"></span>To do</span>
+      <span style="display: flex; align-items: center; gap: 4px"><span style="width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid #1C1917; box-sizing: border-box; display: flex; align-items: center; justify-content: center"><svg width="7" height="7" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5l6 3.5-6 3.5z" fill="#1C1917"></path></svg></span>Doing</span>
+      <span style="display: flex; align-items: center; gap: 4px"><span style="width: 12px; height: 12px; border-radius: 3px; background: #1C1917; display: flex; align-items: center; justify-content: center"><svg width="8" height="8" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="#fff" stroke-width="1.8"></path></svg></span>Done</span>
+    </div>
+  </section>
+
+  <nav aria-label="Main" style="height: 72px; flex: none; box-sizing: border-box; border-top: 1px solid #D6D3D1; background: #fff; display: flex; align-items: center; justify-content: space-around; padding: 0 8px 10px">
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; min-width: 56px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Today</a>
+    <a href="Calendar.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; color: #1C1917; min-width: 56px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Calendar</a>
+    <a href="QuickAdd.dc.html" aria-label="Quick add" style="width: 48px; height: 48px; border-radius: 24px; background: #1C1917; color: #fff; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></a>
+    <a href="Places.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; min-width: 56px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"></path><circle cx="12" cy="9" r="2.5"></circle></svg>Places</a>
+    <a href="More.dc.html" style="display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; min-width: 56px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="5" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle></svg>More</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var PAL = { Work: ['#DBEAFE', '#1E3A8A'], Exam: ['#FEE2E2', '#7F1D1D'], Event: ['#DCFCE7', '#14532D'], Hobby: ['#FEF3C7', '#713F12'], Dating: ['#FCE7F3', '#831843'] };
+    // same Nov 2026 data as Desktop board: [title, type]
+    var ev = {
+      1: [['Groceries', 'Event']], 2: [['expand homelab', 'Hobby']], 3: [['Sys prog draft', 'Exam']],
+      4: [['Sulam Testing', 'Work']], 6: [['DS Quiz', 'Exam'], ['Submission of Assignment', 'Exam']],
+      7: [['Midsem break', 'Event']], 16: [['Sys prog midsem test', 'Exam']], 18: [['Sulam day itself', 'Exam']],
+      20: [['DS Assignment Submission', 'Exam'], ['Chapter 2 Submission', 'Work']]
+    };
+    var st = (this.state && this.state.st) || {};
+    var todayItems = [['c1', 'DS Quiz', 'Exam', 'Distributed Systems', 0], ['c2', 'Submission of Assignment', 'Exam', 'System Programming · 3 of 3 steps', 1]];
+    var aria = ['Not started. Tap to start', 'In progress. Tap to complete', 'Completed. Tap to reset'];
+    var days = [];
+    var i;
+    for (i = 26; i <= 31; i++) days.push({ num: i, out: true });
+    for (i = 1; i <= 30; i++) days.push({ num: i, out: false });
+    for (i = 1; i <= 6; i++) days.push({ num: i, out: true });
+    return {
+      days: days.map(function (d) {
+        var today = !d.out && d.num === 6;
+        var base = 'width: 20px; height: 20px; align-self: center; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 11px; ';
+        var list = d.out ? [] : (ev[d.num] || []);
+        return {
+          num: d.num,
+          numStyle: base + (today ? 'background: #1C1917; color: #fff; font-weight: 700' : d.out ? 'color: #A8A29E' : 'color: #1C1917'),
+          blocks: list.slice(0, 2).map(function (e) {
+            var c = PAL[e[1]];
+            return { t: e[0], style: 'display: block; height: 13px; line-height: 13px; padding: 0 2px; border-radius: 3px; background: ' + c[0] + '; color: ' + c[1] + '; font-size: 8px; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis' };
+          }),
+          more: list.length > 2,
+          moreText: '+' + (list.length - 2)
+        };
+      }),
+      today: todayItems.map(function (it) {
+        var s = st[it[0]] !== undefined ? st[it[0]] : it[4];
+        var c = PAL[it[2]];
+        return {
+          t: it[1],
+          sub: it[2] + ' · ' + it[3],
+          aria: aria[s],
+          isDoing: s === 1,
+          isDone: s === 2,
+          cycle: function () { var n = Object.assign({}, (self.state && self.state.st) || {}); n[it[0]] = (s + 1) % 3; self.setState({ st: n }); },
+          cardStyle: 'border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; background: ' + c[0] + '; color: ' + c[1],
+          btnStyle: 'flex: none; width: 24px; height: 24px; padding: 0; box-sizing: border-box; border-radius: 4px; display: flex; align-items: center; justify-content: center; border: 1.5px solid ' + c[1] + '; background: ' + (s === 2 ? c[1] : '#fff') + '; color: ' + (s === 2 ? '#fff' : c[1]),
+          titleStyle: 'font-size: 14px; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis' + (s === 2 ? '; text-decoration: line-through' : '')
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

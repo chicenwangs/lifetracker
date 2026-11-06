@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Places (desktop)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; display: flex; flex-direction: column">
+  <header style="min-height: 64px; box-sizing: border-box; padding: 12px 24px; background: #fff; border-bottom: 1px solid #D6D3D1; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+    <span style="font-size: 16px; font-weight: 700">Life Tracker</span>
+    <nav aria-label="Main" style="display: flex; gap: 4px; flex-wrap: wrap">
+      <a href="Desktop.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Home</a>
+      <a href="DesktopPlaces.dc.html" style="padding: 8px 12px; border-radius: 8px; background: #E7E5E4; color: #1C1917; font-size: 13px; font-weight: 600">Places</a>
+      <a href="DesktopLists.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Lists</a>
+      <a href="DesktopPeople.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">People</a>
+      <a href="DesktopIdeas.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Ideas</a>
+      <a href="DesktopWorkouts.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Workouts</a>
+    </nav>
+  </header>
+
+  <main style="flex: 1; padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+    <aside aria-label="Filters" style="flex: 0 1 260px; min-width: 220px; background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 16px">
+      <div role="group" aria-label="City" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid #D6D3D1; border-radius: 8px; overflow: hidden">
+        <button style="height: 34px; border: 0; background: #1C1917; color: #fff; font: 600 13px Inter, sans-serif">Kuching 119</button>
+        <button style="height: 34px; border: 0; background: #fff; color: #1C1917; font: 500 13px Inter, sans-serif">Johor 11</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #57534E">SHOW</span>
+        <label style="display: flex; gap: 8px; align-items: center; font-size: 13px"><input type="checkbox" checked style="margin: 0">Open now</label>
+        <label style="display: flex; gap: 8px; align-items: center; font-size: 13px"><input type="checkbox" style="margin: 0">Not visited yet</label>
+        <label style="display: flex; gap: 8px; align-items: center; font-size: 13px"><input type="checkbox" style="margin: 0">Halal</label>
+        <label style="display: flex; gap: 8px; align-items: center; font-size: 13px"><input type="checkbox" style="margin: 0">Stamp of approval</label>
+        <label style="display: flex; gap: 8px; align-items: center; font-size: 13px"><input type="checkbox" style="margin: 0">Rated 4 or more <span style="color: #57534E">(none rated yet)</span></label>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #57534E">AREA</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px">
+          <button style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid #1C1917; background: #1C1917; color: #fff; font: 600 12px Inter, sans-serif">Padungan</button>
+          <button style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Carpenter St</button>
+          <button style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Satok</button>
+          <button style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Tabuan</button>
+          <button style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Samarahan</button>
+          <button style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">+17 more</button>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #57534E">CUISINE</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px">
+          <button style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Kueh Chap</button>
+          <button style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Mee Kolok</button>
+          <button style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Laksa</button>
+          <button style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid #D6D3D1; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">+24 more</button>
+        </div>
+      </div>
+    </aside>
+
+    <section style="flex: 1 1 640px; min-width: 0; background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; overflow: hidden">
+      <div style="padding: 14px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid #E7E5E4">
+        <h1 style="margin: 0 8px 0 0; font-size: 20px; font-weight: 700">Places</h1>
+        <label for="ps" style="position: absolute; left: -9999px">Search places</label>
+        <input id="ps" placeholder="Search name or notes" style="flex: 1 1 240px; min-width: 0; height: 38px; box-sizing: border-box; border: 1px solid #D6D3D1; border-radius: 10px; padding: 0 12px; font: 13px Inter, sans-serif">
+        <button style="height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid #D6D3D1; background: #fff; font: 600 13px Inter, sans-serif; color: #1C1917">Pick one for me</button>
+        <button style="height: 38px; padding: 0 14px; border-radius: 10px; border: 0; background: #1C1917; color: #fff; font: 600 13px Inter, sans-serif">+ Add place</button>
+      </div>
+      <div style="overflow-x: auto">
+        <table style="width: 100%; min-width: 760px; border-collapse: collapse; font-size: 13px">
+          <thead>
+            <tr style="text-align: left; color: #57534E; font-size: 11px; letter-spacing: 0.06em">
+              <th style="padding: 10px 16px; font-weight: 600">NAME</th>
+              <th style="padding: 10px 8px; font-weight: 600">CUISINE</th>
+              <th style="padding: 10px 8px; font-weight: 600">AREA</th>
+              <th style="padding: 10px 8px; font-weight: 600">OPEN</th>
+              <th style="padding: 10px 8px; font-weight: 600">HALAL</th>
+              <th style="padding: 10px 8px; font-weight: 600">APPROVED</th>
+              <th style="padding: 10px 8px; font-weight: 600">RATING</th>
+              <th style="padding: 10px 16px 10px 8px; font-weight: 600">LAST VISIT</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+              <tr style="border-top: 1px solid #E7E5E4">
+                <td style="padding: 12px 16px"><span style="font-weight: 600">[Place name]</span><br><span style="font-size: 12px; color: #57534E">[Notes]</span></td>
+                <td style="padding: 12px 8px">{{r.c}}</td>
+                <td style="padding: 12px 8px">{{r.a}}</td>
+                <td style="padding: 12px 8px">{{r.o}}</td>
+                <td style="padding: 12px 8px">{{r.h}}</td>
+                <td style="padding: 12px 8px"><sc-if value="{{r.ok}}" hint-placeholder-val="{{true}}"><span style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: #1C1917; color: #fff">✓ Approved</span></sc-if></td>
+                <td style="padding: 12px 8px; letter-spacing: 2px; font-size: 15px; color: #57534E">{{r.stars}}</td>
+                <td style="padding: 12px 16px 12px 8px; color: #57534E">{{r.v}}<sc-if value="{{r.notYet}}" hint-placeholder-val="{{false}}"> · <button style="height: 26px; padding: 0 8px; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; font: 600 12px Inter, sans-serif; color: #1C1917">Been here</button></sc-if></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var rows = [
+      // [cuisine, area, open, halal, approved, last visit]. Imported places: rating empty (Notion had none), approved = Stamp of Approval
+      ['Kueh Chap', 'Padungan', 'Night', 'No', true, '[date]'],
+      ['Mee Kolok', 'Padungan', 'All day', 'No', true, '[date]'],
+      ['Laksa', 'Padungan', 'Morning', 'No', false, '[date]'],
+      ['Malay Food', 'Padungan', 'All day', 'Yes', false, '[date]'],
+      ['Claypot Rice', 'Padungan', 'Night', 'No', false, 'Not yet'],
+      ['Western', 'Padungan', 'All day', 'Yes', false, 'Not yet'],
+      ['Dim Sum', 'Padungan', 'Morning', 'No', false, 'Not yet']
+    ];
+    return {
+      rows: rows.map(function (r) {
+        return { c: r[0], a: r[1], o: r[2], h: r[3], ok: r[4], stars: 'Rate ☆☆☆☆☆', v: r[5], notYet: r[5] === 'Not yet' };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

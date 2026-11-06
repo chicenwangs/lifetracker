@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ideas</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; overflow: hidden">
+  <header style="padding: 16px 20px 8px; display: flex; flex-direction: column; gap: 8px">
+    <a href="More.dc.html" style="display: flex; align-items: center; gap: 4px; font-size: 15px; padding: 8px 0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>More</a>
+    <div style="display: flex; justify-content: space-between; align-items: center">
+      <h1 style="margin: 0; font-size: 24px; font-weight: 700">Ideas</h1>
+      <div role="group" aria-label="Channel" style="display: flex; border: 1px solid #D6D3D1; border-radius: 8px; overflow: hidden; background: #fff">
+        <button style="height: 32px; padding: 0 10px; border: 0; background: #1C1917; color: #fff; font: 600 12px Inter, sans-serif">All</button>
+        <button style="height: 32px; padding: 0 10px; border: 0; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">cw</button>
+        <button style="height: 32px; padding: 0 10px; border: 0; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">cw2</button>
+      </div>
+    </div>
+  </header>
+
+  <div role="tablist" aria-label="Stage" style="margin: 8px 20px 12px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #E7E5E4; border-radius: 10px; padding: 3px; gap: 3px">
+    <button role="tab" aria-selected="true" style="height: 38px; border: 0; border-radius: 8px; background: #fff; font: 600 12px Inter, sans-serif; color: #1C1917">Idea 63</button>
+    <button role="tab" aria-selected="false" style="height: 38px; border: 0; border-radius: 8px; background: transparent; font: 500 12px Inter, sans-serif; color: #1C1917">Filmed</button>
+    <button role="tab" aria-selected="false" style="height: 38px; border: 0; border-radius: 8px; background: transparent; font: 500 12px Inter, sans-serif; color: #1C1917">Edited</button>
+    <button role="tab" aria-selected="false" style="height: 38px; border: 0; border-radius: 8px; background: transparent; font: 500 12px Inter, sans-serif; color: #1C1917">Posted</button>
+  </div>
+
+  <div style="padding: 0 20px 12px">
+    <label for="idea" style="position: absolute; left: -9999px">New idea</label>
+    <input id="idea" placeholder="Dump an idea…" style="width: 100%; height: 44px; box-sizing: border-box; border: 1px solid #D6D3D1; border-radius: 12px; padding: 0 14px; font: 14px Inter, sans-serif; background: #fff">
+  </div>
+
+  <section style="flex: 1; padding: 0 20px; display: flex; flex-direction: column; gap: 8px; overflow: hidden">
+    <div style="position: relative; height: 72px">
+      <div style="position: absolute; inset: 0; border-radius: 12px; background: #1C1917; color: #fff; display: flex; align-items: center; padding-left: 16px; font-size: 13px; font-weight: 600">→ Filmed</div>
+      <article style="position: absolute; top: 0; bottom: 0; left: 96px; right: -96px; box-sizing: border-box; background: #fff; border: 1px solid #D6D3D1; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 14px; font-weight: 600">[Idea title]</span>
+        <span style="font-size: 11px; color: #57534E">chicenwangs · swiping right</span>
+      </article>
+    </div>
+    <sc-for list="{{ideas}}" as="i" hint-placeholder-count="6">
+      <article style="height: 72px; box-sizing: border-box; background: #fff; border: 1px solid #D6D3D1; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 14px; font-weight: 600">[Idea title]</span>
+        <span style="font-size: 11px; color: #57534E">{{i.meta}}</span>
+      </article>
+    </sc-for>
+  </section>
+
+  <div style="padding: 10px 20px 20px; font-size: 11px; color: #57534E; text-align: center">Swipe right to move to the next stage · chicenwangs2 titles over 70 characters get a warning</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { ideas: ['chicenwangs · [date added]', 'chicenwangs2 · [date added]', 'chicenwangs · [date added]', 'chicenwangs2 · [date added]', 'chicenwangs · [date added]', 'chicenwangs · [date added]'].map(function (m) { return { meta: m }; }) };
+  }
+}
+</script>
+</body>
+</html>

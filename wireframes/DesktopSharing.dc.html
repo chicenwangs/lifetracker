@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sharing (desktop)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; display: flex; flex-direction: column">
+  <header style="min-height: 64px; box-sizing: border-box; padding: 12px 24px; background: #fff; border-bottom: 1px solid #D6D3D1; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+    <span style="font-size: 16px; font-weight: 700">Life Tracker</span>
+    <nav aria-label="Main" style="display: flex; gap: 4px; flex-wrap: wrap; flex: 1">
+      <a href="Desktop.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Home</a>
+      <a href="DesktopPlaces.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Places</a>
+      <a href="DesktopLists.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Lists</a>
+      <a href="DesktopPeople.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">People</a>
+      <a href="DesktopIdeas.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Ideas</a>
+      <a href="DesktopWorkouts.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Workouts</a>
+    </nav>
+    <a href="DesktopSharing.dc.html" aria-label="Account and sharing" style="width: 36px; height: 36px; border-radius: 18px; background: #1C1917; color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center">J</a>
+  </header>
+
+  <main style="flex: 1; padding: 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; max-width: 1280px; width: 100%; box-sizing: border-box; margin: 0 auto">
+    <nav aria-label="Settings" style="flex: 0 1 220px; min-width: 200px; display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #57534E; padding: 0 12px 8px">SETTINGS</span>
+      <a href="DesktopSharing.dc.html" style="min-height: 38px; padding: 0 12px; border-radius: 8px; color: #1C1917; display: flex; align-items: center; font-size: 14px">Account</a>
+      <a href="DesktopSharing.dc.html" style="min-height: 38px; padding: 0 12px; border-radius: 8px; background: #E7E5E4; color: #1C1917; display: flex; align-items: center; font-size: 14px; font-weight: 600">Sharing</a>
+      <a href="DesktopSharing.dc.html" style="min-height: 38px; padding: 0 12px; border-radius: 8px; color: #1C1917; display: flex; align-items: center; font-size: 14px">Devices and sessions</a>
+      <a href="DesktopSharing.dc.html" style="min-height: 38px; padding: 0 12px; border-radius: 8px; color: #1C1917; display: flex; align-items: center; font-size: 14px">Import and backup</a>
+      <form method="post" action="/logout" style="margin: 8px 0 0"><button type="submit" style="width: 100%; min-height: 38px; padding: 0 12px; border-radius: 8px; border: 0; background: transparent; color: #7F1D1D; text-align: left; font: 14px Inter, sans-serif; cursor: pointer">Sign out</button></form>
+    </nav>
+
+    <section style="flex: 1 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 700">Sharing</h1>
+        <p style="margin: 0; font-size: 14px; color: #57534E">Share your calendar with a key. The other person keeps their own account and sees your events on top of theirs.</p>
+      </div>
+
+      <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap">
+          <h2 style="margin: 0; font-size: 17px; font-weight: 700">1. Make a share key</h2>
+          <span style="font-size: 12px; color: #57534E">Give it to one person. It works once.</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">They can
+            <select style="height: 40px; border: 1px solid #D6D3D1; border-radius: 8px; padding: 0 10px; font: 14px Inter, sans-serif; background: #fff"><option selected>See my events</option><option>See and edit my events</option></select>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Key expires
+            <select style="height: 40px; border: 1px solid #D6D3D1; border-radius: 8px; padding: 0 10px; font: 14px Inter, sans-serif; background: #fff"><option>In 1 hour</option><option selected>In 24 hours</option><option>In 7 days</option></select>
+          </label>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600">Hidden events show as
+            <div role="group" aria-label="Hidden events show as" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid #D6D3D1; border-radius: 8px; overflow: hidden">
+              <button style="height: 38px; border: 0; background: #1C1917; color: #fff; font: 600 12px Inter, sans-serif">"Busy"</button>
+              <button style="height: 38px; border: 0; background: #fff; color: #1C1917; font: 500 12px Inter, sans-serif">Nothing</button>
+            </div>
+          </div>
+        </div>
+        <fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+          <legend style="font-size: 13px; font-weight: 600; padding: 0 0 8px">Which types they see in full</legend>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap">
+            <label style="height: 34px; padding: 0 12px; border-radius: 8px; background: #DBEAFE; color: #1E3A8A; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600"><input type="checkbox" style="margin: 0">Work</label>
+            <label style="height: 34px; padding: 0 12px; border-radius: 8px; background: #FEE2E2; color: #7F1D1D; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600"><input type="checkbox" checked style="margin: 0">Exam</label>
+            <label style="height: 34px; padding: 0 12px; border-radius: 8px; background: #DCFCE7; color: #14532D; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600"><input type="checkbox" checked style="margin: 0">Event</label>
+            <label style="height: 34px; padding: 0 12px; border-radius: 8px; background: #FEF3C7; color: #713F12; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600"><input type="checkbox" checked style="margin: 0">Hobby</label>
+            <label style="height: 34px; padding: 0 12px; border-radius: 8px; background: #FCE7F3; color: #831843; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600"><input type="checkbox" checked style="margin: 0">Dating</label>
+            <label style="height: 34px; padding: 0 12px; border-radius: 8px; background: #E7E5E4; color: #292524; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600"><input type="checkbox" style="margin: 0">No type</label>
+            <label style="height: 34px; padding: 0 12px; border-radius: 8px; background: #E7E5E4; color: #292524; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600"><input type="checkbox" checked style="margin: 0">Time blocks</label>
+          </div>
+          <span style="font-size: 12px; color: #57534E">Unticked types still block time as "Busy", so you can see when each other is free. Items marked "Keep secret" always show as Busy. Notes are never shared.</span>
+        </fieldset>
+        <div style="display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap">
+          <button onClick="{{makeKey}}" style="height: 44px; padding: 0 18px; border-radius: 10px; border: 0; background: #1C1917; color: #fff; font: 600 14px Inter, sans-serif; cursor: pointer">Make key</button>
+          <sc-if value="{{hasKey}}" hint-placeholder-val="{{true}}">
+            <div style="flex: 1 1 320px; min-height: 44px; border: 1.5px dashed #A8A29E; border-radius: 10px; padding: 8px 12px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 12px">
+              <span style="font: 600 17px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.06em">LT-7QK4-M2XD-9HPA</span>
+              <span style="display: flex; gap: 8px; align-items: center">
+                <span style="font-size: 12px; color: #57534E">Shown once · expires 7 Nov, 10:30</span>
+                <button style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; font: 600 12px Inter, sans-serif; color: #1C1917">Copy</button>
+              </span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+        <h2 style="margin: 0; font-size: 17px; font-weight: 700">2. Add someone's calendar</h2>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <label for="key" style="position: absolute; left: -9999px">Share key</label>
+          <input id="key" placeholder="Paste their key, e.g. LT-XXXX-XXXX-XXXX" style="flex: 1 1 320px; height: 44px; box-sizing: border-box; border: 1px solid #D6D3D1; border-radius: 10px; padding: 0 12px; font: 15px ui-monospace, Menlo, monospace">
+          <button style="height: 44px; padding: 0 18px; border-radius: 10px; border: 0; background: #1C1917; color: #fff; font: 600 14px Inter, sans-serif">Connect</button>
+        </div>
+        <span style="font-size: 12px; color: #57534E">Both people do this once with each other's key to see each other.</span>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 16px">
+        <div style="flex: 1 1 360px; min-width: 0; background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 10px">
+          <h2 style="margin: 0; font-size: 17px; font-weight: 700">Who can see my calendar</h2>
+          <div style="padding: 12px; border-radius: 10px; background: #F5F5F4; display: flex; align-items: center; gap: 12px">
+            <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 16px; background: #0F766E; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none">N</span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+              <span style="font-size: 14px; font-weight: 600">Neina</span>
+              <span style="font-size: 12px; color: #57534E">Can see · Exam, Event, Hobby, Dating, blocks · Work as Busy</span>
+            </div>
+            <button style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; font: 500 12px Inter, sans-serif; color: #1C1917">Edit</button>
+            <button style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid #FCA5A5; background: #fff; font: 600 12px Inter, sans-serif; color: #7F1D1D">Remove</button>
+          </div>
+          <span style="font-size: 12px; color: #57534E; display: flex; align-items: center; gap: 8px">1 unused key, expires 7 Nov <button style="height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid #FCA5A5; background: #fff; font: 600 12px Inter, sans-serif; color: #7F1D1D">Cancel key</button></span>
+        </div>
+
+        <div style="flex: 1 1 360px; min-width: 0; background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 10px">
+          <h2 style="margin: 0; font-size: 17px; font-weight: 700">Calendars I can see</h2>
+          <div style="padding: 12px; border-radius: 10px; background: #F5F5F4; display: flex; align-items: center; gap: 12px">
+            <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 16px; background: #0F766E; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none">N</span>
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+              <span style="font-size: 14px; font-weight: 600">Neina</span>
+              <span style="font-size: 12px; color: #57534E">View only · teal badge</span>
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600"><input type="checkbox" checked style="width: 18px; height: 18px; margin: 0">Include in overlap</label>
+            <button style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid #FCA5A5; background: #fff; font: 600 12px Inter, sans-serif; color: #7F1D1D">Leave</button>
+          </div>
+          <span style="font-size: 12px; color: #57534E">The Overlap button on Home turns all ticked calendars on or off at once.</span>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var has = !this.state || this.state.hasKey !== false;
+    return { hasKey: has, makeKey: function () { self.setState({ hasKey: true }); } };
+  }
+}
+</script>
+</body>
+</html>

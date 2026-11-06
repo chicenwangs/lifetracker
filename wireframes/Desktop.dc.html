@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Home (desktop)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#57534E;text-decoration:none}a:hover{color:#1C1917}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; background: #F5F5F4; font-family: Inter, system-ui, sans-serif; color: #1C1917; display: flex; flex-direction: column">
+  <header style="min-height: 64px; box-sizing: border-box; padding: 12px 24px; background: #fff; border-bottom: 1px solid #D6D3D1; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+    <span style="font-size: 16px; font-weight: 700">Life Tracker</span>
+    <nav aria-label="Main" style="display: flex; gap: 4px; flex-wrap: wrap">
+      <a href="Desktop.dc.html" style="padding: 8px 12px; border-radius: 8px; background: #E7E5E4; color: #1C1917; font-size: 13px; font-weight: 600">Home</a>
+      <a href="DesktopPlaces.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Places</a>
+      <a href="DesktopLists.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Lists</a>
+      <a href="DesktopPeople.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">People</a>
+      <a href="DesktopIdeas.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Ideas</a>
+      <a href="DesktopWorkouts.dc.html" style="padding: 8px 12px; border-radius: 8px; font-size: 13px">Workouts</a>
+    </nav>
+    <div style="flex: 1 1 320px; display: flex; gap: 8px; justify-content: flex-end; align-items: center">
+      <label for="qa" style="position: absolute; left: -9999px">Quick add</label>
+      <input id="qa" placeholder="Quick add: ds quiz fri 2pm !exam #ds    (press N)" style="flex: 0 1 440px; min-width: 0; height: 40px; box-sizing: border-box; border: 1px solid #D6D3D1; border-radius: 10px; padding: 0 12px; font: 13px Inter, sans-serif; background: #F5F5F4">
+      <button aria-label="Search" style="width: 40px; height: 40px; border-radius: 10px; border: 1px solid #D6D3D1; background: #fff; padding: 0; color: #1C1917; display: flex; align-items: center; justify-content: center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg></button>
+      <a href="DesktopSharing.dc.html" aria-label="Account and sharing" style="width: 36px; height: 36px; border-radius: 18px; background: #1C1917; color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center">J</a>
+    </div>
+  </header>
+
+  <main style="flex: 1; padding: 20px 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+    <section aria-label="Calendar" style="flex: 2 1 640px; min-width: 0; background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; overflow: hidden">
+      <div style="padding: 16px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border-bottom: 1px solid #E7E5E4">
+        <button aria-label="Previous month" style="width: 32px; height: 32px; border-radius: 16px; border: 1px solid #D6D3D1; background: #fff; padding: 0; color: #1C1917; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>
+        <h1 style="margin: 0; font-size: 20px; font-weight: 700">November 2026</h1>
+        <button aria-label="Next month" style="width: 32px; height: 32px; border-radius: 16px; border: 1px solid #D6D3D1; background: #fff; padding: 0; color: #1C1917; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+        <button style="height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; font: 500 12px Inter, sans-serif; color: #1C1917">Today</button>
+        <div style="flex: 1"></div>
+        <button aria-pressed="{{overlap}}" onClick="{{toggleOverlap}}" title="Show calendars shared with you on top of yours" style="{{overlapBtn}}">
+          <span aria-hidden="true" style="display: flex">
+            <span style="width: 22px; height: 22px; border-radius: 11px; background: #1C1917; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid #fff">J</span>
+            <span style="width: 22px; height: 22px; margin-left: -8px; border-radius: 11px; background: #0F766E; color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid #fff">N</span>
+          </span>
+          <span>Overlap</span>
+          <span style="{{switchTrack}}"><span style="{{switchKnob}}"></span></span>
+        </button>
+        <div role="group" aria-label="View" style="display: flex; border: 1px solid #D6D3D1; border-radius: 8px; overflow: hidden">
+          <button style="height: 32px; padding: 0 12px; border: 0; background: #1C1917; color: #fff; font: 600 12px Inter, sans-serif">Month</button>
+          <a href="DesktopWeek.dc.html" style="height: 32px; padding: 0 12px; background: #fff; color: #1C1917; font-size: 12px; font-weight: 500; display: flex; align-items: center">Week</a>
+        </div>
+      </div>
+      <div style="padding: 8px 20px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid #E7E5E4">
+        <span style="height: 22px; padding: 0 8px; border-radius: 5px; background: #DBEAFE; color: #1E3A8A; font-size: 11px; font-weight: 600; display: flex; align-items: center">Work</span>
+        <span style="height: 22px; padding: 0 8px; border-radius: 5px; background: #FEE2E2; color: #7F1D1D; font-size: 11px; font-weight: 600; display: flex; align-items: center">Exam</span>
+        <span style="height: 22px; padding: 0 8px; border-radius: 5px; background: #DCFCE7; color: #14532D; font-size: 11px; font-weight: 600; display: flex; align-items: center">Event</span>
+        <span style="height: 22px; padding: 0 8px; border-radius: 5px; background: #FEF3C7; color: #713F12; font-size: 11px; font-weight: 600; display: flex; align-items: center">Hobby</span>
+        <span style="height: 22px; padding: 0 8px; border-radius: 5px; background: #FCE7F3; color: #831843; font-size: 11px; font-weight: 600; display: flex; align-items: center">Dating</span>
+        <sc-if value="{{overlap}}" hint-placeholder-val="{{true}}">
+          <span style="margin-left: 8px; height: 22px; padding: 0 8px 0 4px; border-radius: 5px; background: repeating-linear-gradient(135deg, #E7E5E4 0 4px, #fff 4px 7px); border: 1px dashed #44403C; color: #1C1917; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 5px"><span style="width: 14px; height: 14px; border-radius: 7px; background: #0F766E; color: #fff; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center">N</span>Neina's events: striped + N badge, view only, hidden types = Busy</span>
+        </sc-if>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #57534E; border-bottom: 1px solid #E7E5E4">
+        <span style="padding: 8px 10px">MON</span><span style="padding: 8px 10px">TUE</span><span style="padding: 8px 10px">WED</span><span style="padding: 8px 10px">THU</span><span style="padding: 8px 10px">FRI</span><span style="padding: 8px 10px">SAT</span><span style="padding: 8px 10px">SUN</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr))">
+        <sc-for list="{{days}}" as="d" hint-placeholder-count="42">
+          <div style="{{d.cellStyle}}">
+            <span style="{{d.numStyle}}">{{d.num}}</span>
+            <sc-for list="{{d.items}}" as="e" hint-placeholder-count="1">
+              <div style="{{e.style}}">
+                <sc-if value="{{e.mine}}" hint-placeholder-val="{{true}}">
+                  <button aria-label="{{e.aria}}" title="{{e.aria}}" onClick="{{e.cycle}}" style="{{e.btnStyle}}">
+                    <sc-if value="{{e.isDoing}}" hint-placeholder-val="{{false}}"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5l6 3.5-6 3.5z" fill="currentColor"></path></svg></sc-if>
+                    <sc-if value="{{e.isDone}}" hint-placeholder-val="{{false}}"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg></sc-if>
+                  </button>
+                </sc-if>
+                <sc-if value="{{e.theirs}}" hint-placeholder-val="{{false}}">
+                  <span aria-label="Neina's event" title="Neina's event, view only" style="flex: none; width: 16px; height: 16px; border-radius: 8px; background: #0F766E; color: #fff; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center">N</span>
+                </sc-if>
+                <sc-if value="{{e.mine}}" hint-placeholder-val="{{true}}"><a href="DesktopItem.dc.html" style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; {{e.textStyle}}">{{e.t}}</a></sc-if>
+                <sc-if value="{{e.theirs}}" hint-placeholder-val="{{false}}"><span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{e.t}}</span></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding: 10px 20px; font-size: 12px; color: #57534E; border-top: 1px solid #E7E5E4">Square button: empty = not started · ▶ = in progress · ✓ = done · drag an item to another day to move it · drag it onto the planner to block time</div>
+    </section>
+
+    <aside aria-label="Daily planner" style="flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+      <div style="background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; overflow: hidden">
+        <div style="padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #E7E5E4">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 12px; color: #57534E">Friday</span>
+            <h2 style="margin: 0; font-size: 18px; font-weight: 700">6 November</h2>
+          </div>
+          <div style="display: flex; gap: 6px">
+            <button style="height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid #D6D3D1; background: #fff; font: 500 12px Inter, sans-serif; color: #1C1917">Today</button>
+            <button aria-label="Previous day" style="width: 32px; height: 32px; border-radius: 16px; border: 1px solid #D6D3D1; background: #fff; padding: 0; color: #1C1917; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></button>
+            <button aria-label="Next day" style="width: 32px; height: 32px; border-radius: 16px; border: 1px solid #D6D3D1; background: #fff; padding: 0; color: #1C1917; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+          </div>
+        </div>
+        <div style="padding: 10px 16px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid #E7E5E4">
+          <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.06em; color: #57534E; margin-right: 4px">DUE TODAY · DRAG ONTO GRID</span>
+          <span style="height: 26px; padding: 0 10px; border-radius: 6px; background: #FEE2E2; color: #7F1D1D; font-size: 12px; font-weight: 600; display: flex; align-items: center; cursor: grab">DS Quiz</span>
+          <span style="height: 26px; padding: 0 10px; border-radius: 6px; background: #FEE2E2; color: #7F1D1D; font-size: 12px; font-weight: 600; display: flex; align-items: center; cursor: grab">Submission of Assignment</span>
+        </div>
+        <sc-if value="{{overlap}}" hint-placeholder-val="{{true}}">
+          <div style="display: flex; padding: 6px 14px 6px 64px; gap: 4px; font-size: 11px; font-weight: 700; border-bottom: 1px solid #E7E5E4">
+            <span style="flex: 1">Me</span>
+            <span style="flex: 1; color: #0F766E">Neina</span>
+          </div>
+        </sc-if>
+
+        <div style="position: relative; height: 816px; overflow: hidden">
+          <sc-for list="{{hours}}" as="h" hint-placeholder-count="15">
+            <div style="height: 48px; box-sizing: border-box; border-top: 1px solid #E7E5E4; display: flex">
+              <span style="width: 56px; padding: 4px 0 0 14px; box-sizing: border-box; font-size: 11px; color: #57534E">{{h.label}}</span>
+            </div>
+          </sc-for>
+
+          <sc-if value="{{overlap}}" hint-placeholder-val="{{true}}">
+            <div style="position: absolute; top: 433px; left: 64px; right: 14px; height: 190px; box-sizing: border-box; border: 1.5px solid #15803D; border-radius: 8px; background: rgba(220,252,231,0.5); padding: 4px 8px; font-size: 11px; font-weight: 700; color: #14532D">Both free 16:00 – 20:00</div>
+          </sc-if>
+
+          <div style="position: absolute; top: 77px; left: 56px; right: 0; display: flex; align-items: center">
+            <span style="width: 8px; height: 8px; border-radius: 4px; background: #1C1917"></span>
+            <span style="flex: 1; height: 2px; background: #1C1917"></span>
+          </div>
+
+          <sc-for list="{{blocks}}" as="b" hint-placeholder-count="5">
+            <div style="{{b.style}}">
+              <button aria-label="{{b.aria}}" title="{{b.aria}}" onClick="{{b.cycle}}" style="{{b.btnStyle}}">
+                <sc-if value="{{b.isDoing}}" hint-placeholder-val="{{false}}"><svg width="12" height="12" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5l6 3.5-6 3.5z" fill="currentColor"></path></svg></sc-if>
+                <sc-if value="{{b.isDone}}" hint-placeholder-val="{{false}}"><svg width="12" height="12" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8"></path></svg></sc-if>
+              </button>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                <span style="font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; {{b.textStyle}}">{{b.t}}</span>
+                <span style="font-size: 11px; opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{b.time}}</span>
+              </div>
+            </div>
+          </sc-for>
+
+          <sc-for list="{{theirBlocks}}" as="b" hint-placeholder-count="3">
+            <div style="{{b.style}}">
+              <span aria-hidden="true" style="flex: none; width: 18px; height: 18px; border-radius: 9px; background: #0F766E; color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center">N</span>
+              <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                <span style="font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{b.t}}</span>
+                <span style="font-size: 11px; opacity: 0.85">{{b.time}}</span>
+              </div>
+            </div>
+          </sc-for>
+
+          <sc-if value="{{noOverlap}}" hint-placeholder-val="{{false}}">
+            <div style="position: absolute; top: 385px; left: 64px; right: 14px; height: 46px; box-sizing: border-box; border: 1.5px dashed #A8A29E; border-radius: 8px; padding: 6px 8px; display: flex; align-items: center">
+              <span style="font-size: 12px; color: #57534E">Click and drag on empty time to add a block</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <details style="background: #fff; border: 1px solid #D6D3D1; border-radius: 14px; padding: 12px 16px">
+        <summary style="font-size: 14px; font-weight: 600; cursor: pointer">Q4 goals · 3 of 5</summary>
+        <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 10px; font-size: 13px">
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked style="margin: 0">Consistent cardio and workout</label>
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked style="margin: 0">Consistent 10pm to 6am sleep</label>
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked style="margin: 0">Start FYP</label>
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" style="margin: 0">Study CCNA</label>
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" style="margin: 0">AWS Academy and Skill Builder</label>
+        </div>
+      </details>
+    </aside>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var PAL = {
+      Work: ['#DBEAFE', '#1E3A8A'],
+      Exam: ['#FEE2E2', '#7F1D1D'],
+      Event: ['#DCFCE7', '#14532D'],
+      Hobby: ['#FEF3C7', '#713F12'],
+      Dating: ['#FCE7F3', '#831843'],
+      Busy: ['#E7E5E4', '#44403C'],
+      None: ['#E7E5E4', '#292524']
+    };
+    var overlap = !this.state || this.state.overlap !== false;
+    var st = (this.state && this.state.st) || {};
+    var statusOf = function (id, start) { return st[id] !== undefined ? st[id] : start; };
+    var cycleFor = function (id, cur) {
+      return function () {
+        var next = Object.assign({}, (self.state && self.state.st) || {});
+        next[id] = (cur + 1) % 3;
+        self.setState({ st: next });
+      };
+    };
+    var btnParts = function (s, ink, size) {
+      var aria = ['Not started. Click to start', 'In progress. Click to complete', 'Completed. Click to reset'];
+      var style = 'flex: none; width: ' + size + 'px; height: ' + size + 'px; padding: 0; box-sizing: border-box; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1.5px solid ' + ink + '; background: ' + (s === 2 ? ink : '#fff') + '; color: ' + (s === 2 ? '#fff' : ink);
+      return { aria: aria[s], btnStyle: style, isDoing: s === 1, isDone: s === 2 };
+    };
+    var stripes = function (bg) { return 'repeating-linear-gradient(135deg, ' + bg + ' 0 5px, #ffffff 5px 8px)'; };
+
+    // own items: [id, title, type, startStatus]
+    var ev = {
+      'o27': [['o27a', 'first visit sekolah sulam', 'Work', 2], ['o27b', 'homemade banana milk coffee', 'Hobby', 2]],
+      'o30': [['o30a', 'Chapter 1 Submission', 'Work', 2], ['o30b', 'Complete draft sys prog v1', 'Work', 2]],
+      'o31': [['o31a', 'Esable bagi keychain', 'Event', 2]],
+      '1': [['n1', 'Groceries', 'Event', 2]],
+      '2': [['n2', 'expand homelab', 'Hobby', 2]],
+      '3': [['n3', 'Submission of Sys programming draft', 'Exam', 2]],
+      '4': [['n4', 'Sulam Testing', 'Work', 2]],
+      '6': [['n6a', 'DS Quiz', 'Exam', 0], ['n6b', 'Submission of Assignment', 'Exam', 1]],
+      '7': [['n7', 'Start of midsemester break', 'Event', 1]],
+      '16': [['n16', 'system programming midsemester test', 'Exam', 0]],
+      '18': [['n18', 'Sulam day itself', 'Exam', 0]],
+      '20': [['n20a', 'DS Assignment Submission', 'Exam', 0], ['n20b', 'Chapter 2 Submission', 'Work', 0]]
+    };
+    // partner items (sample placeholders for the wireframe)
+    var theirs = {
+      '5': [['Busy', 'Busy']],
+      '8': [['[her event title]', 'Event']],
+      '14': [['[her exam title]', 'Exam']],
+      '19': [['Dune 3 together', 'Dating']],
+      '21': [['Busy', 'Busy']]
+    };
+
+    var days = [];
+    var i;
+    for (i = 26; i <= 31; i++) days.push({ num: i, out: true, key: 'o' + i });
+    for (i = 1; i <= 30; i++) days.push({ num: i, out: false, key: String(i) });
+    for (i = 1; i <= 6; i++) days.push({ num: i, out: true, key: 'd' + i });
+
+    var hours = [];
+    for (i = 7; i <= 23; i++) hours.push({ label: (i < 10 ? '0' : '') + i + ':00' });
+
+    // own blocks: id, label, time, type, top px, height px, startStatus, selected
+    var blockData = [
+      ['b1', 'Social Science class', '09:00 – 10:30', 'Work', 97, 70, 0, false],
+      ['b2', 'Workout', '10:30 – 11:30', 'Hobby', 169, 46, 0, false],
+      ['b3', 'Go through DS assignment', '12:00 – 13:00 · DS Assignment, 20 Nov', 'Work', 241, 46, 0, false],
+      ['b4', 'Prep for DS quiz', '13:00 – 14:30 · DS Quiz', 'Exam', 289, 70, 0, true],
+      ['b5', 'Sleep', '20:00 – 21:00', 'None', 625, 46, 0, false]
+    ];
+    var theirBlockData = [
+      ['Busy', '08:00 – 10:00', 'Busy', 49, 94],
+      ['[her lunch]', '12:00 – 13:00', 'Event', 241, 46],
+      ['Busy', '14:00 – 16:00', 'Busy', 337, 94]
+    ];
+    var lane = overlap
+      ? 'left: 64px; width: calc((100% - 82px) / 2);'
+      : 'left: 64px; right: 14px;';
+    var lane2 = 'left: calc(68px + (100% - 82px) / 2); right: 14px;';
+
+    return {
+      overlap: overlap,
+      noOverlap: !overlap,
+      toggleOverlap: function () { self.setState({ overlap: !overlap }); },
+      overlapBtn: 'height: 34px; padding: 0 10px 0 6px; border-radius: 17px; display: flex; align-items: center; gap: 8px; font: 600 12px Inter, sans-serif; cursor: pointer; ' + (overlap ? 'border: 1.5px solid #0F766E; background: #CCFBF1; color: #134E4A' : 'border: 1px solid #D6D3D1; background: #fff; color: #1C1917'),
+      switchTrack: 'width: 30px; height: 18px; border-radius: 9px; position: relative; display: block; background: ' + (overlap ? '#0F766E' : '#A8A29E'),
+      switchKnob: 'position: absolute; top: 2px; left: ' + (overlap ? '14px' : '2px') + '; width: 14px; height: 14px; border-radius: 7px; background: #fff',
+      hours: hours,
+      blocks: blockData.map(function (b) {
+        var s = statusOf(b[0], b[6]);
+        var p = PAL[b[3]];
+        return Object.assign({
+          t: b[1], time: b[2], cycle: cycleFor(b[0], s),
+          textStyle: s === 2 ? 'text-decoration: line-through' : '',
+          style: 'position: absolute; top: ' + b[4] + 'px; ' + lane + ' height: ' + b[5] + 'px; box-sizing: border-box; border-radius: 8px; padding: 6px 8px; display: flex; gap: 8px; align-items: flex-start; overflow: hidden; background: ' + p[0] + '; color: ' + p[1] + '; ' + (b[7] ? 'outline: 2px solid #1C1917; outline-offset: 1px' : '')
+        }, btnParts(s, p[1], 20));
+      }),
+      theirBlocks: overlap ? theirBlockData.map(function (b) {
+        var p = PAL[b[2]];
+        return { t: b[0], time: b[1],
+          style: 'position: absolute; top: ' + b[3] + 'px; ' + lane2 + ' height: ' + b[4] + 'px; box-sizing: border-box; border-radius: 8px; padding: 6px 8px; display: flex; gap: 6px; align-items: flex-start; overflow: hidden; border: 1px dashed ' + p[1] + '; background: ' + stripes(p[0]) + '; color: ' + p[1] };
+      }) : [],
+      days: days.map(function (d, idx) {
+        var today = d.key === '6';
+        var weekend = idx % 7 >= 5;
+        var mine = (ev[d.key] || []).map(function (e) {
+          var s = statusOf(e[0], e[3]);
+          var p = PAL[e[2]];
+          return Object.assign({
+            t: e[1], mine: true, theirs: false,
+            cycle: cycleFor(e[0], s),
+            textStyle: s === 2 ? 'text-decoration: line-through' : '',
+            style: 'height: 24px; padding: 0 6px 0 4px; border-radius: 5px; display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; background: ' + p[0] + '; color: ' + p[1]
+          }, btnParts(s, p[1], 16));
+        });
+        var other = overlap && !d.out ? (theirs[d.key] || []).map(function (e) {
+          var p = PAL[e[1]];
+          return { t: e[0], mine: false, theirs: true, textStyle: '',
+            style: 'height: 24px; padding: 0 6px 0 4px; border-radius: 5px; display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; border: 1px dashed ' + p[1] + '; background: ' + stripes(p[0]) + '; color: ' + p[1] };
+        }) : [];
+        return {
+          num: d.num,
+          cellStyle: 'min-height: 108px; box-sizing: border-box; padding: 6px; border-top: 1px solid #E7E5E4; border-left: ' + (idx % 7 ? '1px solid #E7E5E4' : '0') + '; display: flex; flex-direction: column; gap: 4px; background: ' + (today ? '#F5F5F4' : weekend ? '#FAFAF9' : '#fff') + (today ? '; box-shadow: inset 0 0 0 2px #1C1917' : ''),
+          numStyle: 'align-self: flex-start; min-width: 24px; height: 24px; padding: 0 4px; box-sizing: border-box; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 12px; ' + (today ? 'background: #1C1917; color: #fff; font-weight: 700' : d.out ? 'color: #78716C' : 'color: #1C1917; font-weight: 500'),
+          items: mine.concat(other)
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>
