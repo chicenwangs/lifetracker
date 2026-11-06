@@ -1,6 +1,70 @@
-<!-- FR-H3. <button> 16px (chip) / 20px (block). todo empty, doing ▶, done filled ink + ✓.
- props: status, size, disabled. aria-label: 'Not started. Click to start' | 'In progress. Click to finish' | 'Done. Click to reset'
- click / Space / Enter -> onCycle() ; stopPropagation (don't open item) -->
+<!-- FR-H3. Square: empty = todo, ▶ = doing, filled + ✓ = done. Click / Space / Enter cycles. -->
 <script lang="ts">
-	// PSEUDO only. Phase 1 builds.
+	import type { Status } from '$lib/types';
+	let {
+		status,
+		size = 16,
+		ink = 'currentColor',
+		disabled = false,
+		oncycle,
+	}: { status: Status; size?: number; ink?: string; disabled?: boolean; oncycle: () => void } = $props();
+
+	const LABEL: Record<Status, string> = {
+		todo: 'Not started. Click to start',
+		doing: 'In progress. Click to complete',
+		done: 'Completed. Click to reset',
+	};
+	const icon = $derived(Math.round(size * 0.62));
 </script>
+
+<button
+	type="button"
+	class="sq"
+	class:done={status === 'done'}
+	aria-label={LABEL[status]}
+	title={LABEL[status]}
+	{disabled}
+	style:--sz="{size}px"
+	style:--ink={ink}
+	onclick={(e) => {
+		e.preventDefault();
+		e.stopPropagation();
+		oncycle();
+	}}
+	onpointerdown={(e) => e.stopPropagation()}
+	onmousedown={(e) => e.stopPropagation()}
+>
+	{#if status === 'doing'}
+		<svg width={icon} height={icon} viewBox="0 0 10 10" aria-hidden="true"
+			><path d="M2.5 1.5l6 3.5-6 3.5z" fill="currentColor" /></svg
+		>
+	{:else if status === 'done'}
+		<svg width={icon} height={icon} viewBox="0 0 10 10" aria-hidden="true"
+			><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8" /></svg
+		>
+	{/if}
+</button>
+
+<style>
+	.sq {
+		flex: none;
+		width: var(--sz);
+		height: var(--sz);
+		padding: 0;
+		border-radius: 4px;
+		border: 1.5px solid var(--ink);
+		background: #fff;
+		color: var(--ink);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+	}
+	.sq.done {
+		background: var(--ink);
+		color: #fff;
+	}
+	.sq:disabled {
+		cursor: default;
+	}
+</style>
