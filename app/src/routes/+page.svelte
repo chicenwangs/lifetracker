@@ -13,6 +13,8 @@
 	import { nextStatus, type ItemDTO, type Status } from '$lib/types';
 	import { prettyDate } from '$lib/time';
 	import { without } from '$lib/client/obj';
+	import { openItem } from '$lib/client/peek.svelte';
+	import { removeItem } from '$lib/client/remove';
 
 	let { data } = $props();
 	let planner: DayPlanner | undefined = $state();
@@ -124,7 +126,8 @@
 			selected={data.day}
 			oncycle={cycleItem}
 			onmove={moveItem}
-			onopen={(id) => goto(`/item/${id}`)}
+			onopen={openItem}
+			ondelete={(id) => removeItem(id, monthItems.find((i) => i.id === id)?.title ?? 'item', refresh)}
 			onpick={(d) => nav({ d })}
 			ondropout={dropOut}
 			onnav={(y, m) => nav({ m: `${y}-${String(m).padStart(2, '0')}` })}
@@ -139,9 +142,12 @@
 			onnav={(d) => nav({ d })}
 			onchanged={refresh}
 			oncycle={cycleBlock}
-			onopenitem={(id) => goto(`/item/${id}`)}
+			onopenitem={openItem}
 		>
 			{#snippet top()}
+				{#if data.planAhead}
+					<p class="ahead" role="status">Today is wrapped up, so this is tomorrow. Plan away.</p>
+				{/if}
 				<DueTodayChips
 					items={data.due}
 					label={data.day === data.today ? 'Due today' : `Due ${prettyDate(data.day)}`}
@@ -172,6 +178,13 @@
 		gap: 12px;
 		position: sticky;
 		top: 84px;
+	}
+	.ahead {
+		margin: 0;
+		padding: 8px 16px;
+		font-size: 12px;
+		color: var(--quiet);
+		border-bottom: 1px solid var(--rule);
 	}
 	@media (max-width: 1000px) {
 		.right {

@@ -36,7 +36,7 @@
 		align-items: center;
 		gap: 12px;
 		background: var(--ink);
-		color: #fff;
+		color: var(--on-ink);
 		padding: 10px 14px;
 		border-radius: 10px;
 		font-size: 13px;
@@ -47,7 +47,7 @@
 		background: var(--exam-ink);
 	}
 	.undo {
-		background: #fff;
+		background: var(--on-ink);
 		color: var(--ink);
 		border: 0;
 		border-radius: 6px;
@@ -58,7 +58,7 @@
 	.x {
 		background: none;
 		border: 0;
-		color: #fff;
+		color: var(--on-ink);
 		font-size: 18px;
 		cursor: pointer;
 		line-height: 1;

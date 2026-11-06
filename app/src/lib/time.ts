@@ -171,6 +171,18 @@ export function fcDropToItem(orig: DatedItem, newStartStr: string): { date: stri
 // ---------- display ----------
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+/** FR exam countdown. null = not an open exam with a date. */
+export function examCountdown(
+	i: { type: string | null; status: string; date: string | null },
+	today: string,
+): { days: number; short: string; long: string } | null {
+	if (i.type !== 'Exam' || i.status === 'done' || !i.date) return null;
+	const n = diffDays(today, i.date);
+	if (n < 0) return { days: n, short: `${-n}d late`, long: `${-n} day${n === -1 ? '' : 's'} overdue` };
+	if (n === 0) return { days: 0, short: 'Today', long: 'Due today' };
+	return { days: n, short: `${n}d`, long: `${n} day${n === 1 ? '' : 's'} left` };
+}
+
 export function prettyDate(date: string): string {
 	const [y, m, d] = parts(date);
 	return `${WD[weekdayOf(date) - 1]} ${d} ${MONTHS[m - 1]} ${y}`;

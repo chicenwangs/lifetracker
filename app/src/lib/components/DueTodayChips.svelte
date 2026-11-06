@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { colorsFor } from '$lib/colors';
 	import type { ItemDTO } from '$lib/types';
+	import { openItem } from '$lib/client/peek.svelte';
 	let { items, label = 'Due today' }: { items: ItemDTO[]; label?: string } = $props();
 </script>
 
@@ -16,6 +17,10 @@
 			style:background={c.bg}
 			style:color={c.ink}
 			title="Drag onto the planner to block 60 min"
+			onclick={(e) => {
+				e.preventDefault();
+				openItem(i.id);
+			}}
 			ondragstart={(e) => {
 				e.dataTransfer?.setData('application/x-lt-item', i.id);
 				e.dataTransfer?.setData('text/plain', i.title);

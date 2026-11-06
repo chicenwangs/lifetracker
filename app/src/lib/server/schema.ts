@@ -37,6 +37,11 @@ export const users = sqliteTable(
 		color: text('color').notNull().default('#1C1917'),
 		timezone: text('timezone').notNull().default('Asia/Kuala_Lumpur'),
 		overlapOn: integer('overlap_on', { mode: 'boolean' }).notNull().default(true),
+		theme: text('theme', { enum: ['dark', 'light'] })
+			.notNull()
+			.default('dark'),
+		// NULL = not asked yet (first-use tutorial asks). night = plan before bed, morning = plan on waking
+		planMode: text('plan_mode', { enum: ['night', 'morning', 'off'] }),
 		icsTokenHash: text('ics_token_hash'),
 		createdAt: text('created_at').notNull().default(nowZ),
 	},

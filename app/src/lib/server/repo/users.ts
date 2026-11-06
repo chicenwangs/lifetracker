@@ -15,6 +15,8 @@ export function safe(u: UserRow): App.SafeUser {
 		color: u.color,
 		timezone: u.timezone,
 		overlapOn: u.overlapOn,
+		theme: u.theme,
+		planMode: u.planMode,
 	};
 }
 
@@ -78,7 +80,13 @@ export function setPasswordHash(id: string, hash: string): void {
 
 export function setPrefs(
 	id: string,
-	prefs: { overlapOn?: boolean; displayName?: string; color?: string },
+	prefs: {
+		overlapOn?: boolean;
+		displayName?: string;
+		color?: string;
+		theme?: 'dark' | 'light';
+		planMode?: 'night' | 'morning' | 'off' | null;
+	},
 ): void {
 	db().update(users).set(prefs).where(eq(users.id, id)).run();
 }

@@ -9,6 +9,8 @@ declare global {
 			color: string;
 			timezone: string;
 			overlapOn: boolean;
+			theme: 'dark' | 'light';
+			planMode: 'night' | 'morning' | 'off' | null;
 		}
 		interface SessionInfo {
 			id: string;
@@ -20,6 +22,9 @@ declare global {
 		interface Locals {
 			user: SafeUser | null;
 			session: SessionInfo | null;
+		}
+		interface PageState {
+			peekId?: string;
 		}
 		interface Error {
 			code: string;

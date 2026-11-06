@@ -266,11 +266,11 @@ export function restore(meId: string, batch: string): number {
 			.set({ deletedAt: null, deletedBatch: null })
 			.where(and(eq(items.deletedBatch, batch), inArray(items.calendarId, cals)))
 			.run().changes;
-		db()
+		n += db()
 			.update(blocks)
 			.set({ deletedAt: null, deletedBatch: null })
 			.where(and(eq(blocks.deletedBatch, batch), inArray(blocks.calendarId, cals)))
-			.run();
+			.run().changes;
 	})();
 	return n;
 }

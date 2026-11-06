@@ -27,6 +27,15 @@
 	--busy-bg: #e7e5e4;
 	--busy-ink: #44403c;
 
+	--on-ink: #ffffff; /* text on ink-filled buttons/squares */
+	--ink-hover: #000000;
+	--hover: #f5f5f4;
+	--faint: #a8a29e;
+	--field: #ffffff;
+	--shadow: rgb(0 0 0 / 0.12);
+	--scrim: rgb(28 25 23 / 0.28);
+	color-scheme: light;
+
 	font-family:
 		Inter,
 		system-ui,
@@ -37,6 +46,42 @@
 	background: var(--ground);
 	font-size: 14px;
 	line-height: 1.4;
+}
+
+/* Dark (default). Same token names; type pairs keep 4.5:1 text on bg. */
+:root[data-theme='dark'] {
+	--ground: #0c0a09;
+	--card: #1c1917;
+	--border: #44403c;
+	--rule: #292524;
+	--ink: #f5f5f4;
+	--quiet: #a8a29e;
+	--input: #78716c;
+	--link: #93c5fd;
+
+	--work-bg: #172554;
+	--work-ink: #bfdbfe;
+	--exam-bg: #450a0a;
+	--exam-ink: #fecaca;
+	--event-bg: #052e16;
+	--event-ink: #bbf7d0;
+	--hobby-bg: #422006;
+	--hobby-ink: #fde68a;
+	--dating-bg: #500724;
+	--dating-ink: #fbcfe8;
+	--none-bg: #292524;
+	--none-ink: #e7e5e4;
+	--busy-bg: #292524;
+	--busy-ink: #d6d3d1;
+
+	--on-ink: #1c1917;
+	--ink-hover: #ffffff;
+	--hover: #292524;
+	--faint: #57534e;
+	--field: #0c0a09;
+	--shadow: rgb(0 0 0 / 0.5);
+	--scrim: rgb(0 0 0 / 0.45);
+	color-scheme: dark;
 }
 
 * {
@@ -123,7 +168,7 @@ h3 {
 	border-radius: var(--r-btn);
 	padding: 0 12px;
 	font-size: 15px;
-	background: #fff;
+	background: var(--field);
 	width: 100%;
 }
 .input.sm {
@@ -141,7 +186,7 @@ textarea.input {
 	padding: 0 16px;
 	border-radius: var(--r-btn);
 	border: 1px solid var(--border);
-	background: #fff;
+	background: var(--card);
 	font-weight: 600;
 	cursor: pointer;
 	display: inline-flex;
@@ -151,19 +196,19 @@ textarea.input {
 	white-space: nowrap;
 }
 .btn:hover {
-	background: var(--ground);
+	background: var(--hover);
 }
 .btn.primary {
 	background: var(--ink);
 	border-color: var(--ink);
-	color: #fff;
+	color: var(--on-ink);
 }
 .btn.primary:hover {
-	background: #000;
+	background: var(--ink-hover);
 }
 .btn.danger {
 	color: var(--exam-ink);
-	border-color: #fca5a5;
+	border-color: color-mix(in srgb, var(--exam-ink) 40%, transparent);
 }
 .btn.ghost {
 	border-color: transparent;

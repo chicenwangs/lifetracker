@@ -9,6 +9,5 @@ export const PATCH = api(async (e) => {
 });
 
 export const DELETE = api((e) => {
-	blocks.softDelete(me(e).id, e.params.id ?? '');
-	return json({ ok: true });
+	return json({ ok: true, ...blocks.softDelete(me(e).id, e.params.id ?? '') });
 });

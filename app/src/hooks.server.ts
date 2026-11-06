@@ -49,7 +49,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 		redirect(303, next === '/' ? '/login' : `/login?next=${encodeURIComponent(next)}`);
 	}
 
-	const res = await resolve(event);
+	// theme: user pref, else cookie (login page), else dark. Set on <html> server side = no flash.
+	const ck = event.cookies.get('lt_theme');
+	const theme = event.locals.user?.theme ?? (ck === 'light' ? 'light' : 'dark');
+	const res = await resolve(event, {
+		transformPageChunk: ({ html }) => html.replace('%lt.theme%', theme),
+	});
 
 	// 5 headers (CSP comes from kit.csp)
 	res.headers.set('Referrer-Policy', 'same-origin');

@@ -90,7 +90,7 @@
 		color: var(--quiet);
 	}
 	.tabs a.on {
-		background: #fff;
+		background: var(--card);
 		color: var(--ink);
 		box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
 	}

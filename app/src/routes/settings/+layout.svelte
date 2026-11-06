@@ -3,6 +3,7 @@
 	let { children } = $props();
 	const LINKS = [
 		{ href: '/settings/account', label: 'Account' },
+		{ href: '/settings/preferences', label: 'Preferences' },
 		{ href: '/settings/sessions', label: 'Devices' },
 		{ href: '/settings/courses', label: 'Courses' },
 		{ href: '/settings/goals', label: 'Goals' },

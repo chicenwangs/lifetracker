@@ -150,13 +150,11 @@ export function cycle(meId: string, id: string): BlockRow {
 }
 
 /** blocks: soft delete single (own batch so restore works) */
-export function softDelete(meId: string, id: string): void {
+export function softDelete(meId: string, id: string): { batch: string } {
 	mustOwn(meId, id);
-	db()
-		.update(blocks)
-		.set({ deletedAt: nowUtcIso(), deletedBatch: newId('del') })
-		.where(eq(blocks.id, id))
-		.run();
+	const batch = newId('del');
+	db().update(blocks).set({ deletedAt: nowUtcIso(), deletedBatch: batch }).where(eq(blocks.id, id)).run();
+	return { batch };
 }
 
 export function itemTypeOf(b: BlockRow): ItemType | null {

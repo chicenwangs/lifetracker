@@ -9,6 +9,8 @@ const schema = z
 		overlapOn: z.boolean(),
 		displayName: z.string().trim().min(1).max(60),
 		color: z.enum(USER_COLORS),
+		theme: z.enum(['dark', 'light']),
+		planMode: z.enum(['night', 'morning', 'off']).nullable(),
 	})
 	.partial()
 	.strict();

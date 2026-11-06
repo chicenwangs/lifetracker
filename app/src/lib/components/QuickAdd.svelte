@@ -98,7 +98,7 @@
 		background: var(--ground);
 	}
 	.box:focus {
-		background: #fff;
+		background: var(--card);
 		border-color: var(--input);
 	}
 	.preview {
@@ -114,7 +114,7 @@
 		z-index: 30;
 	}
 	.preview:not(:empty) {
-		background: #fff;
+		background: var(--card);
 		border: 1px solid var(--border);
 		border-radius: 10px;
 		padding: 8px 10px;

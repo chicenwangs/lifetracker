@@ -3,7 +3,7 @@
 <script lang="ts">
 	import { onMount, type Snippet } from 'svelte';
 	import StatusSquare from './StatusSquare.svelte';
-	import { post, patch as apiPatch, del } from '$lib/client/api';
+	import { post, patch as apiPatch } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { blockType, colorsFor } from '$lib/colors';
 	import {
@@ -21,6 +21,7 @@
 	} from '$lib/time';
 	import type { BlockDTO } from '$lib/types';
 	import { without } from '$lib/client/obj';
+	import { removeBlock } from '$lib/client/remove';
 
 	let {
 		date,
@@ -31,6 +32,10 @@
 		oncycle,
 		onopenitem,
 		top,
+		linkItemId,
+		focusItemId,
+		tip = true,
+		height,
 	}: {
 		date: string;
 		tz: string;
@@ -40,6 +45,13 @@
 		oncycle: (id: string) => void;
 		onopenitem: (itemId: string) => void;
 		top?: Snippet;
+		/** item view: new drag-created blocks link to this item (label = item title, no prompt) */
+		linkItemId?: string;
+		/** item view: this item's blocks full colour, everything else muted */
+		focusItemId?: string;
+		tip?: boolean;
+		/** scroll area height override (px) */
+		height?: number;
 	} = $props();
 
 	const HOUR = 48;
@@ -147,7 +159,7 @@
 	} | null = null;
 
 	function onGridDown(e: PointerEvent) {
-		if (e.button !== 0 || (e.target as HTMLElement).closest('.blk, .draft, .menu')) return;
+		if (e.button !== 0 || (e.target as HTMLElement).closest('.blk, .draft, .menu, .bx')) return;
 		menuFor = null;
 		const m = snap15(yToMin(e.clientY));
 		gesture = { kind: 'create', startY: e.clientY, anchor: m, moved: false };
@@ -205,6 +217,21 @@
 			if (!draft) return;
 			if (!g.moved) {
 				draft = null;
+				return;
+			}
+			if (linkItemId) {
+				const d = draft;
+				draft = null;
+				try {
+					await post('/api/blocks', {
+						itemId: linkItemId,
+						startAt: localToUtc(date, d.start, tz),
+						endAt: localToUtc(date, d.end, tz),
+					});
+					onchanged();
+				} catch (e) {
+					showError(e);
+				}
 				return;
 			}
 			draft = { ...draft, naming: true };
@@ -267,12 +294,8 @@
 
 	async function deleteBlock(id: string) {
 		menuFor = null;
-		try {
-			await del(`/api/blocks/${id}`);
-			onchanged();
-		} catch (e) {
-			showError(e);
-		}
+		const b = blocks.find((x) => x.id === id);
+		await removeBlock(id, b?.label ?? 'block', onchanged);
 	}
 
 	// ---------- keyboard (focus block: arrows move 15, shift+arrows resize) ----------
@@ -360,7 +383,13 @@
 		</div>
 	</div>
 	{@render top?.()}
-	<div class="scroll" bind:this={scroller} role="region" aria-label="Planner for {prettyDate(date)}">
+	<div
+		class="scroll"
+		bind:this={scroller}
+		role="region"
+		aria-label="Planner for {prettyDate(date)}"
+		style:height={height ? `${height}px` : undefined}
+	>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="grid"
@@ -389,6 +418,7 @@
 					class:cs={p.clippedStart}
 					class:ce={p.clippedEnd}
 					class:lift={!!over[p.b.id]}
+					class:muted={!!focusItemId && p.b.itemId !== focusItemId}
 					style:top="{p.top * PX_MIN}px"
 					style:height="{Math.max(18, (p.bottom - p.top) * PX_MIN)}px"
 					style:left="calc(56px + (100% - 70px) * {p.col / p.cols})"
@@ -413,6 +443,34 @@
 					{#if !p.clippedEnd && p.b.editable}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div class="h bot" onpointerdown={(e) => onBlockDown(e, p, 'bottom')}></div>
+					{/if}
+					{#if p.b.editable}
+						<button
+							class="bx"
+							type="button"
+							aria-label="Delete {p.b.label}"
+							title="Delete"
+							onpointerdown={(e) => e.stopPropagation()}
+							onclick={(e) => {
+								e.stopPropagation();
+								deleteBlock(p.b.id);
+							}}
+							><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"
+								><circle
+									cx="8"
+									cy="8"
+									r="7"
+									fill="var(--card)"
+									stroke="currentColor"
+									stroke-width="1.4"
+								/><path
+									d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8"
+									stroke="currentColor"
+									stroke-width="1.6"
+									stroke-linecap="round"
+								/></svg
+							></button
+						>
 					{/if}
 				</div>
 				{#if menuFor === p.b.id}
@@ -470,9 +528,11 @@
 			{/if}
 		</div>
 	</div>
-	<div class="tip">
-		Drag on empty time to add a block · drag edges to resize · drag due chips or month items here
-	</div>
+	{#if tip}
+		<div class="tip">
+			Drag on empty time to add a block · drag edges to resize · drag due chips or month items here
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -507,7 +567,7 @@
 		height: 32px;
 		border-radius: 16px;
 		border: 1px solid var(--border);
-		background: #fff;
+		background: var(--card);
 		padding: 0;
 		display: flex;
 		align-items: center;
@@ -566,7 +626,7 @@
 	.blk {
 		position: absolute;
 		border-radius: 8px;
-		padding: 5px 8px;
+		padding: 5px 24px 5px 8px;
 		display: flex;
 		gap: 8px;
 		align-items: flex-start;
@@ -588,6 +648,41 @@
 	.blk.lift {
 		box-shadow: 0 6px 16px rgb(0 0 0 / 0.18);
 		z-index: 5;
+	}
+	.blk.muted {
+		background: var(--rule) !important;
+		color: var(--quiet) !important;
+		border-style: dashed;
+		z-index: 2;
+	}
+	.bx {
+		position: absolute;
+		top: 3px;
+		right: 3px;
+		width: 18px;
+		height: 18px;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		opacity: 0;
+		z-index: 4;
+		transition: opacity 0.12s;
+	}
+	.blk:hover .bx,
+	.blk:focus-within .bx,
+	.bx:focus-visible {
+		opacity: 1;
+	}
+	.bx:hover svg circle {
+		fill: currentColor;
+	}
+	.bx:hover svg path {
+		stroke: var(--card);
 	}
 	.blk.done .lbl {
 		text-decoration: line-through;
@@ -630,7 +725,7 @@
 		right: 14px;
 		border: 1.5px dashed var(--ink);
 		border-radius: 8px;
-		background: rgb(255 255 255 / 0.85);
+		background: color-mix(in srgb, var(--card) 88%, transparent);
 		padding: 4px 8px;
 		z-index: 7;
 		display: flex;
@@ -647,7 +742,7 @@
 		left: 56px;
 		right: 14px;
 		z-index: 9;
-		background: #fff;
+		background: var(--card);
 		border: 1px solid var(--border);
 		border-radius: 10px;
 		padding: 8px;

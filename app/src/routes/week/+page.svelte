@@ -7,6 +7,7 @@
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { calendarBus } from '$lib/client/bus.svelte';
 	import { colorsFor } from '$lib/colors';
+	import { openItem } from '$lib/client/peek.svelte';
 	import { addDays, isoPlus, localToUtc, prettyDate } from '$lib/time';
 
 	let { data } = $props();
@@ -138,7 +139,7 @@
 				onmoveblock={(id, s, e) => wrap(() => patch(`/api/blocks/${id}`, { startAt: s, endAt: e }))}
 				oncreateblock={createBlock}
 				ondropitem={dropItem}
-				onopen={(id) => goto(`/item/${id}`)}
+				onopen={openItem}
 			/>
 		{/if}
 		<div class="foot">
@@ -154,7 +155,13 @@
 			{#each data.dueSoon as i (i.id)}
 				{@const c = colorsFor(i.type)}
 				<div class="row" data-lt-item={i.id} data-title={i.title} style:border-left-color={c.ink}>
-					<a href="/item/{i.id}">{i.title}</a>
+					<a
+						href="/item/{i.id}"
+						onclick={(e) => {
+							e.preventDefault();
+							openItem(i.id);
+						}}>{i.title}</a
+					>
 					<span class="muted">{i.date ? prettyDate(i.date).split(' ').slice(0, 3).join(' ') : ''}</span>
 				</div>
 			{:else}
@@ -166,7 +173,13 @@
 			{#each data.unscheduled as i (i.id)}
 				{@const c = colorsFor(i.type)}
 				<div class="row" data-lt-item={i.id} data-title={i.title} style:border-left-color={c.ink}>
-					<a href="/item/{i.id}">{i.title}</a><span class="muted">drag onto a day</span>
+					<a
+						href="/item/{i.id}"
+						onclick={(e) => {
+							e.preventDefault();
+							openItem(i.id);
+						}}>{i.title}</a
+					><span class="muted">drag onto a day</span>
 				</div>
 			{:else}
 				<span class="muted">Nothing unscheduled.</span>
@@ -222,7 +235,7 @@
 		height: 32px;
 		border-radius: 16px;
 		border: 1px solid var(--border);
-		background: #fff;
+		background: var(--card);
 		padding: 0;
 		display: flex;
 		align-items: center;
@@ -248,7 +261,7 @@
 	}
 	.view .on {
 		background: var(--ink);
-		color: #fff;
+		color: var(--on-ink);
 		font-weight: 600;
 	}
 	.foot {
@@ -274,7 +287,7 @@
 		border-radius: 8px;
 		cursor: grab;
 		font-size: 13px;
-		background: #fff;
+		background: var(--card);
 	}
 	.row a {
 		color: var(--ink);

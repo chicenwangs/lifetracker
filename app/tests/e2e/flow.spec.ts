@@ -85,7 +85,7 @@ test('month shows colour chips; square cycles + persists', async () => {
 	await page.goto('/');
 	const chip = page.locator('.lt-chip', { hasText: 'DS Quiz' });
 	await expect(chip).toBeVisible();
-	await expect(chip).toHaveCSS('background-color', 'rgb(254, 226, 226)'); // Exam bg
+	await expect(chip).toHaveCSS('background-color', 'rgb(69, 10, 10)'); // Exam bg (dark theme = default)
 	await chip.locator('.lt-sq').click();
 	await expect(chip.locator('.lt-sq')).toHaveAttribute('aria-label', /In progress/);
 	await page.reload();
@@ -138,7 +138,7 @@ test('drag "DS Quiz" chip to planner -> linked red block', async () => {
 		.dragTo(grid, { targetPosition: { x: 150, y: 16 * 48 + 5 } });
 	const b = page.locator('.blk[aria-label^="DS Quiz,"]');
 	await expect(b).toHaveAttribute('aria-label', /16:00 – 17:00/);
-	await expect(b).toHaveCSS('background-color', 'rgb(254, 226, 226)');
+	await expect(b).toHaveCSS('background-color', 'rgb(69, 10, 10)');
 });
 
 test('quick add "ds quiz fri 2pm !exam #ds"', async () => {
@@ -157,6 +157,116 @@ test('quick add "ds quiz fri 2pm !exam #ds"', async () => {
 	expect(it).toMatchObject({ type: 'Exam', time: '14:00' });
 	expect(it?.courseId).toBeTruthy();
 	expect(new Date(it!.date + 'T00:00:00Z').getUTCDay()).toBe(5); // a Friday
+});
+
+test('item opens as centre peek: blur, rename in place, notes, linked block, hover X', async () => {
+	const d = await today();
+	await page.goto(`/?d=${d}`);
+	const chip = page.locator('.lt-chip', { hasText: /DS Quiz/ });
+	// exam countdown on the chip
+	await expect(chip.locator('.lt-dl')).toHaveText('Today');
+	await chip.locator('.lt-title').click();
+	const dlg = page.getByRole('dialog', { name: 'Item' });
+	await expect(dlg).toBeVisible();
+	await expect(page).toHaveURL(/\/item\/itm_/);
+	await expect(page.locator('.scrim')).toHaveCSS('backdrop-filter', /blur/);
+	await expect(dlg.locator('.count')).toHaveText('Due today');
+	// rename on the title itself
+	await dlg.locator('.title-btn').click();
+	await dlg.locator('#iv-title').fill('DS Quiz 2');
+	await page.keyboard.press('Enter');
+	await expect(dlg.locator('.title-btn .tt')).toHaveText('DS Quiz 2');
+	// markdown page
+	await dlg.locator('.empty').click();
+	await dlg.locator('#iv-notes').fill('# Plan\n- chapter 3');
+	await expect(dlg.locator('.savestate')).toContainText('Saved');
+	await page.keyboard.press('Escape');
+	await expect(dlg.locator('.rendered h1')).toHaveText('Plan');
+	// drag empty time in the item's timeline -> linked block in item colour
+	const grid = dlg.locator('.planner .grid');
+	await grid.scrollIntoViewIfNeeded();
+	const sc = dlg.locator('.planner .scroll');
+	await sc.evaluate((el) => (el.scrollTop = 9 * 48));
+	const gb = (await grid.boundingBox())!;
+	const y = (min: number) => gb.y + (min * 48) / 60;
+	await page.mouse.move(gb.x + 150, y(10 * 60) + 2);
+	await page.mouse.down();
+	await page.mouse.move(gb.x + 150, y(11 * 60) - 2, { steps: 8 });
+	await page.mouse.up();
+	const b = dlg.locator('.blk[aria-label^="DS Quiz 2, 10:00 – 11:00"]');
+	await expect(b).toBeVisible();
+	await expect(b).toHaveCSS('background-color', 'rgb(69, 10, 10)');
+	// Esc closes, home planner shows the same linked block
+	await page.keyboard.press('Escape');
+	await expect(dlg).toBeHidden();
+	await expect(page).toHaveURL(/\/(\?d=.*)?$/);
+	const home = page.locator('.home .blk[aria-label^="DS Quiz 2, 10:00 – 11:00"]');
+	await expect(home).toBeAttached();
+	// hover X deletes it (with undo)
+	await home.scrollIntoViewIfNeeded();
+	await home.hover();
+	await expect(home.locator('.bx')).toHaveCSS('opacity', '1');
+	await home.locator('.bx').click();
+	await expect(page.locator('.toast')).toContainText('Deleted');
+	await expect(home).toHaveCount(0);
+	await page.locator('.toast .undo').click();
+	await expect(home).toBeAttached();
+});
+
+test('theme: dark by default, toggle persists on server', async () => {
+	await page.goto('/');
+	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+	await page.getByRole('button', { name: 'Switch to light mode' }).click();
+	await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+	await page.reload();
+	await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+	await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+});
+
+test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
+	const d = await today();
+	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)
+	const nowMin = await page.evaluate(() => {
+		const p = new Intl.DateTimeFormat('en-GB', {
+			timeZone: 'Asia/Kuala_Lumpur',
+			hour: '2-digit',
+			minute: '2-digit',
+			hourCycle: 'h23',
+		}).format(new Date());
+		const [h, m] = p.split(':').map(Number);
+		return (h ?? 0) * 60 + (m ?? 0);
+	});
+	test.skip(nowMin < 20, 'too close to midnight');
+	// clear today's later blocks so "last item" is in the past
+	const cal = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 1)}`);
+	for (const b of (cal.j as { blocks: { id: string }[] }).blocks) await api('DELETE', `/api/blocks/${b.id}`);
+	for (const i of (cal.j as { items: { id: string; time: string | null }[] }).items)
+		if (i.time) await api('PATCH', `/api/items/${i.id}`, { time: null });
+	const hm = (m: number) =>
+		`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+	expect(
+		(
+			await api('POST', '/api/blocks', {
+				label: 'Done thing',
+				startAt: utc(d, hm(nowMin - 16)),
+				endAt: utc(d, hm(nowMin - 1)),
+			})
+		).s,
+	).toBe(201);
+	await page.goto('/settings/preferences');
+	await page.getByLabel('Before bed').check();
+	await expect(page.locator('.toast')).toContainText('Saved');
+	await page.goto('/');
+	await expect(page.locator('.ahead')).toBeVisible();
+	await expect(page.locator('.planner [aria-label^="Planner for"]')).toHaveAttribute(
+		'aria-label',
+		new RegExp(`\\b${Number(plusDay(d, 1).slice(8))}\\b`),
+	);
+	await page.goto('/settings/preferences');
+	await page.getByLabel('Off').check();
+	await page.goto('/');
+	await expect(page.locator('.ahead')).toHaveCount(0);
 });
 
 test('reset-password script works', async ({ browser }) => {

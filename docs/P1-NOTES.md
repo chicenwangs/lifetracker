@@ -40,3 +40,20 @@ Sharing + overlap (access.ts filters, share keys, grants, overlap toggle, lanes)
 - Google Fonts is the only external call (NFR-4; self-host in P2).
 - `prompt()` for week-view new block label. Replace with inline input later.
 - Month drag of a multi-day item keeps its span. Resize of span = edit item page.
+
+## UX round 1 — 2026-11-06 (owner asks)
+
+| Ask | Built | Where |
+|---|---|---|
+| Title edit on title itself | hover = dotted underline + pencil, click = edit in place, Enter saves, Esc cancels. Details form gone | `ItemView.svelte` |
+| Dark mode, default dark | `users.theme` (migration 0002, default dark). Sun/moon in header + Settings > Preferences. SSR sets `<html data-theme>` (no flash). Login page uses `lt_theme` cookie. Type colours now CSS vars (`colors.ts` returns `var(--work-bg)` etc) | `app.css`, `hooks.server.ts`, `lib/client/prefs.svelte.ts` |
+| Click item = centre peek, blurred bg | panel grows from click point, backdrop blur. URL = `/item/:id` via pushState (Back/Esc/×/backdrop close; reload = full page). Open state in `lib/client/peek.svelte.ts` NOT page.state (invalidateAll wipes page.state) | `ItemPeek.svelte`, `+layout.svelte` |
+| Exam days left | Exam + not done + dated: chip badge `5d` / `Today` / `2d late` (filled red when ≤ 3 d); peek pill "5 days left" | `time.ts examCountdown` |
+| Item = big markdown page | body = notes. Click to write, autosave 700 ms, Esc/blur = render. Props (type/date/time/until/course/secret) inline row, save on change. Steps list only shown if steps exist (no add-step UI now). "Also in course" removed | `ItemView.svelte`, `GET /api/items/:id/view` |
+| Right column order + level | Delete → History → Time blocks. Grid columns start same line | `ItemView.svelte` |
+| Time blocks in item view | real DayPlanner of that day (same timeline as Home). This item's blocks full colour, others muted dashed. Drag empty = block linked to item (label = title, no prompt). "Drag me" chip = 60-min block. Opens on next upcoming block day, else today | `DayPlanner` props `linkItemId focusItemId tip height` |
+| Hover ⊗ quick delete | planner blocks (top right) + month chips (smaller). Undo 5 s via trash restore. Single block delete now returns `{batch}`; restore counts blocks | `lib/client/remove.ts` |
+| Plan before bed / morning | `users.plan_mode` night/morning/off/NULL(not asked). night: Home (no `?d=`) opens tomorrow once today's last block/timed item (60 min) has ended; overnight blocks (Sleep) ignored. morning/off/NULL = today. Settings > Preferences. First-use tutorial (later) should ask + PATCH `/api/me/prefs {planMode}` when NULL | `lib/planahead.ts` |
+
+Fixed on the way: FullCalendar var overrides never applied (`.grid :global(.fc)` missed — `.fc` is the same element). Minifier dropped plain `backdrop-filter` (Firefox) → set via CSS var.
+Tests: +6 unit (planahead), +3 e2e (peek flow, theme, plan-ahead). Colour asserts now dark values.

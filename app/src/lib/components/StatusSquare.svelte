@@ -53,7 +53,7 @@
 		padding: 0;
 		border-radius: 4px;
 		border: 1.5px solid var(--ink);
-		background: #fff;
+		background: var(--card);
 		color: var(--ink);
 		display: inline-flex;
 		align-items: center;
@@ -62,7 +62,7 @@
 	}
 	.sq.done {
 		background: var(--ink);
-		color: #fff;
+		color: var(--on-ink);
 	}
 	.sq:disabled {
 		cursor: default;

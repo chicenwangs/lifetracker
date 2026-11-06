@@ -1,14 +1,15 @@
 // Type colours (TECHNICAL §9). Colour never alone: chips also carry text/badge/stripes.
 import type { ItemType } from './types';
 
+// CSS var refs (app.css) so light/dark swap without re-render. Hex values live in app.css.
 export const TYPE_COLORS: Record<ItemType | 'None' | 'Busy', { bg: string; ink: string }> = {
-	Work: { bg: '#DBEAFE', ink: '#1E3A8A' },
-	Exam: { bg: '#FEE2E2', ink: '#7F1D1D' },
-	Event: { bg: '#DCFCE7', ink: '#14532D' },
-	Hobby: { bg: '#FEF3C7', ink: '#713F12' },
-	Dating: { bg: '#FCE7F3', ink: '#831843' },
-	None: { bg: '#E7E5E4', ink: '#292524' },
-	Busy: { bg: '#E7E5E4', ink: '#44403C' },
+	Work: { bg: 'var(--work-bg)', ink: 'var(--work-ink)' },
+	Exam: { bg: 'var(--exam-bg)', ink: 'var(--exam-ink)' },
+	Event: { bg: 'var(--event-bg)', ink: 'var(--event-ink)' },
+	Hobby: { bg: 'var(--hobby-bg)', ink: 'var(--hobby-ink)' },
+	Dating: { bg: 'var(--dating-bg)', ink: 'var(--dating-ink)' },
+	None: { bg: 'var(--none-bg)', ink: 'var(--none-ink)' },
+	Busy: { bg: 'var(--busy-bg)', ink: 'var(--busy-ink)' },
 };
 
 export const USER_COLORS = ['#1C1917', '#0F766E', '#6D28D9', '#B45309'] as const;

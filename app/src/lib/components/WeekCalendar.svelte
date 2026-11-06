@@ -170,7 +170,7 @@
 					wrap.append(t);
 				} else if (p.block) {
 					const b = p.block;
-					wrap.append(square(b.status, p.ink ?? '#000', b.label, () => oncycleblock(b.id)));
+					wrap.append(square(b.status, p.ink ?? 'var(--ink)', b.label, () => oncycleblock(b.id)));
 					const col = document.createElement('div');
 					col.className = 'lt-col';
 					const s = utcToLocal(b.startAt, tz);
@@ -283,14 +283,16 @@
 <div class="wk" bind:this={el}></div>
 
 <style>
-	.wk :global(.fc) {
+	.wk:global(.fc) {
 		--fc-border-color: var(--rule);
-		--fc-today-bg-color: #fafaf9;
+		--fc-today-bg-color: var(--hover);
+		--fc-page-bg-color: var(--card);
+		--fc-neutral-bg-color: var(--ground);
 		--fc-now-indicator-color: var(--ink);
 		font-size: 12px;
 	}
-	.wk :global(.fc .fc-day-today) {
-		background: #fafaf9 !important;
+	.wk:global(.fc) :global(.fc-day-today) {
+		background: var(--hover) !important;
 	}
 	.wk :global(.fc-col-header-cell-cushion) {
 		font-size: 12px;
@@ -340,7 +342,7 @@
 		padding: 0;
 		border-radius: 4px;
 		border: 1.5px solid var(--ink);
-		background: #fff;
+		background: var(--card);
 		color: var(--ink);
 		display: flex;
 		align-items: center;
@@ -349,7 +351,7 @@
 	}
 	.wk :global(.lt-sq.on) {
 		background: var(--ink);
-		color: #fff;
+		color: var(--on-ink);
 	}
 	.wk :global(.lt-title) {
 		font-weight: 600;

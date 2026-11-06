@@ -4,7 +4,7 @@
 	import { Calendar, type EventInput } from '@fullcalendar/core';
 	import dayGridPlugin from '@fullcalendar/daygrid';
 	import interactionPlugin from '@fullcalendar/interaction';
-	import { fcDropToItem, itemToFc, makeDate, monthLabel, prettyTime } from '$lib/time';
+	import { examCountdown, fcDropToItem, itemToFc, makeDate, monthLabel, prettyTime } from '$lib/time';
 	import { colorsFor, typeClass } from '$lib/colors';
 	import type { ItemDTO, Status } from '$lib/types';
 
@@ -20,6 +20,7 @@
 		onpick,
 		ondropout,
 		onnav,
+		ondelete,
 	}: {
 		items: ItemDTO[];
 		year: number;
@@ -32,6 +33,7 @@
 		onpick: (date: string) => void;
 		ondropout: (id: string, x: number, y: number) => boolean;
 		onnav: (year: number, month: number) => void;
+		ondelete: (id: string) => void;
 	} = $props();
 
 	let el: HTMLDivElement;
@@ -46,6 +48,9 @@
 		'<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5l6 3.5-6 3.5z" fill="currentColor"/></svg>';
 	const SVG_DONE =
 		'<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
+
+	const SVG_X =
+		'<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.3" fill="var(--card)" stroke="currentColor" stroke-width="1.1"/><path d="M4.2 4.2l3.6 3.6M7.8 4.2L4.2 7.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
 
 	function toEvents(list: ItemDTO[]): EventInput[] {
 		const out: EventInput[] = [];
@@ -103,6 +108,31 @@
 			onopen(it.id);
 		});
 		wrap.append(btn, t);
+		const cd = examCountdown(it, today);
+		if (cd) {
+			const b = document.createElement('span');
+			b.className = 'lt-dl' + (cd.days <= 3 ? ' soon' : '');
+			b.textContent = cd.short;
+			b.title = cd.long;
+			wrap.append(b);
+		}
+		if (it.editable) {
+			const x = document.createElement('button');
+			x.type = 'button';
+			x.className = 'lt-x';
+			x.setAttribute('aria-label', `Delete ${it.title}`);
+			x.title = 'Delete';
+			x.innerHTML = SVG_X;
+			x.addEventListener('mousedown', stop);
+			x.addEventListener('pointerdown', stop);
+			x.addEventListener('touchstart', stop);
+			x.addEventListener('click', (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				ondelete(it.id);
+			});
+			wrap.append(x);
+		}
 		return { domNodes: [wrap] };
 	}
 
@@ -248,7 +278,7 @@
 		height: 32px;
 		border-radius: 16px;
 		border: 1px solid var(--border);
-		background: #fff;
+		background: var(--card);
 		padding: 0;
 		display: flex;
 		align-items: center;
@@ -274,7 +304,7 @@
 	}
 	.view .on {
 		background: var(--ink);
-		color: #fff;
+		color: var(--on-ink);
 		font-weight: 600;
 	}
 	.view a:hover {
@@ -307,11 +337,12 @@
 	}
 
 	/* ---- FullCalendar overrides ---- */
-	.grid :global(.fc) {
+	.grid:global(.fc) {
 		--fc-border-color: var(--rule);
 		--fc-today-bg-color: transparent;
-		--fc-page-bg-color: #fff;
+		--fc-page-bg-color: var(--card);
 		--fc-neutral-bg-color: var(--ground);
+		--fc-more-link-bg-color: var(--rule);
 		font-size: 12px;
 	}
 	.grid :global(.fc-scrollgrid) {
@@ -346,17 +377,17 @@
 		text-decoration: none !important;
 	}
 	.grid :global(.fc-day-other .fc-daygrid-day-number) {
-		color: #a8a29e;
+		color: var(--faint);
 	}
 	.grid :global(.lt-today .fc-daygrid-day-number) {
 		background: var(--ink);
-		color: #fff;
+		color: var(--on-ink);
 		border-radius: 12px;
 		margin: 4px;
 		padding: 2px 7px !important;
 	}
-	.grid :global(.fc .fc-daygrid-day.fc-day-today) {
-		background: transparent;
+	.grid:global(.fc) :global(.fc-daygrid-day.fc-day-today) {
+		background: transparent !important;
 	}
 	.grid :global(.lt-sel) {
 		box-shadow: inset 0 0 0 2px var(--ink);
@@ -382,7 +413,7 @@
 		padding: 0;
 		border-radius: 4px;
 		border: 1.5px solid var(--ink);
-		background: #fff;
+		background: var(--card);
 		color: var(--ink);
 		display: flex;
 		align-items: center;
@@ -391,7 +422,7 @@
 	}
 	.grid :global(.lt-sq.on) {
 		background: var(--ink);
-		color: #fff;
+		color: var(--on-ink);
 	}
 	.grid :global(.lt-title) {
 		flex: 1;
@@ -406,6 +437,46 @@
 	.grid :global(.lt-title:hover) {
 		text-decoration: underline;
 		color: inherit;
+	}
+	.grid :global(.lt-dl) {
+		flex: none;
+		font-size: 10px;
+		font-weight: 700;
+		padding: 0 5px;
+		height: 16px;
+		line-height: 16px;
+		border-radius: 4px;
+		border: 1px solid currentColor;
+		white-space: nowrap;
+	}
+	.grid :global(.lt-dl.soon) {
+		background: var(--exam-ink);
+		color: var(--exam-bg);
+		border-color: var(--exam-ink);
+	}
+	.grid :global(.lt-x) {
+		flex: none;
+		width: 14px;
+		height: 14px;
+		padding: 0;
+		margin-left: -2px;
+		border: 0;
+		background: none;
+		color: inherit;
+		cursor: pointer;
+		display: none;
+		align-items: center;
+		justify-content: center;
+	}
+	.grid :global(.lt-chip:hover .lt-x),
+	.grid :global(.lt-x:focus-visible) {
+		display: flex;
+	}
+	.grid :global(.lt-x:hover circle) {
+		fill: currentColor;
+	}
+	.grid :global(.lt-x:hover path) {
+		stroke: var(--card);
 	}
 	.grid :global(.is-done .lt-title) {
 		text-decoration: line-through;
