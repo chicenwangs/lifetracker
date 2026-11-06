@@ -4,7 +4,7 @@ Full file tree. Every file = pseudocode only (no real logic yet). Phase 1 fills 
 
 Note: `lib/quickadd.ts` sits in `lib/` (not `lib/server/`) so client preview can import it. Must stay pure.
 
-Not in repo yet (on Desktop copy): `docs/REQUIREMENTS.md TECHNICAL.md DEPLOYMENT.md REVIEW.md`, `scripts/transform_notion.py`, `wireframes/*.dc.html`. `data/` never pushed.
+Specs in `docs/`, `scripts/transform_notion.py` and `wireframes/` came from your Desktop commit. `data/` never pushed.
 
 ```
 .dockerignore
@@ -16,7 +16,6 @@ app
   Dockerfile
   drizzle
   drizzle.config.ts
-    .gitkeep
   eslint.config.js
   package.json
   playwright.config.ts
