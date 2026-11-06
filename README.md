@@ -10,6 +10,7 @@ Start here (Claude: read all before coding):
 5. `docs/STRUCTURE.md` — full file tree.
 6. `docs/PSEUDOCODE.md` — core flows. Per-file pseudocode = comments in each file.
 7. `docs/P1-NOTES.md` — what P1 built, where it differs from spec, what is left.
+8. `docs/HANDOFF.md` — current state + Phase 2 plan. **New chat: read this first.**
 
 | Path | What |
 |---|---|
