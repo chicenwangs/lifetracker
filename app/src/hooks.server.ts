@@ -58,6 +58,7 @@ function json403(api: boolean): Response {
 
 export const handleError: HandleServerError = ({ error, event, status }) => {
 	// log path + status only. never body, cookies, tokens.
+	if (status === 404) return { code: 'not_found', message: 'Not found' }; // no log noise (favicon.ico etc.)
 	const msg = error instanceof Error ? error.message : 'unknown';
 	console.error(`[error] ${status} ${event.request.method} ${event.url.pathname}: ${msg}`);
 	return { code: 'internal', message: 'Something broke' };

@@ -1,4 +1,7 @@
-<!-- root: import app.css. if data.user -> AppHeader + slot, else slot. -->
+<!-- root: import app.css. step 5+: if data.user -> AppHeader above children. -->
 <script lang="ts">
-  // PSEUDO only.
+	import '../app.css';
+	let { children } = $props();
 </script>
+
+{@render children()}
