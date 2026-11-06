@@ -21,108 +21,227 @@ const ctx: QAContext = {
 const p = (t: string, c: Partial<QAContext> = {}) => parseQuickAdd(t, { ...ctx, ...c });
 
 type Row = [string, Record<string, unknown>];
-const table: Row[] = [
-	// spec acceptance (new grammar)
-	[
-		'ds quiz fri 2pm /exam #ds',
-		{ title: 'ds quiz', date: '2026-11-13', time: '14:00', type: 'Exam', courseId: 'crs_ds' },
-	],
-	['ds quiz fri 4pm /exam #ds', { date: '2026-11-06', time: '16:00' }],
-	['ds quiz fri /exam', { date: '2026-11-06', time: null }],
-	// any order
-	['/exam ds quiz', { title: 'ds quiz', type: 'Exam' }],
-	['build planner website /hobby', { title: 'build planner website', type: 'Hobby' }],
-	// defaults
-	['call mum', { type: 'Event', typeSet: false, target: 'calendar', targetSet: false, date: '2026-11-06' }],
-	// whole-token + ambiguity
-	['Sun Tzu reading tmr', { title: 'Sun Tzu reading', date: '2026-11-07' }],
-	['lab 5 fri', { title: 'lab 5', date: '2026-11-06' }],
-	['dinner #spot', { title: 'dinner #spot', type: 'Event', courseId: null }],
-	['clo3d v1.30 fri', { title: 'clo3d v1.30', time: null }],
-	['sunday brunch', { title: 'brunch', date: '2026-11-08' }],
-	['fridays plan', { title: 'fridays plan' }],
-	['build planner website', { title: 'build planner website', target: 'calendar' }],
-	['shout !loud', { title: 'shout !loud' }],
-	['and/or thing', { title: 'and/or thing', ok: true }],
-	// old ! syntax no longer an option (stays title)
-	['gym !hobby', { title: 'gym !hobby', type: 'Event' }],
-	// next / this / in
+
+// Day words. /calendar so "no time" is fine and only the date is under test.
+const days: Row[] = [
+	// tomorrow + typos + punctuation
+	['gym tomorrow', { title: 'gym', date: '2026-11-07' }],
+	['gym tommorow', { title: 'gym', date: '2026-11-07' }],
+	['gym tomorow', { date: '2026-11-07' }],
+	['gym tommorrow', { date: '2026-11-07' }],
+	['gym tomorroe', { date: '2026-11-07' }],
+	['gym tmrw', { date: '2026-11-07' }],
+	['gym tmr', { date: '2026-11-07' }],
+	['gym 2moro', { date: '2026-11-07' }],
+	['gym Tomorrow.', { title: 'gym', date: '2026-11-07' }],
+	['gym, tomorrow', { title: 'gym', date: '2026-11-07' }],
+	['gym day after tomorrow', { title: 'gym', date: '2026-11-08' }],
+	['gym the day after tommorow', { title: 'gym', date: '2026-11-08' }],
+	['gym tomorrow morning', { title: 'gym', date: '2026-11-07' }],
+	// today-ish
+	['gym today', { date: '2026-11-06', dateSet: true }],
+	['gym tonight', { title: 'gym', date: '2026-11-06' }],
+	['gym tonite', { date: '2026-11-06' }],
+	['gym this evening', { title: 'gym', date: '2026-11-06' }],
+	['gym yesterday', { date: '2026-11-05', warnings: ['Date is in the past.'] }],
+	// relative
+	['gym in 3 days', { date: '2026-11-09' }],
+	['gym in two days', { title: 'gym', date: '2026-11-08' }],
+	['gym in a week', { date: '2026-11-13' }],
+	['gym in 2 weeks', { date: '2026-11-20' }],
+	['gym in a fortnight', { date: '2026-11-20' }],
+	['gym in 1 month', { date: '2026-12-06' }],
+	['gym 3 days from now', { title: 'gym', date: '2026-11-09' }],
+	['gym a week from tomorrow', { title: 'gym', date: '2026-11-14' }],
+	// weeks + weekends + months
+	['gym next week', { title: 'gym', date: '2026-11-09' }],
+	['gym next week friday', { title: 'gym', date: '2026-11-13' }],
+	['gym friday next week', { title: 'gym', date: '2026-11-13' }],
+	['gym sunday this week', { date: '2026-11-08' }],
+	['gym this weekend', { title: 'gym', date: '2026-11-07' }],
+	['gym weekend', { date: '2026-11-07' }],
+	['gym next weekend', { date: '2026-11-14' }],
+	['rent next month', { title: 'rent', date: '2026-12-01' }],
+	['rent end of the month', { title: 'rent', date: '2026-11-30' }],
+	['rent eom', { date: '2026-11-30' }],
+	// weekdays (+ typos)
+	['gym monday', { date: '2026-11-09' }],
 	['gym next monday', { date: '2026-11-09' }],
-	['gym next mon', { date: '2026-11-09' }],
 	['gym next next monday', { date: '2026-11-16' }],
 	['gym next next next mon', { date: '2026-11-23' }],
-	['gym next fri', { date: '2026-11-13' }], // today is Fri -> next Fri never today
+	['gym next fri', { date: '2026-11-13' }],
 	['gym this sat', { date: '2026-11-07' }],
-	['gym in 3 days', { date: '2026-11-09' }],
-	['gym in 2 weeks', { date: '2026-11-20' }],
-	['next steps doc', { title: 'next steps doc' }],
-	['gym tonight 9pm', { date: '2026-11-06', time: '21:00' }],
-	// dates
-	['party 5 jan', { title: 'party', date: '2027-01-05' }],
-	['party jan 5', { date: '2027-01-05' }],
-	['party 5 nov', { date: '2027-11-05' }],
+	['gym wensday', { title: 'gym', date: '2026-11-11' }],
+	['gym wednesay', { date: '2026-11-11' }],
+	['gym thrusday', { date: '2026-11-12' }],
+	['gym saterday', { date: '2026-11-07' }],
+	['gym tuseday', { date: '2026-11-10' }],
+	['gym Friday!', { title: 'gym', date: '2026-11-06' }],
+	// explicit dates
+	['party 16 nov', { title: 'party', date: '2026-11-16' }],
+	['party 16th of november', { title: 'party', date: '2026-11-16' }],
+	['party november 16th, 2027', { title: 'party', date: '2027-11-16' }],
+	['party 16 nov 2027', { date: '2027-11-16' }],
+	['party febuary 3', { title: 'party', date: '2027-02-03' }],
+	['party novemeber 20', { date: '2026-11-20' }],
 	['party 1/12', { date: '2026-12-01' }],
-	['party 31/2', { title: 'party 31/2', date: '2026-11-06' }],
+	['party 11/16', { date: '2026-11-16' }], // US order when it can only be US
+	['party 1/12/27', { date: '2027-12-01' }],
 	['party 2026-12-25', { date: '2026-12-25' }],
-	['party 2026-01-01', { date: '2026-01-01', warnings: ['Date is in the past.'] }],
 	['party 29 feb', { date: '2028-02-29' }],
-	['party 21st dec', { date: '2026-12-21' }],
+	['party jan 5', { date: '2027-01-05' }],
+	['party the 20th', { title: 'party', date: '2026-11-20' }],
+	['party on the 20th', { title: 'party', date: '2026-11-20' }],
+	['party the 3rd', { date: '2026-12-03' }],
+	['party the 31st', { date: '2026-12-31' }],
+	['party the 20th of december', { title: 'party', date: '2026-12-20' }],
+	// weekday glued to a date
+	['party mon 16 nov', { title: 'party', date: '2026-11-16', warnings: [] }],
+	['party Monday, 16 November', { title: 'party', date: '2026-11-16', warnings: [] }],
+	['party tue 16 nov', { title: 'party', date: '2026-11-16', warnings: ['16/11 is a Mon, not a Tue.'] }],
+	// little words
+	['dinner on friday', { title: 'dinner', date: '2026-11-06' }],
+	['dinner, fri', { title: 'dinner' }],
+	['submit essay by wed', { title: 'submit essay', date: '2026-11-11' }],
+	// not dates
+	['tuesdays plan', { title: 'tuesdays plan', dateSet: false }],
+	['remember 5 things', { title: 'remember 5 things', dateSet: false }],
+	['Sun Tzu reading tmr', { title: 'Sun Tzu reading', date: '2026-11-07' }],
+	['lab 5 fri', { title: 'lab 5', date: '2026-11-06' }],
+	['clo3d v1.30 fri', { title: 'clo3d v1.30' }],
+	['fridays plan', { title: 'fridays plan' }],
+	['next steps doc', { title: 'next steps doc', dateSet: false }],
+	['party 31/2', { title: 'party 31/2', dateSet: false }],
 	['move mon meeting to wed', { title: 'move mon meeting to', date: '2026-11-11' }],
-	// times
+	['dinner #spot', { title: 'dinner #spot', courseId: null }],
+	['and/or thing', { title: 'and/or thing' }],
+	['shout !loud', { title: 'shout !loud' }],
+	// rollover
+	['party 5 jan', { date: '2027-01-05' }],
+	['party 5 nov', { date: '2027-11-05' }],
+	['party 2026-01-01', { date: '2026-01-01', warnings: ['Date is in the past.'] }],
+];
+
+// Times. Default (planner) so ranges + snapping are visible.
+const timesRows: Row[] = [
+	['gym 6pm', { time: '18:00', endTime: '19:00', notes: ['60 min default'] }],
+	['gym 6PM', { time: '18:00' }],
+	['gym 7:30 pm', { title: 'gym', time: '19:30' }],
+	['gym 7 p.m.', { title: 'gym', time: '19:00' }],
+	['gym 5 pm sat', { title: 'gym', time: '17:00', date: '2026-11-07' }],
+	['gym 18:30', { time: '18:30' }],
+	['gym 18.30', { time: '18:30' }],
+	['gym 18h30', { time: '18:30' }],
+	['gym noon tmr', { time: '12:00' }],
+	['gym midday tmr', { time: '12:00' }],
+	['gym 12am sat', { time: '00:00' }],
+	['dinner at 7pm', { title: 'dinner', time: '19:00' }],
+	['dinner on friday at 7pm', { title: 'dinner', date: '2026-11-06', time: '19:00' }],
+	['meet at the cafe 7pm', { title: 'meet at the cafe', time: '19:00' }],
+	['gym 6pm to 8pm', { time: '18:00', endTime: '20:00' }],
+	['gym from 6pm to 8pm', { title: 'gym', time: '18:00', endTime: '20:00' }],
+	['gym 6-8pm', { time: '18:00', endTime: '20:00' }],
+	['gym 6 - 8pm', { title: 'gym', time: '18:00', endTime: '20:00' }],
+	['gym 6 to 8pm', { time: '18:00', endTime: '20:00' }],
+	['gym 6 pm to 8 pm', { title: 'gym', time: '18:00', endTime: '20:00' }],
+	['gym 6pm till 8pm', { time: '18:00', endTime: '20:00' }],
+	['gym between 6 and 8pm', { title: 'gym', time: '18:00', endTime: '20:00' }],
+	['gym 18:00-19:30', { time: '18:00', endTime: '19:30' }],
+	['gym 6pm for 90m', { endTime: '19:30' }],
+	['gym 6pm for 1h30', { endTime: '19:30' }],
+	['gym 6pm for 2 hours', { title: 'gym', endTime: '20:00' }],
+	['gym 6pm for an hour', { title: 'gym', endTime: '19:00' }],
+	['gym 6pm for half an hour', { title: 'gym', endTime: '18:30' }],
+	['tea for 2 6pm', { title: 'tea for 2', time: '18:00' }],
+	['gym 6:07pm to 7:52pm', { time: '18:00', endTime: '19:45', notes: ['rounded to 15 min'] }],
+	['movie sat 9pm to 3am', { time: '21:00', endTime: '03:00', endNextDay: true, endMinutes: 1620 }],
+	['lunch 24:00 sat', { title: 'lunch 24:00', time: null, ok: false }],
+	['price rm5.50 sat 6pm', { title: 'price rm5.50' }],
 	['call 2:30pm', { time: '14:30', warnings: ['Time already passed today.'] }],
-	['call 14.30 tmr', { time: '14:30', date: '2026-11-07', warnings: [] }],
-	['call 9am mon', { time: '09:00', date: '2026-11-09' }],
-	['call 12am sat', { time: '00:00' }],
-	['call 5 pm sat', { title: 'call', time: '17:00' }],
-	['call noon sat', { time: '12:00' }],
-	['lunch 24:00 sat', { title: 'lunch 24:00', time: null }],
-	['price rm5.50 sat', { title: 'price rm5.50', time: null }],
-	// calendar ignores end
-	['gym 6pm to 8pm', { time: '18:00', endTime: null, target: 'calendar' }],
-	// planner
+	['standup fri 9am', { date: '2026-11-13' }], // today + passed -> next week
+];
+
+// Where it goes.
+const targetRows: Row[] = [
+	['call mum 6pm', { target: 'planner', targetSet: false, type: 'Event', typeSet: false }],
+	['/planner call mum 6pm', { target: 'planner', targetSet: true }],
+	['outing sat /calendar', { target: 'calendar', time: null, endTime: null }],
+	['outing sat 2pm /calendar', { target: 'calendar', time: '14:00', endTime: null }],
 	[
-		'/hobby build planner website /planner next next monday 6pm to 10pm',
+		'outing sat 2pm to 6pm /calendar',
+		{ target: 'calendar', time: '14:00', endTime: null, notes: ['end time needs /both'] },
+	],
+	['outing sat 2pm to 6pm /both', { target: 'both', time: '14:00', endTime: '18:00' }],
+	['/calendar /planner outing sat 2pm', { target: 'both', endTime: '15:00' }],
+	['outing sat all day /calendar', { title: 'outing', time: null }],
+	[
+		'ds quiz fri 2pm /exam #ds /calendar',
+		{
+			title: 'ds quiz',
+			date: '2026-11-13',
+			time: '14:00',
+			type: 'Exam',
+			courseId: 'crs_ds',
+			target: 'calendar',
+		},
+	],
+	['assignment #sysprog fri /cal', { type: 'Work', courseId: 'crs_sp', title: 'assignment' }],
+	[
+		'read #fyp 8pm',
+		{ type: 'Work', notes: ['60 min default', 'course is only saved with /calendar or /both'] },
+	],
+	[
+		'/hobby build planner website /both next next monday 6pm to 10pm',
 		{
 			title: 'build planner website',
 			type: 'Hobby',
-			target: 'planner',
+			target: 'both',
 			date: '2026-11-16',
 			time: '18:00',
 			endTime: '22:00',
-			endNextDay: false,
 		},
 	],
-	['gym /planner sat 6-8pm', { time: '18:00', endTime: '20:00' }],
-	['gym /planner sat 6 to 8pm', { time: '18:00', endTime: '20:00' }],
-	['gym /planner sat 6 pm to 8 pm', { title: 'gym', time: '18:00', endTime: '20:00' }],
-	['gym /planner sat 18:00-19:30', { time: '18:00', endTime: '19:30' }],
-	['gym /planner sat 6pm', { time: '18:00', endTime: '19:00', notes: ['60 min default'] }],
-	['gym /planner sat 6pm for 90m', { endTime: '19:30' }],
-	['gym /planner sat 6pm for 1h30', { endTime: '19:30' }],
-	['gym /planner sat 6:07pm to 7:52pm', { time: '18:00', endTime: '19:45', notes: ['rounded to 15 min'] }],
-	['movie /planner sat 9pm to 3am', { time: '21:00', endTime: '03:00', endNextDay: true, endMinutes: 1620 }],
-	['sleep /plan sat 11pm to 6am', { target: 'planner', endNextDay: true }],
-	['gym /cal sat', { target: 'calendar' }],
 ];
 
-describe('quick add table', () => {
-	it('has >= 30 cases', () => expect(table.length).toBeGreaterThanOrEqual(30));
-	for (const [input, want] of table) {
-		it(JSON.stringify(input), () => {
-			const r = p(input);
-			if (want.ok === undefined) expect(r.problems).toEqual([]);
-			expect(r).toMatchObject(want);
-		});
-	}
-	it('weekday today with passed time rolls +7', () => {
-		expect(p('standup fri 9am')).toMatchObject({ date: '2026-11-13' });
+for (const [name, rows] of [
+	['days', days.map(([t, w]) => [`${t} /calendar`, w] as Row)],
+	['times', timesRows],
+	['where it goes', targetRows],
+] as [string, Row[]][]) {
+	describe(`quick add: ${name}`, () => {
+		for (const [input, want] of rows) {
+			it(JSON.stringify(input), () => {
+				const r = p(input);
+				if (want.ok === undefined) expect(r.problems).toEqual([]);
+				expect(r).toMatchObject(want);
+			});
+		}
 	});
+}
+
+describe('quick add: context-dependent', () => {
+	it('has a big table', () =>
+		expect(days.length + timesRows.length + targetRows.length).toBeGreaterThan(120));
 	it('5 jan on 2026-12-01 -> 2027', () => {
-		expect(p('party 5 jan', { today: '2026-12-01' })).toMatchObject({ date: '2027-01-05' });
+		expect(p('party 5 jan /cal', { today: '2026-12-01' })).toMatchObject({ date: '2027-01-05' });
 	});
-	it('next monday on a Monday = +7', () => {
-		expect(p('gym next mon', { today: '2026-11-09' })).toMatchObject({ date: '2026-11-16' });
-		expect(p('gym mon', { today: '2026-11-09', nowMinutes: 60 })).toMatchObject({ date: '2026-11-09' });
+	it('next monday on a Monday = +7; bare monday = today', () => {
+		expect(p('gym next mon /cal', { today: '2026-11-09' })).toMatchObject({ date: '2026-11-16' });
+		expect(p('gym mon /cal', { today: '2026-11-09', nowMinutes: 60 })).toMatchObject({ date: '2026-11-09' });
+	});
+	it('"next fri" vs "fri next week" from a Tuesday', () => {
+		const tue = { today: '2026-11-10' };
+		expect(p('gym next fri /cal', tue).date).toBe('2026-11-13');
+		expect(p('gym fri next week /cal', tue).date).toBe('2026-11-20');
+		expect(p('gym next week /cal', tue).date).toBe('2026-11-16');
+	});
+	it('weekend on a Sunday = today; next weekend = next Saturday', () => {
+		const sun = { today: '2026-11-08' };
+		expect(p('gym this weekend /cal', sun).date).toBe('2026-11-08');
+		expect(p('gym next weekend /cal', sun).date).toBe('2026-11-14');
+	});
+	it('in 1 month clamps to month end', () => {
+		expect(p('rent in 1 month /cal', { today: '2027-01-31' }).date).toBe('2027-02-28');
 	});
 });
 
@@ -130,21 +249,24 @@ describe('problems (shown on Enter only)', () => {
 	it('empty', () => expect(p('').problems[0]).toMatch(/Type something/));
 	it('no title', () => {
 		expect(p('fri 2pm').problems[0]).toMatch(/Add a title first/);
-		expect(p('5 jan').ok).toBe(false);
-		expect(p('/hobby').problems[0]).toMatch(/Add a title first/);
+		expect(p('/hobby').problems.join(' ')).toMatch(/Add a title first/);
 	});
-	it('planner needs a time', () => {
-		const r = p('gym /planner sat');
+	it('planner (default) needs a time and says how to fix it', () => {
+		const r = p('call mum');
 		expect(r.ok).toBe(false);
-		expect(r.problems[0]).toMatch(/planner needs a time/);
+		expect(r.problems[0]).toMatch(/Planner entries need a time/);
+		expect(r.problems[0]).toMatch(/\/calendar/);
 	});
+	it('/both needs a time', () =>
+		expect(p('outing sat /both').problems[0]).toMatch(/`\/both` also adds a planner block/));
+	it('/calendar does not need a time', () => expect(p('outing sat /calendar').ok).toBe(true));
 	it('unknown /option', () => {
-		const r = p('gym /hobbys');
+		const r = p('gym 6pm /hobbys');
 		expect(r.ok).toBe(false);
 		expect(r.problems[0]).toMatch(/`\/hobbys` isn't an option/);
 		expect(r.title).toBe('gym');
 	});
-	it('lists every problem', () => expect(p('/foo /planner').problems).toHaveLength(3)); // bad option, no time, no title
+	it('lists every problem', () => expect(p('/foo').problems).toHaveLength(3)); // bad option, no time, no title
 });
 
 describe('palette helpers', () => {
@@ -155,26 +277,28 @@ describe('palette helpers', () => {
 		expect(activeOptionToken('gym')).toBeNull();
 	});
 	it('slash menu filters', () => {
-		expect(optionsFor('/', ctx.courses)).toHaveLength(7);
+		expect(optionsFor('/', ctx.courses)).toHaveLength(8);
 		expect(optionsFor('/p', ctx.courses).map((o) => o.token)).toEqual(['/planner']);
+		expect(optionsFor('/b', ctx.courses).map((o) => o.token)).toEqual(['/both']);
 		expect(optionsFor('/da', ctx.courses).map((o) => o.token)).toEqual(['/date']);
 		expect(optionsFor('#s', ctx.courses).map((o) => o.label)).toEqual(['SP', 'SS']);
 	});
 	it('ghost text', () => {
-		expect(ghostHint('', p(''), ctx.courses)).toBe('/type  title  /calendar or /planner  day  time');
+		expect(ghostHint('', p(''), ctx.courses)).toBe('title  day  time   optional: /type  /calendar or /both');
 		expect(ghostHint('/hob', p('/hob'), ctx.courses)).toBe('by');
 		expect(ghostHint('/hobby', p('/hobby'), ctx.courses)).toBe('');
-		expect(ghostHint('/hobby gym', p('/hobby gym'), ctx.courses)).toBe('  /calendar or /planner  day  time');
-		const full = '/hobby gym /planner fri 6pm';
+		expect(ghostHint('/hobby gym', p('/hobby gym'), ctx.courses)).toBe('  day  time  /calendar or /both');
+		const full = '/hobby gym /both fri 6pm';
 		expect(ghostHint(full, p(full), ctx.courses)).toBe('');
 	});
 });
 
-// ---------- server: item + linked block ----------
+// ---------- server ----------
 import { freshDb } from './helpers';
 import * as usersRepo from '../../src/lib/server/repo/users';
 import { quickAdd } from '../../src/lib/server/quickadd-server';
 import * as blocksRepo from '../../src/lib/server/repo/blocks';
+import * as itemsRepo from '../../src/lib/server/repo/items';
 
 describe('quickAdd server', () => {
 	let me: App.SafeUser;
@@ -191,31 +315,45 @@ describe('quickAdd server', () => {
 			}),
 		);
 	});
-	it('calendar: item only', () => {
-		const r = quickAdd(me, 'call mum tmr 6pm', NOW);
-		expect(r.item).toMatchObject({ title: 'call mum', date: '2026-11-07', time: '18:00', type: 'Event' });
+	it('default: planner block only, no calendar item', () => {
+		const r = quickAdd(me, 'drive to kuching tmr 6pm', NOW);
+		expect(r.item).toBeNull();
+		expect(r.block).toMatchObject({
+			label: 'drive to kuching',
+			type: 'Event',
+			itemId: null,
+			startAt: '2026-11-07T10:00:00Z',
+			endAt: '2026-11-07T11:00:00Z',
+		});
+	});
+	it('/calendar: item only', () => {
+		const r = quickAdd(me, 'outing sat /calendar', NOW);
+		expect(r.item).toMatchObject({ title: 'outing', date: '2026-11-07', time: null, type: 'Event' });
 		expect(r.block).toBeNull();
 		expect(blocksRepo.forItem(me.id, r.item!.id)).toHaveLength(0);
 	});
-	it('planner: item + linked block in UTC', () => {
-		const r = quickAdd(me, '/hobby build planner website /planner next next monday 6pm to 10pm', NOW);
+	it('/both: item + linked block in UTC', () => {
+		const r = quickAdd(me, '/hobby build planner website /both next next monday 6pm to 10pm', NOW);
 		expect(r.item).toMatchObject({
 			title: 'build planner website',
 			type: 'Hobby',
 			date: '2026-11-16',
 			time: '18:00',
 		});
-		expect(r.block).toMatchObject({ startAt: '2026-11-16T10:00:00Z', endAt: '2026-11-16T14:00:00Z' });
-		const bs = blocksRepo.forItem(me.id, r.item!.id);
-		expect(bs).toHaveLength(1);
-		expect(bs[0]?.label).toBe('build planner website');
+		expect(r.block).toMatchObject({
+			startAt: '2026-11-16T10:00:00Z',
+			endAt: '2026-11-16T14:00:00Z',
+			itemId: r.item!.id,
+		});
+		expect(blocksRepo.forItem(me.id, r.item!.id)).toHaveLength(1);
 	});
 	it('planner across midnight', () => {
-		const r = quickAdd(me, 'movie /planner sat 9pm to 3am', NOW);
+		const r = quickAdd(me, 'movie sat 9pm to 3am', NOW);
 		expect(r.block).toMatchObject({ startAt: '2026-11-07T13:00:00Z', endAt: '2026-11-07T19:00:00Z' });
 	});
 	it('problems -> 400, nothing saved', () => {
-		expect(() => quickAdd(me, 'gym /planner sat', NOW)).toThrow(/planner needs a time/);
-		expect(() => quickAdd(me, '/hobby', NOW)).toThrow(/Add a title first/);
+		expect(() => quickAdd(me, 'gym sat', NOW)).toThrow(/Planner entries need a time/);
+		expect(() => quickAdd(me, '/hobby 6pm', NOW)).toThrow(/Add a title first/);
+		expect(itemsRepo.withCounts([]).length).toBe(0);
 	});
 });

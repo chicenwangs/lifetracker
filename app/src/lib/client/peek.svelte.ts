@@ -1,6 +1,7 @@
 // Centre peek. Open state lives here (not in page.state: invalidateAll() resets page.state).
 // pushState gives the peek its own URL + history entry, so Back closes it and reload = full page.
 import { pushState } from '$app/navigation';
+import { calendarChanged } from './bus.svelte';
 
 export const peek = $state<{ id: string | null; origin: { x: number; y: number } | null }>({
 	id: null,
@@ -23,6 +24,8 @@ if (typeof window !== 'undefined') {
 		if (peek.id && location.pathname !== `/item/${peek.id}`) {
 			pushed = false;
 			peek.id = null;
+			// a refresh still in flight while the URL changed can be dropped -> refetch once on close
+			calendarChanged();
 		}
 	});
 }
@@ -43,5 +46,8 @@ export function closePeek() {
 	if (!peek.id) return;
 	if (pushed)
 		history.back(); // popstate clears peek.id
-	else peek.id = null;
+	else {
+		peek.id = null;
+		calendarChanged();
+	}
 }

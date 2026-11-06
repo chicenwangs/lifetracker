@@ -171,14 +171,14 @@
 		position: absolute;
 		right: 0;
 		top: 44px;
-		background: var(--card);
+		background: var(--raised);
 		border: 1px solid var(--border);
 		border-radius: 12px;
 		min-width: 200px;
 		padding: 6px;
 		display: flex;
 		flex-direction: column;
-		box-shadow: 0 8px 24px rgb(0 0 0 / 0.1);
+		box-shadow: 0 8px 24px var(--shadow);
 	}
 	.who {
 		padding: 8px 10px;
@@ -201,7 +201,7 @@
 	}
 	.menu a:hover,
 	.menu button:hover {
-		background: var(--hover);
+		background: var(--rule);
 		text-decoration: none;
 	}
 </style>

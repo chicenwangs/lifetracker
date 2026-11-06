@@ -67,7 +67,7 @@
 				editable: i.editable,
 				durationEditable: false,
 				backgroundColor: c.bg,
-				borderColor: c.bg,
+				borderColor: c.line,
 				textColor: c.ink,
 				classNames: ['lt-chip', typeClass(i.type), ...(i.status === 'done' ? ['is-done'] : [])],
 				extendedProps: { item: i },
@@ -397,6 +397,7 @@
 		margin: 1px 4px 2px !important;
 		padding: 2px 4px !important;
 		border: 0 !important;
+		box-shadow: inset 0 0 0 1px var(--line);
 		cursor: grab;
 	}
 	.grid :global(.lt-inner) {

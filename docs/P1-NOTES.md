@@ -13,7 +13,7 @@ Caveman doc. What got built, where it differs from spec, what is left.
 | Month colour blocks, square cycles + persists | e2e 4 |
 | Planner drag 13:00–14:30, resize 14:45, 23:00–06:00 both days | e2e 5, unit time |
 | Drag DS Quiz chip → linked red block | e2e 6 |
-| Quick add `ds quiz fri 2pm /exam #ds` (+ `/planner` item+block) | e2e 7, unit `quickadd.test.ts` (77) |
+| Quick add `ds quiz fri 2pm /exam #ds /calendar` (+ planner default, `/both`) | e2e 7, unit `quickadd.test.ts` (154) |
 | reset-password script | e2e 8 |
 
 Tests: `npm run test:unit` (103) · `npm run test:e2e` (8, needs `npx playwright install chromium` once).

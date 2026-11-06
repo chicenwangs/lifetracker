@@ -85,7 +85,7 @@ test('month shows colour chips; square cycles + persists', async () => {
 	await page.goto('/');
 	const chip = page.locator('.lt-chip', { hasText: 'DS Quiz' });
 	await expect(chip).toBeVisible();
-	await expect(chip).toHaveCSS('background-color', 'rgb(69, 10, 10)'); // Exam bg (dark theme = default)
+	await expect(chip).toHaveCSS('background-color', 'rgb(80, 15, 28)'); // Exam bg (dark theme = default)
 	await chip.locator('.lt-sq').click();
 	await expect(chip.locator('.lt-sq')).toHaveAttribute('aria-label', /In progress/);
 	await page.reload();
@@ -138,10 +138,10 @@ test('drag "DS Quiz" chip to planner -> linked red block', async () => {
 		.dragTo(grid, { targetPosition: { x: 150, y: 16 * 48 + 5 } });
 	const b = page.locator('.blk[aria-label^="DS Quiz,"]');
 	await expect(b).toHaveAttribute('aria-label', /16:00 – 17:00/);
-	await expect(b).toHaveCSS('background-color', 'rgb(69, 10, 10)');
+	await expect(b).toHaveCSS('background-color', 'rgb(80, 15, 28)');
 });
 
-test('quick add palette "ds quiz fri 2pm /exam #ds" + /planner', async () => {
+test('quick add palette: planner by default, /calendar big events, /both', async () => {
 	await page.locator('body').click({ position: { x: 5, y: 880 } });
 	await page.keyboard.press('n');
 	const dlg = page.getByRole('dialog', { name: 'Quick add' });
@@ -153,45 +153,51 @@ test('quick add palette "ds quiz fri 2pm /exam #ds" + /planner', async () => {
 	await page.keyboard.type('#ds');
 	await expect(page.locator('#qa-slots')).toContainText('Exam');
 	await expect(page.locator('#qa-slots')).toContainText('#DS');
+	await expect(page.locator('#qa-slots')).toContainText('Planner · default');
 	// problems only on Enter
 	await page.keyboard.press('Escape'); // close menu
 	await page.keyboard.press('Escape'); // clear text
-	await page.keyboard.type('/hobby');
+	await page.keyboard.type('call mum tommorow');
 	await expect(page.locator('#qa-err')).toHaveCount(0);
-	await page.keyboard.press('Escape'); // close menu
 	await page.keyboard.press('Enter');
-	await expect(page.locator('#qa-err')).toContainText('Add a title first');
+	await expect(page.locator('#qa-err')).toContainText('Planner entries need a time');
 	await page.keyboard.press('Escape'); // clear text
-	await page.keyboard.type('ds quiz fri 2pm /exam #ds ');
+	// big event -> calendar only
+	await page.keyboard.type('ds quiz fri 2pm /exam #ds /calendar ');
 	await page.keyboard.press('Enter');
 	await expect(dlg.locator('.log')).toContainText('Added ds quiz to calendar');
-	// planner = item + linked block, snapped
-	await page.keyboard.type('/hobby e2e gym /planner tmr 6:07pm to 8pm');
+	// filler -> planner only, snapped, typo day word
+	await page.keyboard.type('e2e drive tommorow 6:07pm to 8pm');
 	await page.keyboard.press('Enter');
-	await expect(dlg.locator('.log')).toContainText('Added e2e gym to calendar + planner');
+	await expect(dlg.locator('.log')).toContainText('Added e2e drive to planner');
+	// both
+	await page.keyboard.type('/hobby e2e outing tmrw 2pm to 4pm /both ');
+	await page.keyboard.press('Enter');
+	await expect(dlg.locator('.log')).toContainText('Added e2e outing to calendar + planner');
 	await page.keyboard.press('Escape');
 	await expect(dlg).toHaveCount(0);
-	{
-		const d = await today();
-		const r = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 3)}`);
-		const j = r.j as {
-			items: { id: string; title: string; time: string }[];
-			blocks: { itemId: string | null; startAt: string; endAt: string }[];
-		};
-		const gym = j.items.find((i) => i.title === 'e2e gym');
-		expect(gym?.time).toBe('18:00');
-		const b = j.blocks.find((x) => x.itemId === gym?.id);
-		expect(b?.startAt.slice(11, 16)).toBe('10:00'); // 18:00 KL
-		expect(b?.endAt.slice(11, 16)).toBe('12:00');
-	}
+
 	const d = await today();
 	const r = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 8)}`);
-	const it = (
-		r.j as { items: { title: string; type: string; time: string; date: string; courseId: string }[] }
-	).items.find((i) => i.title === 'ds quiz');
-	expect(it).toMatchObject({ type: 'Exam', time: '14:00' });
-	expect(it?.courseId).toBeTruthy();
-	expect(new Date(it!.date + 'T00:00:00Z').getUTCDay()).toBe(5); // a Friday
+	const j = r.j as {
+		items: { id: string; title: string; type: string; time: string; date: string; courseId: string }[];
+		blocks: { label: string; itemId: string | null; startAt: string; endAt: string }[];
+	};
+	const quiz = j.items.find((i) => i.title === 'ds quiz');
+	expect(quiz).toMatchObject({ type: 'Exam', time: '14:00' });
+	expect(quiz?.courseId).toBeTruthy();
+	expect(new Date(quiz!.date + 'T00:00:00Z').getUTCDay()).toBe(5); // a Friday
+	expect(j.blocks.some((b) => b.itemId === quiz?.id)).toBe(false);
+	// planner-only: block, no calendar item
+	expect(j.items.some((i) => i.title === 'e2e drive')).toBe(false);
+	const drive = j.blocks.find((b) => b.label === 'e2e drive');
+	expect(drive?.itemId).toBeNull();
+	expect(drive?.startAt.slice(11, 16)).toBe('10:00'); // 18:00 KL
+	expect(drive?.endAt.slice(11, 16)).toBe('12:00');
+	// both: item + linked block
+	const outing = j.items.find((i) => i.title === 'e2e outing');
+	expect(outing?.time).toBe('14:00');
+	expect(j.blocks.find((b) => b.itemId === outing?.id)?.startAt.slice(11, 16)).toBe('06:00');
 });
 
 test('item opens as centre peek: blur, rename in place, notes, linked block, hover X', async () => {
@@ -230,7 +236,7 @@ test('item opens as centre peek: blur, rename in place, notes, linked block, hov
 	await page.mouse.up();
 	const b = dlg.locator('.blk[aria-label^="DS Quiz 2, 10:00 – 11:00"]');
 	await expect(b).toBeVisible();
-	await expect(b).toHaveCSS('background-color', 'rgb(69, 10, 10)');
+	await expect(b).toHaveCSS('background-color', 'rgb(80, 15, 28)');
 	// Esc closes, home planner shows the same linked block
 	await page.keyboard.press('Escape');
 	await expect(dlg).toBeHidden();

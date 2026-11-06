@@ -1,8 +1,9 @@
 <!--
   FR-Q1..Q3 (rev 2026-11-06): N opens a chat-style palette.
-  Any order: /type  title  /calendar|/planner  day  time  [#course].
+  Any order: title  day  time  [/type]  [/calendar | /both]  [#course].
+  Default = planner block only (fillers stay off the month). /calendar = big event only. /both = item + linked block.
   Grey ghost text = format guide + completion. `/` or `#` opens a small option menu at the cursor.
-  Slots preview live; problems only on Enter. Server re-parses (truth). /planner = item + linked block.
+  Slots preview live; problems only on Enter. Server re-parses (truth).
 -->
 <script lang="ts">
 	import { tick } from 'svelte';
@@ -13,6 +14,7 @@
 		parseQuickAdd,
 		type QACourse,
 		type QAOption,
+		type QATarget,
 	} from '$lib/quickadd';
 	import { nowLocalMinutes, prettyDate, prettyTime, todayLocal } from '$lib/time';
 	import { del, post } from '$lib/client/api';
@@ -25,7 +27,13 @@
 	type Log =
 		| { kind: 'me'; text: string }
 		| { kind: 'info'; text: string }
-		| { kind: 'added'; itemId: string; title: string; summary: string; undone: boolean };
+		| {
+				kind: 'added';
+				undoPath: string;
+				title: string;
+				summary: string;
+				undone: boolean;
+		  };
 
 	let open = $state(false);
 	let text = $state('');
@@ -50,11 +58,21 @@
 	// what's already picked (ticks in the menu)
 	const before = $derived(optTok ? parseQuickAdd(text.slice(0, text.length - optTok.length), ctx()) : parsed);
 
+	const WHERE: Record<QATarget, string> = {
+		planner: 'planner',
+		calendar: 'calendar',
+		both: 'calendar + planner',
+	};
+	const WHERE_SLOT: Record<QATarget, string> = {
+		planner: 'Planner',
+		calendar: 'Calendar',
+		both: 'Calendar + planner',
+	};
 	const shortDate = (d: string) => prettyDate(d).replace(/ \d{4}$/, '');
 	const tc = (t: ItemType) => colorsFor(t);
 
 	function timeLabel(p = parsed): string {
-		if (!p.time) return p.target === 'planner' ? 'add a time' : 'All day';
+		if (!p.time) return p.target === 'calendar' ? 'All day' : 'add a time';
 		const s = prettyTime(p.time);
 		return p.endTime ? `${s} – ${prettyTime(p.endTime)}${p.endNextDay ? ' (+1 day)' : ''}` : s;
 	}
@@ -64,8 +82,7 @@
 	}
 	function picked(o: QAOption): boolean {
 		if (o.group === 'Type') return before.typeSet && before.type === o.type;
-		if (o.group === 'Goes to')
-			return before.targetSet && before.target === (o.token === '/planner' ? 'planner' : 'calendar');
+		if (o.group === 'Goes to') return before.targetSet && before.target === o.target;
 		return before.courseCode === o.label;
 	}
 
@@ -124,21 +141,23 @@
 		const sent = text.trim();
 		try {
 			const r = await post<{
-				item: { id: string; title: string; date: string; type: ItemType | null };
-				block: unknown;
-				target: 'calendar' | 'planner';
+				item: { id: string; title: string; date: string; type: ItemType | null } | null;
+				block: { id: string; label: string; type: ItemType | null } | null;
+				target: QATarget;
 				notes: string[];
 				warnings: string[];
 			}>('/api/quickadd', { text: sent });
 			history.push(sent);
 			log.push({ kind: 'me', text: sent });
 			const extra = [...r.notes, ...r.warnings];
+			// undo: deleting the item also removes its linked block
+			const undoPath = r.item ? `/api/items/${r.item.id}` : `/api/blocks/${r.block?.id ?? ''}`;
 			log.push({
 				kind: 'added',
-				itemId: r.item.id,
-				title: r.item.title,
+				undoPath,
+				title: r.item?.title ?? r.block?.label ?? p.title,
 				summary:
-					`${r.target === 'planner' ? 'calendar + planner' : 'calendar'} · ${shortDate(r.item.date)} · ${timeLabel(p)} · ${r.item.type ?? 'None'}` +
+					`${WHERE[r.target]} · ${shortDate(p.date)} · ${timeLabel(p)} · ${r.item?.type ?? r.block?.type ?? 'None'}` +
 					(extra.length ? ` (${extra.join(', ')})` : ''),
 				undone: false,
 			});
@@ -155,7 +174,7 @@
 
 	async function undo(entry: Extract<Log, { kind: 'added' }>) {
 		try {
-			await del(`/api/items/${entry.itemId}`);
+			await del(entry.undoPath);
 			entry.undone = true;
 			log.push({ kind: 'info', text: `Removed ${entry.title}.` });
 			calendarChanged();
@@ -215,8 +234,10 @@
 		<div class="pal" role="dialog" aria-modal="true" aria-label="Quick add">
 			<div class="log" bind:this={logEl} aria-live="polite">
 				<div class="bot">
-					Type what you want to add, in any order. Type <code>/</code> to pick a type or where it goes{courses.length
-						? ', or # for a course'
+					Type what you want to add, in any order. It goes on the planner; add <code>/calendar</code> for a
+					big event or
+					<code>/both</code> for both. Type <code>/</code> for options{courses.length
+						? ', # for a course'
 						: ''}.
 				</div>
 				{#each log as l, i (i)}
@@ -274,7 +295,13 @@
 									></span>
 								{:else}
 									<span class="sw ic" aria-hidden="true"
-										>{o.group === 'Course' ? '#' : o.token === '/planner' ? '◷' : '▦'}</span
+										>{o.group === 'Course'
+											? '#'
+											: o.target === 'planner'
+												? '◷'
+												: o.target === 'both'
+													? '⧉'
+													: '▦'}</span
 									>
 								{/if}
 								<span class="tok">{o.token}</span>
@@ -304,13 +331,7 @@
 				</div>
 				<div class="s" class:d={!parsed.targetSet}>
 					<span class="k">Goes to</span>
-					<span class="v"
-						>{!parsed.targetSet
-							? 'Calendar · default'
-							: parsed.target === 'planner'
-								? 'Calendar + planner'
-								: 'Calendar'}</span
-					>
+					<span class="v">{parsed.targetSet ? WHERE_SLOT[parsed.target] : 'Planner · default'}</span>
 				</div>
 				<div class="s" class:d={!parsed.dateSet}>
 					<span class="k">Day</span><span class="v"
@@ -389,10 +410,10 @@
 	.pal {
 		width: 640px;
 		max-width: calc(100vw - 32px);
-		background: var(--card);
+		background: var(--raised);
 		border: 1px solid var(--border);
 		border-radius: 14px;
-		box-shadow: 0 16px 48px rgb(0 0 0 / 0.18);
+		box-shadow: 0 16px 48px var(--shadow);
 		color: var(--ink);
 	}
 	.log {
@@ -474,10 +495,10 @@
 		position: absolute;
 		top: 50px;
 		width: 264px;
-		background: var(--card);
+		background: var(--raised);
 		border: 1px solid var(--border);
 		border-radius: 10px;
-		box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+		box-shadow: 0 8px 24px var(--shadow);
 		padding: 4px;
 		z-index: 2;
 		font-size: 13px;
@@ -496,7 +517,7 @@
 		cursor: pointer;
 	}
 	.mi.on {
-		background: var(--hover);
+		background: var(--rule);
 		outline: 1px solid var(--border);
 	}
 	.sw {

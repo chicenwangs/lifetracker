@@ -83,7 +83,7 @@
 				editable: i.editable,
 				durationEditable: false,
 				backgroundColor: c.bg,
-				borderColor: c.bg,
+				borderColor: c.line,
 				textColor: c.ink,
 				classNames: ['lt-chip', typeClass(i.type), ...(i.status === 'done' ? ['is-done'] : [])],
 				extendedProps: { kind: 'item', item: i },
@@ -101,9 +101,9 @@
 				allDay: false,
 				editable: b.editable,
 				backgroundColor: c.bg,
-				borderColor: c.bg,
+				borderColor: c.line,
 				textColor: c.ink,
-				classNames: ['lt-blk', ...(b.status === 'done' ? ['is-done'] : [])],
+				classNames: ['lt-blk', typeClass(blockType(b)), ...(b.status === 'done' ? ['is-done'] : [])],
 				extendedProps: { kind: 'block', block: b, ink: c.ink },
 			});
 		}
@@ -319,8 +319,9 @@
 		padding: 2px 4px;
 		cursor: grab;
 	}
+	.wk :global(.lt-chip),
 	.wk :global(.lt-blk) {
-		box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06);
+		box-shadow: inset 0 0 0 1px var(--line, transparent);
 	}
 	.wk :global(.lt-inner) {
 		display: flex;

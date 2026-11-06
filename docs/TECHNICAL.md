@@ -417,17 +417,18 @@ DayPlanner (custom):
 
 StatusSquare: `<button>` 16 px chips / 20 px blocks. todo = empty border; doing = ▶ inside; done = filled ink + ✓. aria-label "Not started. Click to start" etc. Space/Enter.
 
-QuickAdd (FR-Q1..Q3b, rev 2026-11-06): `QuickAdd.svelte` = header button + palette (fixed scrim, dialog). Parser `lib/quickadd.ts` (pure, client preview + server truth). Returns `QAParse` always (never throws): fields + `*Set` flags (slot defaults) + `notes` + `warnings` + `problems[]` (backtick = code in UI; shown only on Enter; server 400 with first problem). Helpers same file: `activeOptionToken`, `optionsFor` (menu), `ghostHint`.
+QuickAdd (FR-Q1..Q3c, rev 2026-11-06b): `QuickAdd.svelte` = header button + palette (fixed scrim, dialog). Parser `lib/quickadd.ts` (pure, client preview + server truth). Returns `QAParse` always (never throws): fields + `*Set` flags (slot defaults) + `notes` + `warnings` + `problems[]` (backtick = code in UI; shown only on Enter; server 400 with first problem). Helpers same file: `activeOptionToken`, `optionsFor` (menu), `ghostHint`.
 Rules:
-1. Tokenise on whitespace, whole-token, case-insensitive. Any order.
-2. `/x` options: types `work exam event hobby date dating`; destinations `calendar cal` → calendar, `planner plan timeline` → planner. Unknown `/x` → problem. `#x` = course alias/code; unknown `#x` stays title. `!x` no longer special (stays title).
-3. Days: `today tdy tonight`, `tmr tmrw tomorrow`, `in N days|weeks`, weekday `mon..sun`/full, `this <wd>`, `next <wd>` (coming one, never today), `next next <wd>` (+7 per extra), `D MON`/`MON D` (+ ordinals), `D/M[/YYYY]` (day/month), `YYYY-MM-DD`. LAST date wins; earlier stay title.
-4. Times: `2pm 2:30pm 14:00 14.30 noon midnight`, `5 pm`. Ranges: `6pm-10pm`, `6-10pm` (am/pm borrowed from end), `6pm to|till|until|- 10pm`, `6 to 10pm`, `18:00-22:00`. Duration `for 2h|90m|1h30|1.5h`. LAST time wins.
-5. Rollover: bare weekday → next occurrence incl. today, +7 if today and time passed. `D MON`/`D/M` → this year, if before today → next year. No date → today (warning if time passed).
-6. Defaults: type `#course` ? Work : Event; destination calendar. Title = leftover tokens; empty → problem.
-7. Planner: time required (problem). Snap start/end to 15 (`notes: rounded to 15 min`). No end → +60 (`60 min default`). end ≤ start → +1440 (crosses midnight), min 15 min. Server (`quickadd-server.ts`): one `sqlite.transaction` → `items.create` + `blocks.create({itemId, startAt, endAt})` via `localToUtc` (minutes > 1440 = next day). Calendar: end dropped (`notes: end time is only used by /planner`).
-8. P3: `every mon[,wed]` → rrule.
-Test table ≥ 30 (now 60+) incl. "Sun Tzu reading tmr", "lab 5 fri", "dinner #spot", "clo3d v1.30 fri", "next next monday", "9pm to 3am", "6:07pm to 7:52pm" snap, server item+block UTC.
+1. Tokenise on whitespace; match on `norm(token)` (lower-case, wrapping punctuation stripped, inner dots kept). Any order. Title = leftover original tokens, edge punctuation trimmed.
+2. `/x` options: types `work exam event hobby date dating`; destinations `planner plan timeline block` → planner, `calendar cal` → calendar, `both` → both (`/calendar` + `/planner` together = both). Unknown `/x` → problem. `#x` = course alias/code; unknown `#x` stays title.
+3. Days: word tables + typo tables (WEEKDAY_WORDS, MONTH_WORDS, W_TODAY/W_TMR/W_YDAY) + fuzzy (optimal string alignment): tomorrow ≤2 (starts `t`, 6–10 chars), yesterday ≤2, tonight ≤1, long weekday/month names ≤1 (≤2 for wednesday) and same first letter (stops remember→december); plural weekdays never. Phrases: day after tomorrow, this/tomorrow + morning|afternoon|evening|night, in N day|week|fortnight|month (N digit or one..twelve/a/an), N unit from now|today|tomorrow, next week (Mon), next/this week + wd, wd + next/this week, next weekend (Sat next week), this/the weekend (coming Sat; Sun = today), next month (1st), end of (the) month / eom, next^n wd, this wd. Explicit: YYYY-MM-DD, D/M[/YY|YYYY] (US swap only if M>12), D[th] [of] MON [YYYY], MON D[th] [YYYY], the Dth [of MON], on Dth. Weekday hit adjacent to an explicit date merges into it (+ mismatch warning). LAST date wins; earlier stay title.
+4. Times: 12h (`6pm`, `6 pm`, `6:30 p.m.`), 24h (`18:30 18.30 18h30`), noon midday midnight. Ranges `a-b` in one token, `a SEP b` with SEP `to till til until - – —`, `between a and b`; a bare start borrows am/pm from the end. Durations after `for`: `2h 90m 1h30 1.5h`, `2 hours`, `an hour`, `half an hour` (bare `for 2` = title). `all day` = no time. LAST time wins.
+5. Glue words `on at by from between around @` directly before a used day/time token → not title.
+6. Rollover: bare weekday → next occurrence incl. today, +7 if today and time passed. `D MON`/`D/M` → this year, if before today → next year. `the Dth` → this month, else next month that has it. `in 1 month` clamps to month end. No date → today.
+7. Defaults: type `#course` ? Work : Event. Destination planner.
+8. Planner / both: time required (problem, two fixes named). Snap start/end to 15 (`rounded to 15 min`). No end → +60 (`60 min default`). end ≤ start → +1440, min 15 min. Calendar: end dropped (`end time needs /both`). Server (`quickadd-server.ts`), one `sqlite.transaction`: calendar|both → `items.create`; planner|both → `blocks.create` (planner: own label + type, `itemId` null; both: linked to the item) via `localToUtc` (minutes > 1440 = next day). Response `{item|null, block|null, target, notes, warnings}`. Palette undo: item → DELETE item (soft-deletes linked block), planner → DELETE block.
+9. P3: `every mon[,wed]` → rrule.
+Tests: `tests/unit/quickadd.test.ts` ≈ 150 cases (days, times, destinations, problems, palette helpers, server item/block).
 
 Places open-now (FR-P4), in user tz: Morning 06:00–12:00; All Day 06:00–24:00; Night 17:00–02:00 next day. A Night window after midnight belongs to the PREVIOUS day (closed_on checked on that day). `open_when=[]` → "hours unknown", excluded from Open now filter, shown with grey tag. `closed_on=[]` → open daily.
 
@@ -449,7 +450,15 @@ theirs: repeating-linear-gradient(135deg, bg 0 5px, #fff 5px 8px) + 1px dashed i
 user.color palette (never a Type ink): #1C1917 (Jeremy), #0F766E (Neina, teal), #6D28D9, #B45309
 done: line-through + filled square. NO opacity (contrast). Planner done block: bg stays, text ink.
 ```
-Dark mode: P3.
+Dark mode (default theme, `:root[data-theme='dark']` in `app.css`): Radix Colors dark scales. Surfaces step up: ground #111110 < card #191918 < raised #222221 (palette, menus); border #31312e, rule #2a2a28, ink #eeeeec, quiet #b5b3ad, input #6f6d66 (3.4:1 on card), link #70b8ff, now-line #e5484d.
+Type (dark)  bg (step 4)  line (step 6)  ink (step 11)   ink/bg
+Work         #003362      #104d87        #70b8ff         6.1
+Exam         #500f1c      #72232d        #ff9592         7.0
+Event        #113b29      #20573e        #3dd68c         6.7
+Hobby        #3f2700      #5c3d05        #ffca16         9.1
+Dating       #4b143d      #692955        #ff8dcc         6.8
+None         #2a2a28      #3b3a37        #eeeeec        12.4
+`--{type}-line` = 1px chip/block edge (light theme: = bg, i.e. invisible). `--raised` light = #fff. `--now` light = ink.
 
 ## 10. Data import
 

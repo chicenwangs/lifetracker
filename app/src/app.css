@@ -2,6 +2,7 @@
 :root {
 	--ground: #f5f5f4;
 	--card: #ffffff;
+	--raised: #ffffff;
 	--border: #d6d3d1;
 	--rule: #e7e5e4;
 	--ink: #1c1917;
@@ -13,18 +14,25 @@
 	--r-chip: 6px;
 
 	--work-bg: #dbeafe;
+	--work-line: #dbeafe;
 	--work-ink: #1e3a8a;
 	--exam-bg: #fee2e2;
+	--exam-line: #fee2e2;
 	--exam-ink: #7f1d1d;
 	--event-bg: #dcfce7;
+	--event-line: #dcfce7;
 	--event-ink: #14532d;
 	--hobby-bg: #fef3c7;
+	--hobby-line: #fef3c7;
 	--hobby-ink: #713f12;
 	--dating-bg: #fce7f3;
+	--dating-line: #fce7f3;
 	--dating-ink: #831843;
 	--none-bg: #e7e5e4;
+	--none-line: #e7e5e4;
 	--none-ink: #292524;
 	--busy-bg: #e7e5e4;
+	--busy-line: #e7e5e4;
 	--busy-ink: #44403c;
 
 	--on-ink: #ffffff; /* text on ink-filled buttons/squares */
@@ -32,6 +40,7 @@
 	--hover: #f5f5f4;
 	--faint: #a8a29e;
 	--field: #ffffff;
+	--now: #1c1917;
 	--shadow: rgb(0 0 0 / 0.12);
 	--scrim: rgb(28 25 23 / 0.28);
 	color-scheme: light;
@@ -48,39 +57,50 @@
 	line-height: 1.4;
 }
 
-/* Dark (default). Same token names; type pairs keep 4.5:1 text on bg. */
+/* Dark (default). Layered warm greys + Radix-style tinted type colours (Radix Colors dark scales:
+   sand / blue / red / green / amber / pink). Surfaces step up in lightness: ground < card < raised.
+   Every text pair >= 6:1, input borders >= 3:1 (checked). Type chips = step 4 bg, step 6 edge, step 11 text. */
 :root[data-theme='dark'] {
-	--ground: #0c0a09;
-	--card: #1c1917;
-	--border: #44403c;
-	--rule: #292524;
-	--ink: #f5f5f4;
-	--quiet: #a8a29e;
-	--input: #78716c;
-	--link: #93c5fd;
+	--ground: #111110;
+	--card: #191918;
+	--raised: #222221;
+	--border: #31312e;
+	--rule: #2a2a28;
+	--ink: #eeeeec;
+	--quiet: #b5b3ad;
+	--input: #6f6d66;
+	--link: #70b8ff;
 
-	--work-bg: #172554;
-	--work-ink: #bfdbfe;
-	--exam-bg: #450a0a;
-	--exam-ink: #fecaca;
-	--event-bg: #052e16;
-	--event-ink: #bbf7d0;
-	--hobby-bg: #422006;
-	--hobby-ink: #fde68a;
-	--dating-bg: #500724;
-	--dating-ink: #fbcfe8;
-	--none-bg: #292524;
-	--none-ink: #e7e5e4;
-	--busy-bg: #292524;
-	--busy-ink: #d6d3d1;
+	--work-bg: #003362;
+	--work-line: #104d87;
+	--work-ink: #70b8ff;
+	--exam-bg: #500f1c;
+	--exam-line: #72232d;
+	--exam-ink: #ff9592;
+	--event-bg: #113b29;
+	--event-line: #20573e;
+	--event-ink: #3dd68c;
+	--hobby-bg: #3f2700;
+	--hobby-line: #5c3d05;
+	--hobby-ink: #ffca16;
+	--dating-bg: #4b143d;
+	--dating-line: #692955;
+	--dating-ink: #ff8dcc;
+	--none-bg: #2a2a28;
+	--none-line: #3b3a37;
+	--none-ink: #eeeeec;
+	--busy-bg: #222221;
+	--busy-line: #31312e;
+	--busy-ink: #b5b3ad;
 
-	--on-ink: #1c1917;
+	--on-ink: #111110;
 	--ink-hover: #ffffff;
-	--hover: #292524;
-	--faint: #57534e;
-	--field: #0c0a09;
-	--shadow: rgb(0 0 0 / 0.5);
-	--scrim: rgb(0 0 0 / 0.45);
+	--hover: #222221;
+	--faint: #7c7b74;
+	--field: #111110;
+	--now: #e5484d;
+	--shadow: rgb(0 0 0 / 0.55);
+	--scrim: rgb(0 0 0 / 0.6);
 	color-scheme: dark;
 }
 
@@ -120,26 +140,32 @@ h3 {
 .t-work {
 	--bg: var(--work-bg);
 	--fg: var(--work-ink);
+	--line: var(--work-line);
 }
 .t-exam {
 	--bg: var(--exam-bg);
 	--fg: var(--exam-ink);
+	--line: var(--exam-line);
 }
 .t-event {
 	--bg: var(--event-bg);
 	--fg: var(--event-ink);
+	--line: var(--event-line);
 }
 .t-hobby {
 	--bg: var(--hobby-bg);
 	--fg: var(--hobby-ink);
+	--line: var(--hobby-line);
 }
 .t-dating {
 	--bg: var(--dating-bg);
 	--fg: var(--dating-ink);
+	--line: var(--dating-line);
 }
 .t-none {
 	--bg: var(--none-bg);
 	--fg: var(--none-ink);
+	--line: var(--none-line);
 }
 
 /* ---- shared controls ---- */

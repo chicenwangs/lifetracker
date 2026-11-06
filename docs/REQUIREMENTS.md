@@ -78,13 +78,14 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 - FR-H15 Header: nav (only pages already built), quick add, search (P2), avatar → Settings.
 - FR-H16 Undated items = "Unscheduled" list (Week right panel). Imported: "Her Birthday".
 
-### 4.3 Quick add (P1, rev 2026-11-06 "N palette"; P3 extras)
+### 4.3 Quick add (P1, rev 2026-11-06b "planner first"; P3 extras)
 
 - FR-Q1 Header "+ Add N" button. Key `N` (not while typing in a field) opens a chat-style palette: log of what was added (Undo each), input, slots, footer keys. Enter adds, Esc closes menu → clears text → closes palette, ↑ on empty = last line. Palette stays open for batch adding.
-- FR-Q2 Grey ghost text in the input = format guide `/type  title  /calendar or /planner  day  time`, shrinks to only the missing slots as you type, and completes a half-typed option. Labelled slots (Type, Title, Goes to, Day, Time, Course) fill live; defaults dashed + "default". **No errors while typing.** On Enter, each problem shown at the bottom: what's wrong + how to fix (e.g. "Add a title first…").
-- FR-Q3 Any order. Options start with `/`: types `/work /exam /event /hobby /date`, destinations `/calendar` (`/cal`) `/planner` (`/plan`). Typing `/` (or `#` for courses) opens a small menu at the cursor (↑↓, Enter/Tab, click; filters as you type; tick on picked). Days + times need no slash. Leftover words = title. Defaults: Event (Work if `#course`), calendar, today. Unknown `/x` = problem. Full grammar TECHNICAL §8.
-- FR-Q3a `/planner` = item + linked block (one transaction). Needs a time. Snap 15 min. Single time = 60 min. Ranges `6pm to 10pm`, `6-10pm`, `for 2h`. End ≤ start = crosses midnight. `/calendar` ignores end time.
-- FR-Q3b Days: `next mon` = the coming Monday (never today); each extra `next` = +1 week. Bare weekday = next occurrence incl. today (+7 if today and time passed). Explicit date (`16 nov`, `16/11`) always exact.
+- FR-Q2 Grey ghost text = format guide `title  day  time   optional: /type  /calendar or /both`, shrinks to the missing slots, completes a half-typed option. Labelled slots (Type, Title, Goes to, Day, Time, Course) fill live; defaults dashed + "default". **No errors while typing.** On Enter each problem shows at the bottom: what's wrong + how to fix.
+- FR-Q3 Any order. Options start with `/`: types `/work /exam /event /hobby /date`; destinations `/calendar` (`/cal`), `/both`, `/planner` (= default). `/` (or `#` for courses) opens a small menu at the cursor (↑↓, Enter/Tab, click, filters, tick on picked). Days + times need no prefix. Leftover words = title. Defaults: Event (Work if `#course`), planner, today. Unknown `/x` = problem. Grammar TECHNICAL §8.
+- FR-Q3a **Where it goes.** Default = **planner only**: a time block, no calendar item (fillers like "drive to X" keep the month clean). Needs a time. `/calendar` = calendar item only (big events, time optional, end time ignored). `/both` (or `/calendar /planner`) = calendar item + linked block, one transaction. Blocks snap 15 min, single time = 60 min, end ≤ start = crosses midnight. Course only saved on calendar items.
+- FR-Q3b **Days** (common English + typos): today/tonight/this evening, tomorrow (+ tommorow, tmrw, 2moro …), day after tomorrow, yesterday, in 3 days / in a week / in a fortnight / in 1 month, 3 days from now, a week from tomorrow, weekday names (+ typos: wensday, thrusday …; plurals like "tuesdays" stay title), `next mon` = the coming Monday (never today) and each extra `next` +1 week, `this sat`, next week (= its Monday), `fri next week` (that week's Friday), this/next weekend, next month (= 1st), end of month / eom, 16 nov · 16th of november · nov 16th, 2027 · the 16th · 16/11 (D/M; 11/16 read US only when it can't be D/M) · 2026-11-16, month typos (febuary, novemeber …). A weekday next to a date belongs to it ("Mon 16 Nov", mismatch = warning). Glue words `on at by from between` around a day/time are dropped from the title. Punctuation ignored ("tomorrow," "fri.").
+- FR-Q3c **Times**: 6pm · 6 pm · 6:30 p.m. · 18:30 · 18.30 · 18h30 · noon/midday/midnight · ranges `6pm to|till|until|- 8pm`, `6-8pm`, `6 to 8pm`, `from 6pm to 8pm`, `between 6 and 8pm`, `18:00-19:30` · durations `for 2h | 90m | 1h30 | 2 hours | an hour | half an hour` · `all day`.
 - FR-Q4 (P3) `every mon,wed` → recurring (rrule + skip dates).
 
 ### 4.4 Item detail (P1)
@@ -202,7 +203,7 @@ P1:
 - [ ] Nov 2026 month shows colour blocks. Square cycles + persists.
 - [ ] Planner: drag 13:00–14:30 block, resize to 14:45 (15-min snap). Block 23:00–06:00 shows on both days.
 - [ ] Drag "DS Quiz" chip to 13:00 → linked red block.
-- [x] Quick add `ds quiz fri 2pm /exam #ds` → Exam, Fri 14:00 (next Fri if past), course DS. `/hobby gym /planner tmr 6:07pm to 8pm` → item + linked block 18:00–20:00.
+- [x] Quick add `ds quiz fri 2pm /exam #ds /calendar` → Exam item, Fri 14:00 (next Fri if past), course DS. `drive tommorow 6:07pm to 8pm` → planner block only 18:00–20:00. `/both` → item + linked block.
 - [ ] reset-password script works.
 
 P2:

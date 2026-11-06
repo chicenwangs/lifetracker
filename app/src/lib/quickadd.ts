@@ -1,14 +1,13 @@
-// Quick add parser (FR-Q1..Q3, TECHNICAL §8, rev 2026-11-06 "N palette").
-// PURE: client preview + server (truth) use same code.
-// Grammar, any order:  /type  title  /calendar|/planner  day  time  [#course]
-// · options start with `/` (types + destinations), courses with `#`. Unknown `/x` = problem; unknown `#x` stays title.
-// · whole-token matches only · LAST date wins, LAST time wins (earlier ones stay in title)
-// · days: today tdy tonight tmr tomorrow · mon..sun · this mon · next mon (= the coming Mon, never today)
-//   · next next mon (+1 week per extra next) · in 3 days / in 2 weeks · 10 nov · nov 10 · 10/11 (D/M) · 2026-11-10
-// · times: 6pm 6:30pm 18:30 18.30 noon midnight "6 pm" · ranges 6pm to 10pm, 6-10pm, 18:00-22:00 · for 2h / 90m / 1h30
-// · /planner = item + linked block: needs a time, snaps to 15 min, single time = 60 min, end <= start = next day.
-// · default type = course ? Work : Event · default destination calendar · default day today.
-// Never throws, never blocks typing: problems[] only shown on Enter.
+// Quick add parser (FR-Q1..Q3c, TECHNICAL §8, rev 2026-11-06b "planner first").
+// PURE: client preview + server (truth) use the same code. Never throws; problems[] only shown on Enter.
+//
+// Any order:  title  day  time  [/type]  [/calendar | /both]  [#course]
+// · No destination = PLANNER ONLY (a time block, keeps the month calendar clean). Needs a time.
+// · /calendar = calendar item only (big events, time optional). /both = calendar item + linked planner block.
+// · Options start with `/`; unknown `/x` = problem. `#x` = course; unknown `#x` stays title.
+// · Days, times and their little words (on, at, by, from) need no prefix. LAST day wins, LAST time wins.
+// · Day words tolerate common typos (tommorow, wensday, febuary …) and punctuation (tomorrow, / fri.).
+// · Planner times snap to 15 min; single time = 60 min; end <= start = crosses midnight.
 import { addDays, hhmm, isDate, makeDate, weekdayOf } from './time';
 import type { ItemType } from './types';
 
@@ -22,7 +21,7 @@ export interface QAContext {
 	nowMinutes: number; // local minutes since 00:00
 	courses: QACourse[];
 }
-export type QATarget = 'calendar' | 'planner';
+export type QATarget = 'planner' | 'calendar' | 'both';
 export interface QAParse {
 	ok: boolean; // = problems.length === 0
 	title: string;
@@ -34,10 +33,10 @@ export interface QAParse {
 	targetSet: boolean;
 	date: string;
 	dateSet: boolean;
-	/** start HH:MM (snapped for planner) or null = all day */
+	/** start HH:MM (snapped when a block is made) or null = all day */
 	time: string | null;
 	startMinutes: number | null;
-	/** planner only: end minutes from the start day's 00:00 (may be > 1440 = next day) */
+	/** block only (planner/both): end minutes from the start day's 00:00 (> 1440 = next day) */
 	endMinutes: number | null;
 	endTime: string | null;
 	endNextDay: boolean;
@@ -45,6 +44,8 @@ export interface QAParse {
 	warnings: string[]; // shown with the result, never block
 	problems: string[]; // shown on Enter; `code` in backticks
 }
+
+// ---------- vocabulary ----------
 
 export const TYPE_WORDS: Record<string, ItemType> = {
 	work: 'Work',
@@ -55,171 +56,461 @@ export const TYPE_WORDS: Record<string, ItemType> = {
 	dating: 'Dating',
 };
 export const TARGET_WORDS: Record<string, QATarget> = {
-	calendar: 'calendar',
-	cal: 'calendar',
 	planner: 'planner',
 	plan: 'planner',
 	timeline: 'planner',
+	block: 'planner',
+	calendar: 'calendar',
+	cal: 'calendar',
+	both: 'both',
 };
-const WEEKDAYS: Record<string, number> = {
-	mon: 1,
-	monday: 1,
-	tue: 2,
-	tues: 2,
-	tuesday: 2,
-	wed: 3,
-	weds: 3,
-	wednesday: 3,
-	thu: 4,
-	thur: 4,
-	thurs: 4,
-	thursday: 4,
-	fri: 5,
-	friday: 5,
-	sat: 6,
-	saturday: 6,
-	sun: 7,
-	sunday: 7,
+
+const W_TODAY = new Set([
+	'today',
+	'tdy',
+	'tday',
+	'2day',
+	'todya',
+	'tdoay',
+	'tody',
+	'todat',
+	'tonight',
+	'tonite',
+	'tnite',
+	'tonigh',
+	'tonght',
+]);
+const W_TMR = new Set(
+	(
+		'tmr tmrw tmw tmro tmrow tmrrw tmrw tomo tomoz tmoro 2moro 2morro 2morrow 2mrw 2mro tomorrow tomorow ' +
+		'tommorow tommorrow tomorro tomrrow tomorrw tomarrow tommarow tomoro tomrw tommorw tomorrrow tomrow tmrww'
+	).split(' '),
+);
+const W_YDAY = new Set(['yesterday', 'yday', 'ystd', 'yest', 'yesterdy', 'yesturday', 'yestarday', 'ytd']);
+const PART_OF_DAY = new Set(['morning', 'afternoon', 'evening', 'arvo', 'night']);
+
+const WEEKDAY_WORDS: Record<string, number> = {};
+(
+	[
+		[1, 'mon monday mondy monady mnday mondya'],
+		[2, 'tue tues tuesday tuseday teusday tusday tuesdy tueday'],
+		[3, 'wed weds wednes wednesday wensday wendsday wedensday wednsday wednseday wedsday wednesdy wedneday'],
+		[4, 'thu thur thurs thrs thursday thrusday thursady tursday thurday thurdsay thursdy'],
+		[5, 'fri friday fridy firday frday fryday fridya'],
+		[6, 'sat saturday saterday satruday saturaday satuday satday saturdy'],
+		[7, 'sun sunday sundy sunady snday sundya'],
+	] as const
+).forEach(([n, words]) => words.split(' ').forEach((w) => (WEEKDAY_WORDS[w] = n)));
+const WEEKDAY_FUZZY: [string, number][] = [
+	['tuesday', 2],
+	['wednesday', 3],
+	['thursday', 4],
+	['saturday', 6],
+];
+
+const MONTH_WORDS: Record<string, number> = {};
+(
+	[
+		[1, 'jan january janurary janury januray'],
+		[2, 'feb february febuary feburary febrary febraury'],
+		[3, 'mar march'],
+		[4, 'apr april'],
+		[5, 'may'],
+		[6, 'jun june'],
+		[7, 'jul july'],
+		[8, 'aug august agust augst auguest'],
+		[9, 'sep sept september septmber setpember'],
+		[10, 'oct october ocotber octobre'],
+		[11, 'nov november novmber novemeber novembre'],
+		[12, 'dec december decmber decemeber decembre'],
+	] as const
+).forEach(([n, words]) => words.split(' ').forEach((w) => (MONTH_WORDS[w] = n)));
+const MONTH_FUZZY: [string, number][] = [
+	['january', 1],
+	['february', 2],
+	['september', 9],
+	['october', 10],
+	['november', 11],
+	['december', 12],
+];
+
+const NUMBER_WORDS: Record<string, number> = {
+	a: 1,
+	an: 1,
+	one: 1,
+	two: 2,
+	three: 3,
+	four: 4,
+	five: 5,
+	six: 6,
+	seven: 7,
+	eight: 8,
+	nine: 9,
+	ten: 10,
+	eleven: 11,
+	twelve: 12,
 };
-const MONTHS: Record<string, number> = {
-	jan: 1,
-	january: 1,
-	feb: 2,
-	february: 2,
-	mar: 3,
-	march: 3,
-	apr: 4,
-	april: 4,
-	may: 5,
-	jun: 6,
-	june: 6,
-	jul: 7,
-	july: 7,
-	aug: 8,
-	august: 8,
-	sep: 9,
-	sept: 9,
-	september: 9,
-	oct: 10,
-	october: 10,
-	nov: 11,
-	november: 11,
-	dec: 12,
-	december: 12,
+type Unit = 'day' | 'week' | 'month';
+const UNIT_WORDS: Record<string, [Unit, number]> = {
+	day: ['day', 1],
+	days: ['day', 1],
+	week: ['week', 1],
+	weeks: ['week', 1],
+	wk: ['week', 1],
+	wks: ['week', 1],
+	fortnight: ['week', 2],
+	fortnights: ['week', 2],
+	month: ['month', 1],
+	months: ['month', 1],
 };
-const RANGE_SEP = new Set(['to', 'till', 'until', '-', '–']);
+const RANGE_SEP = new Set(['to', 'till', 'til', 'until', '-', '–', '—']);
+const PREPS = new Set(['on', 'at', 'by', 'from', 'between', 'around', '@']);
 
 const DAYNUM = /^(\d{1,2})(st|nd|rd|th)?$/;
+const ORDINAL = /^(\d{1,2})(st|nd|rd|th)$/;
+const YEAR = /^(19|20)\d\d$/;
 const T12 = /^(1[0-2]|0?[1-9])(?:[:.]([0-5]\d))?(am|pm)$/;
-const T24 = /^([01]?\d|2[0-3])[:.]([0-5]\d)$/;
-const BAREHOUR = /^(1[0-2]|0?[1-9])$/;
-const DM = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?$/;
+const T24 = /^([01]?\d|2[0-3])[:.h]([0-5]\d)$/;
+const HM_NOSUFFIX = /^(1[0-2]|0?[1-9])(?:[:.]([0-5]\d))?$/;
+const DM = /^(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?$/;
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
-const DUR = /^(?:(\d+(?:\.\d+)?)(?:h|hr|hrs|hour|hours))?(?:(\d+)(?:m|min|mins)?)?$/;
+const DUR_H = /^(\d+(?:\.\d+)?)(?:h|hr|hrs|hour|hours)(?:(\d{1,2})(?:m|min|mins)?)?$/;
+const DUR_M = /^(\d+)(?:m|min|mins|minute|minutes)$/;
 
-type DateHit = {
-	idx: number[];
-	raw: string;
-	abs?: string;
-	wd?: number;
-	next?: number; // 0 = bare/this, n = "next" x n
-	d?: number;
-	m?: number;
-	y?: number;
-};
-type TimeHit = { idx: number[]; start: number; end: number | null };
+// ---------- small helpers ----------
 
-const suffixOf = (t: string | undefined) => /(am|pm)$/.exec(t ?? '')?.[1] as 'am' | 'pm' | undefined;
-
-/** one time token -> minutes. `fallback` am/pm lets "6 to 10pm" read the 6 as 6pm. */
-function timeOf(t: string, fallback?: 'am' | 'pm'): number | null {
-	let m: RegExpExecArray | null;
-	if ((m = T12.exec(t))) return ((Number(m[1]) % 12) + (m[3] === 'pm' ? 12 : 0)) * 60 + Number(m[2] ?? 0);
-	if ((m = T24.exec(t))) return Number(m[1]) * 60 + Number(m[2]);
-	if (t === 'noon') return 720;
-	if (t === 'midnight') return 0;
-	if (fallback && BAREHOUR.test(t)) return ((Number(t) % 12) + (fallback === 'pm' ? 12 : 0)) * 60;
+/** lower-case, strip wrapping punctuation: "Tomorrow," -> "tomorrow", "(fri)" -> "fri". Keeps inner dots (14.30). */
+function norm(t: string): string {
+	return t
+		.toLowerCase()
+		.replace(/^[("'[]+/, '')
+		.replace(/[)"'\],;:!?]+$/, '')
+		.replace(/\.$/, '');
+}
+/** optimal string alignment distance (Levenshtein + adjacent swap) */
+function osa(a: string, b: string): number {
+	const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
+		Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+	);
+	for (let i = 1; i <= a.length; i++)
+		for (let j = 1; j <= b.length; j++) {
+			const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+			const row = d[i] as number[];
+			const prev = d[i - 1] as number[];
+			row[j] = Math.min((prev[j] ?? 0) + 1, (row[j - 1] ?? 0) + 1, (prev[j - 1] ?? 0) + cost);
+			if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+				row[j] = Math.min(row[j] ?? 0, ((d[i - 2] as number[])[j - 2] ?? 0) + 1);
+		}
+	return (d[a.length] as number[])[b.length] ?? 99;
+}
+function isTomorrow(t: string | undefined): boolean {
+	if (!t) return false;
+	if (W_TMR.has(t)) return true;
+	return t.length >= 6 && t.length <= 10 && t[0] === 't' && osa(t, 'tomorrow') <= 2;
+}
+function isToday(t: string | undefined): boolean {
+	if (!t) return false;
+	if (W_TODAY.has(t)) return true;
+	return t.length >= 6 && t.length <= 8 && t.startsWith('to') && osa(t, 'tonight') <= 1;
+}
+function isYesterday(t: string | undefined): boolean {
+	if (!t) return false;
+	if (W_YDAY.has(t)) return true;
+	return t.length >= 7 && t.length <= 11 && t[0] === 'y' && osa(t, 'yesterday') <= 2;
+}
+function weekdayOfWord(t: string | undefined): number | null {
+	if (!t) return null;
+	const w = WEEKDAY_WORDS[t];
+	if (w) return w;
+	if (t.length < 7) return null;
+	if (t.endsWith('s') && WEEKDAY_WORDS[t.slice(0, -1)]) return null; // plural "tuesdays" = not a date
+	for (const [full, n] of WEEKDAY_FUZZY)
+		if (t[0] === full[0] && osa(t, full) <= (full.length >= 9 ? 2 : 1)) return n;
 	return null;
 }
-function durationOf(t: string | undefined): number | null {
+function monthOfWord(t: string | undefined): number | null {
 	if (!t) return null;
-	const m = DUR.exec(t);
-	if (!m || (!m[1] && !m[2])) return null;
-	const min = Math.round((m[1] ? Number(m[1]) * 60 : 0) + (m[2] ? Number(m[2]) : 0));
-	return min > 0 ? min : null;
+	const m = MONTH_WORDS[t];
+	if (m) return m;
+	if (t.length < 6) return null;
+	for (const [full, n] of MONTH_FUZZY) if (t[0] === full[0] && osa(t, full) <= 1) return n;
+	return null;
 }
-function yearDate(y: number, m: number, d: number): string | null {
+function numberOf(t: string | undefined): number | null {
+	if (!t) return null;
+	if (/^\d{1,3}$/.test(t)) return Number(t);
+	return NUMBER_WORDS[t] ?? null;
+}
+const ampmOf = (t: string | undefined): 'am' | 'pm' | null => {
+	const x = (t ?? '').replace(/\./g, '');
+	return x === 'am' || x === 'pm' ? x : null;
+};
+const suffixOf = (t: string | undefined) => /(am|pm)$/.exec(t ?? '')?.[1] as 'am' | 'pm' | undefined;
+
+function ymd(y: number, m: number, d: number): string | null {
 	const s = makeDate(y, m, d);
 	return isDate(s) && s === `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` ? s : null;
 }
+function parts(date: string): [number, number, number] {
+	return [Number(date.slice(0, 4)), Number(date.slice(5, 7)), Number(date.slice(8, 10))];
+}
+function lastDayOfMonth(y: number, m: number): string {
+	for (let d = 31; d >= 28; d--) {
+		const s = ymd(y, m, d);
+		if (s) return s;
+	}
+	return makeDate(y, m, 28);
+}
+function addMonths(date: string, n: number): string {
+	const [y, m, d] = parts(date);
+	const t = y * 12 + (m - 1) + n;
+	const ny = Math.floor(t / 12);
+	const nm = (t % 12) + 1;
+	return ymd(ny, nm, d) ?? lastDayOfMonth(ny, nm);
+}
+const mondayOfWeek = (date: string) => addDays(date, 1 - weekdayOf(date));
+
+/** one time token -> minutes. `fallback` am/pm lets "6 to 10pm" read the 6 as 6pm. */
+function timeOf(raw: string, fallback?: 'am' | 'pm' | null): number | null {
+	const t = raw.replace(/(\d)([ap])\.m\.?$/, '$1$2m');
+	let m: RegExpExecArray | null;
+	if ((m = T12.exec(t))) return ((Number(m[1]) % 12) + (m[3] === 'pm' ? 12 : 0)) * 60 + Number(m[2] ?? 0);
+	if ((m = T24.exec(t))) return Number(m[1]) * 60 + Number(m[2]);
+	if (t === 'noon' || t === 'midday' || t === '12noon') return 720;
+	if (t === 'midnight') return 0;
+	if (fallback && (m = HM_NOSUFFIX.exec(t)))
+		return ((Number(m[1]) % 12) + (fallback === 'pm' ? 12 : 0)) * 60 + Number(m[2] ?? 0);
+	return null;
+}
+/** time starting at token i: "6pm" | "6 pm" | "6:30 p.m." -> [minutes, tokens used] */
+function timeAt(low: string[], i: number, fallback?: 'am' | 'pm' | null): [number, number] | null {
+	const t = low[i] ?? '';
+	const ap = ampmOf(low[i + 1]);
+	if (ap && HM_NOSUFFIX.test(t)) {
+		const v = timeOf(t + ap);
+		if (v !== null) return [v, 2];
+	}
+	const v = timeOf(t, fallback);
+	return v === null ? null : [v, 1];
+}
+/** "for 2h" "for 90m" "for 1h30" "for 2 hours" "for an hour" "for half an hour" -> [minutes, tokens after "for"] */
+function durationAt(low: string[], i: number): [number, number] | null {
+	const a = low[i] ?? '';
+	const b = low[i + 1];
+	let m: RegExpExecArray | null;
+	if ((m = DUR_H.exec(a))) return [Math.round(Number(m[1]) * 60 + Number(m[2] ?? 0)), 1];
+	if ((m = DUR_M.exec(a))) return [Number(m[1]), 1];
+	if (a === 'half' && (b === 'an' || b === 'a') && /^(hour|hr)$/.test(low[i + 2] ?? '')) return [30, 3];
+	const n = /^\d+(\.\d+)?$/.test(a) ? Number(a) : NUMBER_WORDS[a];
+	if (n && b) {
+		if (/^(h|hr|hrs|hour|hours)$/.test(b)) return [Math.round(n * 60), 2];
+		if (/^(m|min|mins|minute|minutes)$/.test(b)) return [Math.round(n), 2];
+	}
+	return null;
+}
+
+// ---------- parser ----------
+
+type DateHit = {
+	idx: number[];
+	resolve: (timePassed: boolean) => string | null;
+	explicit?: boolean; // names a calendar date (16 nov, 16/11, 2026-11-16, the 16th)
+	weekday?: number; // weekday-only hit (mergeable into an explicit date: "mon 16 nov")
+	checkWeekday?: number;
+};
+type TimeHit = { idx: number[]; start: number; end: number | null };
+const range = (from: number, len: number) => Array.from({ length: len }, (_, k) => from + k);
 const snap = (min: number) => Math.round(min / 15) * 15;
 
 export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	const tokens = text.trim().split(/\s+/).filter(Boolean);
-	const low = tokens.map((t) => t.toLowerCase());
+	const low = tokens.map(norm);
 	const used = new Set<number>(); // tokens that are NOT title
-	const claimed = new Set<number>(); // tokens matched by some rule (winner or not)
 	const problems: string[] = [];
 	const warnings: string[] = [];
 	const notes: string[] = [];
+	const today = ctx.today;
+	const todayWd = weekdayOf(today);
 
 	let type: ItemType | null = null;
-	let target: QATarget | null = null;
+	const targets = new Set<QATarget>();
 	let course: QACourse | null = null;
 	let dur: number | null = null;
+	let allDay = false;
 	const dates: DateHit[] = [];
 	const times: TimeHit[] = [];
-	const take = (...idx: number[]) => idx.forEach((i) => claimed.add(i));
+
+	const nextOccurrence = (wd: number, timePassed: boolean) => {
+		let delta = (wd - todayWd + 7) % 7;
+		if (delta === 0 && timePassed) delta = 7;
+		return addDays(today, delta);
+	};
+	const dayOfMonth = (d: number) => {
+		const [y, m] = parts(today);
+		for (let k = 0; k < 13; k++) {
+			const t = (y * 12 + (m - 1) + k) as number;
+			const s = ymd(Math.floor(t / 12), (t % 12) + 1, d);
+			if (s && s >= today) return s;
+		}
+		return null;
+	};
+	const calendarDate = (d: number, m: number, y?: number) => {
+		if (y !== undefined) return ymd(y < 100 ? 2000 + y : y, m, d);
+		const y0 = Number(today.slice(0, 4));
+		let s = ymd(y0, m, d);
+		if (s && s < today) s = ymd(y0 + 1, m, d);
+		if (!s && m === 2 && d === 29) s = ymd(y0 + 1, 2, 29) ?? ymd(y0 + 2, 2, 29) ?? ymd(y0 + 3, 2, 29);
+		return s;
+	};
+	const pushDate = (h: DateHit) => dates.push(h);
 
 	for (let i = 0; i < low.length; i++) {
 		const t = low[i] ?? '';
 		const n1 = low[i + 1];
 		const n2 = low[i + 2];
+		const n3 = low[i + 3];
+		const raw = tokens[i] ?? '';
 
-		// --- /options + #courses ---
-		if (t.startsWith('/') && t.length > 1 && !t.slice(1).includes('/')) {
-			const k = t.slice(1);
-			if (TYPE_WORDS[k]) type = TYPE_WORDS[k] ?? null;
-			else if (TARGET_WORDS[k]) target = TARGET_WORDS[k] ?? null;
-			else problems.push(`\`${tokens[i]}\` isn't an option. Type \`/\` to see the list.`);
-			take(i);
-			used.add(i);
-			continue;
+		// --- /options + #courses (raw token, case-insensitive) ---
+		if (raw.startsWith('/') && !/^\/\d/.test(raw)) {
+			const k = raw
+				.slice(1)
+				.toLowerCase()
+				.replace(/[,.;:!?]+$/, '');
+			if (!k) {
+				used.add(i);
+				continue;
+			}
+			if (!k.includes('/')) {
+				if (TYPE_WORDS[k]) type = TYPE_WORDS[k] ?? null;
+				else if (TARGET_WORDS[k]) targets.add(TARGET_WORDS[k] as QATarget);
+				else problems.push(`\`${raw}\` isn't an option. Type \`/\` to see the list.`);
+				used.add(i);
+				continue;
+			}
 		}
-		if (t === '/') {
-			take(i);
-			used.add(i);
-			continue;
-		}
-		if (t.startsWith('#') && t.length > 1) {
-			const a = t.slice(1);
+		if (raw.startsWith('#') && raw.length > 1) {
+			const a = norm(raw.slice(1));
 			const c = ctx.courses.find((c) => c.aliases.includes(a) || c.code.toLowerCase() === a);
 			if (c) {
 				course = c;
-				take(i);
 				used.add(i);
 			}
 			continue;
 		}
 
-		// --- days ---
-		if (t === 'today' || t === 'tdy' || t === 'tonight') {
-			dates.push({ idx: [i], raw: tokens[i] ?? '', abs: ctx.today });
-			take(i);
+		// --- all day ---
+		if ((t === 'all' && n1 === 'day') || t === 'allday' || t === 'all-day') {
+			allDay = true;
+			const len = t === 'all' ? 2 : 1;
+			range(i, len).forEach((k) => used.add(k));
+			i += len - 1;
 			continue;
 		}
-		if (t === 'tmr' || t === 'tmrw' || t === 'tomorrow') {
-			dates.push({ idx: [i], raw: tokens[i] ?? '', abs: addDays(ctx.today, 1) });
-			take(i);
+
+		// --- relative phrases ---
+		if (t === 'the' && n1 === 'day' && n2 === 'after' && isTomorrow(n3)) {
+			pushDate({ idx: range(i, 4), resolve: () => addDays(today, 2) });
+			i += 3;
 			continue;
 		}
-		if (t === 'in' && n1 && /^\d{1,3}$/.test(n1) && n2 && /^(day|days|week|weeks)$/.test(n2)) {
-			const n = Number(n1) * (n2.startsWith('w') ? 7 : 1);
-			dates.push({ idx: [i, i + 1, i + 2], raw: '', abs: addDays(ctx.today, n) });
-			take(i, i + 1, i + 2);
+		if (t === 'day' && n1 === 'after' && isTomorrow(n2)) {
+			pushDate({ idx: range(i, 3), resolve: () => addDays(today, 2) });
 			i += 2;
 			continue;
 		}
+		if (t === 'overmorrow') {
+			pushDate({ idx: [i], resolve: () => addDays(today, 2) });
+			continue;
+		}
+		if (t === 'this' && n1 && PART_OF_DAY.has(n1)) {
+			pushDate({ idx: [i, i + 1], resolve: () => today });
+			i++;
+			continue;
+		}
+		if ((isTomorrow(t) || isToday(t)) && n1 && PART_OF_DAY.has(n1)) {
+			const d = isTomorrow(t) ? addDays(today, 1) : today;
+			pushDate({ idx: [i, i + 1], resolve: () => d });
+			i++;
+			continue;
+		}
+		if (t === 'in' && numberOf(n1) !== null && n2 && UNIT_WORDS[n2]) {
+			const [u, mult] = UNIT_WORDS[n2] as [Unit, number];
+			const n = (numberOf(n1) as number) * mult;
+			const d = u === 'month' ? addMonths(today, n) : addDays(today, u === 'week' ? 7 * n : n);
+			pushDate({ idx: range(i, 3), resolve: () => d });
+			i += 2;
+			continue;
+		}
+		if (numberOf(t) !== null && n1 && UNIT_WORDS[n1] && n2 === 'from' && n3) {
+			const base = n3 === 'now' || isToday(n3) ? today : isTomorrow(n3) ? addDays(today, 1) : null;
+			if (base) {
+				const [u, mult] = UNIT_WORDS[n1] as [Unit, number];
+				const n = (numberOf(t) as number) * mult;
+				const d = u === 'month' ? addMonths(base, n) : addDays(base, u === 'week' ? 7 * n : n);
+				pushDate({ idx: range(i, 4), resolve: () => d });
+				i += 3;
+				continue;
+			}
+		}
+		// next week [wd] · this week [wd] · next weekend · (this) weekend · next month · end of (the) month
+		if ((t === 'next' || t === 'this') && n1 === 'week') {
+			const wd = weekdayOfWord(n2);
+			const mon = addDays(mondayOfWeek(today), t === 'next' ? 7 : 0);
+			if (wd) {
+				pushDate({ idx: range(i, 3), resolve: () => addDays(mon, wd - 1) });
+				i += 2;
+				continue;
+			}
+			if (t === 'next') {
+				pushDate({ idx: [i, i + 1], resolve: () => mon });
+				i++;
+				continue;
+			}
+		}
+		{
+			const wd = weekdayOfWord(t);
+			if (wd && (n1 === 'next' || n1 === 'this') && n2 === 'week') {
+				const mon = addDays(mondayOfWeek(today), n1 === 'next' ? 7 : 0);
+				pushDate({ idx: range(i, 3), resolve: () => addDays(mon, wd - 1) });
+				i += 2;
+				continue;
+			}
+		}
+		if (t === 'next' && n1 === 'weekend') {
+			pushDate({ idx: [i, i + 1], resolve: () => addDays(mondayOfWeek(today), 12) });
+			i++;
+			continue;
+		}
+		if ((t === 'this' || t === 'the') && n1 === 'weekend') {
+			pushDate({ idx: [i, i + 1], resolve: () => (todayWd === 7 ? today : nextOccurrence(6, false)) });
+			i++;
+			continue;
+		}
+		if (t === 'weekend') {
+			pushDate({ idx: [i], resolve: () => (todayWd === 7 ? today : nextOccurrence(6, false)) });
+			continue;
+		}
+		if (t === 'next' && n1 === 'month') {
+			const [y, m] = parts(addMonths(today, 1));
+			pushDate({ idx: [i, i + 1], resolve: () => makeDate(y, m, 1) });
+			i++;
+			continue;
+		}
+		if (t === 'end' && n1 === 'of' && (n2 === 'month' || (n2 === 'the' && n3 === 'month'))) {
+			const len = n2 === 'the' ? 4 : 3;
+			const [y, m] = parts(today);
+			pushDate({ idx: range(i, len), resolve: () => lastDayOfMonth(y, m) });
+			i += len - 1;
+			continue;
+		}
+		if (t === 'eom') {
+			const [y, m] = parts(today);
+			pushDate({ idx: [i], resolve: () => lastDayOfMonth(y, m) });
+			continue;
+		}
+
+		// --- next/this weekday ---
 		if (t === 'next' || t === 'this') {
 			let j = i;
 			let n = 0;
@@ -229,115 +520,175 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 					n++;
 					j++;
 				}
-			const w = low[j];
-			if (w && WEEKDAYS[w]) {
-				const idx = Array.from({ length: j - i + 1 }, (_, k) => i + k);
-				dates.push({ idx, raw: '', wd: WEEKDAYS[w], next: n });
-				take(...idx);
+			const wd = weekdayOfWord(low[j]);
+			if (wd) {
+				const nexts = n;
+				pushDate({
+					idx: range(i, j - i + 1),
+					resolve: (passed) => {
+						if (!nexts) return nextOccurrence(wd, passed);
+						let delta = (wd - todayWd + 7) % 7;
+						if (delta === 0) delta = 7;
+						return addDays(today, delta + 7 * (nexts - 1));
+					},
+				});
 				i = j;
 				continue;
 			}
 		}
-		if (WEEKDAYS[t]) {
-			dates.push({ idx: [i], raw: '', wd: WEEKDAYS[t], next: 0 });
-			take(i);
+
+		// --- single day words ---
+		if (isToday(t)) {
+			pushDate({ idx: [i], resolve: () => today });
 			continue;
 		}
+		if (isTomorrow(t)) {
+			pushDate({ idx: [i], resolve: () => addDays(today, 1) });
+			continue;
+		}
+		if (isYesterday(t)) {
+			pushDate({ idx: [i], resolve: () => addDays(today, -1) });
+			continue;
+		}
+
+		// --- explicit dates ---
 		if (YMD.test(t) && isDate(t)) {
-			dates.push({ idx: [i], raw: '', abs: t });
-			take(i);
+			pushDate({ idx: [i], resolve: () => t, explicit: true });
 			continue;
 		}
 		let m: RegExpExecArray | null;
 		if ((m = DM.exec(t))) {
-			dates.push({ idx: [i], raw: '', d: Number(m[1]), m: Number(m[2]), y: m[3] ? Number(m[3]) : undefined });
-			take(i);
-			continue;
+			let d = Number(m[1]);
+			let mo = Number(m[2]);
+			if (mo > 12 && d <= 12) [d, mo] = [mo, d]; // 11/16 -> US order
+			const y = m[3] ? Number(m[3]) : undefined;
+			if (calendarDate(d, mo, y)) {
+				pushDate({ idx: [i], resolve: () => calendarDate(d, mo, y), explicit: true });
+				continue;
+			}
 		}
-		if (DAYNUM.test(t) && n1 && MONTHS[n1]) {
-			dates.push({ idx: [i, i + 1], raw: '', d: Number(DAYNUM.exec(t)?.[1]), m: MONTHS[n1] });
-			take(i, i + 1);
-			i++;
-			continue;
+		// 16 nov · 16th nov · 16th of november · (+ 2027)
+		if (DAYNUM.test(t)) {
+			const ofSkip = n1 === 'of' ? 1 : 0;
+			const mo = monthOfWord(low[i + 1 + ofSkip]);
+			if (mo) {
+				const d = Number(DAYNUM.exec(t)?.[1]);
+				let len = 2 + ofSkip;
+				const yTok = low[i + len];
+				const y = yTok && YEAR.test(yTok) ? Number(yTok) : undefined;
+				if (y !== undefined) len++;
+				if (calendarDate(d, mo, y)) {
+					pushDate({ idx: range(i, len), resolve: () => calendarDate(d, mo, y), explicit: true });
+					i += len - 1;
+					continue;
+				}
+			}
 		}
-		if (MONTHS[t] && n1 && DAYNUM.test(n1)) {
-			dates.push({ idx: [i, i + 1], raw: '', d: Number(DAYNUM.exec(n1)?.[1]), m: MONTHS[t] });
-			take(i, i + 1);
-			i++;
-			continue;
+		// nov 16 · november 16th · nov 16 2027
+		{
+			const mo = monthOfWord(t);
+			if (mo && n1 && DAYNUM.test(n1)) {
+				const d = Number(DAYNUM.exec(n1)?.[1]);
+				let len = 2;
+				const y = n2 && YEAR.test(n2) ? Number(n2) : undefined;
+				if (y !== undefined) len++;
+				if (calendarDate(d, mo, y)) {
+					pushDate({ idx: range(i, len), resolve: () => calendarDate(d, mo, y), explicit: true });
+					i += len - 1;
+					continue;
+				}
+			}
+		}
+		// the 16th (of november) · on 16th
+		if ((t === 'the' && n1 && ORDINAL.test(n1)) || (ORDINAL.test(t) && low[i - 1] === 'on')) {
+			const k = t === 'the' ? i + 1 : i;
+			const d = Number(ORDINAL.exec(low[k] ?? '')?.[1]);
+			const mo = low[k + 1] === 'of' ? monthOfWord(low[k + 2]) : null;
+			const len = k - i + 1 + (mo ? 2 : 0);
+			const res = mo ? () => calendarDate(d, mo) : () => dayOfMonth(d);
+			if (res()) {
+				pushDate({ idx: range(i, len), resolve: res, explicit: true });
+				i += len - 1;
+				continue;
+			}
+		}
+
+		// --- weekday ---
+		{
+			const wd = weekdayOfWord(t);
+			if (wd) {
+				pushDate({ idx: [i], resolve: (passed) => nextOccurrence(wd, passed), weekday: wd });
+				continue;
+			}
 		}
 
 		// --- duration: for 2h ---
-		if (t === 'for' && durationOf(n1) !== null) {
-			dur = durationOf(n1);
-			take(i, i + 1);
-			used.add(i);
-			used.add(i + 1);
-			i++;
-			continue;
+		if (t === 'for') {
+			const d = durationAt(low, i + 1);
+			if (d) {
+				dur = d[0];
+				range(i, d[1] + 1).forEach((k) => used.add(k));
+				i += d[1];
+				continue;
+			}
 		}
 
 		// --- time ranges ---
-		const dash = t.split(/[-–]/);
+		const dash = t.split(/[-–—]/);
 		if (dash.length === 2 && dash[0] && dash[1]) {
 			const b = timeOf(dash[1]);
 			const a = b !== null ? timeOf(dash[0], suffixOf(dash[1])) : null;
 			if (a !== null && b !== null) {
 				times.push({ idx: [i], start: a, end: b });
-				take(i);
 				continue;
 			}
 		}
-		// "6pm to 10pm", "6 to 10pm", "6pm - 10pm", "6 pm to 10 pm"
+		// "6pm to 10pm" · "6 to 10pm" · "6 pm - 10 pm" · "between 6 and 8pm"
 		{
-			let a: number | null = null;
-			let aLen = 1;
-			if (n1 === 'am' || n1 === 'pm') {
-				a = timeOf(t + n1);
-				aLen = 2;
-			}
+			const aProbe = timeAt(low, i);
+			const aLen = aProbe ? aProbe[1] : 1;
 			const sep = low[i + aLen];
-			if (sep && RANGE_SEP.has(sep)) {
-				let bTok = low[i + aLen + 1] ?? '';
-				let bLen = 1;
-				const after = low[i + aLen + 2];
-				if (BAREHOUR.test(bTok) && (after === 'am' || after === 'pm')) {
-					bTok += after;
-					bLen = 2;
+			const isSep = sep && (RANGE_SEP.has(sep) || (sep === 'and' && low[i - 1] === 'between'));
+			if (isSep) {
+				const b = timeAt(low, i + aLen + 1);
+				if (b) {
+					const bTok = (low[i + aLen + 1] ?? '') + (b[1] === 2 ? (ampmOf(low[i + aLen + 2]) ?? '') : '');
+					const a = aProbe ?? timeAt(low, i, suffixOf(bTok));
+					if (a) {
+						const len = a[1] + 1 + b[1];
+						times.push({ idx: range(i, len), start: a[0], end: b[0] });
+						i += len - 1;
+						continue;
+					}
 				}
-				const b = timeOf(bTok);
-				if (a === null && b !== null) a = timeOf(t, suffixOf(bTok));
-				if (a !== null && b !== null) {
-					const idx = Array.from({ length: aLen + 1 + bLen }, (_, k) => i + k);
-					times.push({ idx, start: a, end: b });
-					take(...idx);
-					i = idx[idx.length - 1] ?? i;
-					continue;
-				}
+			}
+			if (aProbe) {
+				times.push({ idx: range(i, aProbe[1]), start: aProbe[0], end: null });
+				i += aProbe[1] - 1;
+				continue;
 			}
 		}
-		// single time, "5 pm"
-		{
-			const a = timeOf(t);
-			if (a !== null) {
-				times.push({ idx: [i], start: a, end: null });
-				take(i);
-				continue;
-			}
-			if (BAREHOUR.test(t) && (n1 === 'am' || n1 === 'pm')) {
-				times.push({ idx: [i, i + 1], start: timeOf(t + n1) ?? 0, end: null });
-				take(i, i + 1);
-				i++;
-				continue;
-			}
+	}
+
+	// --- weekday next to an explicit date belongs to it: "mon 16 nov", "Monday, 16 November" ---
+	for (const e of dates.filter((h) => h.explicit)) {
+		const lo = Math.min(...e.idx);
+		const hi = Math.max(...e.idx);
+		const w = dates.find(
+			(h) => h.weekday && (Math.max(...h.idx) === lo - 1 || Math.min(...h.idx) === hi + 1),
+		);
+		if (w) {
+			e.idx = [...e.idx, ...w.idx];
+			e.checkWeekday = w.weekday;
+			dates.splice(dates.indexOf(w), 1);
 		}
 	}
 
 	// --- time: last wins ---
 	const th = times[times.length - 1];
 	th?.idx.forEach((i) => used.add(i));
-	let start = th ? th.start : null;
-	let end = th ? th.end : null;
+	let start = th && !allDay ? th.start : null;
+	let end = th && !allDay ? th.end : null;
 	if (start !== null && end === null && dur !== null) end = start + dur;
 
 	// --- date: last valid wins ---
@@ -345,40 +696,42 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	let date: string | null = null;
 	for (let k = dates.length - 1; k >= 0 && !date; k--) {
 		const h = dates[k];
-		if (!h) continue;
-		let d: string | null = null;
-		if (h.abs) d = h.abs;
-		else if (h.wd) {
-			let delta = (h.wd - weekdayOf(ctx.today) + 7) % 7;
-			if (h.next) {
-				if (delta === 0) delta = 7;
-				delta += 7 * (h.next - 1);
-			} else if (delta === 0 && timePassed) delta = 7;
-			d = addDays(ctx.today, delta);
-		} else if (h.d && h.m) {
-			const y0 = Number(ctx.today.slice(0, 4));
-			if (h.y) d = yearDate(h.y, h.m, h.d);
-			else {
-				d = yearDate(y0, h.m, h.d);
-				if (d && d < ctx.today) d = yearDate(y0 + 1, h.m, h.d);
-				if (!d && h.m === 2 && h.d === 29)
-					d = yearDate(y0 + 1, 2, 29) ?? yearDate(y0 + 2, 2, 29) ?? yearDate(y0 + 3, 2, 29);
-			}
-		}
-		if (d) {
+		const d = h?.resolve(timePassed);
+		if (h && d) {
 			date = d;
 			h.idx.forEach((i) => used.add(i));
+			if (h.checkWeekday && weekdayOf(d) !== h.checkWeekday) {
+				const names = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+				warnings.push(
+					`${d.slice(8)}/${d.slice(5, 7)} is a ${names[weekdayOf(d)]}, not a ${names[h.checkWeekday]}.`,
+				);
+			}
 		}
 	}
 	const dateSet = date !== null;
-	date ??= ctx.today;
+	date ??= today;
 
-	const finalTarget: QATarget = target ?? 'calendar';
+	// --- little words glued to a day/time: "on fri", "at 6pm", "from 6 to 8" ---
+	for (let i = 0; i < low.length; i++) {
+		if (used.has(i) || !PREPS.has(low[i] ?? '') || !used.has(i + 1)) continue;
+		if ((tokens[i + 1] ?? '').startsWith('/') || (tokens[i + 1] ?? '').startsWith('#')) continue;
+		used.add(i);
+	}
+
+	// --- where it goes ---
+	let target: QATarget = 'planner';
+	if (targets.has('both') || (targets.has('calendar') && targets.has('planner'))) target = 'both';
+	else if (targets.has('calendar')) target = 'calendar';
+	const makesBlock = target !== 'calendar';
+	const c = course as QACourse | null;
+
 	let endNextDay = false;
-	if (finalTarget === 'planner') {
+	if (makesBlock) {
 		if (start === null) {
 			problems.push(
-				'The planner needs a time. Add one like `6pm` or `6pm to 10pm`, or use `/calendar` instead.',
+				target === 'both'
+					? '`/both` also adds a planner block, so it needs a time. Add one like `3pm` or `3pm to 5pm`, or use `/calendar` on its own.'
+					: 'Planner entries need a time. Add one like `3pm` or `3pm to 4pm`, or add `/calendar` to put it on the calendar without a time.',
 			);
 		} else {
 			const s0 = start;
@@ -395,27 +748,27 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 			if (start >= 1440) start -= 1440;
 			endNextDay = end > 1440;
 		}
+		if (c && target === 'planner') notes.push('course is only saved with /calendar or /both');
 	} else if (end !== null) {
-		notes.push('end time is only used by /planner');
+		notes.push('end time needs /both');
 		end = null;
 	}
 
-	if (!dateSet && timePassed) warnings.push('Time already passed today.');
-	else if (date < ctx.today) warnings.push('Date is in the past.');
-	else if (date === ctx.today && timePassed) warnings.push('Time already passed today.');
+	if (date < today) warnings.push('Date is in the past.');
+	else if (date === today && timePassed) warnings.push('Time already passed today.');
 
 	const title = tokens
 		.filter((_, i) => !used.has(i))
 		.join(' ')
+		.replace(/^[\s,;:\-–—]+|[\s,;:\-–—]+$/g, '')
 		.trim()
 		.slice(0, 300);
-	if (!tokens.length) problems.push('Type something to add, like `/hobby gym /planner fri 6pm to 8pm`.');
+	if (!tokens.length) problems.unshift('Type something to add, like `gym tmr 6pm to 8pm`.');
 	else if (!title)
 		problems.push(
 			"Add a title first. Any words that aren't an option, day or time become the title, like `build planner website`.",
 		);
 
-	const c = course as QACourse | null;
 	return {
 		ok: problems.length === 0,
 		title,
@@ -423,14 +776,14 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 		typeSet: type !== null,
 		courseId: c?.id ?? null,
 		courseCode: c?.code ?? null,
-		target: finalTarget,
-		targetSet: target !== null,
+		target,
+		targetSet: targets.size > 0,
 		date,
 		dateSet,
 		time: start === null ? null : hhmm(start),
 		startMinutes: start,
-		endMinutes: finalTarget === 'planner' ? end : null,
-		endTime: finalTarget === 'planner' && end !== null ? hhmm(end) : null,
+		endMinutes: makesBlock ? end : null,
+		endTime: makesBlock && end !== null ? hhmm(end) : null,
 		endNextDay,
 		notes,
 		warnings,
@@ -446,6 +799,7 @@ export interface QAOption {
 	label: string;
 	hint: string;
 	type?: ItemType;
+	target?: QATarget;
 }
 export const SLASH_OPTIONS: QAOption[] = [
 	{ group: 'Type', token: '/work', label: 'Work', hint: 'school, jobs', type: 'Work' },
@@ -453,15 +807,16 @@ export const SLASH_OPTIONS: QAOption[] = [
 	{ group: 'Type', token: '/event', label: 'Event', hint: 'default', type: 'Event' },
 	{ group: 'Type', token: '/hobby', label: 'Hobby', hint: 'side projects', type: 'Hobby' },
 	{ group: 'Type', token: '/date', label: 'Dating', hint: 'dates', type: 'Dating' },
-	{ group: 'Goes to', token: '/calendar', label: 'Calendar', hint: 'default' },
-	{ group: 'Goes to', token: '/planner', label: 'Planner', hint: 'calendar + time block' },
+	{ group: 'Goes to', token: '/planner', label: 'Planner', hint: 'default · time block', target: 'planner' },
+	{ group: 'Goes to', token: '/calendar', label: 'Calendar', hint: 'big event only', target: 'calendar' },
+	{ group: 'Goes to', token: '/both', label: 'Both', hint: 'calendar + block', target: 'both' },
 ];
 
 /** The token being typed at the end of the text, if it is an option prefix (`/x` or `#x`). */
 export function activeOptionToken(text: string): string | null {
 	if (!text || /\s$/.test(text)) return null;
 	const t = text.split(/\s/).pop() ?? '';
-	return t.startsWith('/') || t.startsWith('#') ? t : null;
+	return (t.startsWith('/') && !/^\/\d/.test(t)) || t.startsWith('#') ? t : null;
 }
 
 export function optionsFor(token: string, courses: QACourse[]): QAOption[] {
@@ -481,7 +836,7 @@ export function optionsFor(token: string, courses: QACourse[]): QAOption[] {
 
 /** Grey ghost text after the cursor: rest of an option being typed, else the slots still missing. */
 export function ghostHint(text: string, p: QAParse, courses: QACourse[]): string {
-	if (!text) return '/type  title  /calendar or /planner  day  time';
+	if (!text) return 'title  day  time   optional: /type  /calendar or /both';
 	const tok = activeOptionToken(text);
 	if (tok) {
 		if (tok.length < 2) return '';
@@ -489,11 +844,11 @@ export function ghostHint(text: string, p: QAParse, courses: QACourse[]): string
 		return first && first.token.startsWith(tok.toLowerCase()) ? first.token.slice(tok.length) : '';
 	}
 	const missing: string[] = [];
-	if (!p.typeSet && !p.courseId) missing.push('/type');
 	if (!p.title) missing.push('title');
-	if (!p.targetSet) missing.push('/calendar or /planner');
 	if (!p.dateSet) missing.push('day');
 	if (p.time === null) missing.push('time');
+	if (!p.typeSet && !p.courseId) missing.push('/type');
+	if (!p.targetSet) missing.push('/calendar or /both');
 	if (!missing.length) return '';
 	return (text.endsWith(' ') ? ' ' : '  ') + missing.join('  ');
 }

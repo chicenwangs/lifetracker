@@ -425,6 +425,7 @@
 					style:width="calc((100% - 70px) / {p.cols} - 4px)"
 					style:background={c.bg}
 					style:color={c.ink}
+					style:--line={c.line}
 					role="button"
 					tabindex="0"
 					aria-label="{p.b.label}, {fmt(p)}. Arrows move 15 min, Shift+arrows resize, Enter edit"
@@ -616,12 +617,12 @@
 		width: 8px;
 		height: 8px;
 		border-radius: 4px;
-		background: var(--ink);
+		background: var(--now);
 	}
 	.now i {
 		flex: 1;
 		height: 2px;
-		background: var(--ink);
+		background: var(--now);
 	}
 	.blk {
 		position: absolute;
@@ -633,7 +634,7 @@
 		overflow: hidden;
 		cursor: grab;
 		z-index: 3;
-		border: 1px solid rgb(0 0 0 / 0.06);
+		border: 1px solid var(--line, transparent);
 	}
 	.blk.cs {
 		border-top: 2px dashed currentColor;
