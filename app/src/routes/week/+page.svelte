@@ -3,15 +3,23 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
 	import WeekCalendar from '$lib/components/WeekCalendar.svelte';
+	import SlotCommand from '$lib/components/SlotCommand.svelte';
+	import type { QAParse } from '$lib/quickadd';
 	import { patch, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { calendarBus } from '$lib/client/bus.svelte';
 	import { colorsFor } from '$lib/colors';
 	import { openItem } from '$lib/client/peek.svelte';
-	import { addDays, isoPlus, localToUtc, prettyDate } from '$lib/time';
+	import { addDays, hhmm, isoPlus, localToUtc, prettyDate } from '$lib/time';
 
 	let { data } = $props();
 	let side: HTMLElement | undefined = $state();
+	let weekCal: WeekCalendar | undefined = $state();
+	// empty-slot drag -> command box (same grammar as N; default planner, /calendar optional)
+	let slot = $state<{ key: number; date: string; start: number; end: number; x: number; y: number } | null>(
+		null,
+	);
+	let slotSeq = 0;
 	const tz = $derived(data.user?.timezone ?? 'Asia/Kuala_Lumpur');
 
 	const MONTHS = [
@@ -70,11 +78,40 @@
 		}).catch(() => {});
 	}
 
-	async function createBlock(startAt: string, endAt: string) {
-		const label = prompt('New block: what?')?.trim();
-		if (!label) return;
-		await wrap(() => post('/api/blocks', { label, startAt, endAt })).catch(() => {});
+	function createBlock(date: string, start: number, end: number, at: { x: number; y: number }) {
+		const W = 340;
+		const H = 150;
+		slot = {
+			key: ++slotSeq,
+			date,
+			start,
+			end,
+			x: Math.max(12, Math.min(at.x + 12, window.innerWidth - W - 12)),
+			y: Math.max(12, Math.min(at.y + 12, window.innerHeight - H - 12)),
+		};
 	}
+	function closeSlot() {
+		slot = null;
+		live = null;
+		weekCal?.clearSlot();
+	}
+	// typed day/time moves the grid selection live (only within the shown week)
+	let live = $state<{ date: string; start: number; end: number; thin: boolean } | null>(null);
+	function onSlotParsed(p: QAParse) {
+		if (!slot || !weekCal) return;
+		live = null;
+		if (p.startMinutes === null) return weekCal.clearSlot();
+		const thin = p.target === 'calendar';
+		const end = thin ? p.startMinutes + 30 : (p.endMinutes ?? p.startMinutes + 60);
+		live = { date: p.date, start: p.startMinutes, end, thin };
+		if (p.date >= data.from && p.date < data.to) weekCal.showSlot(p.date, p.startMinutes, end);
+		else weekCal.clearSlot();
+	}
+	const fmtSlot = (s: { date: string; start: number; end: number; thin?: boolean }) =>
+		`${prettyDate(s.date).split(' ').slice(0, 3).join(' ')} · ${hhmm(s.start)}` +
+		(s.thin
+			? ' · calendar item'
+			: ` – ${s.end === 1440 ? '24:00' : hhmm(s.end)}${s.end > 1440 ? ' (+1 day)' : ''}`);
 
 	$effect(() => {
 		void calendarBus.version;
@@ -128,6 +165,7 @@
 		</div>
 		{#if side}
 			<WeekCalendar
+				bind:this={weekCal}
 				from={data.from}
 				{tz}
 				items={data.cal.items}
@@ -143,8 +181,8 @@
 			/>
 		{/if}
 		<div class="foot">
-			Drag on empty time to add a block · drag blocks to move, edges to resize · drag items from the right
-			onto a day
+			Drag on empty time, then type a title (/type, /calendar work too) · drag blocks to move, edges to resize
+			· drag items from the right onto a day
 		</div>
 	</section>
 
@@ -194,7 +232,64 @@
 	</aside>
 </main>
 
+{#if slot}
+	<div
+		class="slotpop card"
+		style:left="{slot.x}px"
+		style:top="{slot.y}px"
+		role="dialog"
+		tabindex="-1"
+		aria-label="New entry"
+		onkeydown={(e) => e.key === 'Escape' && closeSlot()}
+	>
+		<div class="sp-h">
+			<span>{fmtSlot(live ?? slot)}</span>
+			<button type="button" class="x" aria-label="Cancel" onclick={closeSlot}>×</button>
+		</div>
+		{#key slot.key}
+			<SlotCommand
+				date={slot.date}
+				start={slot.start}
+				end={slot.end}
+				onparsed={onSlotParsed}
+				ondone={() => {
+					closeSlot();
+					refresh();
+				}}
+				oncancel={closeSlot}
+			/>
+		{/key}
+	</div>
+{/if}
+
 <style>
+	.slotpop {
+		position: fixed;
+		z-index: 60;
+		width: 340px;
+		padding: 10px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		box-shadow: 0 16px 40px var(--shadow);
+		border: 1.5px dashed var(--ink);
+	}
+	.sp-h {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 12px;
+		font-weight: 600;
+	}
+	.x {
+		border: 0;
+		background: none;
+		color: var(--quiet);
+		font-size: 18px;
+		line-height: 1;
+		cursor: pointer;
+		padding: 0 4px;
+	}
 	.wrap {
 		padding: 20px 24px;
 		display: flex;

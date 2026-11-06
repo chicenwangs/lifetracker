@@ -1,26 +1,23 @@
 <!--
-  FR-Q1..Q3 (rev 2026-11-06): N opens a chat-style palette.
+  FR-Q1..Q3 (rev 2026-11-06c): N opens a centred chat-style palette over a blurred page.
   Any order: title  day  time  [/type]  [/calendar | /both]  [#course].
-  Default = planner block only (fillers stay off the month). /calendar = big event only. /both = item + linked block.
-  Grey ghost text = format guide + completion. `/` or `#` opens a small option menu at the cursor.
+  Default = planner block only. /calendar = big event only. /both = item + linked block.
+  Once a time is typed, a second window shows that day's timeline with the new entry as a dashed draft
+  that moves as you type (crossing midnight = first day only).
   Slots preview live; problems only on Enter. Server re-parses (truth).
 -->
 <script lang="ts">
 	import { tick } from 'svelte';
-	import {
-		activeOptionToken,
-		ghostHint,
-		optionsFor,
-		parseQuickAdd,
-		type QACourse,
-		type QAOption,
-		type QATarget,
-	} from '$lib/quickadd';
-	import { nowLocalMinutes, prettyDate, prettyTime, todayLocal } from '$lib/time';
-	import { del, post } from '$lib/client/api';
-	import { calendarChanged } from '$lib/client/bus.svelte';
+	import { cubicOut } from 'svelte/easing';
+	import { fade } from 'svelte/transition';
+	import CommandInput from './CommandInput.svelte';
+	import TimelinePreview from './TimelinePreview.svelte';
+	import { parseQuickAdd, type QACourse, type QATarget } from '$lib/quickadd';
+	import { addDays, nowLocalMinutes, prettyDate, prettyTime, todayLocal } from '$lib/time';
+	import { del, get, post } from '$lib/client/api';
+	import { calendarBus, calendarChanged } from '$lib/client/bus.svelte';
 	import { colorsFor } from '$lib/colors';
-	import type { ItemType } from '$lib/types';
+	import type { BlockDTO, ItemType } from '$lib/types';
 
 	let { courses, tz }: { courses: QACourse[]; tz: string } = $props();
 
@@ -41,22 +38,59 @@
 	let problems = $state<string[]>([]);
 	let log = $state<Log[]>([]);
 	let history: string[] = [];
-	let menuIdx = $state(0);
-	let menuHidden = $state(false);
-	let menuLeft = $state(0);
 
-	let input: HTMLInputElement | undefined = $state();
+	let cmd: CommandInput | undefined = $state();
 	let opener: HTMLButtonElement | undefined = $state();
 	let logEl: HTMLDivElement | undefined = $state();
 
-	const ctx = () => ({ today: todayLocal(tz), nowMinutes: nowLocalMinutes(tz), courses });
-	const parsed = $derived(parseQuickAdd(text, ctx()));
-	const ghost = $derived(ghostHint(text, parsed, courses));
-	const optTok = $derived(activeOptionToken(text));
-	const options = $derived(optTok ? optionsFor(optTok, courses) : []);
-	const menuOpen = $derived(open && !menuHidden && options.length > 0);
-	// what's already picked (ticks in the menu)
-	const before = $derived(optTok ? parseQuickAdd(text.slice(0, text.length - optTok.length), ctx()) : parsed);
+	const ctx = $derived({ today: todayLocal(tz), nowMinutes: nowLocalMinutes(tz), courses });
+	const parsed = $derived(parseQuickAdd(text, ctx));
+
+	// ---------- live timeline ----------
+	const preview = $derived.by(() => {
+		const p = parsed;
+		if (p.startMinutes === null) return null;
+		const thin = p.target === 'calendar';
+		const end = thin ? p.startMinutes + 30 : (p.endMinutes ?? p.startMinutes + 60);
+		return {
+			date: p.date,
+			draft: {
+				start: p.startMinutes,
+				end: Math.min(end, 1440),
+				title: p.title,
+				type: p.typeSet || p.courseId ? p.type : null,
+				thin,
+				clippedEnd: end > 1440,
+				note: thin ? 'calendar item' : end > 1440 ? 'ends next day' : '',
+			},
+		};
+	});
+	let dayBlocks = $state<Record<string, BlockDTO[]>>({});
+	let loadingDay = $state<string | null>(null);
+	async function loadDay(d: string, force = false) {
+		if (!force && dayBlocks[d]) return;
+		loadingDay = d;
+		try {
+			const r = await get<{ blocks: BlockDTO[] }>(`/api/calendar?from=${d}&to=${addDays(d, 1)}`);
+			dayBlocks = { ...dayBlocks, [d]: r.blocks };
+		} catch {
+			dayBlocks = { ...dayBlocks, [d]: [] };
+		} finally {
+			if (loadingDay === d) loadingDay = null;
+		}
+	}
+	// debounce: fetch the day once typing settles on it
+	$effect(() => {
+		const d = open ? preview?.date : undefined;
+		if (!d) return;
+		const t = setTimeout(() => loadDay(d), 120);
+		return () => clearTimeout(t);
+	});
+	// any calendar write elsewhere -> cached days are stale
+	$effect(() => {
+		void calendarBus.version;
+		dayBlocks = {};
+	});
 
 	const WHERE: Record<QATarget, string> = {
 		planner: 'planner',
@@ -80,21 +114,20 @@
 	function segs(s: string): { code: boolean; t: string }[] {
 		return s.split('`').map((t, i) => ({ code: i % 2 === 1, t }));
 	}
-	function picked(o: QAOption): boolean {
-		if (o.group === 'Type') return before.typeSet && before.type === o.type;
-		if (o.group === 'Goes to') return before.targetSet && before.target === o.target;
-		return before.courseCode === o.label;
-	}
 
+	let prevOverflow = '';
 	async function show() {
 		open = true;
 		problems = [];
+		prevOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
 		await tick();
-		input?.focus();
+		cmd?.focus();
 	}
 	function hide() {
 		open = false;
 		problems = [];
+		document.body.style.overflow = prevOverflow;
 		opener?.focus();
 	}
 	async function scrollLog() {
@@ -102,37 +135,9 @@
 		logEl?.scrollTo({ top: logEl.scrollHeight });
 	}
 
-	function placeMenu() {
-		if (!input || !optTok) return;
-		const cs = getComputedStyle(input);
-		const c = document.createElement('canvas').getContext('2d');
-		if (!c) return;
-		c.font = cs.font;
-		const w = c.measureText(text.slice(0, text.length - optTok.length)).width;
-		const left = parseFloat(cs.paddingLeft) + w - input.scrollLeft;
-		menuLeft = Math.max(6, Math.min(left, input.clientWidth - 270));
-	}
-	$effect(() => {
-		void optTok;
-		void text;
-		placeMenu();
-	});
-	$effect(() => {
-		if (menuIdx >= options.length) menuIdx = 0;
-	});
-
-	function pick(i: number) {
-		const o = options[i];
-		if (!o || !optTok) return;
-		text = text.slice(0, text.length - optTok.length) + o.token + ' ';
-		menuIdx = 0;
-		problems = [];
-		input?.focus();
-	}
-
 	async function submit() {
 		if (busy) return;
-		const p = parseQuickAdd(text, ctx());
+		const p = parseQuickAdd(text, ctx);
 		if (!p.ok) {
 			problems = p.problems;
 			return;
@@ -184,33 +189,19 @@
 		}
 	}
 
-	function onInputKey(e: KeyboardEvent) {
-		if (menuOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
-			e.preventDefault();
-			menuIdx = (menuIdx + (e.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length;
-			return;
-		}
-		if (menuOpen && (e.key === 'Enter' || e.key === 'Tab')) {
-			e.preventDefault();
-			pick(menuIdx);
-			return;
-		}
-		if (e.key === 'Escape') {
-			e.preventDefault();
-			if (menuOpen) menuHidden = true;
-			else if (text) {
-				text = '';
-				problems = [];
-			} else hide();
-		} else if (e.key === 'Enter') {
-			e.preventDefault();
-			submit();
-		} else if (e.key === 'Tab') {
-			e.preventDefault();
-		} else if (e.key === 'ArrowUp' && !text && history.length) {
+	function extraKey(e: KeyboardEvent): boolean {
+		if (e.key === 'ArrowUp' && !text && history.length) {
 			e.preventDefault();
 			text = history[history.length - 1] ?? '';
+			return true;
 		}
+		return false;
+	}
+	function onEscape() {
+		if (text) {
+			text = '';
+			problems = [];
+		} else hide();
 	}
 
 	function onWindowKey(e: KeyboardEvent) {
@@ -221,6 +212,14 @@
 		e.preventDefault();
 		show();
 	}
+
+	function pop(node: HTMLElement, { duration = 200 }: { duration?: number } = {}) {
+		return {
+			duration,
+			easing: cubicOut,
+			css: (t: number) => `opacity:${Math.min(1, t * 1.6)};transform:scale(${0.92 + 0.08 * t})`,
+		};
+	}
 </script>
 
 <svelte:window onkeydown={onWindowKey} />
@@ -230,137 +229,118 @@
 </button>
 
 {#if open}
-	<div class="scrim" role="presentation" onmousedown={(e) => e.target === e.currentTarget && hide()}>
-		<div class="pal" role="dialog" aria-modal="true" aria-label="Quick add">
-			<div class="log" bind:this={logEl} aria-live="polite">
-				<div class="bot">
-					Type what you want to add, in any order. It goes on the planner; add <code>/calendar</code> for a
-					big event or
-					<code>/both</code> for both. Type <code>/</code> for options{courses.length
-						? ', # for a course'
-						: ''}.
-				</div>
-				{#each log as l, i (i)}
-					{#if l.kind === 'me'}
-						<div class="me">{l.text}</div>
-					{:else if l.kind === 'info'}
-						<div class="bot">{l.text}</div>
-					{:else}
-						<div class="bot" class:undone={l.undone}>
-							<span aria-hidden="true">✓</span> Added <b>{l.title}</b> to {l.summary}
-							{#if !l.undone}<button type="button" class="undo" onclick={() => undo(l)}>Undo</button>{/if}
-						</div>
-					{/if}
-				{/each}
-			</div>
-
-			<div class="iw">
-				<div class="ghost" aria-hidden="true"><span class="typed">{text}</span>{ghost}</div>
-				<input
-					bind:this={input}
-					bind:value={text}
-					class="in"
-					autocomplete="off"
-					spellcheck="false"
-					aria-label="Quick add"
-					aria-autocomplete="list"
-					aria-controls="qa-menu"
-					aria-expanded={menuOpen}
-					aria-describedby="qa-slots qa-err"
-					oninput={() => {
-						problems = [];
-						menuHidden = false;
-					}}
-					onkeydown={onInputKey}
-					onscroll={placeMenu}
-				/>
-				{#if menuOpen}
-					<div class="menu" id="qa-menu" role="listbox" style:left="{menuLeft}px">
-						{#each options as o, i (o.token)}
-							{#if i === 0 || options[i - 1]?.group !== o.group}<div class="mg">{o.group}</div>{/if}
-							<div
-								class="mi"
-								class:on={i === menuIdx}
-								role="option"
-								tabindex="-1"
-								aria-selected={i === menuIdx}
-								onmousedown={(e) => {
-									e.preventDefault();
-									pick(i);
-								}}
-								onmouseenter={() => (menuIdx = i)}
-							>
-								{#if o.type}
-									<span class="sw" style:background={tc(o.type).bg} style:border-color={tc(o.type).ink}
-									></span>
-								{:else}
-									<span class="sw ic" aria-hidden="true"
-										>{o.group === 'Course'
-											? '#'
-											: o.target === 'planner'
-												? '◷'
-												: o.target === 'both'
-													? '⧉'
-													: '▦'}</span
-									>
-								{/if}
-								<span class="tok">{o.token}</span>
-								{#if picked(o)}<span class="tick" aria-label="selected">✓</span>{/if}
-								<span class="hint">{o.hint}</span>
+	<div
+		class="scrim"
+		role="presentation"
+		transition:fade={{ duration: 160 }}
+		onmousedown={(e) => e.target === e.currentTarget && hide()}
+	>
+		<div
+			class="stage"
+			class:with-tl={!!preview}
+			role="presentation"
+			onmousedown={(e) => e.target === e.currentTarget && hide()}
+		>
+			<div
+				class="pal"
+				role="dialog"
+				aria-modal="true"
+				aria-label="Quick add"
+				in:pop
+				out:pop={{ duration: 120 }}
+			>
+				<div class="log" bind:this={logEl} aria-live="polite">
+					<div class="bot">
+						Type what you want to add, in any order. It goes on the planner; add <code>/calendar</code> for a
+						big event or
+						<code>/both</code> for both. Type <code>/</code> for options{courses.length
+							? ', # for a course'
+							: ''}.
+					</div>
+					{#each log as l, i (i)}
+						{#if l.kind === 'me'}
+							<div class="me">{l.text}</div>
+						{:else if l.kind === 'info'}
+							<div class="bot">{l.text}</div>
+						{:else}
+							<div class="bot" class:undone={l.undone}>
+								<span aria-hidden="true">✓</span> Added <b>{l.title}</b> to {l.summary}
+								{#if !l.undone}<button type="button" class="undo" onclick={() => undo(l)}>Undo</button>{/if}
 							</div>
-						{/each}
-						<div class="mfoot">
-							Days and times need no slash: <code>fri</code> <code>next mon</code> <code>10 nov</code>
-							<code>6pm to 10pm</code>
-						</div>
-					</div>
-				{/if}
-			</div>
-
-			<div class="slots" id="qa-slots">
-				{#if parsed.typeSet || parsed.courseId}
-					{@const c = tc(parsed.type)}
-					<div class="s" style:background={c.bg} style:color={c.ink} style:border-color={c.bg}>
-						<span class="k">Type</span><span class="v">{parsed.type}</span>
-					</div>
-				{:else}
-					<div class="s d"><span class="k">Type</span><span class="v">Event · default</span></div>
-				{/if}
-				<div class="s" class:d={!parsed.title}>
-					<span class="k">Title</span><span class="v">{parsed.title || 'your words'}</span>
-				</div>
-				<div class="s" class:d={!parsed.targetSet}>
-					<span class="k">Goes to</span>
-					<span class="v">{parsed.targetSet ? WHERE_SLOT[parsed.target] : 'Planner · default'}</span>
-				</div>
-				<div class="s" class:d={!parsed.dateSet}>
-					<span class="k">Day</span><span class="v"
-						>{parsed.dateSet ? shortDate(parsed.date) : 'Today · default'}</span
-					>
-				</div>
-				<div class="s" class:d={!parsed.time}>
-					<span class="k">Time{parsed.notes.length ? ` · ${parsed.notes.join(', ')}` : ''}</span>
-					<span class="v">{timeLabel()}</span>
-				</div>
-				{#if parsed.courseCode}
-					<div class="s"><span class="k">Course</span><span class="v">#{parsed.courseCode}</span></div>
-				{/if}
-			</div>
-
-			{#if problems.length}
-				<div class="err" id="qa-err" role="alert">
-					{#each problems as pr (pr)}
-						<div>
-							{#each segs(pr) as s, i (i)}{#if s.code}<code>{s.t}</code>{:else}{s.t}{/if}{/each}
-						</div>
+						{/if}
 					{/each}
 				</div>
-			{/if}
 
-			<div class="ft">
-				<span><kbd>Enter</kbd> add · <kbd>/</kbd> options · <kbd>↑</kbd> last</span>
-				<span><kbd>Esc</kbd> close</span>
+				<div class="iwrap">
+					<CommandInput
+						bind:this={cmd}
+						bind:value={text}
+						{ctx}
+						describedby="qa-slots qa-err"
+						onenter={submit}
+						onescape={onEscape}
+						onkey={extraKey}
+						oninput={() => (problems = [])}
+					/>
+				</div>
+
+				<div class="slots" id="qa-slots">
+					{#if parsed.typeSet || parsed.courseId}
+						{@const c = tc(parsed.type)}
+						<div class="s" style:background={c.bg} style:color={c.ink} style:border-color={c.bg}>
+							<span class="k">Type</span><span class="v">{parsed.type}</span>
+						</div>
+					{:else}
+						<div class="s d"><span class="k">Type</span><span class="v">Event · default</span></div>
+					{/if}
+					<div class="s" class:d={!parsed.title}>
+						<span class="k">Title</span><span class="v">{parsed.title || 'your words'}</span>
+					</div>
+					<div class="s" class:d={!parsed.targetSet}>
+						<span class="k">Goes to</span>
+						<span class="v">{parsed.targetSet ? WHERE_SLOT[parsed.target] : 'Planner · default'}</span>
+					</div>
+					<div class="s" class:d={!parsed.dateSet}>
+						<span class="k">Day</span><span class="v"
+							>{parsed.dateSet ? shortDate(parsed.date) : 'Today · default'}</span
+						>
+					</div>
+					<div class="s" class:d={!parsed.time}>
+						<span class="k">Time{parsed.notes.length ? ` · ${parsed.notes.join(', ')}` : ''}</span>
+						<span class="v">{timeLabel()}</span>
+					</div>
+					{#if parsed.courseCode}
+						<div class="s"><span class="k">Course</span><span class="v">#{parsed.courseCode}</span></div>
+					{/if}
+				</div>
+
+				{#if problems.length}
+					<div class="err" id="qa-err" role="alert">
+						{#each problems as pr (pr)}
+							<div>
+								{#each segs(pr) as s, i (i)}{#if s.code}<code>{s.t}</code>{:else}{s.t}{/if}{/each}
+							</div>
+						{/each}
+					</div>
+				{/if}
+
+				<div class="ft">
+					<span><kbd>Enter</kbd> add · <kbd>/</kbd> options · <kbd>↑</kbd> last</span>
+					<span><kbd>Esc</kbd> close</span>
+				</div>
 			</div>
+
+			{#if preview}
+				<div class="tl" transition:pop={{ duration: 160 }}>
+					<TimelinePreview
+						date={preview.date}
+						{tz}
+						blocks={dayBlocks[preview.date] ?? []}
+						loading={loadingDay === preview.date && !dayBlocks[preview.date]}
+						draft={preview.draft}
+					/>
+				</div>
+			{/if}
 		</div>
 	</div>
 {/if}
@@ -400,16 +380,42 @@
 	.scrim {
 		position: fixed;
 		inset: 0;
-		background: rgb(0 0 0 / 0.4);
+		background: var(--scrim);
+		/* same blur as the item peek (via a var: the minifier keeps only -webkit- otherwise) */
+		--qa-blur: blur(8px);
+		backdrop-filter: var(--qa-blur);
 		display: flex;
-		align-items: flex-start;
+		align-items: center;
 		justify-content: center;
-		padding-top: 10vh;
+		padding: 24px 16px;
+		overflow-y: auto;
 		z-index: 100;
 	}
-	.pal {
+	/* palette stays dead centre; the timeline hangs off its right side (wide screens) or sits below it */
+	.stage {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 16px;
 		width: 640px;
-		max-width: calc(100vw - 32px);
+		max-width: 100%;
+		margin: auto;
+	}
+	.tl {
+		width: 340px;
+		max-width: 100%;
+	}
+	@media (min-width: 1360px) {
+		.tl {
+			position: absolute;
+			left: calc(100% + 20px);
+			top: 50%;
+			translate: 0 -50%;
+		}
+	}
+	.pal {
+		width: 100%;
 		background: var(--raised);
 		border: 1px solid var(--border);
 		border-radius: 14px;
@@ -454,108 +460,8 @@
 		color: var(--ink);
 		cursor: pointer;
 	}
-	.iw {
-		position: relative;
+	.iwrap {
 		border-top: 1px solid var(--rule);
-	}
-	.ghost,
-	.in {
-		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-		font-size: 15px;
-		letter-spacing: 0;
-		padding: 0 16px;
-		height: 52px;
-		line-height: 52px;
-		white-space: pre;
-	}
-	.ghost {
-		position: absolute;
-		inset: 0;
-		color: var(--quiet);
-		opacity: 0.75;
-		pointer-events: none;
-		overflow: hidden;
-	}
-	.typed {
-		color: transparent;
-	}
-	.in {
-		position: relative;
-		width: 100%;
-		box-sizing: border-box;
-		border: 0;
-		outline: none;
-		background: transparent;
-		color: var(--ink);
-	}
-	.iw:focus-within {
-		box-shadow: inset 0 -2px 0 var(--ink);
-	}
-	.menu {
-		position: absolute;
-		top: 50px;
-		width: 264px;
-		background: var(--raised);
-		border: 1px solid var(--border);
-		border-radius: 10px;
-		box-shadow: 0 8px 24px var(--shadow);
-		padding: 4px;
-		z-index: 2;
-		font-size: 13px;
-	}
-	.mg {
-		font-size: 11px;
-		color: var(--quiet);
-		padding: 4px 8px 2px;
-	}
-	.mi {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 5px 8px;
-		border-radius: 6px;
-		cursor: pointer;
-	}
-	.mi.on {
-		background: var(--rule);
-		outline: 1px solid var(--border);
-	}
-	.sw {
-		width: 12px;
-		height: 12px;
-		border-radius: 3px;
-		border: 1px solid;
-		flex: none;
-	}
-	.sw.ic {
-		border: 0;
-		width: 12px;
-		font-size: 12px;
-		line-height: 12px;
-		text-align: center;
-		color: var(--quiet);
-	}
-	.tok {
-		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-	}
-	.tick {
-		font-size: 12px;
-	}
-	.hint {
-		margin-left: auto;
-		font-size: 11px;
-		color: var(--quiet);
-	}
-	.mfoot {
-		font-size: 11px;
-		color: var(--quiet);
-		padding: 6px 8px 4px;
-		margin-top: 4px;
-		border-top: 1px solid var(--rule);
-		line-height: 1.7;
-	}
-	.mfoot code {
-		font-size: 11px;
 	}
 	.slots {
 		display: grid;

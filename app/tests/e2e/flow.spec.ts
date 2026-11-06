@@ -103,7 +103,9 @@ test('planner: drag 13:00-14:30, resize to 14:45; 23:00-06:00 on both days', asy
 	await page.mouse.down();
 	await page.mouse.move(gb.x + 150, y(14 * 60 + 30) - 2, { steps: 8 });
 	await page.mouse.up();
-	await page.fill('#draft-label', 'Prep');
+	const box = page.locator('.planner .lt-slotcmd input');
+	await expect(box).toBeFocused();
+	await box.fill('Prep');
 	await page.keyboard.press('Enter');
 	const blk = page.locator('.blk[aria-label^="Prep,"]');
 	await expect(blk).toHaveAttribute('aria-label', /13:00 – 14:30/);
@@ -154,9 +156,14 @@ test('quick add palette: planner by default, /calendar big events, /both', async
 	await expect(page.locator('#qa-slots')).toContainText('Exam');
 	await expect(page.locator('#qa-slots')).toContainText('#DS');
 	await expect(page.locator('#qa-slots')).toContainText('Planner · default');
+	// time typed -> live timeline window beside the palette, draft follows the typing
+	const tl = page.locator('.tlp');
+	await expect(tl).toBeVisible();
+	await expect(tl.locator('.draft')).toContainText('14:00 – 15:00');
 	// problems only on Enter
 	await page.keyboard.press('Escape'); // close menu
 	await page.keyboard.press('Escape'); // clear text
+	await expect(tl).toHaveCount(0);
 	await page.keyboard.type('call mum tommorow');
 	await expect(page.locator('#qa-err')).toHaveCount(0);
 	await page.keyboard.press('Enter');
@@ -198,6 +205,76 @@ test('quick add palette: planner by default, /calendar big events, /both', async
 	const outing = j.items.find((i) => i.title === 'e2e outing');
 	expect(outing?.time).toBe('14:00');
 	expect(j.blocks.find((b) => b.itemId === outing?.id)?.startAt.slice(11, 16)).toBe('06:00');
+});
+
+test('planner drag box takes commands: typed time moves the box, /calendar option', async () => {
+	await page.goto('/');
+	const grid = page.locator('.planner .grid');
+	const gb = (await grid.boundingBox())!;
+	const y = (min: number) => gb.y + (min * 48) / 60;
+	await page.mouse.move(gb.x + 150, y(9 * 60) + 2);
+	await page.mouse.down();
+	await page.mouse.move(gb.x + 150, y(10 * 60) - 2, { steps: 6 });
+	await page.mouse.up();
+	const box = page.locator('.planner .lt-slotcmd input');
+	await expect(box).toBeFocused();
+	await page.keyboard.type('e2e cmd block /hobby 5pm to 6:30pm');
+	await expect(page.locator('.planner .draft')).toContainText('17:00 – 18:30');
+	await page.keyboard.press('Enter');
+	await expect(page.locator('.blk[aria-label^="e2e cmd block,"]')).toHaveAttribute(
+		'aria-label',
+		/17:00 – 18:30/,
+	);
+	// calendar option via the toggle
+	await page.mouse.move(gb.x + 150, y(19 * 60) + 2);
+	await page.mouse.down();
+	await page.mouse.move(gb.x + 150, y(20 * 60) - 2, { steps: 6 });
+	await page.mouse.up();
+	await page.keyboard.type('e2e cal from drag');
+	await page.locator('.planner .lt-slotcmd').getByRole('button', { name: 'Calendar' }).click();
+	await expect(page.locator('.planner .lt-slotcmd input')).toHaveValue('e2e cal from drag /calendar ');
+	await page.keyboard.press('Enter');
+	const d = await today();
+	const r = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 1)}`);
+	const j = r.j as { items: { title: string; time: string | null }[] };
+	expect(j.items.find((i) => i.title === 'e2e cal from drag')?.time).toBe('19:00');
+});
+
+test('week drag box: same commands, typed time moves the selection', async () => {
+	const d = await today();
+	await page.goto('/week');
+	const col = (await page.locator(`.fc-timegrid-col[data-date="${d}"]`).boundingBox())!;
+	const row = async (t: string) =>
+		(await page.locator(`.fc-timegrid-slot-lane[data-time="${t}"]`).boundingBox())!;
+	const a = await row('08:00:00');
+	const b = await row('08:30:00');
+	await page.mouse.move(col.x + col.width / 2, a.y + 3);
+	await page.mouse.down();
+	await page.mouse.move(col.x + col.width / 2, b.y + b.height - 3, { steps: 6 });
+	await page.mouse.up();
+	const pop = page.getByRole('dialog', { name: 'New entry' });
+	await expect(pop).toContainText('08:00 – 09:00');
+	await expect(pop.locator('input')).toBeFocused();
+	await page.keyboard.type('e2e week cmd /work 9:15am to 10am');
+	await expect(page.locator('.fc-highlight, .fc-event-mirror').first()).toBeVisible();
+	await page.waitForTimeout(300);
+	await page.screenshot({
+		path: '/tmp/claude-0/-home-claude/1f730014-c7d0-52ee-a785-cecc649b2d5b/scratchpad/week.png',
+	});
+	await page.keyboard.press('Enter');
+	await expect(pop).toHaveCount(0);
+	const r = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 1)}`);
+	const j = r.j as { blocks: { label: string; startAt: string; endAt: string; type: string | null }[] };
+	const blk = j.blocks.find((x) => x.label === 'e2e week cmd');
+	expect(blk && [blk.startAt, blk.endAt, blk.type]).toEqual([utc(d, '09:15'), utc(d, '10:00'), 'Work']);
+	// Esc cancels
+	await page.mouse.move(col.x + col.width / 2, a.y + 3);
+	await page.mouse.down();
+	await page.mouse.move(col.x + col.width / 2, b.y + b.height - 3, { steps: 6 });
+	await page.mouse.up();
+	await expect(pop).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(pop).toHaveCount(0);
 });
 
 test('item opens as centre peek: blur, rename in place, notes, linked block, hover X', async () => {

@@ -8,6 +8,7 @@
 	import { blockType, colorsFor, typeClass } from '$lib/colors';
 	import {
 		addDays,
+		diffDays,
 		fcDropToItem,
 		hhmm,
 		itemToFc,
@@ -41,12 +42,32 @@
 		oncycleblock: (id: string) => void;
 		onmoveitem: (id: string, date: string, endDate: string | null) => Promise<void>;
 		onmoveblock: (id: string, startAt: string, endAt: string) => Promise<void>;
-		oncreateblock: (startAt: string, endAt: string) => void;
+		/** empty-slot drag: local day + minutes (end may pass 1440) + where the pointer let go */
+		oncreateblock: (date: string, start: number, end: number, at: { x: number; y: number }) => void;
 		ondropitem: (id: string, date: string, minutes: number | null) => void;
 		onopen: (id: string) => void;
 	} = $props();
 
 	let el: HTMLDivElement;
+	let quiet = false;
+
+	/** live preview of a typed range in the grid (first day only when it crosses midnight) */
+	export function showSlot(date: string, start: number, end: number) {
+		if (!cal) return;
+		const e = Math.min(end, 1440);
+		quiet = true;
+		try {
+			cal.select(
+				`${date}T${hhmm(start)}:00`,
+				e >= 1440 ? `${addDays(date, 1)}T00:00:00` : `${date}T${hhmm(e)}:00`,
+			);
+		} finally {
+			quiet = false;
+		}
+	}
+	export function clearSlot() {
+		cal?.unselect();
+	}
 	let cal: Calendar | null = null;
 	let drag: Draggable | null = null;
 
@@ -223,12 +244,21 @@
 					info.revert();
 				}
 			},
+			unselectAuto: false,
 			select: (info) => {
-				cal?.unselect();
-				if (info.allDay) return;
+				if (quiet) return;
+				if (info.allDay) {
+					cal?.unselect();
+					return;
+				}
 				const s = parts(info.startStr);
 				const e = parts(info.endStr);
-				oncreateblock(localToUtc(s.date, s.minutes ?? 0, tz), localToUtc(e.date, e.minutes ?? 0, tz));
+				const end = (e.minutes ?? 0) + 1440 * Math.max(0, diffDays(s.date, e.date));
+				const r = (info.jsEvent?.target as HTMLElement | null)?.getBoundingClientRect();
+				const at = info.jsEvent
+					? { x: info.jsEvent.clientX, y: info.jsEvent.clientY }
+					: { x: r?.left ?? 200, y: r?.top ?? 200 };
+				oncreateblock(s.date, s.minutes ?? 0, end, at);
 			},
 			drop: (info) => {
 				const id = (info.draggedEl as HTMLElement).dataset.ltItem;
@@ -290,6 +320,27 @@
 		--fc-neutral-bg-color: var(--ground);
 		--fc-now-indicator-color: var(--ink);
 		font-size: 12px;
+	}
+	/* drag / typed selection = same dashed draft look as the planner */
+	.wk :global(.fc-event-mirror) {
+		background: color-mix(in srgb, var(--card) 88%, transparent) !important;
+		border: 1.5px dashed var(--ink) !important;
+		border-radius: 8px;
+		box-shadow: none !important;
+	}
+	.wk :global(.fc-event-mirror .fc-event-main) {
+		color: var(--ink) !important;
+		font-weight: 600;
+		font-size: 11px;
+	}
+	.wk :global(.fc-highlight) {
+		background: color-mix(in srgb, var(--card) 88%, transparent);
+		border: 1.5px dashed var(--ink);
+		border-radius: 8px;
+		opacity: 1;
+		transition:
+			top 0.15s,
+			bottom 0.15s;
 	}
 	.wk:global(.fc) :global(.fc-day-today) {
 		background: var(--hover) !important;

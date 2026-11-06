@@ -57,3 +57,17 @@ Sharing + overlap (access.ts filters, share keys, grants, overlap toggle, lanes)
 
 Fixed on the way: FullCalendar var overrides never applied (`.grid :global(.fc)` missed — `.fc` is the same element). Minifier dropped plain `backdrop-filter` (Firefox) → set via CSS var.
 Tests: +6 unit (planahead), +3 e2e (peek flow, theme, plan-ahead). Colour asserts now dark values.
+
+## UX round 2 — 2026-11-06 (owner asks)
+
+| Ask | Built | Where |
+|---|---|---|
+| N palette = blurred bg like item peek, centred | scrim uses `--scrim` + 8 px backdrop blur, palette dead centre (vertical + horizontal), pop-in. Body scroll locked while open | `QuickAdd.svelte` |
+| Live timeline while typing a time | once a time token parses, a 2nd window shows that day's planner (real blocks, fetched per day, cached until any calendar write) + dashed draft that slides as you type. Tinted with Type colour once `/type` or `#course` typed. "free" / "overlaps N blocks" pill. Crosses midnight → first day only, clipped at 24:00 ("ends next day"). `/calendar` = dotted 30-min marker "calendar item". Wide screens (≥1360 px): hangs off the palette's right, palette never moves. Narrower: under it | `TimelinePreview.svelte`, `DraftBlock.svelte` |
+| Commands in the timeline drag | drag empty time → command box in the draft (same grammar, ghost hint, `/` `#` menu). Dragged day+range used unless you type one (typed wins, box moves live). Default planner; Planner / Calendar / Both toggle (= `/calendar`, `/both`). Undo toast | `SlotCommand.svelte`, `CommandInput.svelte`, `DayPlanner.svelte` |
+| Same on Week page | `prompt()` gone. Drag empty slot → popover with the same command box; typed time moves the grid selection live (dashed draft look); header shows live range | `routes/week/+page.svelte`, `WeekCalendar.svelte` (`showSlot/clearSlot`, `unselectAuto:false`) |
+
+Parser: `QAContext.slot {date,start,end}` (drag range) + `QAParse.fromSlot`; `withTarget(text, target)`; `ghostHint(..., slotted)`. API `POST /api/quickadd {text, slot?}` (zod strict, end ≤ 2880).
+Shared: `lib/planner-layout.ts` (clip + column packing, used by DayPlanner + preview).
+Fix on the way: Home refreshes serialised (a refresh asked for mid-flight runs again after) — closing the item peek sometimes showed stale planner.
+Tests: +7 unit (slot, withTarget, slotted ghost), +2 e2e (planner drag commands + /calendar toggle, week drag box), N-palette e2e checks the live timeline.

@@ -20,6 +20,13 @@ export interface QAContext {
 	today: string; // local YYYY-MM-DD
 	nowMinutes: number; // local minutes since 00:00
 	courses: QACourse[];
+	/** drag-created range on a timeline: used when the text has no day / no time of its own (typed ones win) */
+	slot?: QASlot;
+}
+export interface QASlot {
+	date: string; // local YYYY-MM-DD
+	start: number; // minutes from 00:00
+	end: number; // minutes from the start day's 00:00 (> 1440 = next day)
 }
 export type QATarget = 'planner' | 'calendar' | 'both';
 export interface QAParse {
@@ -40,6 +47,8 @@ export interface QAParse {
 	endMinutes: number | null;
 	endTime: string | null;
 	endNextDay: boolean;
+	/** time came from the dragged slot (no time typed) */
+	fromSlot: boolean;
 	notes: string[]; // informational, e.g. "rounded to 15 min"
 	warnings: string[]; // shown with the result, never block
 	problems: string[]; // shown on Enter; `code` in backticks
@@ -690,6 +699,11 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	let start = th && !allDay ? th.start : null;
 	let end = th && !allDay ? th.end : null;
 	if (start !== null && end === null && dur !== null) end = start + dur;
+	const fromSlot = start === null && !allDay && !!ctx.slot;
+	if (fromSlot && ctx.slot) {
+		start = ctx.slot.start;
+		end = ctx.slot.end;
+	}
 
 	// --- date: last valid wins ---
 	const timePassed = start !== null && start <= ctx.nowMinutes;
@@ -709,7 +723,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 		}
 	}
 	const dateSet = date !== null;
-	date ??= today;
+	date ??= ctx.slot?.date ?? today;
 
 	// --- little words glued to a day/time: "on fri", "at 6pm", "from 6 to 8" ---
 	for (let i = 0; i < low.length; i++) {
@@ -750,7 +764,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 		}
 		if (c && target === 'planner') notes.push('course is only saved with /calendar or /both');
 	} else if (end !== null) {
-		notes.push('end time needs /both');
+		if (!fromSlot) notes.push('end time needs /both');
 		end = null;
 	}
 
@@ -785,6 +799,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 		endMinutes: makesBlock ? end : null,
 		endTime: makesBlock && end !== null ? hhmm(end) : null,
 		endNextDay,
+		fromSlot,
 		notes,
 		warnings,
 		problems,
@@ -835,8 +850,11 @@ export function optionsFor(token: string, courses: QACourse[]): QAOption[] {
 }
 
 /** Grey ghost text after the cursor: rest of an option being typed, else the slots still missing. */
-export function ghostHint(text: string, p: QAParse, courses: QACourse[]): string {
-	if (!text) return 'title  day  time   optional: /type  /calendar or /both';
+export function ghostHint(text: string, p: QAParse, courses: QACourse[], slotted = false): string {
+	if (!text)
+		return slotted
+			? 'title   optional: /type  /calendar  #course'
+			: 'title  day  time   optional: /type  /calendar or /both';
 	const tok = activeOptionToken(text);
 	if (tok) {
 		if (tok.length < 2) return '';
@@ -845,10 +863,26 @@ export function ghostHint(text: string, p: QAParse, courses: QACourse[]): string
 	}
 	const missing: string[] = [];
 	if (!p.title) missing.push('title');
-	if (!p.dateSet) missing.push('day');
-	if (p.time === null) missing.push('time');
+	if (!p.dateSet && !slotted) missing.push('day');
+	if (p.time === null && !slotted) missing.push('time');
 	if (!p.typeSet && !p.courseId) missing.push('/type');
 	if (!p.targetSet) missing.push('/calendar or /both');
 	if (!missing.length) return '';
 	return (text.endsWith(' ') ? ' ' : '  ') + missing.join('  ');
+}
+
+const TARGET_TOKEN: Record<QATarget, string> = { planner: '', calendar: '/calendar', both: '/both' };
+/** Replace any destination option in the text with `target` (planner = no token, it is the default). */
+export function withTarget(text: string, target: QATarget): string {
+	const kept = text
+		.split(/(\s+)/)
+		.filter((t) => {
+			const k = t.toLowerCase().replace(/[,.;:!?]+$/, '');
+			return !(k.startsWith('/') && TARGET_WORDS[k.slice(1)]);
+		})
+		.join('')
+		.replace(/\s{2,}/g, ' ')
+		.trimEnd();
+	const tok = TARGET_TOKEN[target];
+	return tok ? `${kept}${kept ? ' ' : ''}${tok} ` : kept ? `${kept} ` : '';
 }

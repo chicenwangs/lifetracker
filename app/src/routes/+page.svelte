@@ -30,9 +30,23 @@
 		data.planner.blocks.map((b) => (statusOver[b.id] ? { ...b, status: statusOver[b.id] as Status } : b)),
 	);
 
-	async function refresh() {
-		await invalidateAll();
-		statusOver = {};
+	// serialise: a refresh asked for while one is in flight runs again after it (a load that started
+	// before the latest write could otherwise be the last one to land, e.g. closing the item peek)
+	let refreshing: Promise<void> | null = null;
+	let again = false;
+	async function refresh(): Promise<void> {
+		if (refreshing) {
+			again = true;
+			return refreshing;
+		}
+		refreshing = (async () => {
+			do {
+				again = false;
+				await invalidateAll();
+			} while (again);
+			statusOver = {};
+		})().finally(() => (refreshing = null));
+		return refreshing;
 	}
 
 	function nav(params: Record<string, string>) {

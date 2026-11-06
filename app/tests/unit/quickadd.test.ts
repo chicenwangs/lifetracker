@@ -4,6 +4,7 @@ import {
 	ghostHint,
 	optionsFor,
 	parseQuickAdd,
+	withTarget,
 	type QAContext,
 } from '../../src/lib/quickadd';
 
@@ -355,5 +356,45 @@ describe('quickAdd server', () => {
 		expect(() => quickAdd(me, 'gym sat', NOW)).toThrow(/Planner entries need a time/);
 		expect(() => quickAdd(me, '/hobby 6pm', NOW)).toThrow(/Add a title first/);
 		expect(itemsRepo.withCounts([]).length).toBe(0);
+	});
+});
+
+describe('dragged slot (planner / week drag box)', () => {
+	const slot = { date: '2026-11-09', start: 13 * 60, end: 14 * 60 + 30 };
+	it('uses the dragged day + range when none typed', () => {
+		const r = p('gym /hobby', { slot });
+		expect(r.ok).toBe(true);
+		expect(r).toMatchObject({ title: 'gym', type: 'Hobby', target: 'planner', date: '2026-11-09' });
+		expect([r.startMinutes, r.endMinutes, r.fromSlot]).toEqual([780, 870, true]);
+		expect(r.notes).toEqual([]);
+	});
+	it('typed time wins over the drag, day stays', () => {
+		const r = p('gym 3pm to 4.30pm', { slot });
+		expect([r.date, r.startMinutes, r.endMinutes, r.fromSlot]).toEqual(['2026-11-09', 900, 990, false]);
+	});
+	it('typed day wins over the drag, time stays', () => {
+		const r = p('gym tue', { slot });
+		expect([r.date, r.startMinutes]).toEqual(['2026-11-10', 780]);
+	});
+	it('/calendar from a drag = item at the start time, no end-time note', () => {
+		const r = p('dinner /calendar', { slot });
+		expect(r).toMatchObject({ target: 'calendar', time: '13:00', endMinutes: null });
+		expect(r.notes).toEqual([]);
+	});
+	it('drag to 24:00 stays on the day', () => {
+		const r = p('late', { slot: { date: '2026-11-09', start: 23 * 60, end: 1440 } });
+		expect([r.startMinutes, r.endMinutes, r.endNextDay]).toEqual([1380, 1440, false]);
+	});
+	it('ghost hint skips day/time when slotted', () => {
+		expect(ghostHint('', p('', { slot }), ctx.courses, true)).toBe(
+			'title   optional: /type  /calendar  #course',
+		);
+		expect(ghostHint('gym', p('gym', { slot }), ctx.courses, true)).toBe('  /type  /calendar or /both');
+	});
+	it('withTarget swaps the destination token', () => {
+		expect(withTarget('gym /hobby', 'calendar')).toBe('gym /hobby /calendar ');
+		expect(withTarget('gym /calendar /hobby', 'both')).toBe('gym /hobby /both ');
+		expect(withTarget('gym /cal', 'planner')).toBe('gym ');
+		expect(withTarget('', 'calendar')).toBe('/calendar ');
 	});
 });

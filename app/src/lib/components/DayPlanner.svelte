@@ -3,12 +3,15 @@
 <script lang="ts">
 	import { onMount, type Snippet } from 'svelte';
 	import StatusSquare from './StatusSquare.svelte';
+	import DraftBlock from './DraftBlock.svelte';
+	import SlotCommand from './SlotCommand.svelte';
+	import { layoutDay, type Piece } from '$lib/planner-layout';
+	import type { QAParse } from '$lib/quickadd';
 	import { post, patch as apiPatch } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { blockType, colorsFor } from '$lib/colors';
 	import {
 		addDays,
-		clipToDay,
 		fixRange,
 		hhmm,
 		isoPlus,
@@ -69,48 +72,33 @@
 	let menuFor = $state<string | null>(null);
 	let menuLabel = $state('');
 
-	interface Piece {
-		b: BlockDTO;
-		top: number;
-		bottom: number;
-		clippedStart: boolean;
-		clippedEnd: boolean;
-		col: number;
-		cols: number;
-	}
-
-	const pieces = $derived.by(() => {
-		const list: Piece[] = [];
-		for (const b0 of blocks) {
-			const b = over[b0.id] ? { ...b0, ...over[b0.id] } : b0;
-			const c = clipToDay(b.startAt, b.endAt, date, tz);
-			if (c) list.push({ b, ...c, col: 0, cols: 1 });
-		}
-		list.sort((a, b) => a.top - b.top || b.bottom - a.bottom);
-		// column packing per overlap cluster
-		let cluster: Piece[] = [];
-		let clusterEnd = -1;
-		const flush = () => {
-			const ends: number[] = [];
-			for (const p of cluster) {
-				let c = ends.findIndex((e) => e <= p.top);
-				if (c < 0) {
-					c = ends.length;
-					ends.push(p.bottom);
-				} else ends[c] = p.bottom;
-				p.col = c;
-			}
-			for (const p of cluster) p.cols = ends.length;
-			cluster = [];
+	// typed day/time in the drag box moves the box live (same day only)
+	let draftParse = $state<QAParse | null>(null);
+	const draftView = $derived.by(() => {
+		if (!draft) return null;
+		const p = draftParse;
+		if (!draft.naming || !p || p.date !== date || p.startMinutes === null)
+			return {
+				start: draft.start,
+				end: draft.end,
+				type: p?.typeSet || p?.courseId ? p.type : null,
+				thin: false,
+				ce: false,
+				note: p && p.date !== date ? 'other day' : '',
+			};
+		const thin = p.target === 'calendar';
+		const e = thin ? p.startMinutes + 30 : (p.endMinutes ?? p.startMinutes + 60);
+		return {
+			start: p.startMinutes,
+			end: Math.min(e, DAY_MIN),
+			type: p.typeSet || p.courseId ? p.type : null,
+			thin,
+			ce: e > DAY_MIN,
+			note: thin ? 'calendar item' : '',
 		};
-		for (const p of list) {
-			if (p.top >= clusterEnd && cluster.length) flush();
-			cluster.push(p);
-			clusterEnd = Math.max(clusterEnd, p.bottom);
-		}
-		if (cluster.length) flush();
-		return list;
 	});
+
+	const pieces = $derived(layoutDay(blocks, date, tz, over));
 
 	const isToday = $derived(date === todayLocal(tz));
 
@@ -159,7 +147,7 @@
 	} | null = null;
 
 	function onGridDown(e: PointerEvent) {
-		if (e.button !== 0 || (e.target as HTMLElement).closest('.blk, .draft, .menu, .bx')) return;
+		if (e.button !== 0 || (e.target as HTMLElement).closest('.blk, .draft, .menu, .bx, .lt-slotcmd')) return;
 		menuFor = null;
 		const m = snap15(yToMin(e.clientY));
 		gesture = { kind: 'create', startY: e.clientY, anchor: m, moved: false };
@@ -234,6 +222,7 @@
 				}
 				return;
 			}
+			draftParse = null;
 			draft = { ...draft, naming: true };
 			return;
 		}
@@ -256,27 +245,6 @@
 			setTimeout(() => {
 				if (g.id) over = without(over, g.id);
 			}, 400);
-		}
-	}
-
-	async function saveDraft() {
-		if (!draft) return;
-		const label = draft.label.trim();
-		if (!label) {
-			draft = null;
-			return;
-		}
-		const d = draft;
-		draft = null;
-		try {
-			await post('/api/blocks', {
-				label,
-				startAt: localToUtc(date, d.start, tz),
-				endAt: localToUtc(date, d.end, tz),
-			});
-			onchanged();
-		} catch (e) {
-			showError(e);
 		}
 	}
 
@@ -502,36 +470,38 @@
 				{/if}
 			{/each}
 
-			{#if draft}
-				<div
-					class="draft"
-					style:top="{draft.start * PX_MIN}px"
-					style:height="{(draft.end - draft.start) * PX_MIN}px"
+			{#if draft && draftView}
+				<DraftBlock
+					start={draftView.start}
+					end={draftView.end}
+					pxMin={PX_MIN}
+					type={draftView.type}
+					thin={draftView.thin}
+					clippedEnd={draftView.ce}
+					note={draftView.note}
+					animate={draft.naming}
 				>
-					<span class="tm">{hhmm(draft.start)} – {hhmm(draft.end)}</span>
 					{#if draft.naming}
-						<label class="sr-only" for="draft-label">New block label</label>
-						<!-- svelte-ignore a11y_autofocus -->
-						<input
-							id="draft-label"
-							class="input sm"
-							placeholder="What? (Enter saves, Esc cancels)"
-							bind:value={draft.label}
-							autofocus
-							onkeydown={(e) => {
-								if (e.key === 'Enter') saveDraft();
-								if (e.key === 'Escape') draft = null;
+						<SlotCommand
+							{date}
+							start={draft.start}
+							end={draft.end}
+							onparsed={(p) => (draftParse = p)}
+							ondone={() => {
+								draft = null;
+								onchanged();
 							}}
-							onblur={() => draft && !draft.label.trim() && (draft = null)}
+							oncancel={() => (draft = null)}
 						/>
 					{/if}
-				</div>
+				</DraftBlock>
 			{/if}
 		</div>
 	</div>
 	{#if tip}
 		<div class="tip">
-			Drag on empty time to add a block · drag edges to resize · drag due chips or month items here
+			Drag on empty time, then type a title (/type, /calendar work too) · drag edges to resize · drag due
+			chips or month items here
 		</div>
 	{/if}
 </div>
@@ -719,24 +689,6 @@
 	}
 	.h.bot {
 		bottom: 0;
-	}
-	.draft {
-		position: absolute;
-		left: 56px;
-		right: 14px;
-		border: 1.5px dashed var(--ink);
-		border-radius: 8px;
-		background: color-mix(in srgb, var(--card) 88%, transparent);
-		padding: 4px 8px;
-		z-index: 7;
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		min-height: 24px;
-		overflow: visible;
-	}
-	.draft .input {
-		z-index: 8;
 	}
 	.menu {
 		position: absolute;

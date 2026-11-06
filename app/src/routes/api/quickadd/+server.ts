@@ -2,9 +2,23 @@ import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { api, body, me } from '$lib/server/http';
 import { quickAdd } from '$lib/server/quickadd-server';
+import { isDate } from '$lib/time';
+
+// slot = range dragged on a timeline (planner / week). Typed day/time in `text` still wins.
+const slotSchema = z
+	.object({
+		date: z.string().refine(isDate, 'bad date'),
+		start: z.number().int().min(0).max(1439),
+		end: z.number().int().min(1).max(2880),
+	})
+	.strict()
+	.refine((s) => s.end > s.start, 'end must be after start');
 
 export const POST = api(async (e) => {
 	const u = me(e);
-	const { text } = await body(e, z.object({ text: z.string().max(500) }).strict());
-	return json(quickAdd(u, text), { status: 201 });
+	const { text, slot } = await body(
+		e,
+		z.object({ text: z.string().max(500), slot: slotSchema.optional() }).strict(),
+	);
+	return json(quickAdd(u, text, Date.now(), slot), { status: 201 });
 });
