@@ -17,5 +17,8 @@ export default ts.config(
 		languageOptions: { parserOptions: { parser: ts.parser, svelteConfig } },
 	},
 	{ rules: { '@typescript-eslint/no-explicit-any': 'error' } },
+	// no paths.base in this app -> resolve() adds nothing
+	{ rules: { 'svelte/no-navigation-without-resolve': 'off' } },
+	{ files: ['tests/**'], rules: { '@typescript-eslint/no-non-null-assertion': 'off' } },
 	{ ignores: ['build/', '.svelte-kit/', 'drizzle/', 'node_modules/'] },
 );

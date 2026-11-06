@@ -5,5 +5,5 @@
  eventClick own -> goto /item/id ; theirs -> read-only card popover
  refetch on overlap toggle, window focus, every 60s -->
 <script lang="ts">
-  // PSEUDO only. Phase 1 builds.
+	// PSEUDO only. Phase 1 builds.
 </script>

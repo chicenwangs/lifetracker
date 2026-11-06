@@ -7,5 +7,5 @@
  lanes: OFF 1 ; ON me + up to 2 more, extras packed in lane 3.
  P3: both-free band 08-22 gaps >= 60m. -->
 <script lang="ts">
-  // PSEUDO only. Phase 1 builds.
+	// PSEUDO only. Phase 1 builds.
 </script>

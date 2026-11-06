@@ -1,7 +1,221 @@
-/* tokens TECHNICAL §9. No Tailwind. */
-/* :root { --ground:#F5F5F4; --card:#FFF; --border:#D6D3D1; --rule:#E7E5E4; --ink:#1C1917; --quiet:#57534E;
-           --input:#78716C; radius card 14 chip 6 btn 10; font Inter }
-   .t-work{bg #DBEAFE ink #1E3A8A} .t-exam{#FEE2E2/#7F1D1D} .t-event{#DCFCE7/#14532D}
-   .t-hobby{#FEF3C7/#713F12} .t-dating{#FCE7F3/#831843} .t-none{#E7E5E4/#292524} .busy{#E7E5E4/#44403C stripes}
-   .theirs { stripes 135deg + 1px dashed ink }   .done { line-through, NO opacity }
-   :focus-visible { outline 2px var(--ink) offset 2px } */
+/* Tokens (TECHNICAL §9). No Tailwind. */
+:root {
+	--ground: #f5f5f4;
+	--card: #ffffff;
+	--border: #d6d3d1;
+	--rule: #e7e5e4;
+	--ink: #1c1917;
+	--quiet: #57534e;
+	--input: #78716c;
+	--link: #1e3a8a;
+	--r-card: 14px;
+	--r-btn: 10px;
+	--r-chip: 6px;
+
+	--work-bg: #dbeafe;
+	--work-ink: #1e3a8a;
+	--exam-bg: #fee2e2;
+	--exam-ink: #7f1d1d;
+	--event-bg: #dcfce7;
+	--event-ink: #14532d;
+	--hobby-bg: #fef3c7;
+	--hobby-ink: #713f12;
+	--dating-bg: #fce7f3;
+	--dating-ink: #831843;
+	--none-bg: #e7e5e4;
+	--none-ink: #292524;
+	--busy-bg: #e7e5e4;
+	--busy-ink: #44403c;
+
+	font-family:
+		Inter,
+		system-ui,
+		-apple-system,
+		'Segoe UI',
+		sans-serif;
+	color: var(--ink);
+	background: var(--ground);
+	font-size: 14px;
+	line-height: 1.4;
+}
+
+* {
+	box-sizing: border-box;
+}
+body {
+	margin: 0;
+	min-height: 100vh;
+}
+a {
+	color: var(--link);
+	text-decoration: none;
+}
+a:hover {
+	color: var(--ink);
+	text-decoration: underline;
+}
+:focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 2px;
+}
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+h1,
+h2,
+h3 {
+	margin: 0;
+}
+
+/* ---- type colours ---- */
+.t-work {
+	--bg: var(--work-bg);
+	--fg: var(--work-ink);
+}
+.t-exam {
+	--bg: var(--exam-bg);
+	--fg: var(--exam-ink);
+}
+.t-event {
+	--bg: var(--event-bg);
+	--fg: var(--event-ink);
+}
+.t-hobby {
+	--bg: var(--hobby-bg);
+	--fg: var(--hobby-ink);
+}
+.t-dating {
+	--bg: var(--dating-bg);
+	--fg: var(--dating-ink);
+}
+.t-none {
+	--bg: var(--none-bg);
+	--fg: var(--none-ink);
+}
+
+/* ---- shared controls ---- */
+.card {
+	background: var(--card);
+	border: 1px solid var(--border);
+	border-radius: var(--r-card);
+}
+.field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+.field > label,
+.label {
+	font-size: 13px;
+	font-weight: 600;
+}
+.hint {
+	font-size: 12px;
+	color: var(--quiet);
+}
+.input {
+	height: 44px;
+	border: 1px solid var(--input);
+	border-radius: var(--r-btn);
+	padding: 0 12px;
+	font-size: 15px;
+	background: #fff;
+	width: 100%;
+}
+.input.sm {
+	height: 36px;
+	font-size: 14px;
+}
+textarea.input {
+	height: auto;
+	min-height: 96px;
+	padding: 10px 12px;
+	resize: vertical;
+}
+.btn {
+	height: 40px;
+	padding: 0 16px;
+	border-radius: var(--r-btn);
+	border: 1px solid var(--border);
+	background: #fff;
+	font-weight: 600;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	white-space: nowrap;
+}
+.btn:hover {
+	background: var(--ground);
+}
+.btn.primary {
+	background: var(--ink);
+	border-color: var(--ink);
+	color: #fff;
+}
+.btn.primary:hover {
+	background: #000;
+}
+.btn.danger {
+	color: var(--exam-ink);
+	border-color: #fca5a5;
+}
+.btn.ghost {
+	border-color: transparent;
+	background: transparent;
+}
+.btn.sm {
+	height: 32px;
+	padding: 0 10px;
+	font-size: 13px;
+}
+.btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+.alert {
+	font-size: 13px;
+	color: var(--exam-ink);
+	background: var(--exam-bg);
+	border-radius: 8px;
+	padding: 8px 10px;
+}
+.ok-note {
+	font-size: 13px;
+	color: var(--event-ink);
+	background: var(--event-bg);
+	border-radius: 8px;
+	padding: 8px 10px;
+}
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+.muted {
+	color: var(--quiet);
+}
+table.plain {
+	width: 100%;
+	border-collapse: collapse;
+}
+table.plain th,
+table.plain td {
+	text-align: left;
+	padding: 8px 10px;
+	border-bottom: 1px solid var(--rule);
+	vertical-align: middle;
+}
+table.plain th {
+	font-size: 12px;
+	color: var(--quiet);
+	font-weight: 600;
+}

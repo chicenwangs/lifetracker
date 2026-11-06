@@ -1,23 +1,30 @@
-// Step 1: init (env + db + migrate) + proxy check + origin check + security headers.
-// Step 2 adds: session load, slide, guard (see pseudocode below).
-import type { Handle, HandleServerError, ServerInit } from '@sveltejs/kit';
+// init (env + db + migrate + purge) · proxy check · origin check · session · guard · security headers.
+import { redirect, type Handle, type HandleServerError, type ServerInit } from '@sveltejs/kit';
 import { env as privateEnv } from '$env/dynamic/private';
 import { env, initEnv } from '$lib/server/env';
 import { migrateDb, openDb, setHandle } from '$lib/server/db';
+import { loadSession } from '$lib/server/auth';
+import { setupOpen } from '$lib/server/setup';
+import { purgeAll } from '$lib/server/purge';
 
 export const init: ServerInit = async () => {
 	const e = initEnv(privateEnv); // throws -> boot fails (fail fast)
 	const h = openDb(e.DATABASE_PATH);
 	migrateDb(h);
 	setHandle(h);
+	purgeAll();
+	setInterval(() => purgeAll(), 3_600_000).unref();
 	console.log(`[boot] db ready, origin=${e.ORIGIN}, secureCookies=${e.secureCookies}`);
-	// TODO step 2+: purgeTrash, purgeExpiredSessions, purgeExpiredKeys + timers
 };
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const PUBLIC = [/^\/login\/?$/, /^\/signup\/?$/, /^\/setup\/?$/, /^\/healthz\/?$/, /^\/cal\/[^/]+\.ics$/];
+const isPublic = (p: string) => PUBLIC.some((r) => r.test(p));
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const e = env();
+	const path = event.url.pathname;
+	const api = path.startsWith('/api/');
 
 	// 1 proxy: behind tunnel, header must exist (fail closed)
 	if (e.ADDRESS_HEADER && !event.request.headers.get(e.ADDRESS_HEADER)) {
@@ -26,39 +33,44 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// 2 origin: every non-GET must come from ORIGIN. Missing Origin = 403.
 	if (!SAFE_METHODS.has(event.request.method)) {
-		const origin = event.request.headers.get('origin');
-		if (origin !== e.ORIGIN) {
-			return json403(event.url.pathname.startsWith('/api/'));
-		}
+		if (event.request.headers.get('origin') !== e.ORIGIN) return jsonOr(api, 403, 'bad_origin', 'Bad origin');
 	}
 
-	// 3 session + 4 guard: step 2
-	//   {user, session} = loadSession(cookies); slide(session)
-	//   if !user && !public(path): /api -> 401 ; else redirect /login?next=
-	event.locals.user = null;
-	event.locals.session = null;
+	// 3 session (+ sliding)
+	const s = path === '/healthz' ? null : loadSession(event.cookies);
+	event.locals.user = s?.user ?? null;
+	event.locals.session = s?.session ?? null;
+
+	// 4 guard
+	if (!event.locals.user && !isPublic(path)) {
+		if (api) return jsonOr(true, 401, 'unauthorized', 'Log in first');
+		if (setupOpen()) redirect(303, '/setup');
+		const next = path + event.url.search;
+		redirect(303, next === '/' ? '/login' : `/login?next=${encodeURIComponent(next)}`);
+	}
 
 	const res = await resolve(event);
 
-	// 6 headers (CSP comes from kit.csp)
+	// 5 headers (CSP comes from kit.csp)
 	res.headers.set('Referrer-Policy', 'same-origin');
 	res.headers.set('X-Content-Type-Options', 'nosniff');
 	res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+	if (event.locals.user) res.headers.set('Cache-Control', 'private, no-store');
 	return res;
 };
 
-function json403(api: boolean): Response {
+function jsonOr(api: boolean, status: number, code: string, message: string): Response {
 	return api
-		? new Response(JSON.stringify({ error: { code: 'bad_origin', message: 'Bad origin' } }), {
-				status: 403,
+		? new Response(JSON.stringify({ error: { code, message } }), {
+				status,
 				headers: { 'content-type': 'application/json' },
 			})
-		: new Response('Forbidden', { status: 403 });
+		: new Response(message, { status });
 }
 
 export const handleError: HandleServerError = ({ error, event, status }) => {
 	// log path + status only. never body, cookies, tokens.
-	if (status === 404) return { code: 'not_found', message: 'Not found' }; // no log noise (favicon.ico etc.)
+	if (status === 404) return { code: 'not_found', message: 'Not found' };
 	const msg = error instanceof Error ? error.message : 'unknown';
 	console.error(`[error] ${status} ${event.request.method} ${event.url.pathname}: ${msg}`);
 	return { code: 'internal', message: 'Something broke' };
