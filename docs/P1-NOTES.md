@@ -71,3 +71,14 @@ Parser: `QAContext.slot {date,start,end}` (drag range) + `QAParse.fromSlot`; `wi
 Shared: `lib/planner-layout.ts` (clip + column packing, used by DayPlanner + preview).
 Fix on the way: Home refreshes serialised (a refresh asked for mid-flight runs again after) — closing the item peek sometimes showed stale planner.
 Tests: +7 unit (slot, withTarget, slotted ghost), +2 e2e (planner drag commands + /calendar toggle, week drag box), N-palette e2e checks the live timeline.
+
+## UX round 3 — 2026-11-06 (owner asks)
+
+| Ask | Built | Where |
+|---|---|---|
+| Roll empty hours away, drag to expand | Timeline shows a visible hour range (default **07:00–24:00**). Top + bottom edges are drag handles (`row-resize` cursor, like a sidebar splitter), whole hours, min 3 h. Rolled hours become a striped strip "00:00 – 07:00 · 1 hidden: Sleep"; click = unroll, drag = adjust, arrows = ±1 h, Enter = unroll. Grid stays top-justified (no auto-scroll to 07:00 any more; height follows the range). Blocks cut by the range get dashed edges, no resize handle on the cut side. While typing a time outside the range in a drag box, the view widens temporarily | `RollHandle.svelte`, `DayPlanner.svelte` |
+| Same on Week | FullCalendar `slotMinTime/slotMaxTime` follow the same setting; handles overlay the grid edges; `contentHeight:'auto'` (no inner scroll). Hidden-block names collected across the 7 days | `WeekCalendar.svelte` |
+| Gap all-day ↔ first hour (week) | `.fc-timegrid-divider` = 20 px band (ground colour); top roll handle sits in it | `WeekCalendar.svelte` |
+
+One setting for Home + Week + item view: cookie `lt_hours=7-24` (read by `+layout.server.ts`, so SSR renders the right range, no jump). Pure helpers `lib/hours.ts` (`parseHours`, `clampHours`), client state `lib/client/hours.svelte.ts`. N-palette timeline preview keeps all 24 h (it scrolls to the draft).
+Tests: +2 unit (hours), e2e: rolled strip names hidden Sleep → click unrolls → drag top edge 7 h back → survives reload, top-justified; week gap ≥ 18 px, bottom edge drag hides 23:00, click restores. Existing planner e2e coordinates now offset by 07:00.

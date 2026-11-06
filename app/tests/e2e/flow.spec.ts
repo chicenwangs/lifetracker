@@ -98,7 +98,7 @@ test('month shows colour chips; square cycles + persists', async () => {
 test('planner: drag 13:00-14:30, resize to 14:45; 23:00-06:00 on both days', async () => {
 	const grid = page.locator('.planner .grid');
 	const gb = (await grid.boundingBox())!;
-	const y = (min: number) => gb.y + (min * 48) / 60;
+	const y = (min: number) => gb.y + ((min - 7 * 60) * 48) / 60; // grid starts 07:00 (default roll)
 	await page.mouse.move(gb.x + 150, y(13 * 60) + 2);
 	await page.mouse.down();
 	await page.mouse.move(gb.x + 150, y(14 * 60 + 30) - 2, { steps: 8 });
@@ -129,7 +129,27 @@ test('planner: drag 13:00-14:30, resize to 14:45; 23:00-06:00 on both days', asy
 	await page.goto(`/?d=${d}`);
 	await expect(page.locator('.blk[aria-label^="Sleep, 23:00 – …"]')).toBeVisible();
 	await page.goto(`/?d=${plusDay(d, 1)}`);
-	await expect(page.locator('.blk[aria-label^="Sleep, … – 06:00"]')).toBeAttached();
+	// 00:00-07:00 is rolled up by default: the strip names what is hidden, click shows it
+	const top = page.getByRole('separator', { name: /Timeline starts at 07:00/ });
+	await expect(top).toContainText('00:00 – 07:00');
+	await expect(top).toContainText('Sleep');
+	await expect(page.locator('.blk[aria-label^="Sleep, … – 06:00"]')).toHaveCount(0);
+	await top.click();
+	await expect(page.locator('.blk[aria-label^="Sleep, … – 06:00"]')).toBeVisible();
+	// drag the top edge back down 7 h (row-resize), grid stays top-justified, survives reload
+	const h = page.getByRole('separator', { name: /Timeline starts at 00:00/ });
+	await expect(h).toHaveCSS('cursor', 'row-resize');
+	const hb = (await h.boundingBox())!;
+	await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2 + 7 * 48, { steps: 10 });
+	await page.mouse.up();
+	await expect(page.getByRole('separator', { name: /Timeline starts at 07:00/ })).toBeVisible();
+	await page.reload();
+	await expect(page.getByRole('separator', { name: /Timeline starts at 07:00/ })).toContainText('Sleep');
+	const g = (await page.locator('.planner .grid').boundingBox())!;
+	const sc = (await page.locator('.planner .scroll').boundingBox())!;
+	expect(g.y - sc.y).toBeLessThan(30); // top-justified under the strip
 	await page.goto('/');
 });
 
@@ -137,7 +157,7 @@ test('drag "DS Quiz" chip to planner -> linked red block', async () => {
 	const grid = page.locator('.planner .grid');
 	await page
 		.locator('.due .chip', { hasText: 'DS Quiz' })
-		.dragTo(grid, { targetPosition: { x: 150, y: 16 * 48 + 5 } });
+		.dragTo(grid, { targetPosition: { x: 150, y: (16 - 7) * 48 + 5 } });
 	const b = page.locator('.blk[aria-label^="DS Quiz,"]');
 	await expect(b).toHaveAttribute('aria-label', /16:00 – 17:00/);
 	await expect(b).toHaveCSS('background-color', 'rgb(80, 15, 28)');
@@ -211,7 +231,7 @@ test('planner drag box takes commands: typed time moves the box, /calendar optio
 	await page.goto('/');
 	const grid = page.locator('.planner .grid');
 	const gb = (await grid.boundingBox())!;
-	const y = (min: number) => gb.y + (min * 48) / 60;
+	const y = (min: number) => gb.y + ((min - 7 * 60) * 48) / 60; // grid starts 07:00 (default roll)
 	await page.mouse.move(gb.x + 150, y(9 * 60) + 2);
 	await page.mouse.down();
 	await page.mouse.move(gb.x + 150, y(10 * 60) - 2, { steps: 6 });
@@ -275,6 +295,21 @@ test('week drag box: same commands, typed time moves the selection', async () =>
 	await expect(pop).toBeVisible();
 	await page.keyboard.press('Escape');
 	await expect(pop).toHaveCount(0);
+	// gap between all-day row and first hour; bottom edge rolls late hours (shared setting)
+	const allDay = (await page.locator('.fc-daygrid-body').first().boundingBox())!;
+	const first = await row('07:00:00');
+	expect(first.y - (allDay.y + allDay.height)).toBeGreaterThanOrEqual(18);
+	const bot = page.getByRole('separator', { name: /Timeline ends at 24:00/ });
+	await bot.scrollIntoViewIfNeeded();
+	const bb = (await bot.boundingBox())!;
+	await page.mouse.move(bb.x + 200, bb.y + bb.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(bb.x + 200, bb.y + bb.height / 2 - 48, { steps: 6 });
+	await page.mouse.up();
+	await expect(page.getByRole('separator', { name: /Timeline ends at 23:00/ })).toContainText('Sleep');
+	await expect(page.locator('.fc-timegrid-slot-lane[data-time="23:00:00"]')).toHaveCount(0);
+	await page.getByRole('separator', { name: /Timeline ends at 23:00/ }).click();
+	await expect(page.locator('.fc-timegrid-slot-lane[data-time="23:00:00"]')).toHaveCount(1);
 });
 
 test('item opens as centre peek: blur, rename in place, notes, linked block, hover X', async () => {
@@ -304,9 +339,9 @@ test('item opens as centre peek: blur, rename in place, notes, linked block, hov
 	const grid = dlg.locator('.planner .grid');
 	await grid.scrollIntoViewIfNeeded();
 	const sc = dlg.locator('.planner .scroll');
-	await sc.evaluate((el) => (el.scrollTop = 9 * 48));
+	await sc.evaluate((el) => (el.scrollTop = 2 * 48));
 	const gb = (await grid.boundingBox())!;
-	const y = (min: number) => gb.y + (min * 48) / 60;
+	const y = (min: number) => gb.y + ((min - 7 * 60) * 48) / 60; // grid starts 07:00 (default roll)
 	await page.mouse.move(gb.x + 150, y(10 * 60) + 2);
 	await page.mouse.down();
 	await page.mouse.move(gb.x + 150, y(11 * 60) - 2, { steps: 8 });

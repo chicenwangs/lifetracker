@@ -6,6 +6,11 @@
 	import timeGridPlugin from '@fullcalendar/timegrid';
 	import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 	import { blockType, colorsFor, typeClass } from '$lib/colors';
+	import RollHandle from './RollHandle.svelte';
+	import { page } from '$app/state';
+	import { hoursState } from '$lib/client/hours.svelte';
+	import { DEFAULT_HOURS, pad2, type HourRange } from '$lib/hours';
+	import { layoutDay } from '$lib/planner-layout';
 	import {
 		addDays,
 		diffDays,
@@ -49,7 +54,40 @@
 	} = $props();
 
 	let el: HTMLDivElement;
+	let wrapEl: HTMLDivElement;
 	let quiet = false;
+
+	// ---------- visible hours (shared with the Home planner) ----------
+	const GAP = 20; // all-day row | hourly grid gap, also where the top roll handle lives
+	const hr = $derived<HourRange>(
+		hoursState.ready ? hoursState : ((page.data.hours as HourRange | undefined) ?? DEFAULT_HOURS),
+	);
+	let geo = $state<{ top: number; bottom: number; left: number; width: number; hourPx: number } | null>(null);
+	function measure() {
+		const slots = el?.querySelector('.fc-timegrid-slots');
+		if (!slots || !wrapEl) return;
+		const w = wrapEl.getBoundingClientRect();
+		const r = slots.getBoundingClientRect();
+		geo = {
+			top: r.top - w.top,
+			bottom: r.bottom - w.top,
+			left: r.left - w.left,
+			width: r.width,
+			hourPx: r.height / Math.max(1, hr.end - hr.start),
+		};
+	}
+	const remeasure = () => requestAnimationFrame(measure);
+	const hiddenWeek = $derived.by(() => {
+		const top: string[] = [];
+		const bot: string[] = [];
+		for (let d = 0; d < 7; d++) {
+			for (const p of layoutDay(blocks, addDays(from, d), tz)) {
+				if (p.bottom <= hr.start * 60) top.push(p.b.label);
+				else if (p.top >= hr.end * 60) bot.push(p.b.label);
+			}
+		}
+		return { top: [...new Set(top)], bot: [...new Set(bot)] };
+	});
 
 	/** live preview of a typed range in the grid (first day only when it crosses midnight) */
 	export function showSlot(date: string, start: number, end: number) {
@@ -158,7 +196,9 @@
 			firstDay: 1,
 			headerToolbar: false,
 			height: 'auto',
-			contentHeight: 760,
+			contentHeight: 'auto',
+			slotMinTime: `${pad2(hr.start)}:00:00`,
+			slotMaxTime: `${pad2(hr.end)}:00:00`,
 			expandRows: false,
 			allDaySlot: true,
 			allDayText: 'all day',
@@ -166,7 +206,6 @@
 			snapDuration: '00:15:00',
 			slotLabelInterval: '01:00',
 			slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
-			scrollTime: '07:00:00',
 			nowIndicator: true,
 			dayHeaderFormat: { weekday: 'short', day: 'numeric' },
 			editable: true,
@@ -268,6 +307,10 @@
 			},
 		});
 		cal.render();
+		remeasure();
+		const ro = new ResizeObserver(remeasure);
+		ro.observe(el);
+		cleanup.push(() => ro.disconnect());
 		if (dragSource) {
 			drag = new Draggable(dragSource, {
 				itemSelector: '[data-lt-item]',
@@ -291,6 +334,7 @@
 	}
 
 	onDestroy(() => {
+		cleanup.forEach((f) => f());
 		drag?.destroy();
 		cal?.destroy();
 	});
@@ -307,12 +351,47 @@
 	$effect(() => {
 		cal?.gotoDate(from);
 	});
+	$effect(() => {
+		const a = `${pad2(hr.start)}:00:00`;
+		const b = `${pad2(hr.end)}:00:00`;
+		if (!cal) return;
+		cal.setOption('slotMinTime', a);
+		cal.setOption('slotMaxTime', b);
+		remeasure();
+	});
+	const cleanup: (() => void)[] = [];
 	void hhmm;
 </script>
 
-<div class="wk" bind:this={el}></div>
+<div class="wkwrap" bind:this={wrapEl}>
+	<div class="wk" bind:this={el}></div>
+	{#if geo}
+		<RollHandle
+			edge="top"
+			hourPx={geo.hourPx}
+			hidden={hiddenWeek.top}
+			pos={{ top: geo.top - GAP, left: geo.left, width: geo.width, height: GAP }}
+		/>
+		<RollHandle
+			edge="bottom"
+			hourPx={geo.hourPx}
+			hidden={hiddenWeek.bot}
+			pos={{ top: geo.bottom, left: geo.left, width: geo.width, height: GAP }}
+		/>
+	{/if}
+</div>
 
 <style>
+	.wkwrap {
+		position: relative;
+		padding-bottom: 20px; /* room for the bottom roll handle */
+	}
+	/* clear gap between all-day items and the first hour (top roll handle sits in it) */
+	.wk :global(.fc-timegrid-divider) {
+		padding: 0 0 20px !important;
+		background: var(--ground);
+		border-top: 1px solid var(--rule);
+	}
 	.wk:global(.fc) {
 		--fc-border-color: var(--rule);
 		--fc-today-bg-color: var(--hover);

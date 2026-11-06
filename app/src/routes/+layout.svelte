@@ -4,7 +4,11 @@
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import UndoToast from '$lib/components/UndoToast.svelte';
 	import ItemPeek from '$lib/components/ItemPeek.svelte';
+	import { browser } from '$app/environment';
+	import { initHours } from '$lib/client/hours.svelte';
 	let { data, children } = $props();
+	// svelte-ignore state_referenced_locally
+	if (browser) initHours(data.hours);
 </script>
 
 {#if data.user}

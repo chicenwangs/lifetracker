@@ -10,6 +10,7 @@
 		start,
 		end,
 		pxMin,
+		offset = 0,
 		title = '',
 		type = null,
 		clippedEnd = false,
@@ -21,6 +22,8 @@
 		start: number;
 		end: number;
 		pxMin: number;
+		/** minutes hidden above the grid (rolled hours) */
+		offset?: number;
 		title?: string;
 		/** null = neutral (no type chosen yet) */
 		type?: ItemType | null;
@@ -42,7 +45,7 @@
 	class:ce={clippedEnd}
 	class:thin
 	class:compact={!children && (end - start) * pxMin < 46}
-	style:top="{start * pxMin}px"
+	style:top="{(start - offset) * pxMin}px"
 	style:height="{Math.max(24, (end - start) * pxMin)}px"
 	style:--d-bg={c ? `color-mix(in srgb, ${c.bg} 85%, transparent)` : undefined}
 	style:--d-ink={c?.ink}

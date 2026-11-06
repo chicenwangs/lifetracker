@@ -4,6 +4,10 @@
 	import { onMount, type Snippet } from 'svelte';
 	import StatusSquare from './StatusSquare.svelte';
 	import DraftBlock from './DraftBlock.svelte';
+	import RollHandle from './RollHandle.svelte';
+	import { page } from '$app/state';
+	import { hoursState } from '$lib/client/hours.svelte';
+	import { DEFAULT_HOURS, type HourRange } from '$lib/hours';
 	import SlotCommand from './SlotCommand.svelte';
 	import { layoutDay, type Piece } from '$lib/planner-layout';
 	import type { QAParse } from '$lib/quickadd';
@@ -100,10 +104,35 @@
 
 	const pieces = $derived(layoutDay(blocks, date, tz, over));
 
+	// ---------- visible hours (rolled hours hidden, grid top-justified) ----------
+	const hr = $derived<HourRange>(
+		hoursState.ready ? hoursState : ((page.data.hours as HourRange | undefined) ?? DEFAULT_HOURS),
+	);
+	// while naming a draft, widen the view so a typed time outside the range is still visible
+	const S = $derived(
+		Math.min(hr.start * 60, draft?.naming && draftView ? Math.floor(draftView.start / 60) * 60 : 1440),
+	);
+	const E = $derived(
+		Math.max(hr.end * 60, draft?.naming && draftView ? Math.ceil(draftView.end / 60) * 60 : 0),
+	);
+	const hourList = $derived(Array.from({ length: (E - S) / 60 }, (_, i) => S / 60 + i));
+	const vis = $derived(
+		pieces
+			.map((p) => ({
+				...p,
+				vt: Math.max(p.top, S),
+				vb: Math.min(p.bottom, E),
+				cutTop: p.top < S,
+				cutBot: p.bottom > E,
+			}))
+			.filter((p) => p.vb > p.vt),
+	);
+	const hiddenTop = $derived(pieces.filter((p) => p.bottom <= S).map((p) => p.b.label));
+	const hiddenBot = $derived(pieces.filter((p) => p.top >= E).map((p) => p.b.label));
+
 	const isToday = $derived(date === todayLocal(tz));
 
 	onMount(() => {
-		scroller.scrollTop = 7 * HOUR;
 		const tick = () => (nowMin = nowLocalMinutes(tz));
 		tick();
 		const t = setInterval(tick, 60_000);
@@ -112,14 +141,14 @@
 
 	function yToMin(clientY: number): number {
 		const r = gridEl.getBoundingClientRect();
-		return Math.max(0, Math.min(DAY_MIN, (clientY - r.top) / PX_MIN));
+		return Math.max(S, Math.min(E, S + (clientY - r.top) / PX_MIN));
 	}
 
 	/** for drops from outside (month calendar). null = not over grid */
 	export function timeAt(x: number, y: number): number | null {
 		const r = scroller.getBoundingClientRect();
 		if (x < r.left || x > r.right || y < r.top || y > r.bottom) return null;
-		return Math.max(0, Math.min(DAY_MIN - 60, snap15(yToMin(y))));
+		return Math.max(S, Math.min(E - 60, snap15(yToMin(y))));
 	}
 
 	export async function createLinked(itemId: string, startMin: number) {
@@ -178,7 +207,7 @@
 		const m = yToMin(e.clientY);
 		if (gesture.kind === 'create' && draft && gesture.anchor !== undefined) {
 			const [s, en] = fixRange(Math.min(gesture.anchor, m), Math.max(gesture.anchor, m));
-			draft = { ...draft, start: s, end: Math.min(en, DAY_MIN) };
+			draft = { ...draft, start: s, end: Math.min(en, E) };
 			return;
 		}
 		const g = gesture;
@@ -306,7 +335,7 @@
 		const id = e.dataTransfer?.getData('application/x-lt-item');
 		if (!id) return;
 		e.preventDefault();
-		await createLinked(id, Math.min(DAY_MIN - 60, snap15(yToMin(e.clientY))));
+		await createLinked(id, Math.max(S, Math.min(E - 60, snap15(yToMin(e.clientY)))));
 	}
 
 	const fmt = (p: Piece) => {
@@ -358,11 +387,12 @@
 		aria-label="Planner for {prettyDate(date)}"
 		style:height={height ? `${height}px` : undefined}
 	>
+		<RollHandle edge="top" hourPx={HOUR} hidden={hiddenTop} />
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="grid"
 			bind:this={gridEl}
-			style:height="{24 * HOUR}px"
+			style:height="{(E - S) * PX_MIN}px"
 			onpointerdown={onGridDown}
 			onpointermove={onMove}
 			onpointerup={onUp}
@@ -370,25 +400,27 @@
 			ondragover={onDragOver}
 			ondrop={onDrop}
 		>
-			{#each Array.from({ length: 24 }, (_, h) => h) as h (h)}
-				<div class="hr" style:top="{h * HOUR}px"><span>{String(h).padStart(2, '0')}:00</span></div>
+			{#each hourList as h (h)}
+				<div class="hr" style:top="{(h * 60 - S) * PX_MIN}px">
+					<span>{String(h).padStart(2, '0')}:00</span>
+				</div>
 			{/each}
 
-			{#if isToday && nowMin >= 0}
-				<div class="now" style:top="{nowMin * PX_MIN}px" aria-hidden="true"><span></span><i></i></div>
+			{#if isToday && nowMin >= S && nowMin <= E}
+				<div class="now" style:top="{(nowMin - S) * PX_MIN}px" aria-hidden="true"><span></span><i></i></div>
 			{/if}
 
-			{#each pieces as p (p.b.id)}
+			{#each vis as p (p.b.id)}
 				{@const c = colorsFor(blockType(p.b))}
 				<div
 					class="blk"
 					class:done={p.b.status === 'done'}
-					class:cs={p.clippedStart}
-					class:ce={p.clippedEnd}
+					class:cs={p.clippedStart || p.cutTop}
+					class:ce={p.clippedEnd || p.cutBot}
 					class:lift={!!over[p.b.id]}
 					class:muted={!!focusItemId && p.b.itemId !== focusItemId}
-					style:top="{p.top * PX_MIN}px"
-					style:height="{Math.max(18, (p.bottom - p.top) * PX_MIN)}px"
+					style:top="{(p.vt - S) * PX_MIN}px"
+					style:height="{Math.max(18, (p.vb - p.vt) * PX_MIN)}px"
 					style:left="calc(56px + (100% - 70px) * {p.col / p.cols})"
 					style:width="calc((100% - 70px) / {p.cols} - 4px)"
 					style:background={c.bg}
@@ -400,16 +432,16 @@
 					onpointerdown={(e) => onBlockDown(e, p, 'move')}
 					onkeydown={(e) => onBlockKey(e, p)}
 				>
-					{#if !p.clippedStart && p.b.editable}
+					{#if !p.clippedStart && !p.cutTop && p.b.editable}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div class="h top" onpointerdown={(e) => onBlockDown(e, p, 'top')}></div>
 					{/if}
 					<StatusSquare status={p.b.status} size={20} ink={c.ink} oncycle={() => oncycle(p.b.id)} />
 					<div class="txt">
 						<span class="lbl">{p.b.label}</span>
-						{#if (p.bottom - p.top) * PX_MIN >= 34}<span class="tm">{fmt(p)}</span>{/if}
+						{#if (p.vb - p.vt) * PX_MIN >= 34}<span class="tm">{fmt(p)}</span>{/if}
 					</div>
-					{#if !p.clippedEnd && p.b.editable}
+					{#if !p.clippedEnd && !p.cutBot && p.b.editable}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div class="h bot" onpointerdown={(e) => onBlockDown(e, p, 'bottom')}></div>
 					{/if}
@@ -443,7 +475,7 @@
 					{/if}
 				</div>
 				{#if menuFor === p.b.id}
-					<div class="menu" style:top="{p.bottom * PX_MIN + 4}px">
+					<div class="menu" style:top="{(p.vb - S) * PX_MIN + 4}px">
 						<label class="sr-only" for="bl-{p.b.id}">Block label</label>
 						<!-- svelte-ignore a11y_autofocus -->
 						<input
@@ -475,6 +507,7 @@
 					start={draftView.start}
 					end={draftView.end}
 					pxMin={PX_MIN}
+					offset={S}
 					type={draftView.type}
 					thin={draftView.thin}
 					clippedEnd={draftView.ce}
@@ -497,6 +530,7 @@
 				</DraftBlock>
 			{/if}
 		</div>
+		<RollHandle edge="bottom" hourPx={HOUR} hidden={hiddenBot} />
 	</div>
 	{#if tip}
 		<div class="tip">
@@ -545,10 +579,9 @@
 		justify-content: center;
 		cursor: pointer;
 	}
+	/* height follows the visible hours; rolled hours shrink it, content stays top-justified */
 	.scroll {
-		height: 816px;
 		max-height: calc(100vh - 220px);
-		min-height: 360px;
 		overflow-y: auto;
 		position: relative;
 	}
