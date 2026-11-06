@@ -20,6 +20,7 @@
 		weekdayOf,
 	} from '$lib/time';
 	import type { BlockDTO } from '$lib/types';
+	import { without } from '$lib/client/obj';
 
 	let {
 		date,
@@ -226,7 +227,7 @@
 		} finally {
 			// keep override until refetch lands (avoids flicker)
 			setTimeout(() => {
-				if (g.id) delete over[g.id];
+				if (g.id) over = without(over, g.id);
 			}, 400);
 		}
 	}
@@ -298,7 +299,7 @@
 			await apiPatch(`/api/blocks/${p.b.id}`, body);
 			onchanged();
 		} catch (err) {
-			delete over[p.b.id];
+			over = without(over, p.b.id);
 			showError(err);
 		}
 	}

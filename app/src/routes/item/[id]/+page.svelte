@@ -15,10 +15,7 @@
 	const c = $derived(colorsFor(it.type));
 	const STATUS_WORD = { todo: 'NOT STARTED', doing: 'IN PROGRESS', done: 'DONE' } as const;
 	let editNotes = $state(false);
-	let notes = $state('');
-	$effect.pre(() => {
-		notes = data.item.notes ?? '';
-	});
+	let notes = $derived(data.item.notes ?? '');
 	const course = $derived(data.courses.find((x) => x.id === it.courseId));
 	const daysLeft = $derived(it.date ? diffDays(data.today, it.date) : null);
 	const pct = $derived(

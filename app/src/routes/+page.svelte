@@ -12,6 +12,7 @@
 	import { calendarBus } from '$lib/client/bus.svelte';
 	import { nextStatus, type ItemDTO, type Status } from '$lib/types';
 	import { prettyDate } from '$lib/time';
+	import { without } from '$lib/client/obj';
 
 	let { data } = $props();
 	let planner: DayPlanner | undefined = $state();
@@ -45,7 +46,7 @@
 			await post(`/api/items/${id}/cycle`);
 			await refresh();
 		} catch (e) {
-			delete statusOver[id];
+			statusOver = without(statusOver, id);
 			showError(e);
 		}
 	}
@@ -57,7 +58,7 @@
 			await post(`/api/blocks/${id}/cycle`);
 			await refresh();
 		} catch (e) {
-			delete statusOver[id];
+			statusOver = without(statusOver, id);
 			showError(e);
 		}
 	}

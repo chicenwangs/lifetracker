@@ -5,20 +5,18 @@
 	import type { GoalDTO } from '$lib/types';
 
 	let { goals: initial, period }: { goals: GoalDTO[]; period: string } = $props();
-	let goals = $state<GoalDTO[]>([]);
-	$effect(() => {
-		goals = initial.map((g) => ({ ...g }));
-	});
+	let goals = $derived(initial.map((g) => ({ ...g })));
 	const done = $derived(goals.filter((g) => g.done).length);
 	const q = $derived(period.split('-')[1] ?? '');
 
 	async function toggle(g: GoalDTO) {
 		const want = !g.done;
-		g.done = want;
+		const set = (v: boolean) => (goals = goals.map((x) => (x.id === g.id ? { ...x, done: v } : x)));
+		set(want);
 		try {
 			await patch(`/api/goals/${g.id}`, { done: want });
 		} catch (e) {
-			g.done = !want;
+			set(!want);
 			showError(e);
 		}
 	}

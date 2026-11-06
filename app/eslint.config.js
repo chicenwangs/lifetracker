@@ -17,6 +17,8 @@ export default ts.config(
 		languageOptions: { parserOptions: { parser: ts.parser, svelteConfig } },
 	},
 	{ rules: { '@typescript-eslint/no-explicit-any': 'error' } },
+	// TS checks undefined names itself (typescript-eslint guidance)
+	{ files: ['**/*.ts', '**/*.svelte'], rules: { 'no-undef': 'off' } },
 	// no paths.base in this app -> resolve() adds nothing
 	{ rules: { 'svelte/no-navigation-without-resolve': 'off' } },
 	{ files: ['tests/**'], rules: { '@typescript-eslint/no-non-null-assertion': 'off' } },
