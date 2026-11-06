@@ -1,2 +1,8 @@
-// PSEUDO: POST cycle
-// pattern: me = locals.user ; body = schema.strict().parse ; result = repo.x(me, ...) ; null -> 404 ; json(result)
+import { json } from '@sveltejs/kit';
+import { api, me } from '$lib/server/http';
+import * as blocks from '$lib/server/repo/blocks';
+
+export const POST = api((e) => {
+	const b = blocks.cycle(me(e).id, e.params.id ?? '');
+	return json({ block: blocks.toDTO(b, blocks.itemTypeOf(b)) });
+});

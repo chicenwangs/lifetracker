@@ -1,2 +1,5 @@
-// PSEUDO: GET -> items.unscheduled(me)
-// pattern: me = locals.user ; body = schema.strict().parse ; result = repo.x(me, ...) ; null -> 404 ; json(result)
+import { json } from '@sveltejs/kit';
+import { api, me } from '$lib/server/http';
+import * as items from '$lib/server/repo/items';
+
+export const GET = api((e) => json({ items: items.withCounts(items.unscheduled(me(e).id)) }));

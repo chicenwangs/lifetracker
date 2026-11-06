@@ -1,2 +1,8 @@
-// PSEUDO: GET ?from&to -> getCalendar(me, from, to)
-// pattern: me = locals.user ; body = schema.strict().parse ; result = repo.x(me, ...) ; null -> 404 ; json(result)
+import { json } from '@sveltejs/kit';
+import { api, me } from '$lib/server/http';
+import { getCalendar } from '$lib/server/calendar';
+
+export const GET = api((e) => {
+	const u = me(e);
+	return json(getCalendar(u, e.url.searchParams.get('from') ?? '', e.url.searchParams.get('to') ?? ''));
+});
