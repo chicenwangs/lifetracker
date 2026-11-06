@@ -28,7 +28,7 @@
 		"@fullcalendar/interaction": "^6.1.22",
 		"@fullcalendar/timegrid": "^6.1.22",
 		"@node-rs/argon2": "^2.2.2",
-		"better-sqlite3": "^13.0.3",
+		"better-sqlite3": "12.11.1",
 		"date-fns": "^4.4.0",
 		"drizzle-orm": "^0.45.4",
 		"isomorphic-dompurify": "^4.6.0",
