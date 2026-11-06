@@ -32,8 +32,16 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
 
 let cached: Env | null = null;
 
-/** Lazy so build/prerender does not need env. First call at boot (hooks init). */
+/**
+ * Call once at boot (hooks init) with SvelteKit `$env/dynamic/private`
+ * (dev: loads app/.env; prod: real process env). CLI scripts pass process.env.
+ */
+export function initEnv(source: Record<string, string | undefined>): Env {
+	cached = parseEnv(source);
+	return cached;
+}
+
 export function env(): Env {
-	if (!cached) cached = parseEnv(process.env);
+	if (!cached) throw new Error('env not initialised. hooks init (or script) must call initEnv first.');
 	return cached;
 }

@@ -1,11 +1,12 @@
 // Step 1: init (env + db + migrate) + proxy check + origin check + security headers.
 // Step 2 adds: session load, slide, guard (see pseudocode below).
 import type { Handle, HandleServerError, ServerInit } from '@sveltejs/kit';
-import { env } from '$lib/server/env';
+import { env as privateEnv } from '$env/dynamic/private';
+import { env, initEnv } from '$lib/server/env';
 import { migrateDb, openDb, setHandle } from '$lib/server/db';
 
 export const init: ServerInit = async () => {
-	const e = env(); // throws -> boot fails (fail fast)
+	const e = initEnv(privateEnv); // throws -> boot fails (fail fast)
 	const h = openDb(e.DATABASE_PATH);
 	migrateDb(h);
 	setHandle(h);
