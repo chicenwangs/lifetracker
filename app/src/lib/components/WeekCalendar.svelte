@@ -37,6 +37,9 @@
 		oncreateblock,
 		ondropitem,
 		onopen,
+		ondelete,
+		onblockout,
+		ondragging,
 	}: {
 		from: string;
 		tz: string;
@@ -51,6 +54,11 @@
 		oncreateblock: (date: string, start: number, end: number, at: { x: number; y: number }) => void;
 		ondropitem: (id: string, date: string, minutes: number | null) => void;
 		onopen: (id: string) => void;
+		/** hover ⊗, same as Home */
+		ondelete: (kind: 'item' | 'block', id: string, label: string) => void;
+		/** a block was dragged outside the grid; true = handled (dropped on Not scheduled) */
+		onblockout: (id: string, x: number, y: number) => boolean;
+		ondragging?: (kind: 'block' | 'item' | null) => void;
 	} = $props();
 
 	let el: HTMLDivElement;
@@ -120,6 +128,27 @@
 			'<svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5l6 3.5-6 3.5z" fill="currentColor"/></svg>',
 		done: '<svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
 	};
+
+	const SVG_X =
+		'<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="var(--card)" stroke="currentColor" stroke-width="1.4"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+	function xButton(label: string, fn: () => void) {
+		const x = document.createElement('button');
+		x.type = 'button';
+		x.className = 'lt-x';
+		x.setAttribute('aria-label', `Delete ${label}`);
+		x.title = 'Delete';
+		x.innerHTML = SVG_X;
+		const stop = (e: Event) => e.stopPropagation();
+		x.addEventListener('mousedown', stop);
+		x.addEventListener('pointerdown', stop);
+		x.addEventListener('touchstart', stop);
+		x.addEventListener('click', (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			fn();
+		});
+		return x;
+	}
 
 	/** FC local string -> {date, minutes} (string parts only; no browser-tz math) */
 	const parts = (s: string) => ({
@@ -228,6 +257,7 @@
 					t.className = 'lt-title';
 					t.textContent = (it.time ? `${prettyTime(it.time)} ` : '') + it.title;
 					wrap.append(t);
+					if (it.editable) wrap.append(xButton(it.title, () => ondelete('item', it.id, it.title)));
 				} else if (p.block) {
 					const b = p.block;
 					wrap.append(square(b.status, p.ink ?? 'var(--ink)', b.label, () => oncycleblock(b.id)));
@@ -244,6 +274,7 @@
 					tm.textContent = `${s.time} – ${e.time}`;
 					col.append(l, tm);
 					wrap.append(col);
+					if (b.editable) wrap.append(xButton(b.label, () => ondelete('block', b.id, b.label)));
 				}
 				return { domNodes: [wrap] };
 			},
@@ -252,6 +283,18 @@
 				info.jsEvent.preventDefault();
 				if (p.item) onopen(p.item.id);
 				else if (p.block?.itemId) onopen(p.block.itemId);
+			},
+			eventDragStart: (info) => {
+				const p = info.event.extendedProps as { kind: string };
+				ondragging?.(p.kind === 'block' ? 'block' : 'item');
+			},
+			eventDragStop: (info) => {
+				ondragging?.(null);
+				const p = info.event.extendedProps as { block?: BlockDTO };
+				const r = el.getBoundingClientRect();
+				const { clientX: x, clientY: y } = info.jsEvent as MouseEvent;
+				const outside = x < r.left || x > r.right || y < r.top || y > r.bottom;
+				if (p.block && outside) onblockout(p.block.id, x, y);
 			},
 			eventDrop: async (info) => {
 				const p = info.event.extendedProps as { kind: string; item?: ItemDTO; block?: BlockDTO };
@@ -412,14 +455,10 @@
 		font-weight: 600;
 		font-size: 11px;
 	}
+	/* the mirror above is the one visible box; FC's own highlight would draw a second one */
 	.wk :global(.fc-highlight) {
-		background: color-mix(in srgb, var(--card) 88%, transparent);
-		border: 1.5px dashed var(--ink);
-		border-radius: 8px;
-		opacity: 1;
-		transition:
-			top 0.15s,
-			bottom 0.15s;
+		background: transparent !important;
+		border: 0;
 	}
 	.wk:global(.fc) :global(.fc-day-today) {
 		background: var(--hover) !important;
@@ -448,6 +487,59 @@
 		border: 0 !important;
 		padding: 2px 4px;
 		cursor: grab;
+	}
+	/* timed blocks look like the Home planner's */
+	.wk :global(.lt-blk) {
+		border-radius: 8px !important;
+		padding: 4px 6px;
+	}
+	.wk :global(.lt-blk .lt-inner) {
+		gap: 6px;
+	}
+	.wk :global(.lt-blk .lt-sq) {
+		width: 18px;
+		height: 18px;
+		border-radius: 5px;
+	}
+	.wk :global(.lt-blk .lt-title) {
+		font-size: 12px;
+	}
+	.wk :global(.lt-inner) {
+		position: relative;
+	}
+	.wk :global(.lt-x) {
+		position: absolute;
+		top: 0;
+		right: 0;
+		width: 16px;
+		height: 16px;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		opacity: 0;
+		transition: opacity 0.12s;
+		z-index: 2;
+	}
+	.wk :global(.lt-chip .lt-x) {
+		width: 14px;
+		height: 14px;
+		top: 50%;
+		translate: 0 -50%;
+	}
+	.wk :global(.fc-event:hover .lt-x),
+	.wk :global(.lt-x:focus-visible) {
+		opacity: 1;
+	}
+	.wk :global(.lt-x:hover circle) {
+		fill: currentColor;
+	}
+	.wk :global(.lt-x:hover path) {
+		stroke: var(--card);
 	}
 	.wk :global(.lt-chip),
 	.wk :global(.lt-blk) {

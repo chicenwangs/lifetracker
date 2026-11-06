@@ -62,3 +62,13 @@ export interface CalendarPayload {
 export interface ApiError {
 	error: { code: string; message: string };
 }
+
+/** week page month heatmap cell */
+export interface HeatDay {
+	date: string;
+	inMonth: boolean;
+	/** planner minutes on this day (midnight-crossing blocks split per day) */
+	blockedMin: number;
+	/** all-day items on this day that are not done and have no block */
+	unblocked: number;
+}

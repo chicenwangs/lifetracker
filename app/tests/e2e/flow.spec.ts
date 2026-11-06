@@ -295,6 +295,45 @@ test('week drag box: same commands, typed time moves the selection', async () =>
 	await expect(pop).toBeVisible();
 	await page.keyboard.press('Escape');
 	await expect(pop).toHaveCount(0);
+	// month heatmap on top of the side column, this week highlighted
+	const map = page.getByRole('region', { name: 'Month overview' });
+	await expect(map).toContainText(/Week \d of \d/);
+	await expect(map.locator('.row.on')).toHaveCount(1);
+	// one dashed box while selecting (no doubled highlight)
+	await page.mouse.move(col.x + col.width / 2, a.y + 3);
+	await page.mouse.down();
+	await page.mouse.move(col.x + col.width / 2, b.y + b.height - 3, { steps: 6 });
+	await page.mouse.up();
+	await expect(page.locator('.fc-highlight').first()).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+	await expect(page.locator('.fc-event-mirror')).toHaveCount(1);
+	await page.keyboard.press('Escape');
+	await expect(pop).toHaveCount(0);
+	// drag a plain block onto Not scheduled -> becomes an all-day item there, block gone
+	const notsch = page.getByRole('region', { name: 'Not scheduled' });
+	const ev = page.locator('.lt-blk', { hasText: 'e2e week cmd' });
+	await ev.scrollIntoViewIfNeeded();
+	const eb = (await ev.boundingBox())!;
+	const nb = (await notsch.boundingBox())!;
+	await page.mouse.move(eb.x + 30, eb.y + 8);
+	await page.mouse.down();
+	await page.mouse.move(eb.x + 60, eb.y + 40, { steps: 5 });
+	await expect(notsch).toHaveClass(/drop/);
+	await page.mouse.move(nb.x + nb.width / 2, nb.y + 30, { steps: 12 });
+	await page.mouse.up();
+	await expect(page.locator('.lt-blk', { hasText: 'e2e week cmd' })).toHaveCount(0);
+	await expect(notsch.locator('.row', { hasText: 'e2e week cmd' })).toBeVisible();
+	// ⊗ on the list row deletes it (undo toast like Home)
+	await notsch.locator('.row', { hasText: 'e2e week cmd' }).hover();
+	await notsch.getByRole('button', { name: 'Delete e2e week cmd' }).click();
+	await expect(notsch.locator('.row', { hasText: 'e2e week cmd' })).toHaveCount(0);
+	await expect(page.locator('.toast, [role=status]').first()).toContainText('Deleted');
+	// ⊗ on a timeline block
+	const drive = page.locator('.lt-blk', { hasText: 'e2e drive' });
+	if (await drive.count()) {
+		await drive.hover();
+		await drive.getByRole('button', { name: 'Delete e2e drive' }).click();
+		await expect(page.locator('.lt-blk', { hasText: 'e2e drive' })).toHaveCount(0);
+	}
 	// gap between all-day row and first hour; bottom edge rolls late hours (shared setting)
 	const allDay = (await page.locator('.fc-daygrid-body').first().boundingBox())!;
 	const first = await row('07:00:00');

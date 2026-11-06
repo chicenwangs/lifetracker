@@ -1,7 +1,8 @@
 import type { PageServerLoad } from './$types';
 import { getCalendar } from '$lib/server/calendar';
 import * as itemsRepo from '$lib/server/repo/items';
-import { addDays, durationMin, isDate, todayLocal, weekRange } from '$lib/time';
+import type { HeatDay } from '$lib/types';
+import { addDays, clipToDay, durationMin, isDate, monthGridRange, todayLocal, weekRange } from '$lib/time';
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	const me = locals.user as App.SafeUser;
@@ -12,15 +13,36 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const done = cal.items.filter((i) => i.status === 'done').length;
 	const doing = cal.items.filter((i) => i.status === 'doing').length;
 	const blockedMin = cal.blocks.reduce((s, b) => s + Math.max(0, durationMin(b.startAt, b.endAt)), 0);
+
+	// month heatmap: the month this week belongs to (its Thursday, ISO style)
+	const thu = addDays(from, 3);
+	const year = Number(thu.slice(0, 4));
+	const month = Number(thu.slice(5, 7));
+	const grid = monthGridRange(year, month);
+	const mcal = getCalendar(me, grid.from, grid.to);
+	const unblocked = itemsRepo.allDayUnblocked(me.id, grid.from, grid.to);
+	const heat: HeatDay[] = [];
+	for (let d = grid.from; d < grid.to; d = addDays(d, 1)) {
+		let min = 0;
+		for (const b of mcal.blocks) {
+			const c = clipToDay(b.startAt, b.endAt, d, me.timezone);
+			if (c) min += c.bottom - c.top;
+		}
+		heat.push({
+			date: d,
+			inMonth: Number(d.slice(5, 7)) === month,
+			blockedMin: min,
+			unblocked: unblocked.filter((i) => i.date && i.date <= d && (i.endDate ?? i.date) >= d).length,
+		});
+	}
+
 	return {
 		today,
 		from,
 		to,
 		cal,
-		dueSoon: itemsRepo.withCounts(
-			itemsRepo.dueSoonUnblocked(me.id, today < from ? from : today, addDays(to, 7)),
-		),
-		unscheduled: itemsRepo.withCounts(itemsRepo.unscheduled(me.id)),
+		notBlocked: itemsRepo.withCounts(itemsRepo.allDayUnblocked(me.id, from, to)),
+		month: { year, month, heat },
 		stats: { done, doing, blockedH: Math.round((blockedMin / 60) * 10) / 10 },
 	};
 };

@@ -1,19 +1,26 @@
-<!-- FR-H8 (DesktopWeek.dc.html): 7-col time grid + all-day row | right: due soon (no block), unscheduled, stats. -->
+<!-- FR-H8 (DesktopWeek.dc.html): 7-col time grid + all-day row.
+     Right column (top to bottom): month heatmap with this week highlighted · Not scheduled (all-day items with
+     no block; drag onto the grid to block time, drag a block here to unschedule it) · stats. -->
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
 	import WeekCalendar from '$lib/components/WeekCalendar.svelte';
 	import SlotCommand from '$lib/components/SlotCommand.svelte';
+	import WeekMap from '$lib/components/WeekMap.svelte';
+	import { del } from '$lib/client/api';
+	import { removeBlock, removeItem } from '$lib/client/remove';
 	import type { QAParse } from '$lib/quickadd';
 	import { patch, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { calendarBus } from '$lib/client/bus.svelte';
 	import { colorsFor } from '$lib/colors';
 	import { openItem } from '$lib/client/peek.svelte';
-	import { addDays, hhmm, isoPlus, localToUtc, prettyDate } from '$lib/time';
+	import { addDays, hhmm, isoPlus, localToUtc, prettyDate, utcToLocal } from '$lib/time';
 
 	let { data } = $props();
 	let side: HTMLElement | undefined = $state();
+	let notEl: HTMLElement | undefined = $state();
+	let dragging = $state<'block' | 'item' | null>(null);
 	let weekCal: WeekCalendar | undefined = $state();
 	// empty-slot drag -> command box (same grammar as N; default planner, /calendar optional)
 	let slot = $state<{ key: number; date: string; start: number; end: number; x: number; y: number } | null>(
@@ -68,7 +75,7 @@
 	}
 
 	async function dropItem(id: string, date: string, minutes: number | null) {
-		const it = data.unscheduled.find((i) => i.id === id) ?? data.dueSoon.find((i) => i.id === id);
+		const it = data.notBlocked.find((i) => i.id === id);
 		await wrap(async () => {
 			if (it && !it.date) await patch(`/api/items/${id}`, { date });
 			if (minutes !== null) {
@@ -90,6 +97,53 @@
 			y: Math.max(12, Math.min(at.y + 12, window.innerHeight - H - 12)),
 		};
 	}
+	// ---------- block -> Not scheduled ----------
+	function inside(el: HTMLElement | undefined, x: number, y: number) {
+		const r = el?.getBoundingClientRect();
+		return !!r && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+	}
+	function blockOut(id: string, x: number, y: number): boolean {
+		if (!inside(notEl, x, y)) return false;
+		void unschedule(id);
+		return true;
+	}
+	/** linked block: drop the block (item stays, shows in the list). Plain block: becomes an all-day item. */
+	async function unschedule(id: string) {
+		const b = data.cal.blocks.find((x) => x.id === id);
+		if (!b) return;
+		try {
+			let itemId = b.itemId;
+			let made = false;
+			if (!itemId) {
+				const r = await post<{ item: { id: string } }>('/api/items', {
+					title: b.label,
+					type: b.type,
+					date: utcToLocal(b.startAt, tz).date,
+				});
+				itemId = r.item.id;
+				made = true;
+			}
+			const r = await del<{ batch?: string }>(`/api/blocks/${id}`);
+			await refresh();
+			const batch = r.batch;
+			showToast(`Moved "${b.label}" to Not scheduled`, {
+				undo: async () => {
+					try {
+						if (made && itemId) await del(`/api/items/${itemId}`);
+						if (batch) await post(`/api/trash/${batch}/restore`);
+						await refresh();
+					} catch (e) {
+						showError(e);
+					}
+				},
+			});
+		} catch (e) {
+			showError(e);
+		}
+	}
+	const onDelete = (kind: 'item' | 'block', id: string, label: string) =>
+		kind === 'item' ? removeItem(id, label, refresh) : removeBlock(id, label, refresh);
+
 	function closeSlot() {
 		slot = null;
 		live = null;
@@ -178,6 +232,9 @@
 				oncreateblock={createBlock}
 				ondropitem={dropItem}
 				onopen={openItem}
+				ondelete={onDelete}
+				onblockout={blockOut}
+				ondragging={(k) => (dragging = k)}
 			/>
 		{/if}
 		<div class="foot">
@@ -187,10 +244,27 @@
 	</section>
 
 	<aside class="side" aria-label="To schedule" bind:this={side}>
-		<div class="card box">
-			<h2>Due soon, no time blocked</h2>
-			<span class="hint">Dated items with no planner block yet. Drag onto a day to block time.</span>
-			{#each data.dueSoon as i (i.id)}
+		<WeekMap
+			year={data.month.year}
+			month={data.month.month}
+			heat={data.month.heat}
+			from={data.from}
+			today={data.today}
+			ongo={go}
+		/>
+		<div
+			class="card box notsch"
+			class:drop={dragging === 'block'}
+			bind:this={notEl}
+			aria-label="Not scheduled"
+			role="region"
+		>
+			<h2>Not scheduled <span class="n">{data.notBlocked.length}</span></h2>
+			<span class="hint">
+				{#if dragging === 'block'}Drop here to take it off the timeline{:else}All-day items this week with no
+					time blocked. Drag onto the grid to block time; drag a block here to put it back.{/if}
+			</span>
+			{#each data.notBlocked as i (i.id)}
 				{@const c = colorsFor(i.type)}
 				<div class="row" data-lt-item={i.id} data-title={i.title} style:border-left-color={c.ink}>
 					<a
@@ -200,27 +274,29 @@
 							openItem(i.id);
 						}}>{i.title}</a
 					>
-					<span class="muted">{i.date ? prettyDate(i.date).split(' ').slice(0, 3).join(' ') : ''}</span>
+					<span class="muted"
+						>{i.date ? prettyDate(i.date).split(' ').slice(0, 1).join(' ') : ''}{i.endDate
+							? ` – ${prettyDate(i.endDate).split(' ')[0]}`
+							: ''}</span
+					>
+					<button
+						type="button"
+						class="rx"
+						aria-label="Delete {i.title}"
+						title="Delete"
+						onclick={() => onDelete('item', i.id, i.title)}
+						><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"
+							><circle cx="8" cy="8" r="7" fill="var(--card)" stroke="currentColor" stroke-width="1.4" /><path
+								d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8"
+								stroke="currentColor"
+								stroke-width="1.6"
+								stroke-linecap="round"
+							/></svg
+						></button
+					>
 				</div>
 			{:else}
-				<span class="muted">All due items have time blocked.</span>
-			{/each}
-		</div>
-		<div class="card box">
-			<h2>Unscheduled (no date)</h2>
-			{#each data.unscheduled as i (i.id)}
-				{@const c = colorsFor(i.type)}
-				<div class="row" data-lt-item={i.id} data-title={i.title} style:border-left-color={c.ink}>
-					<a
-						href="/item/{i.id}"
-						onclick={(e) => {
-							e.preventDefault();
-							openItem(i.id);
-						}}>{i.title}</a
-					><span class="muted">drag onto a day</span>
-				</div>
-			{:else}
-				<span class="muted">Nothing unscheduled.</span>
+				<span class="muted">Every all-day item this week has time blocked.</span>
 			{/each}
 		</div>
 		<div class="card box stats">
@@ -395,6 +471,55 @@
 	.row span {
 		flex: none;
 		font-size: 12px;
+	}
+	.notsch {
+		transition:
+			outline-color 0.12s,
+			background-color 0.12s;
+		outline: 2px dashed transparent;
+		outline-offset: -2px;
+	}
+	.notsch.drop {
+		outline-color: var(--ink);
+		background: var(--hover);
+	}
+	.n {
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--quiet);
+		margin-left: 4px;
+	}
+	.hint {
+		font-size: 12px;
+		color: var(--quiet);
+	}
+	.row .muted {
+		margin-left: auto;
+	}
+	.rx {
+		flex: none;
+		width: 16px;
+		height: 16px;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		opacity: 0;
+		transition: opacity 0.12s;
+	}
+	.row:hover .rx,
+	.rx:focus-visible {
+		opacity: 1;
+	}
+	.rx:hover circle {
+		fill: currentColor;
+	}
+	.rx:hover path {
+		stroke: var(--card);
 	}
 	.stats div {
 		display: flex;

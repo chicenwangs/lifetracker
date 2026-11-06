@@ -82,3 +82,15 @@ Tests: +7 unit (slot, withTarget, slotted ghost), +2 e2e (planner drag commands 
 
 One setting for Home + Week + item view: cookie `lt_hours=7-24` (read by `+layout.server.ts`, so SSR renders the right range, no jump). Pure helpers `lib/hours.ts` (`parseHours`, `clampHours`), client state `lib/client/hours.svelte.ts`. N-palette timeline preview keeps all 24 h (it scrolls to the draft).
 Tests: +2 unit (hours), e2e: rolled strip names hidden Sleep → click unrolls → drag top edge 7 h back → survives reload, top-justified; week gap ≥ 18 px, bottom edge drag hides 23:00, click restores. Existing planner e2e coordinates now offset by 07:00.
+
+## UX round 4 — 2026-11-07 (week page)
+
+| Ask | Built | Where |
+|---|---|---|
+| Drop Due soon + Unscheduled | gone. One **Not scheduled** list = all-day items touching this week, not done, with no planner block anywhere (`items.allDayUnblocked`) | `week/+page.server.ts`, `repo/items.ts` |
+| Put blocks back | drag any timeline block onto Not scheduled (panel lights up while a block is dragged). Linked block → block deleted, its item shows in the list. Plain block → becomes an all-day item (label, type, day) and the block goes. Undo toast restores. Drag a list row onto the grid = 60-min linked block (as before) | `WeekCalendar` `eventDragStart/Stop`, `week/+page.svelte unschedule()` |
+| Week-of-month highlight + heatmap | top of the side column: month grid (the week's month, ISO Thursday rule), current week row outlined + "Week N of M". Cell shade = planner hours that day (0, <2, <4, <6, 6 h+; midnight-crossing blocks split per day). Red dot = all-day items not blocked. Click a row = go to that week | `WeekMap.svelte`, `HeatDay` in `lib/types.ts` |
+| Week timeline like Home | blocks: 8 px radius, 18 px square, hover ⊗ delete (blocks + all-day chips + list rows) with the same undo toast as Home | `WeekCalendar.svelte` |
+| Doubled highlight | FC `.fc-highlight` made transparent; the dashed mirror is the only box | `WeekCalendar.svelte` |
+
+e2e (week test): heatmap shows "Week N of M" + one highlighted row; one mirror + transparent highlight while selecting; drag plain block → Not scheduled → it is a list row and gone from grid; ⊗ on list row and on a block.
