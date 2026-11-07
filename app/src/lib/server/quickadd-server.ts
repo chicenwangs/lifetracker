@@ -19,6 +19,8 @@ export function quickContext(me: App.SafeUser, now: number = Date.now()): QACont
 export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(), slot?: QASlot) {
 	const r = parseQuickAdd(text, { ...quickContext(me, now), slot });
 	if (!r.ok) bad((r.problems[0] ?? 'Could not add that.').replace(/`/g, ''));
+	// timeline drag with no /type or #course = no type (grey); the N palette keeps its Event default
+	const type = slot && !r.typeSet && !r.courseId ? null : r.type;
 	return handle().sqlite.transaction(() => {
 		let item: ReturnType<typeof items.withCounts>[number] | null = null;
 		let block: ReturnType<typeof blocks.toDTO> | null = null;
@@ -27,7 +29,7 @@ export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(
 				me.id,
 				items.itemCreateSchema.parse({
 					title: r.title,
-					type: r.type,
+					type,
 					date: r.date,
 					time: r.time,
 					courseId: r.courseId,
@@ -40,7 +42,7 @@ export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(
 				me.id,
 				blocks.blockCreateSchema.parse({
 					label: item ? undefined : r.title.slice(0, 200),
-					type: item ? null : r.type,
+					type: item ? null : type,
 					itemId: item?.id ?? null,
 					startAt: localToUtc(r.date, r.startMinutes, me.timezone),
 					endAt: localToUtc(r.date, r.endMinutes, me.timezone),

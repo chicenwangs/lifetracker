@@ -38,6 +38,8 @@
 	--on-ink: #ffffff; /* text on ink-filled buttons/squares */
 	--ink-hover: #000000;
 	--hover: #f5f5f4;
+	--band: rgb(0 0 0 / 0.035); /* week hour bands */
+	--today-line: #a8a29e;
 	--faint: #a8a29e;
 	--field: #ffffff;
 	--now: #1c1917;
@@ -96,6 +98,8 @@
 	--on-ink: #111110;
 	--ink-hover: #ffffff;
 	--hover: #222221;
+	--band: rgb(0 0 0 / 0.24);
+	--today-line: #6f6d66;
 	--faint: #7c7b74;
 	--field: #111110;
 	--now: #e5484d;

@@ -94,3 +94,9 @@ Tests: +2 unit (hours), e2e: rolled strip names hidden Sleep → click unrolls �
 | Doubled highlight | FC `.fc-highlight` made transparent; the dashed mirror is the only box | `WeekCalendar.svelte` |
 
 e2e (week test): heatmap shows "Week N of M" + one highlighted row; one mirror + transparent highlight while selecting; drag plain block → Not scheduled → it is a list row and gone from grid; ⊗ on list row and on a block.
+
+## UX round 5 — 2026-11-08
+
+- **Home/Week drag = grey by default.** A block (or `/calendar` item) made from a timeline drag with no `/type` or `#course` is saved with type None (grey). The N palette keeps its Event default. Draft box is grey until a type is typed (`DraftBlock` uses None colours for `type=null`). Server: `quickAdd(..., slot)`; unit test added.
+- **Week hour bands.** Odd hours get `--band` (light `rgb(0 0 0/.035)`, dark `rgb(0 0 0/.24)`) on both the lanes and the label column via FC `slotLaneClassNames/slotLabelClassNames`, so a drag's length reads in hours.
+- **Week today.** No fill any more; a light dotted outline (`--today-line`) runs down the whole column: header, all-day row, hours.

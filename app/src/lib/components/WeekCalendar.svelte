@@ -150,6 +150,8 @@
 		return x;
 	}
 
+	const hourBand = (t?: { milliseconds: number }) => Math.floor((t?.milliseconds ?? 0) / 3_600_000) % 2 === 1;
+
 	/** FC local string -> {date, minutes} (string parts only; no browser-tz math) */
 	const parts = (s: string) => ({
 		date: s.slice(0, 10),
@@ -234,6 +236,9 @@
 			slotDuration: '00:30:00',
 			snapDuration: '00:15:00',
 			slotLabelInterval: '01:00',
+			// every other hour gets a darker band so a drag's length can be read at a glance
+			slotLaneClassNames: (a) => (hourBand(a.time) ? ['lt-band'] : []),
+			slotLabelClassNames: (a) => (hourBand(a.time) ? ['lt-band'] : []),
 			slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
 			nowIndicator: true,
 			dayHeaderFormat: { weekday: 'short', day: 'numeric' },
@@ -460,8 +465,36 @@
 		background: transparent !important;
 		border: 0;
 	}
+	/* hour bands (odd hours) */
+	.wk :global(.fc-timegrid-slot.lt-band) {
+		background: var(--band);
+	}
+	/* today = light dotted outline down the whole column (header, all-day, hours), no fill */
 	.wk:global(.fc) :global(.fc-day-today) {
-		background: var(--hover) !important;
+		background: transparent !important;
+	}
+	.wk :global(.fc-col-header-cell.fc-day-today),
+	.wk :global(.fc-day-today .fc-daygrid-day-frame),
+	.wk :global(.fc-day-today .fc-timegrid-col-frame) {
+		position: relative;
+	}
+	.wk :global(.fc-col-header-cell.fc-day-today)::after,
+	.wk :global(.fc-day-today .fc-daygrid-day-frame)::after,
+	.wk :global(.fc-day-today .fc-timegrid-col-frame)::after {
+		content: '';
+		position: absolute;
+		inset: 0 1px;
+		border-left: 1.5px dotted var(--today-line);
+		border-right: 1.5px dotted var(--today-line);
+		pointer-events: none;
+		z-index: 1;
+	}
+	.wk :global(.fc-col-header-cell.fc-day-today)::after {
+		border-top: 1.5px dotted var(--today-line);
+		border-radius: 6px 6px 0 0;
+	}
+	.wk :global(.fc-day-today .fc-timegrid-col-frame)::after {
+		border-bottom: 1.5px dotted var(--today-line);
 	}
 	.wk :global(.fc-col-header-cell-cushion) {
 		font-size: 12px;

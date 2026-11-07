@@ -327,6 +327,12 @@ describe('quickAdd server', () => {
 			endAt: '2026-11-07T11:00:00Z',
 		});
 	});
+	it('timeline drag with no /type = no type (grey); typed type kept', () => {
+		const slot = { date: '2026-11-09', start: 600, end: 660 };
+		expect(quickAdd(me, 'focus', NOW, slot).block).toMatchObject({ type: null, itemType: null });
+		expect(quickAdd(me, 'focus /calendar', NOW, slot).item).toMatchObject({ type: null });
+		expect(quickAdd(me, 'focus /hobby', NOW, slot).block).toMatchObject({ type: 'Hobby' });
+	});
 	it('/calendar: item only', () => {
 		const r = quickAdd(me, 'outing sat /calendar', NOW);
 		expect(r.item).toMatchObject({ title: 'outing', date: '2026-11-07', time: null, type: 'Event' });

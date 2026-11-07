@@ -1,5 +1,5 @@
 <!-- The dashed "new block" box. Same look for planner drag, week drag preview and the N palette timeline.
-     Tinted with the Type colour once a /type (or #course) is typed. -->
+     Grey (type None) until a /type or #course is typed, then tinted with that Type colour. -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { colorsFor } from '$lib/colors';
@@ -25,7 +25,7 @@
 		/** minutes hidden above the grid (rolled hours) */
 		offset?: number;
 		title?: string;
-		/** null = neutral (no type chosen yet) */
+		/** null = no type yet: grey, same as the block it will create */
 		type?: ItemType | null;
 		clippedEnd?: boolean;
 		/** calendar item: time only, no block */
@@ -35,7 +35,7 @@
 		children?: Snippet;
 	} = $props();
 
-	const c = $derived(type ? colorsFor(type) : null);
+	const c = $derived(colorsFor(type));
 	const endLabel = $derived(end >= 1440 ? '24:00' : hhmm(end));
 </script>
 
