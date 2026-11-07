@@ -7,7 +7,7 @@ Owner: Jeremy (chicenwangs). Rev 2.1, 2026-11-06 (10-agent review + 10-agent aud
 
 - Replace Notion life setup. Self-host. **Desktop first.** Phone = afterthought (P3).
 - Notion pain: hour-row planner retype, no half hour, landscape-only timeline, two buttons (Start + Complete), free-tier caps, no proper share with gf.
-- One app. Core = calendar + day planner + goals. Side modules: Places, Lists, People, Ideas, Workouts.
+- One app. Core = calendar + day planner. Side modules: Places, Lists, People, Ideas, Workouts.
 - Multi-user. Each person own account. Share calendar by key. Overlap toggle.
 - Run localhost first (Windows PC). Then Ubuntu homelab Docker. Then Cloudflare Tunnel public.
 - Project folder: `C:\Users\jeremy josh\Desktop\life-tracker` (docs, data, wireframes; app/ made in P1).
@@ -36,7 +36,7 @@ No public sign-up. Ever.
 
 ## 3. Priorities
 
-- **P1** = core daily loop + auth + import + goals. Desktop only.
+- **P1** = core daily loop + auth + import. Desktop only.
 - **P2** = sharing + overlap + side modules + search + invites UI.
 - **P3** = automation, mobile, PWA, nice.
 
@@ -74,26 +74,26 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 - FR-H11 Block colour: linked item Type → block own Type → grey.
 - FR-H12 "Due today" chips above planner (dated today, not done). Drag chip onto grid → block linked to item, 60 min.
 - FR-H13 Drag month item onto planner → same as H12.
-- FR-H14 Q4 goals collapsed under planner. Tick to toggle. Add/edit/reorder in Settings > Goals.
+- ~~FR-H14 Q4 goals~~ removed 2026-11-08.
 - FR-H15 Header: nav (only pages already built), quick add, search (P2), avatar → Settings.
 - FR-H16 Undated items = "Unscheduled" list (Week right panel). Imported: "Her Birthday".
 
 ### 4.3 Quick add (P1, rev 2026-11-06b "planner first"; P3 extras)
 
 - FR-Q1 Header "+ Add N" button. Key `N` (not while typing in a field) opens a chat-style palette: log of what was added (Undo each), input, slots, footer keys. Enter adds, Esc closes menu → clears text → closes palette, ↑ on empty = last line. Palette stays open for batch adding.
-- FR-Q2 Grey ghost text = format guide `title  day  time   optional: /type  /calendar or /both`, shrinks to the missing slots, completes a half-typed option. Labelled slots (Type, Title, Goes to, Day, Time, Course) fill live; defaults dashed + "default". **No errors while typing.** On Enter each problem shows at the bottom: what's wrong + how to fix.
-- FR-Q3 Any order. Options start with `/`: types `/work /exam /event /hobby /date`; destinations `/calendar` (`/cal`), `/both`, `/planner` (= default). `/` (or `#` for courses) opens a small menu at the cursor (↑↓, Enter/Tab, click, filters, tick on picked). Days + times need no prefix. Leftover words = title. Defaults: Event (Work if `#course`), planner, today. Unknown `/x` = problem. Grammar TECHNICAL §8.
-- FR-Q3a **Where it goes.** Default = **planner only**: a time block, no calendar item (fillers like "drive to X" keep the month clean). Needs a time. `/calendar` = calendar item only (big events, time optional, end time ignored). `/both` (or `/calendar /planner`) = calendar item + linked block, one transaction. Blocks snap 15 min, single time = 60 min, end ≤ start = crosses midnight. Course only saved on calendar items.
+- FR-Q2 Grey ghost text = format guide `title  day  time   optional: /type  /calendar or /both`, shrinks to the missing slots, completes a half-typed option. Labelled slots (Type, Title, Goes to, Day, Time) fill live; defaults dashed + "default". **No errors while typing.** On Enter each problem shows at the bottom: what's wrong + how to fix.
+- FR-Q3 Any order. Options start with `/`: types `/work /exam /event /hobby /date`; destinations `/calendar` (`/cal`), `/both`, `/planner` (= default). `/` opens a small menu at the cursor (↑↓, Enter/Tab, click, filters, tick on picked). Days + times need no prefix. Leftover words = title. Defaults: Event, planner, today (timeline drag with no type = None, grey). `#word` is plain title text. Unknown `/x` = problem. Grammar TECHNICAL §8.
+- FR-Q3a **Where it goes.** Default = **planner only**: a time block, no calendar item (fillers like "drive to X" keep the month clean). Needs a time. `/calendar` = calendar item only (big events, time optional, end time ignored). `/both` (or `/calendar /planner`) = calendar item + linked block, one transaction. Blocks snap 15 min, single time = 60 min, end ≤ start = crosses midnight.
 - FR-Q3b **Days** (common English + typos): today/tonight/this evening, tomorrow (+ tommorow, tmrw, 2moro …), day after tomorrow, yesterday, in 3 days / in a week / in a fortnight / in 1 month, 3 days from now, a week from tomorrow, weekday names (+ typos: wensday, thrusday …; plurals like "tuesdays" stay title), `next mon` = the coming Monday (never today) and each extra `next` +1 week, `this sat`, next week (= its Monday), `fri next week` (that week's Friday), this/next weekend, next month (= 1st), end of month / eom, 16 nov · 16th of november · nov 16th, 2027 · the 16th · 16/11 (D/M; 11/16 read US only when it can't be D/M) · 2026-11-16, month typos (febuary, novemeber …). A weekday next to a date belongs to it ("Mon 16 Nov", mismatch = warning). Glue words `on at by from between` around a day/time are dropped from the title. Punctuation ignored ("tomorrow," "fri.").
 - FR-Q3c **Times**: 6pm · 6 pm · 6:30 p.m. · 18:30 · 18.30 · 18h30 · noon/midday/midnight · ranges `6pm to|till|until|- 8pm`, `6-8pm`, `6 to 8pm`, `from 6pm to 8pm`, `between 6 and 8pm`, `18:00-19:30` · durations `for 2h | 90m | 1h30 | 2 hours | an hour | half an hour` · `all day`.
 - FR-Q4 (P3) `every mon,wed` → recurring (rrule + skip dates).
 
 ### 4.4 Item detail (P1)
 
-- FR-I1 Fields: title, Type, date, optional time, optional end date (inclusive), course, status, notes (markdown), "Keep secret from shared calendars".
+- FR-I1 Fields: title, Type, date, optional time, optional end date (inclusive), status, notes (markdown), "Keep secret from shared calendars".
 - FR-I2 Steps = child items. Progress bar + "n/m done". Add step. (P3: apply step template.)
 - FR-I3 Linked time blocks listed. "Block time" → planner on item date.
-- FR-I4 "Also in <course>" (own items only). History: created, started, completed, edited by.
+- FR-I4 History: created, started, completed, edited by.
 - FR-I5 Delete → confirm → soft delete with steps + blocks. Trash page, restore 30 days, then purged. (P2)
 
 ### 4.5 Sharing + overlap (P2)
@@ -110,12 +110,12 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 - FR-S10 Home calendar header **Overlap** toggle (pill + avatars + switch). Default ON. ON = show all grants with include-in-overlap. Saved per user on server.
 - FR-S11 Partner items: striped in Type colour, dashed border, initial badge in partner's user colour (default teal #0F766E; never a Type colour). View → no square, no drag, not clickable to edit. Edit → square + drag.
 - FR-S12 Planner overlap ON: lanes "Me | <name>", max 3 lanes.
-- FR-S13 Server filters. Hidden types → "Busy" (times only) or nothing. **Never sent to grantee: notes, course, steps, parent, hidden titles.**
+- FR-S13 Server filters. Hidden types → "Busy" (times only) or nothing. **Never sent to grantee: notes, steps, parent, hidden titles.**
 - FR-S14 (P3) "Both free" green band: gaps ≥ 60 min, 08:00–22:00, across all lanes.
-- FR-S15 Only calendar (items + blocks) shareable. Places, Lists, People, Ideas, Workouts, Goals private. **People module never visible to anyone else.**
+- FR-S15 Only calendar (items + blocks) shareable. Places, Lists, People, Ideas, Workouts private. **People module never visible to anyone else.**
 - FR-S16 Grantee edits set `updated_by`. Owner sees "edited by N".
 - FR-S17 Private items ("Keep secret") always Busy to every grantee. Items made by "Plan it" from People default to private (surprise gifts stay secret).
-- FR-S18 Edit grant can: cycle status, move date/time, move/resize blocks, rename. Cannot: create in owner calendar, delete, change type/course/notes/private.
+- FR-S18 Edit grant can: cycle status, move date/time, move/resize blocks, rename. Cannot: create in owner calendar, delete, change type/notes/private.
 
 ### 4.6 Places (P2)
 
@@ -158,9 +158,9 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 - FR-W4 Progress = last 4 ISO weeks (current week counts) from logs. Notion weeks shown as "Before app".
 - FR-W5 "Log session" saves logs + marks today's block labelled "Workout" done (if any).
 
-### 4.11 Goals (P1)
+### 4.11 Goals — removed 2026-11-08
 
-- FR-G1 Goals per quarter (`2026-Q4`). Text, done, order. Home shows current quarter. Settings > Goals edits.
+- Goals and Courses were removed from the app. DB tables `goals`, `courses` and `items.course_id` are kept dormant (data untouched); seed import ignores them.
 
 ### 4.12 Search (P2)
 
@@ -199,19 +199,19 @@ P1:
 - [ ] Fresh DB → /setup with token → admin. /setup then 404.
 - [ ] Remember ON: cookie has Max-Age, survives browser restart, next day still in. OFF: no Max-Age; idle 12 h → logged out.
 - [ ] 5 bad passwords same IP → locked msg with minutes.
-- [ ] Import: items 391, places 130, lists 5, list_items 81, facts 24, ideas 63, split 11, goals 5. Matches `_report.json`. Second import changes nothing.
+- [ ] Import: items 391, places 130, lists 5, list_items 81, facts 24, ideas 63, split 11. Matches `_report.json`. Second import changes nothing.
 - [ ] Nov 2026 month shows colour blocks. Square cycles + persists.
 - [ ] Planner: drag 13:00–14:30 block, resize to 14:45 (15-min snap). Block 23:00–06:00 shows on both days.
 - [ ] Drag "DS Quiz" chip to 13:00 → linked red block.
-- [x] Quick add `ds quiz fri 2pm /exam #ds /calendar` → Exam item, Fri 14:00 (next Fri if past), course DS. `drive tommorow 6:07pm to 8pm` → planner block only 18:00–20:00. `/both` → item + linked block.
+- [x] Quick add `ds quiz fri 2pm /exam /calendar` → Exam item, Fri 14:00 (next Fri if past). `drive tommorow 6:07pm to 8pm` → planner block only 18:00–20:00. `/both` → item + linked block.
 - [ ] reset-password script works.
 
 P2:
-- [ ] Invite → Neina signs up. Jeremy key (view, Dating+Event, hidden Busy) → Neina redeems → overlap shows Jeremy Dating/Event titles, other types "Busy", no notes/course; hidden titles absent from network JSON.
+- [ ] Invite → Neina signs up. Jeremy key (view, Dating+Event, hidden Busy) → Neina redeems → overlap shows Jeremy Dating/Event titles, other types "Busy", no notes; hidden titles absent from network JSON.
 - [ ] Private item shows Busy even if Type visible.
 - [ ] Overlap toggle persists across reload + devices.
 - [ ] Revoke → access gone next request. Re-redeem new key → access back.
-- [ ] Neina gets 404 on every Jeremy places/lists/people/ideas/workouts/goals id.
+- [ ] Neina gets 404 on every Jeremy places/lists/people/ideas/workouts id.
 - [ ] Places filters, open now (incl. after midnight), pick random.
 
 P3:

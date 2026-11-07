@@ -15,17 +15,6 @@ const C = 'cal_jeremy_main';
 function fixture(over: Partial<Record<string, unknown[]>> = {}) {
 	const d = mkdtempSync(join(tmpdir(), 'seed-'));
 	const data: Record<string, unknown[]> = {
-		courses: [
-			{
-				id: 'crs_aaaaaaaaaaaa',
-				owner_id: O,
-				code: 'DS',
-				name: 'Data Structures',
-				aliases: ['ds'],
-				active: true,
-				source_ref: 'notion:x',
-			},
-		],
 		items: [
 			{
 				id: 'itm_000000000001',
@@ -79,9 +68,6 @@ function fixture(over: Partial<Record<string, unknown[]>> = {}) {
 				created_at: Z,
 				updated_at: Z,
 			},
-		],
-		goals: [
-			{ id: 'gol_000000000001', owner_id: O, period: '2026-Q4', text: 'Ship app', done: false, sort: 0 },
 		],
 		workout_split: [
 			{
@@ -172,6 +158,7 @@ describe('importSeed', () => {
 		const r = importSeed(fixture(), 'jeremy');
 		expect(r.inserted.items).toBe(2);
 		expect(r.counts.places).toBe(1);
+		expect(r.counts.courses).toBeUndefined();
 		const s = handle().sqlite;
 		expect(
 			s
@@ -200,7 +187,7 @@ describe('importSeed', () => {
 	it('bad row -> fails loud with file + index, nothing written', () => {
 		const d = fixture({ items: [{ id: 'itm_000000000009', title: '' }] });
 		expect(() => importSeed(d, 'jeremy')).toThrow(/items\.json\[0\]/);
-		expect(handle().sqlite.prepare(`SELECT count(*) c FROM courses`).get()).toEqual({ c: 0 });
+		expect(handle().sqlite.prepare(`SELECT count(*) c FROM places`).get()).toEqual({ c: 0 });
 	});
 
 	it('unknown owner -> error', () => {

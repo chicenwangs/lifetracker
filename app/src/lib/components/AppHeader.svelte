@@ -2,10 +2,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import QuickAdd from './QuickAdd.svelte';
-	import type { QACourse } from '$lib/quickadd';
 	import { initTheme, setTheme, themeState } from '$lib/client/prefs.svelte';
 
-	let { user, courses }: { user: App.SafeUser; courses: QACourse[] } = $props();
+	let { user }: { user: App.SafeUser } = $props();
 	const NAV = [
 		{ href: '/', label: 'Home', match: (p: string) => p === '/' },
 		{ href: '/week', label: 'Week', match: (p: string) => p.startsWith('/week') },
@@ -28,7 +27,7 @@
 		{/each}
 	</nav>
 	<div class="right">
-		<QuickAdd {courses} tz={user.timezone} />
+		<QuickAdd tz={user.timezone} />
 		<button
 			class="theme"
 			type="button"
@@ -80,8 +79,6 @@
 					<a href="/settings/account" onclick={() => (menu = false)}>Account</a>
 					<a href="/settings/preferences" onclick={() => (menu = false)}>Preferences</a>
 					<a href="/settings/sessions" onclick={() => (menu = false)}>Devices</a>
-					<a href="/settings/courses" onclick={() => (menu = false)}>Courses</a>
-					<a href="/settings/goals" onclick={() => (menu = false)}>Goals</a>
 					<form method="post" action="/logout"><button type="submit">Sign out</button></form>
 				</div>
 			{/if}

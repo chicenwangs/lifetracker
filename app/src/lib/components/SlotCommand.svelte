@@ -6,7 +6,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import CommandInput from './CommandInput.svelte';
-	import { parseQuickAdd, withTarget, type QACourse, type QAParse, type QATarget } from '$lib/quickadd';
+	import { parseQuickAdd, withTarget, type QAParse, type QATarget } from '$lib/quickadd';
 	import { nowLocalMinutes, prettyDate, todayLocal } from '$lib/time';
 	import { del, post } from '$lib/client/api';
 	import { showToast } from '$lib/client/toast.svelte';
@@ -36,11 +36,9 @@
 	let cmd: CommandInput | undefined = $state();
 
 	const tz = $derived(page.data.user?.timezone ?? 'Asia/Kuala_Lumpur');
-	const courses = $derived((page.data.courses ?? []) as QACourse[]);
 	const ctx = $derived({
 		today: todayLocal(tz),
 		nowMinutes: nowLocalMinutes(tz),
-		courses,
 		slot: { date, start, end },
 	});
 	const parsed = $derived(parseQuickAdd(text, ctx));

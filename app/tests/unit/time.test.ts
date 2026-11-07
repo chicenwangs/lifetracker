@@ -24,10 +24,6 @@ describe('dates', () => {
 		expect(t.isoWeekKey('2027-01-04')).toBe('2027-W01');
 		expect(t.isoWeekKey('2026-11-06')).toBe('2026-W45');
 	});
-	it('quarter', () => {
-		expect(t.quarterKey('2026-11-06')).toBe('2026-Q4');
-		expect(t.quarterKey('2026-01-01')).toBe('2026-Q1');
-	});
 	it('month grid Monday start, 42 days', () => {
 		expect(t.monthGridRange(2026, 11)).toEqual({ from: '2026-10-26', to: '2026-12-07' });
 	});

@@ -100,3 +100,10 @@ e2e (week test): heatmap shows "Week N of M" + one highlighted row; one mirror +
 - **Home/Week drag = grey by default.** A block (or `/calendar` item) made from a timeline drag with no `/type` or `#course` is saved with type None (grey). The N palette keeps its Event default. Draft box is grey until a type is typed (`DraftBlock` uses None colours for `type=null`). Server: `quickAdd(..., slot)`; unit test added.
 - **Week hour bands.** Odd hours get `--band` (light `rgb(0 0 0/.035)`, dark `rgb(0 0 0/.24)`) on both the lanes and the label column via FC `slotLaneClassNames/slotLabelClassNames`, so a drag's length reads in hours.
 - **Week today.** No fill any more; a light dotted outline (`--today-line`) runs down the whole column: header, all-day row, hours.
+
+## Removed: Goals + Courses — 2026-11-08 (owner ask)
+
+Gone from the app: Home goals panel, Settings > Goals / Courses pages + header menu links, `/api/goals*`, `/api/courses*`, `repo/goals.ts`, `repo/courses.ts`, quick-add `#course` (menu, slot, Work default, note) — `#word` is now plain title text, item view Course field, "Also in course" query, `courseId` on `ItemDTO` and item create/patch, `CourseDTO`/`GoalDTO`, `quarterKey`.
+Kept on purpose (non-destructive): DB tables `goals`, `courses` and column `items.course_id` stay with their data, marked DORMANT in `schema.ts`; nothing reads or writes them. A drop migration can be added later (needs an `items` table rebuild because of the FK).
+Seed import no longer reads `courses.json` / `goals.json` and strips `course_id` from items; `scripts/transform_notion.py` still writes those files (ignored).
+Tests: quick-add/seed/time units updated; e2e checks the two APIs now 404 and `#ds` opens no menu. REQUIREMENTS updated; TECHNICAL/PSEUDOCODE/STRUCTURE still mention them historically.

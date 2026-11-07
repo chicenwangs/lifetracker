@@ -1,7 +1,6 @@
 // Item view payload (centre peek + /item/[id] page). Own items only (P2 adds partner read-only card).
 import * as items from './repo/items';
 import * as blocks from './repo/blocks';
-import * as courses from './repo/courses';
 import { todayLocal } from '$lib/time';
 import type { ItemDTO } from '$lib/types';
 
@@ -13,7 +12,6 @@ export function itemView(me: App.SafeUser, id: string) {
 		parent: parent ? { id: parent.id, title: parent.title } : null,
 		steps: items.withCounts(items.steps(me.id, it.id)),
 		blocks: blocks.forItem(me.id, it.id).map((b) => blocks.toDTO(b, it.type)),
-		courses: courses.list(me.id).map((c) => ({ id: c.id, code: c.code, name: c.name })),
 		history: {
 			createdAt: it.createdAt,
 			startedAt: it.startedAt,

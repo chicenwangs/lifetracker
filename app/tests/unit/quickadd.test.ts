@@ -12,12 +12,6 @@ import {
 const ctx: QAContext = {
 	today: '2026-11-06',
 	nowMinutes: 15 * 60,
-	courses: [
-		{ id: 'crs_ds', code: 'DS', aliases: ['ds'] },
-		{ id: 'crs_sp', code: 'SP', aliases: ['sp', 'sysprog'] },
-		{ id: 'crs_ss', code: 'SS', aliases: ['ss', 'socsci'] },
-		{ id: 'crs_fyp', code: 'FYP', aliases: ['fyp'] },
-	],
 };
 const p = (t: string, c: Partial<QAContext> = {}) => parseQuickAdd(t, { ...ctx, ...c });
 
@@ -114,7 +108,8 @@ const days: Row[] = [
 	['next steps doc', { title: 'next steps doc', dateSet: false }],
 	['party 31/2', { title: 'party 31/2', dateSet: false }],
 	['move mon meeting to wed', { title: 'move mon meeting to', date: '2026-11-11' }],
-	['dinner #spot', { title: 'dinner #spot', courseId: null }],
+	['dinner #spot', { title: 'dinner #spot' }],
+	['quiz #ds fri /cal', { title: 'quiz #ds', type: 'Event' }],
 	['and/or thing', { title: 'and/or thing' }],
 	['shout !loud', { title: 'shout !loud' }],
 	// rollover
@@ -176,20 +171,14 @@ const targetRows: Row[] = [
 	['/calendar /planner outing sat 2pm', { target: 'both', endTime: '15:00' }],
 	['outing sat all day /calendar', { title: 'outing', time: null }],
 	[
-		'ds quiz fri 2pm /exam #ds /calendar',
+		'ds quiz fri 2pm /exam /calendar',
 		{
 			title: 'ds quiz',
 			date: '2026-11-13',
 			time: '14:00',
 			type: 'Exam',
-			courseId: 'crs_ds',
 			target: 'calendar',
 		},
-	],
-	['assignment #sysprog fri /cal', { type: 'Work', courseId: 'crs_sp', title: 'assignment' }],
-	[
-		'read #fyp 8pm',
-		{ type: 'Work', notes: ['60 min default', 'course is only saved with /calendar or /both'] },
 	],
 	[
 		'/hobby build planner website /both next next monday 6pm to 10pm',
@@ -274,23 +263,22 @@ describe('palette helpers', () => {
 	it('active option token', () => {
 		expect(activeOptionToken('gym /ho')).toBe('/ho');
 		expect(activeOptionToken('gym /ho ')).toBeNull();
-		expect(activeOptionToken('gym #d')).toBe('#d');
+		expect(activeOptionToken('gym #d')).toBeNull();
 		expect(activeOptionToken('gym')).toBeNull();
 	});
 	it('slash menu filters', () => {
-		expect(optionsFor('/', ctx.courses)).toHaveLength(8);
-		expect(optionsFor('/p', ctx.courses).map((o) => o.token)).toEqual(['/planner']);
-		expect(optionsFor('/b', ctx.courses).map((o) => o.token)).toEqual(['/both']);
-		expect(optionsFor('/da', ctx.courses).map((o) => o.token)).toEqual(['/date']);
-		expect(optionsFor('#s', ctx.courses).map((o) => o.label)).toEqual(['SP', 'SS']);
+		expect(optionsFor('/')).toHaveLength(8);
+		expect(optionsFor('/p').map((o) => o.token)).toEqual(['/planner']);
+		expect(optionsFor('/b').map((o) => o.token)).toEqual(['/both']);
+		expect(optionsFor('/da').map((o) => o.token)).toEqual(['/date']);
 	});
 	it('ghost text', () => {
-		expect(ghostHint('', p(''), ctx.courses)).toBe('title  day  time   optional: /type  /calendar or /both');
-		expect(ghostHint('/hob', p('/hob'), ctx.courses)).toBe('by');
-		expect(ghostHint('/hobby', p('/hobby'), ctx.courses)).toBe('');
-		expect(ghostHint('/hobby gym', p('/hobby gym'), ctx.courses)).toBe('  day  time  /calendar or /both');
+		expect(ghostHint('', p(''))).toBe('title  day  time   optional: /type  /calendar or /both');
+		expect(ghostHint('/hob', p('/hob'))).toBe('by');
+		expect(ghostHint('/hobby', p('/hobby'))).toBe('');
+		expect(ghostHint('/hobby gym', p('/hobby gym'))).toBe('  day  time  /calendar or /both');
 		const full = '/hobby gym /both fri 6pm';
-		expect(ghostHint(full, p(full), ctx.courses)).toBe('');
+		expect(ghostHint(full, p(full))).toBe('');
 	});
 });
 
@@ -392,10 +380,8 @@ describe('dragged slot (planner / week drag box)', () => {
 		expect([r.startMinutes, r.endMinutes, r.endNextDay]).toEqual([1380, 1440, false]);
 	});
 	it('ghost hint skips day/time when slotted', () => {
-		expect(ghostHint('', p('', { slot }), ctx.courses, true)).toBe(
-			'title   optional: /type  /calendar  #course',
-		);
-		expect(ghostHint('gym', p('gym', { slot }), ctx.courses, true)).toBe('  /type  /calendar or /both');
+		expect(ghostHint('', p('', { slot }), true)).toBe('title   optional: /type  /calendar');
+		expect(ghostHint('gym', p('gym', { slot }), true)).toBe('  /type  /calendar or /both');
 	});
 	it('withTarget swaps the destination token', () => {
 		expect(withTarget('gym /hobby', 'calendar')).toBe('gym /hobby /calendar ');

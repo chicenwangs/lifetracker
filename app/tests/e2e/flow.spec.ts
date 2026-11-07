@@ -77,9 +77,9 @@ test('5 bad passwords -> locked message with minutes', async ({ browser }) => {
 
 test('month shows colour chips; square cycles + persists', async () => {
 	const d = await today();
-	expect(
-		(await api('POST', '/api/courses', { code: 'DS', name: 'Data Structures', aliases: ['ds'] })).s,
-	).toBe(201);
+	// courses + goals were removed (2026-11-08): their API is gone
+	expect((await api('POST', '/api/courses', { code: 'DS', name: 'x' })).s).toBe(404);
+	expect((await api('GET', '/api/goals')).s).toBe(404);
 	expect((await api('POST', '/api/items', { title: 'DS Quiz', type: 'Exam', date: d })).s).toBe(201);
 	expect((await api('POST', '/api/items', { title: 'Groceries', type: 'Event', date: d })).s).toBe(201);
 	await page.goto('/');
@@ -172,16 +172,16 @@ test('quick add palette: planner by default, /calendar big events, /both', async
 	await page.keyboard.type('ds quiz fri 2pm /ex');
 	await expect(dlg.getByRole('listbox')).toContainText('/exam');
 	await page.keyboard.press('Tab');
-	await page.keyboard.type('#ds');
 	await expect(page.locator('#qa-slots')).toContainText('Exam');
-	await expect(page.locator('#qa-slots')).toContainText('#DS');
+	// # is plain title text now (no course menu)
+	await page.keyboard.type('#ds');
+	await expect(dlg.getByRole('listbox')).toHaveCount(0);
 	await expect(page.locator('#qa-slots')).toContainText('Planner · default');
 	// time typed -> live timeline window beside the palette, draft follows the typing
 	const tl = page.locator('.tlp');
 	await expect(tl).toBeVisible();
 	await expect(tl.locator('.draft')).toContainText('14:00 – 15:00');
 	// problems only on Enter
-	await page.keyboard.press('Escape'); // close menu
 	await page.keyboard.press('Escape'); // clear text
 	await expect(tl).toHaveCount(0);
 	await page.keyboard.type('call mum tommorow');
@@ -190,7 +190,7 @@ test('quick add palette: planner by default, /calendar big events, /both', async
 	await expect(page.locator('#qa-err')).toContainText('Planner entries need a time');
 	await page.keyboard.press('Escape'); // clear text
 	// big event -> calendar only
-	await page.keyboard.type('ds quiz fri 2pm /exam #ds /calendar ');
+	await page.keyboard.type('ds quiz fri 2pm /exam /calendar ');
 	await page.keyboard.press('Enter');
 	await expect(dlg.locator('.log')).toContainText('Added ds quiz to calendar');
 	// filler -> planner only, snapped, typo day word
@@ -207,12 +207,11 @@ test('quick add palette: planner by default, /calendar big events, /both', async
 	const d = await today();
 	const r = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 8)}`);
 	const j = r.j as {
-		items: { id: string; title: string; type: string; time: string; date: string; courseId: string }[];
+		items: { id: string; title: string; type: string; time: string; date: string }[];
 		blocks: { label: string; itemId: string | null; startAt: string; endAt: string }[];
 	};
 	const quiz = j.items.find((i) => i.title === 'ds quiz');
 	expect(quiz).toMatchObject({ type: 'Exam', time: '14:00' });
-	expect(quiz?.courseId).toBeTruthy();
 	expect(new Date(quiz!.date + 'T00:00:00Z').getUTCDay()).toBe(5); // a Friday
 	expect(j.blocks.some((b) => b.itemId === quiz?.id)).toBe(false);
 	// planner-only: block, no calendar item

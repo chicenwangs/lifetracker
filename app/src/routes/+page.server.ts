@@ -1,8 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { getCalendar } from '$lib/server/calendar';
 import * as itemsRepo from '$lib/server/repo/items';
-import * as goalsRepo from '$lib/server/repo/goals';
-import { addDays, isDate, monthGridRange, quarterKey, todayLocal } from '$lib/time';
+import { addDays, isDate, monthGridRange, todayLocal } from '$lib/time';
 import { itemSpans, planDay } from '$lib/planahead';
 
 export const load: PageServerLoad = ({ locals, url }) => {
@@ -24,7 +23,6 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const year = Number(mm.slice(0, 4));
 	const month = Number(mm.slice(5, 7));
 	const range = monthGridRange(year, month);
-	const period = quarterKey(today);
 	return {
 		today,
 		day,
@@ -34,7 +32,5 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		month_: getCalendar(me, range.from, range.to),
 		planner: getCalendar(me, day, addDays(day, 1)),
 		due: itemsRepo.withCounts(itemsRepo.dueOn(me.id, day)),
-		period,
-		goals: goalsRepo.forPeriod(me.id, period),
 	};
 };

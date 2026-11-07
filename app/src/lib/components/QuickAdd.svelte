@@ -1,6 +1,6 @@
 <!--
   FR-Q1..Q3 (rev 2026-11-06c): N opens a centred chat-style palette over a blurred page.
-  Any order: title  day  time  [/type]  [/calendar | /both]  [#course].
+  Any order: title  day  time  [/type]  [/calendar | /both].
   Default = planner block only. /calendar = big event only. /both = item + linked block.
   Once a time is typed, a second window shows that day's timeline with the new entry as a dashed draft
   that moves as you type (crossing midnight = first day only).
@@ -12,14 +12,14 @@
 	import { fade } from 'svelte/transition';
 	import CommandInput from './CommandInput.svelte';
 	import TimelinePreview from './TimelinePreview.svelte';
-	import { parseQuickAdd, type QACourse, type QATarget } from '$lib/quickadd';
+	import { parseQuickAdd, type QATarget } from '$lib/quickadd';
 	import { addDays, nowLocalMinutes, prettyDate, prettyTime, todayLocal } from '$lib/time';
 	import { del, get, post } from '$lib/client/api';
 	import { calendarBus, calendarChanged } from '$lib/client/bus.svelte';
 	import { colorsFor } from '$lib/colors';
 	import type { BlockDTO, ItemType } from '$lib/types';
 
-	let { courses, tz }: { courses: QACourse[]; tz: string } = $props();
+	let { tz }: { tz: string } = $props();
 
 	type Log =
 		| { kind: 'me'; text: string }
@@ -43,7 +43,7 @@
 	let opener: HTMLButtonElement | undefined = $state();
 	let logEl: HTMLDivElement | undefined = $state();
 
-	const ctx = $derived({ today: todayLocal(tz), nowMinutes: nowLocalMinutes(tz), courses });
+	const ctx = $derived({ today: todayLocal(tz), nowMinutes: nowLocalMinutes(tz) });
 	const parsed = $derived(parseQuickAdd(text, ctx));
 
 	// ---------- live timeline ----------
@@ -58,7 +58,7 @@
 				start: p.startMinutes,
 				end: Math.min(end, 1440),
 				title: p.title,
-				type: p.typeSet || p.courseId ? p.type : null,
+				type: p.typeSet ? p.type : null,
 				thin,
 				clippedEnd: end > 1440,
 				note: thin ? 'calendar item' : end > 1440 ? 'ends next day' : '',
@@ -253,9 +253,7 @@
 					<div class="bot">
 						Type what you want to add, in any order. It goes on the planner; add <code>/calendar</code> for a
 						big event or
-						<code>/both</code> for both. Type <code>/</code> for options{courses.length
-							? ', # for a course'
-							: ''}.
+						<code>/both</code> for both. Type <code>/</code> for options.
 					</div>
 					{#each log as l, i (i)}
 						{#if l.kind === 'me'}
@@ -285,7 +283,7 @@
 				</div>
 
 				<div class="slots" id="qa-slots">
-					{#if parsed.typeSet || parsed.courseId}
+					{#if parsed.typeSet}
 						{@const c = tc(parsed.type)}
 						<div class="s" style:background={c.bg} style:color={c.ink} style:border-color={c.bg}>
 							<span class="k">Type</span><span class="v">{parsed.type}</span>
@@ -309,9 +307,6 @@
 						<span class="k">Time{parsed.notes.length ? ` · ${parsed.notes.join(', ')}` : ''}</span>
 						<span class="v">{timeLabel()}</span>
 					</div>
-					{#if parsed.courseCode}
-						<div class="s"><span class="k">Course</span><span class="v">#{parsed.courseCode}</span></div>
-					{/if}
 				</div>
 
 				{#if problems.length}

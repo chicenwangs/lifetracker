@@ -13,13 +13,11 @@
 	import { showError } from '$lib/client/toast.svelte';
 	import { removeItem } from '$lib/client/remove';
 
-	type Course = { id: string; code: string; name: string };
 	interface View {
 		item: ItemDTO & { notes: string | null };
 		parent: { id: string; title: string } | null;
 		steps: ItemDTO[];
 		blocks: BlockDTO[];
-		courses: Course[];
 		history: {
 			createdAt: string | null;
 			startedAt: string | null;
@@ -358,16 +356,6 @@
 							disabled={!it.date}
 							onchange={(e) => save({ endDate: e.currentTarget.value || null })}
 						/>
-					</label>
-					<label class="prop">
-						<span>Course</span>
-						<select
-							value={it.courseId ?? ''}
-							onchange={(e) => save({ courseId: e.currentTarget.value || null })}
-						>
-							<option value="">—</option>
-							{#each v.courses as co (co.id)}<option value={co.id}>{co.code}</option>{/each}
-						</select>
 					</label>
 					<label class="prop check" title="Shows as Busy to anyone you share with">
 						<input

@@ -1,4 +1,4 @@
-<!-- HOME (FR-H1): month calendar 2/3 | planner 1/3 (due chips + planner + goals). < ~1000px stacks. -->
+<!-- HOME (FR-H1): month calendar 2/3 | planner 1/3 (due chips + planner). < ~1000px stacks. -->
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
@@ -6,7 +6,6 @@
 	import MonthCalendar from '$lib/components/MonthCalendar.svelte';
 	import DayPlanner from '$lib/components/DayPlanner.svelte';
 	import DueTodayChips from '$lib/components/DueTodayChips.svelte';
-	import GoalsPanel from '$lib/components/GoalsPanel.svelte';
 	import { patch, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { calendarBus } from '$lib/client/bus.svelte';
@@ -168,7 +167,6 @@
 				/>
 			{/snippet}
 		</DayPlanner>
-		<GoalsPanel goals={data.goals} period={data.period} />
 	</aside>
 </main>
 

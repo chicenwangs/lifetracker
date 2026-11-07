@@ -104,6 +104,8 @@ export const calendars = sqliteTable(
 	],
 );
 
+// DORMANT since 2026-11-08: courses feature removed from the app. Table + items.course_id kept so existing
+// data is not destroyed; nothing reads or writes them. Drop with a migration if wanted.
 export const courses = sqliteTable(
 	'courses',
 	{
@@ -261,6 +263,7 @@ const ownerRef = () =>
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' });
 
+// DORMANT since 2026-11-08: goals feature removed from the app (table kept, data untouched).
 export const goals = sqliteTable(
 	'goals',
 	{

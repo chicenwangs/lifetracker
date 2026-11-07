@@ -17,7 +17,6 @@ export interface ItemDTO {
 	date: string | null;
 	time: string | null;
 	endDate: string | null;
-	courseId: string | null;
 	parentId: string | null;
 	private: boolean;
 	stepsDone: number;
@@ -36,22 +35,6 @@ export interface BlockDTO {
 	itemId: string | null;
 	itemType: ItemType | null;
 	editable: boolean;
-}
-
-export interface CourseDTO {
-	id: string;
-	code: string;
-	name: string;
-	aliases: string[];
-	active: boolean;
-}
-
-export interface GoalDTO {
-	id: string;
-	period: string;
-	text: string;
-	done: boolean;
-	sort: number;
 }
 
 export interface CalendarPayload {

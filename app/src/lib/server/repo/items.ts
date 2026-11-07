@@ -2,7 +2,7 @@
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db, handle } from '../db';
-import { blocks, calendars, courses, items, users } from '../schema';
+import { blocks, calendars, items, users } from '../schema';
 import { newId } from '../crypto';
 import { notFound, bad } from '../http';
 import { zDate, zStatus, zTime, zTitle, zType, zId } from '../validate';
@@ -33,7 +33,6 @@ export function toDTO(r: ItemRow, counts?: { done: number; total: number }): Ite
 		date: r.date,
 		time: r.time,
 		endDate: r.endDate,
-		courseId: r.courseId,
 		parentId: r.parentId,
 		private: r.private,
 		stepsDone: counts?.done ?? 0,
@@ -96,16 +95,6 @@ export function mustOwn(meId: string, id: string): ItemRow {
 	return getOwn(meId, id) ?? notFound();
 }
 
-function checkCourse(meId: string, courseId: string | null | undefined) {
-	if (!courseId) return;
-	const c = db()
-		.select({ id: courses.id })
-		.from(courses)
-		.where(and(eq(courses.id, courseId), eq(courses.ownerId, meId)))
-		.get();
-	if (!c) bad('course not found', 'bad_course');
-}
-
 function checkParent(meId: string, parentId: string | null | undefined, selfId?: string) {
 	if (!parentId) return;
 	if (parentId === selfId) bad('item cannot be its own parent');
@@ -128,7 +117,6 @@ export const itemCreateSchema = z
 		date: zDate.nullable().default(null),
 		time: zTime.nullable().default(null),
 		endDate: zDate.nullable().default(null),
-		courseId: zId('crs').nullable().default(null),
 		parentId: zId('itm').nullable().default(null),
 		notes: z.string().max(20_000).nullable().default(null),
 		private: z.boolean().default(false),
@@ -139,7 +127,6 @@ export type ItemCreate = z.infer<typeof itemCreateSchema>;
 export function create(meId: string, input: ItemCreate): ItemRow {
 	checkDates(input.date, input.endDate);
 	if (input.time && !input.date) bad('time needs a date');
-	checkCourse(meId, input.courseId);
 	checkParent(meId, input.parentId);
 	const cal = calendarsRepo.defaultFor(meId);
 	const now = nowUtcIso();
@@ -155,7 +142,6 @@ export function create(meId: string, input: ItemCreate): ItemRow {
 			date: input.date,
 			time: input.time,
 			endDate: input.endDate === input.date ? null : input.endDate,
-			courseId: input.courseId,
 			parentId: input.parentId,
 			notes: input.notes,
 			private: input.private,
@@ -179,7 +165,6 @@ export const itemPatchSchema = z
 		date: zDate.nullable(),
 		time: zTime.nullable(),
 		endDate: zDate.nullable(),
-		courseId: zId('crs').nullable(),
 		parentId: zId('itm').nullable(),
 		notes: z.string().max(20_000).nullable(),
 		private: z.boolean(),
@@ -208,7 +193,6 @@ export function patch(meId: string, id: string, p: ItemPatch): ItemRow {
 	const time = p.time !== undefined ? p.time : date === null ? null : cur.time;
 	checkDates(date, endDate);
 	if (time && !date) bad('time needs a date');
-	if (p.courseId !== undefined) checkCourse(meId, p.courseId);
 	if (p.parentId !== undefined) checkParent(meId, p.parentId, id);
 	const now = nowUtcIso();
 	db()
@@ -379,27 +363,6 @@ export function steps(meId: string, id: string): ItemRow[] {
 		.from(items)
 		.where(and(eq(items.parentId, id), live))
 		.orderBy(asc(items.date), asc(items.createdAt))
-		.all();
-}
-
-/** FR-I4 "Also in <course>": other own items same course, nearest dates */
-export function alsoInCourse(meId: string, item: ItemRow, limit = 8): ItemRow[] {
-	if (!item.courseId) return [];
-	const cals = myCalendarIds(meId);
-	return db()
-		.select()
-		.from(items)
-		.where(
-			and(
-				inArray(items.calendarId, cals),
-				live,
-				eq(items.courseId, item.courseId),
-				sql`${items.id} <> ${item.id}`,
-				isNull(items.parentId),
-			),
-		)
-		.orderBy(sql`abs(julianday(${items.date}) - julianday(${item.date ?? '2000-01-01'}))`)
-		.limit(limit)
 		.all();
 }
 

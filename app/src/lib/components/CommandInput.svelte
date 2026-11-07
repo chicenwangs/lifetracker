@@ -1,6 +1,6 @@
 <!--
   The quick-add command line, shared by the N palette, the planner drag box and the week drag box.
-  Grey ghost text = format guide / completion. `/` or `#` opens the option menu at the cursor.
+  Grey ghost text = format guide / completion. `/` opens the option menu at the cursor.
   Enter (no menu) -> onenter. Esc (no menu) -> onescape. onkey runs first for extra keys (return true = handled).
 -->
 <script lang="ts">
@@ -52,8 +52,8 @@
 
 	const parsed = $derived(parseQuickAdd(value, ctx));
 	const optTok = $derived(activeOptionToken(value));
-	const options = $derived(optTok ? optionsFor(optTok, ctx.courses) : []);
-	const ghost = $derived(placeholder && !value ? '' : ghostHint(value, parsed, ctx.courses, slotted));
+	const options = $derived(optTok ? optionsFor(optTok) : []);
+	const ghost = $derived(placeholder && !value ? '' : ghostHint(value, parsed, slotted));
 	const menuOpen = $derived(!menuHidden && options.length > 0);
 	const before = $derived(optTok ? parseQuickAdd(value.slice(0, value.length - optTok.length), ctx) : parsed);
 
@@ -67,8 +67,7 @@
 
 	function picked(o: QAOption): boolean {
 		if (o.group === 'Type') return before.typeSet && before.type === o.type;
-		if (o.group === 'Goes to') return before.targetSet && before.target === o.target;
-		return before.courseCode === o.label;
+		return before.targetSet && before.target === o.target;
 	}
 
 	function placeMenu() {
@@ -175,13 +174,7 @@
 						<span class="sw" style:background={c.bg} style:border-color={c.ink}></span>
 					{:else}
 						<span class="sw ic" aria-hidden="true"
-							>{o.group === 'Course'
-								? '#'
-								: o.target === 'planner'
-									? '◷'
-									: o.target === 'both'
-										? '⧉'
-										: '▦'}</span
+							>{o.target === 'planner' ? '◷' : o.target === 'both' ? '⧉' : '▦'}</span
 						>
 					{/if}
 					<span class="tok">{o.token}</span>

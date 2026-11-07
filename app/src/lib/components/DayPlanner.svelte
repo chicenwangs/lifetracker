@@ -85,7 +85,7 @@
 			return {
 				start: draft.start,
 				end: draft.end,
-				type: p?.typeSet || p?.courseId ? p.type : null,
+				type: p?.typeSet ? p.type : null,
 				thin: false,
 				ce: false,
 				note: p && p.date !== date ? 'other day' : '',
@@ -95,7 +95,7 @@
 		return {
 			start: p.startMinutes,
 			end: Math.min(e, DAY_MIN),
-			type: p.typeSet || p.courseId ? p.type : null,
+			type: p.typeSet ? p.type : null,
 			thin,
 			ce: e > DAY_MIN,
 			note: thin ? 'calendar item' : '',

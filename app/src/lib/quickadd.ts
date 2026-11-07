@@ -1,25 +1,19 @@
 // Quick add parser (FR-Q1..Q3c, TECHNICAL §8, rev 2026-11-06b "planner first").
 // PURE: client preview + server (truth) use the same code. Never throws; problems[] only shown on Enter.
 //
-// Any order:  title  day  time  [/type]  [/calendar | /both]  [#course]
+// Any order:  title  day  time  [/type]  [/calendar | /both]
 // · No destination = PLANNER ONLY (a time block, keeps the month calendar clean). Needs a time.
 // · /calendar = calendar item only (big events, time optional). /both = calendar item + linked planner block.
-// · Options start with `/`; unknown `/x` = problem. `#x` = course; unknown `#x` stays title.
+// · Options start with `/`; unknown `/x` = problem. `#x` is just part of the title.
 // · Days, times and their little words (on, at, by, from) need no prefix. LAST day wins, LAST time wins.
 // · Day words tolerate common typos (tommorow, wensday, febuary …) and punctuation (tomorrow, / fri.).
 // · Planner times snap to 15 min; single time = 60 min; end <= start = crosses midnight.
 import { addDays, hhmm, isDate, makeDate, weekdayOf } from './time';
 import type { ItemType } from './types';
 
-export interface QACourse {
-	id: string;
-	code: string;
-	aliases: string[];
-}
 export interface QAContext {
 	today: string; // local YYYY-MM-DD
 	nowMinutes: number; // local minutes since 00:00
-	courses: QACourse[];
 	/** drag-created range on a timeline: used when the text has no day / no time of its own (typed ones win) */
 	slot?: QASlot;
 }
@@ -34,8 +28,6 @@ export interface QAParse {
 	title: string;
 	type: ItemType;
 	typeSet: boolean;
-	courseId: string | null;
-	courseCode: string | null;
 	target: QATarget;
 	targetSet: boolean;
 	date: string;
@@ -343,7 +335,6 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 
 	let type: ItemType | null = null;
 	const targets = new Set<QATarget>();
-	let course: QACourse | null = null;
 	let dur: number | null = null;
 	let allDay = false;
 	const dates: DateHit[] = [];
@@ -380,7 +371,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 		const n3 = low[i + 3];
 		const raw = tokens[i] ?? '';
 
-		// --- /options + #courses (raw token, case-insensitive) ---
+		// --- /options (raw token, case-insensitive) ---
 		if (raw.startsWith('/') && !/^\/\d/.test(raw)) {
 			const k = raw
 				.slice(1)
@@ -398,15 +389,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 				continue;
 			}
 		}
-		if (raw.startsWith('#') && raw.length > 1) {
-			const a = norm(raw.slice(1));
-			const c = ctx.courses.find((c) => c.aliases.includes(a) || c.code.toLowerCase() === a);
-			if (c) {
-				course = c;
-				used.add(i);
-			}
-			continue;
-		}
+		if (raw.startsWith('#') && raw.length > 1) continue; // "#spot" stays in the title
 
 		// --- all day ---
 		if ((t === 'all' && n1 === 'day') || t === 'allday' || t === 'all-day') {
@@ -728,7 +711,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	// --- little words glued to a day/time: "on fri", "at 6pm", "from 6 to 8" ---
 	for (let i = 0; i < low.length; i++) {
 		if (used.has(i) || !PREPS.has(low[i] ?? '') || !used.has(i + 1)) continue;
-		if ((tokens[i + 1] ?? '').startsWith('/') || (tokens[i + 1] ?? '').startsWith('#')) continue;
+		if ((tokens[i + 1] ?? '').startsWith('/')) continue;
 		used.add(i);
 	}
 
@@ -737,7 +720,6 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	if (targets.has('both') || (targets.has('calendar') && targets.has('planner'))) target = 'both';
 	else if (targets.has('calendar')) target = 'calendar';
 	const makesBlock = target !== 'calendar';
-	const c = course as QACourse | null;
 
 	let endNextDay = false;
 	if (makesBlock) {
@@ -762,7 +744,6 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 			if (start >= 1440) start -= 1440;
 			endNextDay = end > 1440;
 		}
-		if (c && target === 'planner') notes.push('course is only saved with /calendar or /both');
 	} else if (end !== null) {
 		if (!fromSlot) notes.push('end time needs /both');
 		end = null;
@@ -786,10 +767,8 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	return {
 		ok: problems.length === 0,
 		title,
-		type: type ?? (c ? 'Work' : 'Event'),
+		type: type ?? 'Event',
 		typeSet: type !== null,
-		courseId: c?.id ?? null,
-		courseCode: c?.code ?? null,
 		target,
 		targetSet: targets.size > 0,
 		date,
@@ -809,7 +788,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 // ---------- palette helpers (pure, used by QuickAdd.svelte) ----------
 
 export interface QAOption {
-	group: 'Type' | 'Goes to' | 'Course';
+	group: 'Type' | 'Goes to';
 	token: string; // inserted text incl. prefix, e.g. "/hobby"
 	label: string;
 	hint: string;
@@ -827,45 +806,35 @@ export const SLASH_OPTIONS: QAOption[] = [
 	{ group: 'Goes to', token: '/both', label: 'Both', hint: 'calendar + block', target: 'both' },
 ];
 
-/** The token being typed at the end of the text, if it is an option prefix (`/x` or `#x`). */
+/** The token being typed at the end of the text, if it is an option prefix (`/x`). */
 export function activeOptionToken(text: string): string | null {
 	if (!text || /\s$/.test(text)) return null;
 	const t = text.split(/\s/).pop() ?? '';
-	return (t.startsWith('/') && !/^\/\d/.test(t)) || t.startsWith('#') ? t : null;
+	return t.startsWith('/') && !/^\/\d/.test(t) ? t : null;
 }
 
-export function optionsFor(token: string, courses: QACourse[]): QAOption[] {
+export function optionsFor(token: string): QAOption[] {
 	const q = token.slice(1).toLowerCase();
-	if (token.startsWith('#')) {
-		return courses
-			.filter((c) => !q || c.code.toLowerCase().startsWith(q) || c.aliases.some((a) => a.startsWith(q)))
-			.map((c) => ({
-				group: 'Course' as const,
-				token: `#${(c.aliases[0] ?? c.code).toLowerCase()}`,
-				label: c.code,
-				hint: c.aliases.map((a) => `#${a}`).join(' '),
-			}));
-	}
 	return SLASH_OPTIONS.filter((o) => o.token.slice(1).startsWith(q) || o.label.toLowerCase().startsWith(q));
 }
 
 /** Grey ghost text after the cursor: rest of an option being typed, else the slots still missing. */
-export function ghostHint(text: string, p: QAParse, courses: QACourse[], slotted = false): string {
+export function ghostHint(text: string, p: QAParse, slotted = false): string {
 	if (!text)
 		return slotted
-			? 'title   optional: /type  /calendar  #course'
+			? 'title   optional: /type  /calendar'
 			: 'title  day  time   optional: /type  /calendar or /both';
 	const tok = activeOptionToken(text);
 	if (tok) {
 		if (tok.length < 2) return '';
-		const first = optionsFor(tok, courses)[0];
+		const first = optionsFor(tok)[0];
 		return first && first.token.startsWith(tok.toLowerCase()) ? first.token.slice(tok.length) : '';
 	}
 	const missing: string[] = [];
 	if (!p.title) missing.push('title');
 	if (!p.dateSet && !slotted) missing.push('day');
 	if (p.time === null && !slotted) missing.push('time');
-	if (!p.typeSet && !p.courseId) missing.push('/type');
+	if (!p.typeSet) missing.push('/type');
 	if (!p.targetSet) missing.push('/calendar or /both');
 	if (!missing.length) return '';
 	return (text.endsWith(' ') ? ' ' : '  ') + missing.join('  ');

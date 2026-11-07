@@ -12,7 +12,7 @@
 </script>
 
 {#if data.user}
-	<AppHeader user={data.user} courses={data.courses} />
+	<AppHeader user={data.user} />
 {/if}
 {@render children()}
 {#if data.user && peek.id}

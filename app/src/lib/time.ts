@@ -65,10 +65,6 @@ export function isoWeekKey(date: string): string {
 	const t = new TZDate(y, m - 1, d, 'UTC');
 	return `${getISOWeekYear(t)}-W${String(getISOWeek(t)).padStart(2, '0')}`;
 }
-export function quarterKey(date: string): string {
-	const [y, m] = parts(date);
-	return `${y}-Q${Math.floor((m - 1) / 3) + 1}`;
-}
 export function monthOf(date: string): { year: number; month: number } {
 	const [y, m] = parts(date);
 	return { year: y, month: m };

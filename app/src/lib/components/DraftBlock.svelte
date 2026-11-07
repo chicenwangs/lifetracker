@@ -1,5 +1,5 @@
 <!-- The dashed "new block" box. Same look for planner drag, week drag preview and the N palette timeline.
-     Grey (type None) until a /type or #course is typed, then tinted with that Type colour. -->
+     Grey (type None) until a /type is typed, then tinted with that Type colour. -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { colorsFor } from '$lib/colors';

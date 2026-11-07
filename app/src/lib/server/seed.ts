@@ -1,4 +1,5 @@
 // Seed import (FR-IM1..3, TECHNICAL §10). Reads data/seed/*.json from scripts/transform_notion.py.
+// courses.json / goals.json are no longer read (features removed); items' course_id is dropped.
 // Idempotent: items/blocks update only rows NOT edited in app since (db.updated_at <= seed.updated_at);
 // other tables insert-if-missing (no updated_at to compare -> never overwrite app edits).
 import { readFileSync, existsSync } from 'node:fs';
@@ -21,15 +22,6 @@ const status = z.enum(['todo', 'doing', 'done']);
 const effort = z.enum(['light', 'moderate', 'heavy']).nullable();
 
 const S = {
-	courses: z.object({
-		id: id('crs'),
-		owner_id: z.string(),
-		code: z.string(),
-		name: z.string(),
-		aliases: z.array(z.string()),
-		active: z.boolean(),
-		source_ref: z.string().nullable().optional(),
-	}),
 	items: z.object({
 		id: id('itm'),
 		calendar_id: z.string(),
@@ -42,7 +34,7 @@ const S = {
 			.regex(/^\d{2}:\d{2}$/)
 			.nullable(),
 		end_date: date.nullable(),
-		course_id: z.string().nullable(),
+		course_id: z.string().nullable().optional(), // courses were removed (2026-11-08): ignored
 		parent_id: z.string().nullable(),
 		notes: z.string().nullable(),
 		private: z.boolean(),
@@ -63,14 +55,6 @@ const S = {
 		status,
 		created_at: isoZ.optional(),
 		updated_at: isoZ.optional(),
-	}),
-	goals: z.object({
-		id: id('gol'),
-		owner_id: z.string(),
-		period: z.string().regex(/^\d{4}-Q[1-4]$/),
-		text: z.string(),
-		done: z.boolean(),
-		sort: z.number().int(),
 	}),
 	workout_split: z.object({
 		id: id('wsp'),
@@ -132,10 +116,8 @@ const S = {
 type Table = keyof typeof S;
 /** FK order */
 export const ORDER: Table[] = [
-	'courses',
 	'items',
 	'blocks',
-	'goals',
 	'workout_split',
 	'places',
 	'lists',
@@ -213,6 +195,7 @@ export function importSeed(dir: string, ownerUsername: string): ImportResult {
 	};
 	for (const t of ORDER) data[t] = data[t].map(remap);
 	for (const r of data.items) {
+		delete r.course_id;
 		r.created_at ??= now;
 		r.updated_at ??= r.created_at;
 		r.created_by ??= owner.id;
