@@ -16,7 +16,6 @@
 </script>
 
 <header class="hdr">
-	<a class="brand" href="/">Life Tracker</a>
 	<nav aria-label="Main">
 		{#each NAV as n (n.href)}
 			<a
@@ -100,14 +99,6 @@
 		position: sticky;
 		top: 0;
 		z-index: 20;
-	}
-	.brand {
-		font-size: 16px;
-		font-weight: 700;
-		color: var(--ink);
-	}
-	.brand:hover {
-		text-decoration: none;
 	}
 	nav {
 		display: flex;
