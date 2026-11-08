@@ -76,6 +76,9 @@ export function setSignupOpen(open: boolean): void {
 }
 /** accounts one IP may create per 15 min while sign-up is open */
 const OPEN_PER_IP = 5;
+/** open sign-up, all clients together: 20 new accounts per 15 min, then closed for an hour */
+const OPEN_ALL_MAX = 20;
+const OPEN_ALL_KEY = 'signup:ok:all';
 
 export const signupSchema = z
 	.object({
@@ -96,7 +99,7 @@ export function signup(input: unknown, ip: string): Promise<SignupResult> {
 	if (!isSetupDone())
 		return Promise.resolve({ ok: false, status: 400, message: 'Sign-up opens after setup is finished.' });
 	// one sign-up at a time per IP: limits are checked and recorded around the argon2 await
-	return serial(`signup:${ip}`, () => signupOnce(input, ip));
+	return serial('signup', () => signupOnce(input, rl.ipKey(ip))); // one at a time: global cap below stays exact
 }
 
 async function signupOnce(input: unknown, ip: string): Promise<SignupResult> {
@@ -110,8 +113,8 @@ async function signupOnce(input: unknown, ip: string): Promise<SignupResult> {
 
 	if (signupOpen()) {
 		const okKey = `signup:ok:${ip}`;
-		const made = rl.check(okKey);
-		if (made.locked)
+		const made = [rl.check(OPEN_ALL_KEY), rl.check(okKey)].find((x) => x.locked);
+		if (made)
 			return {
 				ok: false,
 				status: 429,
@@ -135,6 +138,7 @@ async function signupOnce(input: unknown, ip: string): Promise<SignupResult> {
 		});
 		if (!created) return { ok: false, status: 400, message: 'Username taken.' };
 		rl.fail(okKey, OPEN_PER_IP);
+		rl.fail(OPEN_ALL_KEY, OPEN_ALL_MAX, 60);
 		return { ok: true, userId };
 	}
 

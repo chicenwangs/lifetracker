@@ -35,7 +35,11 @@ export const actions: Actions = {
 			const r = importSeed(env().SEED_DIR, owner);
 			return { result: { inserted: r.inserted, updated: r.updated, counts: r.counts, warnings: r.warnings } };
 		} catch (e) {
-			return fail(400, { message: e instanceof Error ? e.message : 'Import failed.' });
+			const msg = e instanceof Error ? e.message : String(e);
+			console.error('[import]', msg);
+			// our own checks are safe to show; anything else (fs paths, SQL text) stays in the log
+			const known = !(e instanceof Error && e.name === 'SqliteError') && !msg.includes('/');
+			return fail(400, { message: known ? msg : 'Import failed. Details are in the server log.' });
 		}
 	},
 };

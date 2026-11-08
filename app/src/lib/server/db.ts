@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { mkdirSync } from 'node:fs';
+import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import * as schema from './schema';
 
@@ -16,6 +16,13 @@ export interface Handle {
 export function openDb(path: string): Handle {
 	if (path !== ':memory:') mkdirSync(dirname(resolve(path)), { recursive: true });
 	const sqlite = new Database(path);
+	if (path !== ':memory:') {
+		try {
+			chmodSync(path, 0o600); // hashes + private data: owner only (-wal/-shm copy this mode)
+		} catch {
+			/* read-only mount or not ours: leave as is */
+		}
+	}
 	sqlite.pragma('journal_mode = WAL');
 	sqlite.pragma('foreign_keys = ON');
 	sqlite.pragma('busy_timeout = 5000');

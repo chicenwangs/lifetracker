@@ -180,6 +180,8 @@ export function logout(cookies: Cookies): void {
 export const LOGIN_PAIR_MAX = 5;
 export const LOGIN_IP_MAX = 30;
 export const LOGIN_USER_SLOW = 20;
+/** username-wide lock: stops IP rotation against one account. High so a stranger can't lock you out casually. */
+export const LOGIN_USER_MAX = 50;
 
 export type LoginResult =
 	{ ok: true; user: App.SafeUser } | { ok: false; status: 400 | 429; message: string };
@@ -193,7 +195,7 @@ export function login(
 	opts: { now?: number; slowMs?: number } = {},
 ): Promise<LoginResult> {
 	// one attempt at a time per client IP: limits are checked and recorded around the argon2 await
-	return serial(`login:${meta.ip}`, () => loginOnce(input, meta, cookies, opts));
+	return serial(`login:${rl.ipKey(meta.ip)}`, () => loginOnce(input, meta, cookies, opts));
 }
 
 async function loginOnce(
@@ -206,11 +208,12 @@ async function loginOnce(
 	// usernames are [a-z0-9_.-]; anything else (e.g. "|" to forge a limit key) is just a wrong login
 	const typed = input.username.trim().toLowerCase();
 	const u = /^[a-z0-9_.-]{1,64}$/.test(typed) ? typed : '';
-	const kPair = `login:u:${u}|${meta.ip}`;
-	const kIp = `login:ip:${meta.ip}`;
+	const ipk = rl.ipKey(meta.ip);
+	const kPair = `login:u:${u}|${ipk}`;
+	const kIp = `login:ip:${ipk}`;
 	const kUser = `login:u:${u}`;
 
-	for (const k of [kPair, kIp]) {
+	for (const k of [kPair, kIp, kUser]) {
 		const st = rl.check(k, now);
 		if (st.locked)
 			return { ok: false, status: 429, message: `Too many tries. Try again in ${st.minutesLeft} min.` };
@@ -222,8 +225,8 @@ async function loginOnce(
 	if (!ok || !row) {
 		const pair = rl.fail(kPair, LOGIN_PAIR_MAX, 15, now);
 		const ip = rl.fail(kIp, LOGIN_IP_MAX, 15, now);
-		rl.fail(kUser, 0, 15, now);
-		if (pair.locked || ip.locked)
+		const user = rl.fail(kUser, u ? LOGIN_USER_MAX : 0, 15, now);
+		if (pair.locked || ip.locked || user.locked)
 			return { ok: false, status: 429, message: 'Too many tries. Try again in 15 min.' };
 		const left = LOGIN_PAIR_MAX - pair.count;
 		return {
@@ -234,6 +237,7 @@ async function loginOnce(
 	}
 
 	rl.clear(kPair);
+	rl.clear(kUser);
 	if (row.passwordHash && needsRehash(row.passwordHash)) {
 		usersRepo.setPasswordHash(row.id, await hashPassword(input.password));
 	}
@@ -264,9 +268,16 @@ export async function changePassword(
 	cookies: Cookies,
 	meta: { ip: string; userAgent: string | null },
 ): Promise<{ ok: true } | { ok: false; message: string }> {
+	// a stolen session must not give unlimited guesses at the current password
+	const key = `pw:${user.id}`;
+	const st = rl.check(key);
+	if (st.locked) return { ok: false, message: `Too many tries. Try again in ${st.minutesLeft} min.` };
 	const row = usersRepo.byId(user.id);
-	if (!row || !(await verifyPassword(row.passwordHash, current)))
+	if (!row || !(await verifyPassword(row.passwordHash, current))) {
+		rl.fail(key, 5);
 		return { ok: false, message: 'Current password is wrong.' };
+	}
+	rl.clear(key);
 	const p = passwordSchema.safeParse(next);
 	if (!p.success) return { ok: false, message: p.error.issues[0]?.message ?? 'Bad password.' };
 	usersRepo.setPasswordHash(user.id, await hashPassword(next));

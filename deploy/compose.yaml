@@ -28,7 +28,7 @@ services:
       options: { max-size: "10m", max-file: "3" }
 
   cloudflared:
-    image: cloudflare/cloudflared:${CLOUDFLARED_VERSION:-latest}   # pin a dated tag in .env
+    image: cloudflare/cloudflared:${CLOUDFLARED_VERSION:-latest}   # pin a dated tag in .env (latest only so Stage B config works)
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     env_file: tunnel.env            # TUNNEL_TOKEN only; the app never sees it

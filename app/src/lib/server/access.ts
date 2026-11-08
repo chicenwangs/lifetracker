@@ -47,7 +47,7 @@ export function filterItem(it: ItemRow, a: Access, viewerId: string): ItemDTO | 
 /** `linked` = the block's item (null if unlinked or deleted) */
 export function filterBlock(
 	b: BlockDTO,
-	linked: { type: ItemType | null; private: boolean } | null,
+	linked: { type: ItemType | null; private: boolean; title?: string } | null,
 	a: Access,
 	viewerId: string,
 ): BlockDTO | null {
@@ -58,7 +58,8 @@ export function filterBlock(
 		return {
 			...base,
 			id: b.id,
-			label: b.label,
+			// linked: the item's current title (the block's label is an old copy that may differ)
+			label: linked?.title || b.label,
 			// linked: visibility came from the item, so only its type is sent (never the block's own)
 			type: linked ? null : b.type,
 			itemType: linked ? linked.type : null,

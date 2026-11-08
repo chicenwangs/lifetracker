@@ -57,6 +57,7 @@ export function inRangeForShare(calendarId: string, fromZ: string, toZ: string) 
 			b: blocks,
 			itemType: items.type,
 			itemPrivate: items.private,
+			itemTitle: items.title,
 			itemId: items.id,
 			itemParent: items.parentId,
 		})
@@ -71,6 +72,7 @@ export function inRangeForShare(calendarId: string, fromZ: string, toZ: string) 
 			linked: r.b.itemId
 				? {
 						type: r.itemType,
+						title: r.itemTitle ?? '',
 						private: !r.itemId || !!r.itemPrivate || !!r.itemParent,
 					}
 				: null,
@@ -124,6 +126,7 @@ export function create(meId: string, input: z.infer<typeof blockCreateSchema>): 
 	const endAt = input.endAt ?? isoPlus(input.startAt, 60 * 60_000);
 	checkRange(input.startAt, endAt);
 	const cal = calendarsRepo.defaultFor(meId);
+	itemsRepo.checkCap(blocks, cal.id);
 	const now = nowUtcIso();
 	const id = newId('blk');
 	db()
@@ -163,9 +166,13 @@ export function patch(meId: string, id: string, p: z.infer<typeof blockPatchSche
 	const e = p.endAt ?? cur.endAt;
 	checkRange(s, e);
 	if (p.itemId) itemsRepo.mustOwn(meId, p.itemId);
+	const set = { ...p };
+	// unlinking from a private item: its title (copied into the label) must not become shareable text
+	if (p.itemId === null && cur.itemId && p.label === undefined && itemsRepo.getOwn(meId, cur.itemId)?.private)
+		set.label = 'Block';
 	db()
 		.update(blocks)
-		.set({ ...p, updatedAt: nowUtcIso(), updatedBy: meId })
+		.set({ ...set, updatedAt: nowUtcIso(), updatedBy: meId })
 		.where(eq(blocks.id, id))
 		.run();
 	return mustOwn(meId, id);

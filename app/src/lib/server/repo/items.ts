@@ -41,7 +41,26 @@ export function toDTO(r: ItemRow, counts?: { done: number; total: number }): Ite
 	};
 }
 
+/** rows per calendar (items, blocks): a runaway script or abuse can't grow the DB without end */
+export const ROW_CAP = 50_000;
+export function checkCap(table: typeof items | typeof blocks, calendarId: string): void {
+	const n = db()
+		.select({ n: sql<number>`count(*)` })
+		.from(table)
+		.where(eq(table.calendarId, calendarId))
+		.get()?.n;
+	if ((n ?? 0) >= ROW_CAP)
+		bad(`limit reached (${ROW_CAP} per account). Empty the trash or contact the admin.`);
+}
+
 function stepCounts(ids: string[]): Map<string, { done: number; total: number }> {
+	const m = new Map<string, { done: number; total: number }>();
+	// chunks: SQLite caps bound variables (32766)
+	for (let i = 0; i < ids.length; i += 500)
+		for (const [k, v] of stepCountsChunk(ids.slice(i, i + 500))) m.set(k, v);
+	return m;
+}
+function stepCountsChunk(ids: string[]): Map<string, { done: number; total: number }> {
 	const m = new Map<string, { done: number; total: number }>();
 	if (!ids.length) return m;
 	const rows = db()
@@ -129,6 +148,7 @@ export function create(meId: string, input: ItemCreate): ItemRow {
 	if (input.time && !input.date) bad('time needs a date');
 	checkParent(meId, input.parentId);
 	const cal = calendarsRepo.defaultFor(meId);
+	checkCap(items, cal.id);
 	const now = nowUtcIso();
 	const id = newId('itm');
 	db()

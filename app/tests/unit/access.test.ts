@@ -129,3 +129,54 @@ describe('block leaks (review 2026-11-08)', () => {
 		expect(shown).toMatchObject({ type: null, itemType: 'Dating', itemId: null });
 	});
 });
+
+describe('security review 2026-11-08', () => {
+	it('unlinking a block from a private item drops the private title', () => {
+		const sec = items.create(
+			a,
+			items.itemCreateSchema.parse({ title: 'Secret biopsy', type: 'Dating', date: D, private: true }),
+		);
+		const bl = blocks.create(
+			a,
+			blocks.blockCreateSchema.parse({
+				itemId: sec.id,
+				startAt: '2026-11-10T05:00:00Z',
+				endAt: '2026-11-10T06:00:00Z',
+			}),
+		);
+		blocks.patch(a, bl.id, { itemId: null });
+		keys.redeem(b.id, keys.create(a, { types: ['None', 'Blocks'], hiddenAs: 'busy', expiry: '7d' }).code);
+		expect(JSON.stringify(cal())).not.toContain('Secret biopsy');
+	});
+	it('a shown linked block carries the current item title, not an old label', () => {
+		const w = items.create(a, items.itemCreateSchema.parse({ title: 'Old name', type: 'Event', date: D }));
+		blocks.create(
+			a,
+			blocks.blockCreateSchema.parse({
+				itemId: w.id,
+				startAt: '2026-11-10T06:00:00Z',
+				endAt: '2026-11-10T07:00:00Z',
+			}),
+		);
+		items.patch(a, w.id, { title: 'New name' });
+		keys.redeem(b.id, keys.create(a, { types: ['Event', 'Blocks'], hiddenAs: 'none', expiry: '7d' }).code);
+		const s = JSON.stringify(cal());
+		expect(s).toContain('New name');
+		expect(s).not.toContain('Old name');
+	});
+	it('rejects calendar-invalid instants (Feb 31)', () => {
+		expect(() =>
+			blocks.blockCreateSchema.parse({
+				label: 'x',
+				startAt: '2026-02-31T10:00:00Z',
+				endAt: '2026-03-01T10:00:00Z',
+			}),
+		).toThrow();
+	});
+	it('at most 20 open share codes', () => {
+		for (let i = 0; i < 20; i++) keys.create(a, { types: ['Work'], hiddenAs: 'none', expiry: '24h' });
+		expect(() => keys.create(a, { types: ['Work'], hiddenAs: 'none', expiry: '24h' })).toThrow(
+			/20 open codes/,
+		);
+	});
+});

@@ -79,8 +79,11 @@ const h = await hash(pw, { algorithm: 2, memoryCost: 19456, timeCost: 2, paralle
 db.transaction(() => {
 	db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(h, user.id);
 	db.prepare('DELETE FROM sessions WHERE user_id = ?').run(user.id);
-	db.prepare('DELETE FROM rate_limits WHERE key LIKE ? OR key LIKE ?').run(
-		`login:u:${user.username}|%`,
+	// exact prefix match (LIKE would treat _ in usernames as a wildcard)
+	const pre = `login:u:${user.username}|`;
+	db.prepare('DELETE FROM rate_limits WHERE substr(key, 1, ?) = ? OR key = ?').run(
+		pre.length,
+		pre,
 		`login:u:${user.username}`,
 	);
 })();

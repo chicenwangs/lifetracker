@@ -1,4 +1,5 @@
 // init (env + db + migrate + purge) · proxy check · origin check · session · guard · security headers.
+import { isIP } from 'node:net';
 import { redirect, type Handle, type HandleServerError, type ServerInit } from '@sveltejs/kit';
 import { env as privateEnv } from '$env/dynamic/private';
 import { env, initEnv } from '$lib/server/env';
@@ -39,7 +40,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// 1 proxy: behind tunnel, header must exist (fail closed). /healthz exempt: the container's own
 	// HEALTHCHECK calls 127.0.0.1 without the tunnel header, and it returns nothing private.
-	if (e.ADDRESS_HEADER && path !== '/healthz' && !event.request.headers.get(e.ADDRESS_HEADER)) {
+	// value must be one IP literal (a forged list or junk would become a rate-limit key)
+	if (e.ADDRESS_HEADER && path !== '/healthz' && !isIP(event.request.headers.get(e.ADDRESS_HEADER) ?? '')) {
 		return new Response('Bad request', { status: 400 });
 	}
 

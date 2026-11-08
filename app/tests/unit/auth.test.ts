@@ -279,3 +279,24 @@ describe('races + setup gate (review 2026-11-08)', () => {
 		expect(rs.filter((r) => r.ok)).toHaveLength(5);
 	});
 });
+
+describe('ipKey', () => {
+	it('cuts IPv6 to /64, keeps IPv4', async () => {
+		const { ipKey } = await import('../../src/lib/server/ratelimit');
+		expect(ipKey('1.2.3.4')).toBe('1.2.3.4');
+		expect(ipKey('2001:db8:1:2:aaaa::1')).toBe('2001:db8:1:2::/64');
+		expect(ipKey('2001:0db8:0001:0002:ffff:1:2:3')).toBe('2001:db8:1:2::/64');
+		expect(ipKey('2001:db8::1')).toBe('2001:db8:0:0::/64');
+		expect(ipKey('::1')).toBe('0:0:0:0::/64');
+		expect(ipKey('::ffff:1.2.3.4')).toBe('::ffff:1.2.3.4');
+	});
+	it('wrong current password 5x locks password change', async () => {
+		const users = await import('../../src/lib/server/repo/users');
+		const admin = users.safe(users.byId(await setupAdmin())!);
+		const c = fakeCookies();
+		for (let i = 0; i < 5; i++)
+			await auth.changePassword(admin, 'wrong-wrong', 'new pass phrase 42', c, meta);
+		const r = await auth.changePassword(admin, PW, 'new pass phrase 42', c, meta);
+		expect(r).toMatchObject({ ok: false, message: expect.stringMatching(/Too many/) });
+	});
+});

@@ -7,6 +7,7 @@ import { grants, shareKeys } from '../schema';
 import { formatCode, hmac, newId, normaliseCode, randomBase32 } from '../crypto';
 import * as calendarsRepo from './calendars';
 import * as rl from '../ratelimit';
+import { bad } from '../http';
 import { isoPlus, nowUtcIso } from '$lib/time';
 import { SHARE_KINDS } from '$lib/types';
 
@@ -21,6 +22,7 @@ export const shareKeyCreateSchema = z
 
 export function create(meId: string, input: unknown): { id: string; code: string; expiresAt: string } {
 	const p = shareKeyCreateSchema.parse(input);
+	if (listUnused(meId).length >= 20) bad('You have 20 open codes. Cancel some first.');
 	const cal = calendarsRepo.defaultFor(meId);
 	const raw = randomBase32(12);
 	const now = nowUtcIso();

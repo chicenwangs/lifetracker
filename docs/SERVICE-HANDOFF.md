@@ -63,7 +63,7 @@ sudo mkdir -p /opt/life-tracker && sudo chown $USER /opt/life-tracker && cd /opt
 gh release download vX.Y.Z -R chicenwangs/lifetracker -p 'deploy-*.tar.gz' && tar -xzf deploy-vX.Y.Z.tar.gz
 cp .env.example .env && chmod 600 .env && nano .env      # APP_VERSION, ORIGIN, APP_SECRET, SETUP_TOKEN
 cp tunnel.env.example tunnel.env && chmod 600 tunnel.env # TUNNEL_TOKEN (Stage C); compose needs the file to exist
-mkdir -p data && sudo chown -R 1000:1000 data
+mkdir -p data && sudo chown -R 1000:1000 data && sudo chmod 700 data
 echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 ```
 
@@ -104,10 +104,13 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 
 ## 6. Security notes
 
-- Secrets live only in `.env` (chmod 600) and the password manager. Never in git, images, or chat logs.
-- No published port in Stage C. With `ADDRESS_HEADER` set, anything not coming through Cloudflare gets 400, so a stray port forward cannot spoof client IPs, but keep ports closed anyway.
+- Secrets live only in `.env` / `tunnel.env` (chmod 600) and the password manager. Never in git, images, or chat logs.
+- No published port in Stage C. With `ADDRESS_HEADER` set, a request whose header is missing or not a single IP gets 400. A client that reaches the port directly **can** still fake a valid IP in that header and dodge per-IP limits, so the port must stay closed and nothing else should share the compose network.
 - Container: non-root uid 1000, read-only rootfs, all capabilities dropped, `no-new-privileges`.
-- App: argon2id passwords, HttpOnly + Secure + SameSite=Lax `__Host-` session cookie, CSP (`self` only), Origin check on every non-GET, login lockout (5 tries / 15 min), share and invite codes stored as HMAC only, shared calendars filtered server-side (hidden items reach other users only as "Busy" with no title).
+- App: argon2id passwords, HttpOnly + Secure + SameSite=Lax `__Host-` session cookie, CSP (`self` only), Origin check on every non-GET, X-Frame-Options DENY, login lockout (5 tries per user+IP, 30 per IP, 50 per username, all per 15 min; IPv6 counted per /64), password change limited to 5 wrong tries, open sign-up capped at 5 per IP and 20 overall per 15 min, 50k items/blocks and 20 open share codes per account, share and invite codes stored as HMAC only, shared calendars filtered server-side (hidden items reach other users only as "Busy" with no title).
+- Files: the app makes `app.db` mode 600; `backup.sh`/`restore.sh` use umask 077. Run once after creating it: `sudo chmod 700 data`.
+- A stranger can lock one username for 15 min with 50 wrong tries. Fix for the owner: `reset-password` (§5, clears it) or wait.
+- Accepted for now (from the 2026-11-08 security review): two low SvelteKit advisories fixed only in Kit 3 (enhanced-form redirect to a foreign URL, prerender cache-control XSS; the app has neither foreign redirects nor prerendered pages). `/healthz` shows the version (ops needs it). One `APP_SECRET` keys all HMACs (codes are random 60-bit, no practical clash). GitHub Actions pinned by major tag, not SHA.
 - Optional extra layer: Cloudflare Access in front (email one-time PIN for the known users).
 
 ## 7. Troubleshooting

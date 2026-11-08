@@ -6,7 +6,8 @@ app/test-results
 app/playwright-report
 data
 .env*
-**/.env
+**/.env*
+!**/.env.example
 .git
 .github
 wireframes

@@ -11,7 +11,8 @@ export const load: PageServerLoad = ({ locals }) => {
 };
 
 export const actions: Actions = {
-	default: async ({ request, cookies, getClientAddress }) => {
+	default: async ({ request, cookies, getClientAddress, locals }) => {
+		if (locals.user) redirect(303, '/'); // already signed in: no second account from this session
 		const f = await request.formData();
 		const input = {
 			code: String(f.get('code') ?? ''),

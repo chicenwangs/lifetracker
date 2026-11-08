@@ -178,7 +178,7 @@ export function importSeed(dir: string, ownerUsername: string): ImportResult {
 	if (!owner) throw new Error(`owner user not found: ${ownerUsername}`);
 	const cal = calendarsRepo.defaultFor(owner.id);
 	const report = readReport(dir);
-	if (!report) throw new Error(`no _report.json in ${dir} (run scripts/transform_notion.py)`);
+	if (!report) throw new Error('no _report.json in the seed folder (run scripts/transform_notion.py)');
 
 	const data = {} as Record<Table, Row[]>;
 	for (const t of ORDER) data[t] = load(dir, t);

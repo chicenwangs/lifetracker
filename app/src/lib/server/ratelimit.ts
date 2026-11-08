@@ -6,6 +6,23 @@ import { isoPlus, nowUtcIso } from '$lib/time';
 
 export const WINDOW_MS = 15 * 60_000;
 
+/** Limit key for a client IP. IPv6 is cut to its /64 (one home/host gets a whole /64, so the
+ * full address would hand an attacker a fresh budget per request). IPv4 / v4-mapped kept whole. */
+export function ipKey(ip: string): string {
+	const a = ip.trim().toLowerCase();
+	if (!a.includes(':') || a.startsWith('::ffff:')) return a;
+	const [head = '', tail = ''] = a.split('::');
+	const h = head ? head.split(':') : [];
+	const t = tail ? tail.split(':') : [];
+	const full = a.includes('::') ? [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill('0'), ...t] : h;
+	return (
+		full
+			.slice(0, 4)
+			.map((x) => x.replace(/^0+(?=.)/, ''))
+			.join(':') + '::/64'
+	);
+}
+
 export interface LimitState {
 	locked: boolean;
 	minutesLeft: number;

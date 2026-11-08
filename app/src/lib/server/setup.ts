@@ -37,7 +37,7 @@ export type SetupResult =
 
 export async function runSetup(input: unknown, ip: string): Promise<SetupResult> {
 	if (!setupOpen()) return { ok: false, status: 404, message: 'Not found' };
-	const key = `setup:ip:${ip}`;
+	const key = `setup:ip:${rl.ipKey(ip)}`;
 	const st = rl.check(key);
 	if (st.locked)
 		return { ok: false, status: 429, message: `Too many tries. Try again in ${st.minutesLeft} min.` };
