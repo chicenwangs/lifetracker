@@ -17,7 +17,8 @@ const schema = z
 
 export const PATCH = api(async (e) => {
 	const u = me(e);
-	users.setPrefs(u.id, await body(e, schema));
+	const patch = await body(e, schema);
+	if (Object.keys(patch).length) users.setPrefs(u.id, patch);
 	const row = users.byId(u.id);
 	return json({ user: row ? users.safe(row) : null });
 });

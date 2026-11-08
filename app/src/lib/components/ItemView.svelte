@@ -58,24 +58,32 @@
 	const cd = $derived(it && v ? examCountdown(it, v.today) : null);
 	const STATUS_WORD = { todo: 'Not started', doing: 'In progress', done: 'Done' } as const;
 
+	// sequence numbers: a slow older response never overwrites a newer one
+	let loadSeq = 0;
+	let daySeq = 0;
 	async function load() {
+		const n = ++loadSeq;
 		try {
-			v = await get<View>(`/api/items/${id}/view`);
+			const r = await get<View>(`/api/items/${id}/view`);
+			if (n !== loadSeq) return;
+			v = r;
 			failed = false;
 		} catch (e) {
+			if (n !== loadSeq) return;
 			failed = true;
 			showError(e);
 		}
 	}
 	async function loadDay() {
 		if (!planDate) return;
+		const n = ++daySeq;
 		try {
 			const r = await get<{ blocks: BlockDTO[] }>(
 				`/api/calendar?from=${planDate}&to=${addDays(planDate, 1)}`,
 			);
-			dayBlocks = r.blocks;
+			if (n === daySeq) dayBlocks = r.blocks;
 		} catch (e) {
-			showError(e);
+			if (n === daySeq) showError(e);
 		}
 	}
 	async function changed() {
@@ -172,12 +180,12 @@
 		if (saveTimer) clearTimeout(saveTimer);
 		saveTimer = setTimeout(flushNotes, 700);
 	}
-	async function flushNotes() {
+	async function flushNotes(): Promise<boolean> {
 		if (saveTimer) clearTimeout(saveTimer);
 		saveTimer = null;
 		if (!it || notesDraft === (it.notes ?? '')) {
 			saveState = saveState === 'saving' ? 'saved' : saveState;
-			return;
+			return true;
 		}
 		const val = notesDraft.trim() === '' ? null : notesDraft;
 		try {
@@ -185,14 +193,16 @@
 			if (v) v = { ...v, item: { ...v.item, notes: val } };
 			saveState = 'saved';
 			onchanged?.();
+			return true;
 		} catch (e) {
 			saveState = 'idle';
 			showError(e);
+			return false;
 		}
 	}
 	async function endNotes() {
-		await flushNotes();
-		editingNotes = false;
+		// failed save: stay in the editor so the draft isn't lost
+		if (await flushNotes()) editingNotes = false;
 	}
 	function grow(el: HTMLTextAreaElement | undefined) {
 		if (!el) return;

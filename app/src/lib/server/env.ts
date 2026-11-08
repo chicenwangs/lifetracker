@@ -9,9 +9,21 @@ const schema = z.object({
 		.string()
 		.url()
 		.refine((v) => !v.endsWith('/'), 'no trailing slash')
-		.refine((v) => /^https?:\/\//.test(v), 'must be http(s)'),
+		.refine((v) => /^https?:\/\//.test(v), 'must be http(s)')
+		.refine((v) => {
+			try {
+				return new URL(v).origin === v;
+			} catch {
+				return false;
+			}
+		}, 'must be a bare origin like https://planner.example.com (lower case, no path)'),
 	APP_SECRET: z.string().min(32, 'need 32+ chars'),
-	SETUP_TOKEN: z.string().optional().default(''),
+	// guards /setup while the site may already be public: long enough not to guess
+	SETUP_TOKEN: z
+		.string()
+		.optional()
+		.default('')
+		.refine((v) => v === '' || v.length >= 20, 'need 20+ chars (or leave empty)'),
 	ADDRESS_HEADER: z
 		.string()
 		.optional()
@@ -27,7 +39,14 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
 		const bad = r.error.issues.map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`);
 		throw new Error(`Bad env:\n  ${bad.join('\n  ')}`);
 	}
-	return Object.freeze({ ...r.data, secureCookies: r.data.ORIGIN.startsWith('https://') });
+	const secureCookies = r.data.ORIGIN.startsWith('https://');
+	// public https in prod = behind a proxy/tunnel: without the real-IP header every user shares one IP,
+	// so one person's bad passwords would lock everyone out
+	if (r.data.NODE_ENV === 'production' && secureCookies && !r.data.ADDRESS_HEADER)
+		throw new Error(
+			'Bad env:\n  ADDRESS_HEADER: required when ORIGIN is https in production (e.g. CF-Connecting-IP)',
+		);
+	return Object.freeze({ ...r.data, secureCookies });
 }
 
 let cached: Env | null = null;

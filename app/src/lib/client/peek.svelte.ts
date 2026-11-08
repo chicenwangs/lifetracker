@@ -10,6 +10,7 @@ export const peek = $state<{ id: string | null; origin: { x: number; y: number }
 
 let lastPointer: { x: number; y: number } | null = null;
 let pushed = false;
+let closing = false; // history.back() sent, popstate not yet seen
 
 if (typeof window !== 'undefined') {
 	window.addEventListener(
@@ -21,6 +22,7 @@ if (typeof window !== 'undefined') {
 	);
 	// Back button (or our own history.back) closes the peek
 	window.addEventListener('popstate', () => {
+		closing = false;
 		if (peek.id && location.pathname !== `/item/${peek.id}`) {
 			pushed = false;
 			peek.id = null;
@@ -31,6 +33,7 @@ if (typeof window !== 'undefined') {
 }
 
 export function openItem(id: string) {
+	if (closing) return;
 	peek.origin = lastPointer;
 	if (peek.id && pushed) {
 		// swap item inside an open peek without stacking history
@@ -43,10 +46,11 @@ export function openItem(id: string) {
 }
 
 export function closePeek() {
-	if (!peek.id) return;
-	if (pushed)
+	if (!peek.id || closing) return;
+	if (pushed) {
+		closing = true;
 		history.back(); // popstate clears peek.id
-	else {
+	} else {
 		peek.id = null;
 		calendarChanged();
 	}

@@ -235,6 +235,23 @@ describe('quick add: context-dependent', () => {
 	});
 });
 
+describe('quick add: range am/pm + 24h cap (review 2026-11-08)', () => {
+	const cases: [string, number, number][] = [
+		['work 9 to 5pm', 540, 1020],
+		['dinner 6pm to 8', 1080, 1200],
+		['party 11pm to 1', 1380, 1500],
+		['lunch 12 to 1pm', 720, 780],
+		['gym 11:55pm', 1425, 1485],
+		['call 6:00pm to 6:05pm', 1080, 1095],
+	];
+	for (const [t, s0, e0] of cases)
+		it(t, () => expect(p(t)).toMatchObject({ startMinutes: s0, endMinutes: e0 }));
+	it('prototype words do not crash', () => {
+		for (const t of ['constructor', 'toString 3pm', 'gym __proto__', 'x hasOwnProperty'])
+			expect(() => p(t)).not.toThrow();
+	});
+});
+
 describe('problems (shown on Enter only)', () => {
 	it('empty', () => expect(p('').problems[0]).toMatch(/Type something/));
 	it('no title', () => {

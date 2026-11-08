@@ -213,6 +213,14 @@ export function importSeed(dir: string, ownerUsername: string): ImportResult {
 	const counts: Record<string, number> = {};
 	const sqlite = handle().sqlite;
 
+	// never move rows between accounts: a seed already imported into someone else stays theirs
+	for (const t of ['items', 'blocks'] as const) {
+		const other = sqlite.prepare(`SELECT 1 FROM ${t} WHERE id = ? AND calendar_id <> ?`);
+		for (const r of data[t])
+			if (other.get(r.id, cal.id))
+				throw new Error(`This seed was already imported into another account (${t} ${String(r.id)}).`);
+	}
+
 	sqlite.transaction(() => {
 		for (const t of ORDER) {
 			inserted[t] = 0;

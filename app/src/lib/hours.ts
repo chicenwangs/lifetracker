@@ -8,6 +8,7 @@ export const MIN_SPAN = 3;
 
 /** keep a range valid; `moving` says which edge the user drags so the other one stays put */
 export function clampHours(start: number, end: number, moving: 'start' | 'end' = 'end'): HourRange {
+	if (!Number.isFinite(start) || !Number.isFinite(end)) return { ...DEFAULT_HOURS };
 	let s = Math.max(0, Math.min(24, Math.round(start)));
 	let e = Math.max(0, Math.min(24, Math.round(end)));
 	if (e - s < MIN_SPAN) {

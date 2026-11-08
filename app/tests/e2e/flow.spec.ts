@@ -34,7 +34,7 @@ test.beforeAll(async ({ browser }) => {
 test('fresh DB -> /setup -> admin; /setup then 404', async () => {
 	await page.goto('/');
 	await expect(page).toHaveURL(/\/setup$/);
-	await page.fill('#tk', 'e2e-setup-token');
+	await page.fill('#tk', 'e2e-setup-token-long-enough');
 	await page.fill('#p', PW);
 	await page.fill('#cp', PW);
 	await page.click('button[type=submit]');

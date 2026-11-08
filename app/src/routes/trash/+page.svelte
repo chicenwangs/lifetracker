@@ -11,7 +11,8 @@
 	<div class="card panel">
 		<h1>Trash</h1>
 		<p class="hint">
-			Deleted items (with their steps and time blocks) stay here 30 days, then are gone for good.
+			Deleted items (with their steps and time blocks) and planner blocks stay here 30 days, then are gone for
+			good.
 		</p>
 		{#if form?.restored}<span class="ok-note"
 				>Restored {form.restored} item{form.restored === 1 ? '' : 's'}.</span

@@ -40,4 +40,15 @@ describe('parseEnv', () => {
 		expect(parseEnv({ ...base, ADDRESS_HEADER: '' }).ADDRESS_HEADER).toBeUndefined();
 		expect(parseEnv({ ...base, ADDRESS_HEADER: 'CF-Connecting-IP' }).ADDRESS_HEADER).toBe('CF-Connecting-IP');
 	});
+
+	it('ORIGIN must be a bare origin; SETUP_TOKEN empty or 20+ chars', () => {
+		expect(() => parseEnv({ ...base, ORIGIN: 'http://localhost:5173/app' })).toThrow(/ORIGIN/);
+		expect(() => parseEnv({ ...base, SETUP_TOKEN: 'short' })).toThrow(/SETUP_TOKEN/);
+		expect(parseEnv({ ...base, SETUP_TOKEN: 'a'.repeat(20) }).SETUP_TOKEN).toHaveLength(20);
+	});
+	it('production behind https needs ADDRESS_HEADER', () => {
+		const prod = { ...base, NODE_ENV: 'production', ORIGIN: 'https://lt.example.com' };
+		expect(() => parseEnv(prod)).toThrow(/ADDRESS_HEADER/);
+		expect(parseEnv({ ...prod, ADDRESS_HEADER: 'CF-Connecting-IP' }).ADDRESS_HEADER).toBe('CF-Connecting-IP');
+	});
 });

@@ -28,11 +28,10 @@ services:
       options: { max-size: "10m", max-file: "3" }
 
   cloudflared:
-    image: cloudflare/cloudflared:${CLOUDFLARED_VERSION:?set CLOUDFLARED_VERSION in .env}
+    image: cloudflare/cloudflared:${CLOUDFLARED_VERSION:-latest}   # pin a dated tag in .env
     restart: unless-stopped
     command: tunnel --no-autoupdate run
-    environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}
+    env_file: tunnel.env            # TUNNEL_TOKEN only; the app never sees it
     depends_on:
       app: { condition: service_healthy }
     security_opt:

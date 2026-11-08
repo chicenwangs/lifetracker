@@ -59,7 +59,8 @@ export function filterBlock(
 			...base,
 			id: b.id,
 			label: b.label,
-			type: b.type,
+			// linked: visibility came from the item, so only its type is sent (never the block's own)
+			type: linked ? null : b.type,
 			itemType: linked ? linked.type : null,
 			status: b.status,
 			itemId: null, // their item ids stay theirs (nothing to open)

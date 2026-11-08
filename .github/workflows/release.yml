@@ -4,7 +4,7 @@
 name: release
 on:
   push:
-    tags: ['v*.*.*']
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']   # stable only; pre-release tags (v1.1.0-rc1) don't publish
 
 permissions:
   contents: read
@@ -52,8 +52,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tar -czf deploy-${GITHUB_REF_NAME}.tar.gz deploy docs/SERVICE-HANDOFF.md
+          # flat bundle: extracts straight into /opt/life-tracker
+          mkdir bundle && cp -a deploy/. bundle/ && cp docs/SERVICE-HANDOFF.md bundle/
+          tar -C bundle -czf "deploy-${GITHUB_REF_NAME}.tar.gz" .
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
             --generate-notes \
-            "deploy-${GITHUB_REF_NAME}.tar.gz" deploy/compose.yaml deploy/.env.example docs/SERVICE-HANDOFF.md
+            "deploy-${GITHUB_REF_NAME}.tar.gz" docs/SERVICE-HANDOFF.md

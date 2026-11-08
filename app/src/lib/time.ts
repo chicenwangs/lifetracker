@@ -185,7 +185,7 @@ export function prettyDate(date: string): string {
 }
 export function prettyTime(time: string): string {
 	const min = minutesOf(time);
-	const h = Math.floor(min / 60);
+	const h = Math.floor(min / 60) % 24; // 24:00 = 12am
 	const mm = min % 60;
 	const ap = h < 12 ? 'am' : 'pm';
 	const h12 = h % 12 === 0 ? 12 : h % 12;

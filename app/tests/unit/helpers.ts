@@ -11,7 +11,7 @@ export function freshDb(over: Record<string, string> = {}): Handle {
 		DATABASE_PATH: ':memory:',
 		ORIGIN: 'http://localhost:5173',
 		APP_SECRET: TEST_SECRET,
-		SETUP_TOKEN: 'setup-token-123',
+		SETUP_TOKEN: 'setup-token-123-long-enough',
 		...over,
 	});
 	const h = openDb(':memory:');

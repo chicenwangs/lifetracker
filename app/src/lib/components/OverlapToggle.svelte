@@ -18,9 +18,15 @@
 		on = next;
 		try {
 			await patch('/api/me/prefs', { overlapOn: next });
-			await invalidateAll();
 		} catch (e) {
 			on = !next;
+			showError(e);
+			busy = false;
+			return;
+		}
+		try {
+			await invalidateAll(); // saved; a failed reload must not flip the switch back
+		} catch (e) {
 			showError(e);
 		} finally {
 			busy = false;

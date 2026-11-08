@@ -1,6 +1,7 @@
 // Sessions, cookies, passwords, login (FR-A1..A11, TECHNICAL §5).
 import { hash as argonHash, verify as argonVerify } from '@node-rs/argon2';
 import type { Cookies } from '@sveltejs/kit';
+import { serial } from './serial';
 import { z } from 'zod';
 import { env } from './env';
 import { sessionToken, sha256hex } from './crypto';
@@ -185,14 +186,26 @@ export type LoginResult =
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export async function login(
+export function login(
 	input: { username: string; password: string; remember: boolean },
 	meta: { ip: string; userAgent: string | null },
 	cookies: Cookies,
 	opts: { now?: number; slowMs?: number } = {},
 ): Promise<LoginResult> {
+	// one attempt at a time per client IP: limits are checked and recorded around the argon2 await
+	return serial(`login:${meta.ip}`, () => loginOnce(input, meta, cookies, opts));
+}
+
+async function loginOnce(
+	input: { username: string; password: string; remember: boolean },
+	meta: { ip: string; userAgent: string | null },
+	cookies: Cookies,
+	opts: { now?: number; slowMs?: number },
+): Promise<LoginResult> {
 	const now = opts.now ?? Date.now();
-	const u = input.username.trim().toLowerCase();
+	// usernames are [a-z0-9_.-]; anything else (e.g. "|" to forge a limit key) is just a wrong login
+	const typed = input.username.trim().toLowerCase();
+	const u = /^[a-z0-9_.-]{1,64}$/.test(typed) ? typed : '';
 	const kPair = `login:u:${u}|${meta.ip}`;
 	const kIp = `login:ip:${meta.ip}`;
 	const kUser = `login:u:${u}`;

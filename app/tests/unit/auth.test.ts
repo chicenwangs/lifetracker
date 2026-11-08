@@ -11,7 +11,7 @@ const meta = { ip: IP, userAgent: 'vitest' };
 
 async function setupAdmin() {
 	const r = await runSetup(
-		{ token: 'setup-token-123', username: 'Jeremy', displayName: 'Jeremy', password: PW },
+		{ token: 'setup-token-123-long-enough', username: 'Jeremy', displayName: 'Jeremy', password: PW },
 		IP,
 	);
 	if (!r.ok) throw new Error(r.message);
@@ -28,7 +28,7 @@ describe('setup', () => {
 		await setupAdmin();
 		expect(setupOpen()).toBe(false);
 		const again = await runSetup(
-			{ token: 'setup-token-123', username: 'x', displayName: 'x', password: PW },
+			{ token: 'setup-token-123-long-enough', username: 'x', displayName: 'x', password: PW },
 			IP,
 		);
 		expect(again).toMatchObject({ ok: false, status: 404 });
@@ -39,7 +39,7 @@ describe('setup', () => {
 			expect(r.ok).toBe(false);
 		}
 		const r = await runSetup(
-			{ token: 'setup-token-123', username: 'jeremy', displayName: 'J', password: PW },
+			{ token: 'setup-token-123-long-enough', username: 'jeremy', displayName: 'J', password: PW },
 			IP,
 		);
 		expect(r).toMatchObject({ ok: false, status: 429 });
@@ -50,12 +50,12 @@ describe('setup', () => {
 	});
 	it('password rules: length + common list', async () => {
 		const short = await runSetup(
-			{ token: 'setup-token-123', username: 'j', displayName: 'J', password: 'short' },
+			{ token: 'setup-token-123-long-enough', username: 'j', displayName: 'J', password: 'short' },
 			IP,
 		);
 		expect(short.ok).toBe(false);
 		const common = await runSetup(
-			{ token: 'setup-token-123', username: 'jeremy', displayName: 'J', password: 'QwertyUIOP' },
+			{ token: 'setup-token-123-long-enough', username: 'jeremy', displayName: 'J', password: 'QwertyUIOP' },
 			IP,
 		);
 		expect(common).toMatchObject({ ok: false, message: expect.stringMatching(/common/) });
@@ -247,5 +247,35 @@ describe('invites + signup', () => {
 		expect(junk).toMatchObject({ ok: false, message: 'Invite code not valid.' });
 		const c = fakeCookies();
 		expect((await auth.login({ username: 'neina', password: PW, remember: true }, meta, c)).ok).toBe(true);
+	});
+});
+
+describe('races + setup gate (review 2026-11-08)', () => {
+	it('sign-up is refused before setup is finished', async () => {
+		const r = await signup({ username: 'early', displayName: 'E', password: PW }, IP);
+		expect(r).toMatchObject({ ok: false, status: 400 });
+	});
+	it('parallel wrong logins from one IP still lock after 5', async () => {
+		await setupAdmin();
+		const c = fakeCookies();
+		const m = { ip: '7.7.7.7', userAgent: 'x' };
+		const rs = await Promise.all(
+			Array.from({ length: 8 }, () =>
+				auth.login({ username: 'jeremy', password: 'nope-nope-1', remember: false }, m, c),
+			),
+		);
+		expect(rs.filter((r) => !r.ok && r.status === 429).length).toBeGreaterThanOrEqual(3);
+		expect(await auth.login({ username: 'jeremy', password: PW, remember: false }, m, c)).toMatchObject({
+			status: 429,
+		});
+	});
+	it('parallel sign-ups from one IP stop at 5', async () => {
+		await setupAdmin();
+		const rs = await Promise.all(
+			Array.from({ length: 8 }, (_, i) =>
+				signup({ username: `par${i}`, displayName: 'P', password: PW }, '6.6.6.6'),
+			),
+		);
+		expect(rs.filter((r) => r.ok)).toHaveLength(5);
 	});
 });

@@ -92,3 +92,40 @@ describe('what a grantee receives', () => {
 		expect(cal().items).toEqual([]);
 	});
 });
+
+describe('block leaks (review 2026-11-08)', () => {
+	const linked = (itemId: string, h: number) =>
+		blocks.create(
+			a,
+			blocks.blockCreateSchema.parse({
+				itemId,
+				startAt: `2026-11-10T0${h}:00:00Z`,
+				endAt: `2026-11-10T0${h}:30:00Z`,
+			}),
+		);
+	it('a block whose item was deleted shows as Busy, not with its label', () => {
+		const it0 = items.create(
+			a,
+			items.itemCreateSchema.parse({ title: 'Gone thing', type: 'Dating', date: D }),
+		);
+		linked(it0.id, 3);
+		items.softDelete(a, it0.id);
+		keys.redeem(b.id, keys.create(a, { types: ['Dating', 'Blocks'], hiddenAs: 'busy', expiry: '7d' }).code);
+		expect(JSON.stringify(cal())).not.toContain('Gone thing');
+	});
+	it('a block linked to a step is Busy even if the step type is shared', () => {
+		const par = items.create(a, items.itemCreateSchema.parse({ title: 'Parent', type: 'Work', date: D }));
+		const st = items.create(
+			a,
+			items.itemCreateSchema.parse({ title: 'Hidden step', type: 'Dating', date: D, parentId: par.id }),
+		);
+		linked(st.id, 4);
+		keys.redeem(b.id, keys.create(a, { types: ['Dating', 'Blocks'], hiddenAs: 'busy', expiry: '7d' }).code);
+		expect(JSON.stringify(cal())).not.toContain('Hidden step');
+	});
+	it("a shown linked block sends only the item's type, never its own", () => {
+		keys.redeem(b.id, keys.create(a, { types: ['Dating', 'Blocks'], hiddenAs: 'none', expiry: '7d' }).code);
+		const shown = cal().blocks.find((x) => x.label === 'Dinner date');
+		expect(shown).toMatchObject({ type: null, itemType: 'Dating', itemId: null });
+	});
+});

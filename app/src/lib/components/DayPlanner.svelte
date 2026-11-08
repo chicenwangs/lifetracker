@@ -297,7 +297,7 @@
 
 	// ---------- keyboard (focus block: arrows move 15, shift+arrows resize) ----------
 	async function onBlockKey(e: KeyboardEvent, p: Piece) {
-		if (!p.b.editable) return;
+		if (!p.b.editable || e.target !== e.currentTarget) return; // keys typed in the menu/rename stay there
 		if (e.key === 'Enter') {
 			menuFor = p.b.id;
 			menuLabel = p.b.label;
@@ -311,15 +311,24 @@
 		if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
 		e.preventDefault();
 		const d = (e.key === 'ArrowUp' ? -15 : 15) * 60_000;
-		const body = e.shiftKey
-			? { endAt: isoPlus(p.b.endAt, d) }
-			: { startAt: isoPlus(p.b.startAt, d), endAt: isoPlus(p.b.endAt, d) };
-		over[p.b.id] = { startAt: body.startAt ?? p.b.startAt, endAt: body.endAt };
+		const cur = over[p.b.id] ?? { startAt: p.b.startAt, endAt: p.b.endAt }; // repeat presses stack
+		const id = p.b.id;
+		let body: { startAt?: string; endAt: string };
+		if (e.shiftKey) {
+			const endAt = isoPlus(cur.endAt, d);
+			if (Date.parse(endAt) - Date.parse(cur.startAt) < 15 * 60_000) return; // min 15 min
+			body = { endAt };
+		} else body = { startAt: isoPlus(cur.startAt, d), endAt: isoPlus(cur.endAt, d) };
+		const mine = { startAt: body.startAt ?? cur.startAt, endAt: body.endAt };
+		over[id] = mine;
 		try {
-			await apiPatch(`/api/blocks/${p.b.id}`, body);
+			await apiPatch(`/api/blocks/${id}`, body);
 			onchanged();
+			setTimeout(() => {
+				if (over[id] === mine) over = without(over, id);
+			}, 400);
 		} catch (err) {
-			over = without(over, p.b.id);
+			over = without(over, id);
 			showError(err);
 		}
 	}

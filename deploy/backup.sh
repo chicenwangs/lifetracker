@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Nightly online backup of the planner DB. Safe while the app runs (SQLite .backup API).
-# Install: sudo apt install sqlite3 ; cron: 15 3 * * * /opt/life-tracker/backup.sh >> /opt/life-tracker/backup.log 2>&1
+# Install: sudo apt install sqlite3 ; root cron (sudo crontab -e): 15 3 * * * /opt/life-tracker/backup.sh >> /var/log/life-tracker-backup.log 2>&1
 # Env overrides: LT_DIR (default: this script's folder), LT_KEEP_DAYS (14), LT_OFFSITE (rsync target, optional)
 set -euo pipefail
+[ "$(id -u)" -eq 0 ] || { echo "run as root (data/ belongs to the container user 1000): sudo $0" >&2; exit 1; }
 LT_DIR=${LT_DIR:-$(cd "$(dirname "$0")" && pwd)}
 KEEP=${LT_KEEP_DAYS:-14}
 DB="$LT_DIR/data/app.db"

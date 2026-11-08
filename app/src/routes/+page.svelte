@@ -67,7 +67,7 @@
 	}
 
 	async function cycleBlock(id: string) {
-		const cur = data.planner.blocks.find((b) => b.id === id);
+		const cur = plannerBlocks.find((b) => b.id === id); // with overrides: fast clicks keep advancing
 		if (cur) statusOver[id] = nextStatus(cur.status);
 		try {
 			await post(`/api/blocks/${id}/cycle`);
@@ -144,6 +144,7 @@
 			onpick={(d) => nav({ d })}
 			ondropout={dropOut}
 			onnav={(y, m) => nav({ m: `${y}-${String(m).padStart(2, '0')}` })}
+			ontoday={() => nav({ m: data.today.slice(0, 7), d: data.today })}
 		/>
 	</div>
 	<aside class="right" aria-label="Daily planner">

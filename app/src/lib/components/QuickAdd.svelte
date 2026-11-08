@@ -74,7 +74,7 @@
 			const r = await get<{ blocks: BlockDTO[] }>(`/api/calendar?from=${d}&to=${addDays(d, 1)}`);
 			dayBlocks = { ...dayBlocks, [d]: r.blocks };
 		} catch {
-			dayBlocks = { ...dayBlocks, [d]: [] };
+			// not cached: the next keystroke on this day retries
 		} finally {
 			if (loadingDay === d) loadingDay = null;
 		}
@@ -117,6 +117,7 @@
 
 	let prevOverflow = '';
 	async function show() {
+		if (open) return;
 		open = true;
 		problems = [];
 		prevOverflow = document.body.style.overflow;
@@ -125,6 +126,7 @@
 		cmd?.focus();
 	}
 	function hide() {
+		if (!open) return;
 		open = false;
 		problems = [];
 		document.body.style.overflow = prevOverflow;
@@ -166,7 +168,7 @@
 					(extra.length ? ` (${extra.join(', ')})` : ''),
 				undone: false,
 			});
-			text = '';
+			if (text.trim() === sent) text = ''; // kept if they typed on while it was sending
 			problems = [];
 			calendarChanged();
 			scrollLog();

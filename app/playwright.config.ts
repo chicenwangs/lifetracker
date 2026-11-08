@@ -32,7 +32,7 @@ export default defineConfig({
 			DATABASE_PATH: join(dir, 'app.db'),
 			ORIGIN: `http://localhost:${PORT}`,
 			APP_SECRET: 'e2e-secret-'.padEnd(48, 'x'),
-			SETUP_TOKEN: 'e2e-setup-token',
+			SETUP_TOKEN: 'e2e-setup-token-long-enough',
 			PORT: String(PORT),
 			HOST: '127.0.0.1',
 		},

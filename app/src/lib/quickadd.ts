@@ -180,6 +180,11 @@ const DUR_M = /^(\d+)(?:m|min|mins|minute|minutes)$/;
 
 // ---------- small helpers ----------
 
+/** own-property lookup: "constructor" / "__proto__" are plain title words, never dictionary hits */
+function own<T>(map: Record<string, T>, k: string | undefined): T | undefined {
+	return k !== undefined && Object.hasOwn(map, k) ? map[k] : undefined;
+}
+
 /** lower-case, strip wrapping punctuation: "Tomorrow," -> "tomorrow", "(fri)" -> "fri". Keeps inner dots (14.30). */
 function norm(t: string): string {
 	return t
@@ -221,17 +226,17 @@ function isYesterday(t: string | undefined): boolean {
 }
 function weekdayOfWord(t: string | undefined): number | null {
 	if (!t) return null;
-	const w = WEEKDAY_WORDS[t];
+	const w = own(WEEKDAY_WORDS, t);
 	if (w) return w;
 	if (t.length < 7) return null;
-	if (t.endsWith('s') && WEEKDAY_WORDS[t.slice(0, -1)]) return null; // plural "tuesdays" = not a date
+	if (t.endsWith('s') && own(WEEKDAY_WORDS, t.slice(0, -1))) return null; // plural "tuesdays" = not a date
 	for (const [full, n] of WEEKDAY_FUZZY)
 		if (t[0] === full[0] && osa(t, full) <= (full.length >= 9 ? 2 : 1)) return n;
 	return null;
 }
 function monthOfWord(t: string | undefined): number | null {
 	if (!t) return null;
-	const m = MONTH_WORDS[t];
+	const m = own(MONTH_WORDS, t);
 	if (m) return m;
 	if (t.length < 6) return null;
 	for (const [full, n] of MONTH_FUZZY) if (t[0] === full[0] && osa(t, full) <= 1) return n;
@@ -240,13 +245,12 @@ function monthOfWord(t: string | undefined): number | null {
 function numberOf(t: string | undefined): number | null {
 	if (!t) return null;
 	if (/^\d{1,3}$/.test(t)) return Number(t);
-	return NUMBER_WORDS[t] ?? null;
+	return own(NUMBER_WORDS, t) ?? null;
 }
 const ampmOf = (t: string | undefined): 'am' | 'pm' | null => {
 	const x = (t ?? '').replace(/\./g, '');
 	return x === 'am' || x === 'pm' ? x : null;
 };
-const suffixOf = (t: string | undefined) => /(am|pm)$/.exec(t ?? '')?.[1] as 'am' | 'pm' | undefined;
 
 function ymd(y: number, m: number, d: number): string | null {
 	const s = makeDate(y, m, d);
@@ -294,6 +298,20 @@ function timeAt(low: string[], i: number, fallback?: 'am' | 'pm' | null): [numbe
 	const v = timeOf(t, fallback);
 	return v === null ? null : [v, 1];
 }
+const wrap = (v: number | null): [number, number] | null => (v === null ? null : [v, 1]);
+/** forward gap in minutes on a 24 h clock (0 counts as a full day) */
+const fwd = (from: number, to: number) => (((to - from) % 1440) + 1440) % 1440 || 1440;
+/** of two readings of a bare time, the one closest to `ref` (after it, or before it) */
+function soonest(
+	ref: number,
+	am: [number, number] | null,
+	pm: [number, number] | null,
+	dir: 'after' | 'before',
+): [number, number] | null {
+	if (!am || !pm) return am ?? pm;
+	const g = (x: [number, number]) => (dir === 'after' ? fwd(ref, x[0]) : fwd(x[0], ref));
+	return g(am) <= g(pm) ? am : pm;
+}
 /** "for 2h" "for 90m" "for 1h30" "for 2 hours" "for an hour" "for half an hour" -> [minutes, tokens after "for"] */
 function durationAt(low: string[], i: number): [number, number] | null {
 	const a = low[i] ?? '';
@@ -302,7 +320,7 @@ function durationAt(low: string[], i: number): [number, number] | null {
 	if ((m = DUR_H.exec(a))) return [Math.round(Number(m[1]) * 60 + Number(m[2] ?? 0)), 1];
 	if ((m = DUR_M.exec(a))) return [Number(m[1]), 1];
 	if (a === 'half' && (b === 'an' || b === 'a') && /^(hour|hr)$/.test(low[i + 2] ?? '')) return [30, 3];
-	const n = /^\d+(\.\d+)?$/.test(a) ? Number(a) : NUMBER_WORDS[a];
+	const n = /^\d+(\.\d+)?$/.test(a) ? Number(a) : own(NUMBER_WORDS, a);
 	if (n && b) {
 		if (/^(h|hr|hrs|hour|hours)$/.test(b)) return [Math.round(n * 60), 2];
 		if (/^(m|min|mins|minute|minutes)$/.test(b)) return [Math.round(n), 2];
@@ -382,8 +400,8 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 				continue;
 			}
 			if (!k.includes('/')) {
-				if (TYPE_WORDS[k]) type = TYPE_WORDS[k] ?? null;
-				else if (TARGET_WORDS[k]) targets.add(TARGET_WORDS[k] as QATarget);
+				if (own(TYPE_WORDS, k)) type = own(TYPE_WORDS, k) ?? null;
+				else if (own(TARGET_WORDS, k)) targets.add(own(TARGET_WORDS, k) as QATarget);
 				else problems.push(`\`${raw}\` isn't an option. Type \`/\` to see the list.`);
 				used.add(i);
 				continue;
@@ -426,18 +444,18 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 			i++;
 			continue;
 		}
-		if (t === 'in' && numberOf(n1) !== null && n2 && UNIT_WORDS[n2]) {
-			const [u, mult] = UNIT_WORDS[n2] as [Unit, number];
+		if (t === 'in' && numberOf(n1) !== null && n2 && own(UNIT_WORDS, n2)) {
+			const [u, mult] = own(UNIT_WORDS, n2) as [Unit, number];
 			const n = (numberOf(n1) as number) * mult;
 			const d = u === 'month' ? addMonths(today, n) : addDays(today, u === 'week' ? 7 * n : n);
 			pushDate({ idx: range(i, 3), resolve: () => d });
 			i += 2;
 			continue;
 		}
-		if (numberOf(t) !== null && n1 && UNIT_WORDS[n1] && n2 === 'from' && n3) {
+		if (numberOf(t) !== null && n1 && own(UNIT_WORDS, n1) && n2 === 'from' && n3) {
 			const base = n3 === 'now' || isToday(n3) ? today : isTomorrow(n3) ? addDays(today, 1) : null;
 			if (base) {
-				const [u, mult] = UNIT_WORDS[n1] as [Unit, number];
+				const [u, mult] = own(UNIT_WORDS, n1) as [Unit, number];
 				const n = (numberOf(t) as number) * mult;
 				const d = u === 'month' ? addMonths(base, n) : addDays(base, u === 'week' ? 7 * n : n);
 				pushDate({ idx: range(i, 4), resolve: () => d });
@@ -628,8 +646,18 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 		// --- time ranges ---
 		const dash = t.split(/[-–—]/);
 		if (dash.length === 2 && dash[0] && dash[1]) {
-			const b = timeOf(dash[1]);
-			const a = b !== null ? timeOf(dash[0], suffixOf(dash[1])) : null;
+			let b = timeOf(dash[1]);
+			const a0 = timeOf(dash[0]);
+			if (b === null && a0 !== null) {
+				const r = soonest(a0, wrap(timeOf(dash[1], 'am')), wrap(timeOf(dash[1], 'pm')), 'after');
+				b = r ? r[0] : null;
+			}
+			const a =
+				b === null
+					? null
+					: (a0 ??
+						soonest(b, wrap(timeOf(dash[0], 'am')), wrap(timeOf(dash[0], 'pm')), 'before')?.[0] ??
+						null);
 			if (a !== null && b !== null) {
 				times.push({ idx: [i], start: a, end: b });
 				continue;
@@ -642,10 +670,13 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 			const sep = low[i + aLen];
 			const isSep = sep && (RANGE_SEP.has(sep) || (sep === 'and' && low[i - 1] === 'between'));
 			if (isSep) {
-				const b = timeAt(low, i + aLen + 1);
+				const j = i + aLen + 1;
+				let b = timeAt(low, j);
+				// bare end ("6pm to 8"): am or pm, whichever comes soonest after the start
+				if (!b && aProbe) b = soonest(aProbe[0], timeAt(low, j, 'am'), timeAt(low, j, 'pm'), 'after');
 				if (b) {
-					const bTok = (low[i + aLen + 1] ?? '') + (b[1] === 2 ? (ampmOf(low[i + aLen + 2]) ?? '') : '');
-					const a = aProbe ?? timeAt(low, i, suffixOf(bTok));
+					// bare start ("9 to 5pm", "6 to 8pm"): am or pm, whichever ends soonest before the end
+					const a = aProbe ?? soonest(b[0], timeAt(low, i, 'am'), timeAt(low, i, 'pm'), 'before');
 					if (a) {
 						const len = a[1] + 1 + b[1];
 						times.push({ idx: range(i, len), start: a[0], end: b[0] });
@@ -733,15 +764,24 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 			const s0 = start;
 			const e0 = end;
 			start = snap(start);
+			if (start >= 1440 && s0 < 1440) start = 1425; // 23:55 rounds down, stays on the same day
 			if (end !== null) end = snap(end);
 			if (s0 !== start || (e0 !== null && e0 !== end)) notes.push('rounded to 15 min');
 			if (end === null) {
 				end = start + 60;
 				notes.push('60 min default');
 			}
-			if (end <= start) end += 1440; // crosses midnight
+			// crosses midnight only if the typed end is really before the start (not just snapped onto it)
+			if (end <= start) end += e0 !== null && e0 <= s0 ? 1440 : 0;
 			if (end - start < 15) end = start + 15;
-			if (start >= 1440) start -= 1440;
+			if (start >= 1440) {
+				// 23:55 snapped to 24:00 = next day 00:00
+				start -= 1440;
+				end -= 1440;
+				date = addDays(date, 1);
+			}
+			if (end - start > 1440)
+				problems.push('A planner block can be at most 24 hours. Shorten it, or split it.');
 			endNextDay = end > 1440;
 		}
 	} else if (end !== null) {
@@ -847,7 +887,7 @@ export function withTarget(text: string, target: QATarget): string {
 		.split(/(\s+)/)
 		.filter((t) => {
 			const k = t.toLowerCase().replace(/[,.;:!?]+$/, '');
-			return !(k.startsWith('/') && TARGET_WORDS[k.slice(1)]);
+			return !(k.startsWith('/') && own(TARGET_WORDS, k.slice(1)));
 		})
 		.join('')
 		.replace(/\s{2,}/g, ' ')

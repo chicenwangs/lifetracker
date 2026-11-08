@@ -10,3 +10,4 @@ playwright-report
 *.db
 *.db-wal
 *.db-shm
+tunnel.env

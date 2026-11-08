@@ -22,7 +22,7 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | Image | `ghcr.io/chicenwangs/lifetracker:<version>` (private package; `docker login ghcr.io` with a GitHub PAT that has `read:packages`) |
 | Tags | `1.0.0` (exact, use this), `1.0` (moving minor), `sha-<short>` (exact commit). No `latest`. |
 | Versioning | SemVer. PATCH = fixes, MINOR = features, MAJOR = breaking (read the release notes). |
-| Release page | `github.com/chicenwangs/lifetracker/releases`: notes + `compose.yaml`, `.env.example`, this file, `deploy-vX.Y.Z.tar.gz` (also has `backup.sh`, `restore.sh`). |
+| Release page | `github.com/chicenwangs/lifetracker/releases`: notes + this file + `deploy-vX.Y.Z.tar.gz` (flat: `compose.yaml`, `.env.example`, `tunnel.env.example`, `backup.sh`, `restore.sh`, this file). |
 | How a release is made | Dev pushes tag `vX.Y.Z` → GitHub Actions runs lint, type check, unit + e2e tests → builds the image → pushes to GHCR → creates the Release. A red pipeline = no image. |
 | Contents | Built app, prod `node_modules`, SQL migrations, `scripts/reset-password.mjs`. **No personal data, no secrets.** |
 
@@ -47,10 +47,10 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | `APP_VERSION` | yes (compose) | `1.0.0`. The image tag. Change to upgrade/roll back. |
 | `ORIGIN` | yes | `https://planner.jeremyjosh.org`. Must equal the browser URL exactly (scheme, host, port). No trailing slash. https → cookies get `Secure` + `__Host-` prefix. |
 | `APP_SECRET` | yes | ≥ 32 chars, `openssl rand -base64 48`. HMAC key for share codes, invite codes, busy ids. Rotating it voids unused codes only (sessions and passwords survive). Store in a password manager. |
-| `SETUP_TOKEN` | first run only | Random string. `/setup` (create admin) needs it. Remove after setup + restart. |
-| `ADDRESS_HEADER` | behind tunnel | `CF-Connecting-IP`. Real client IP for rate limits/lockout. With it set, any request **without** that header gets `400` (except `/healthz`). Leave unset for a LAN test without the tunnel. |
-| `TUNNEL_TOKEN` | tunnel | From Cloudflare Zero Trust. Read by `cloudflared` only. |
-| `CLOUDFLARED_VERSION` | tunnel | Dated tag, e.g. `2025.11.1`. |
+| `SETUP_TOKEN` | first run only | Random string, 20+ chars (shorter = app won't start). `/setup` (create admin) needs it. Sign-up stays closed until setup is done. Remove after setup + restart. |
+| `ADDRESS_HEADER` | behind tunnel | `CF-Connecting-IP`. Real client IP for rate limits/lockout. With it set, any request **without** that header gets `400` (except `/healthz`). **Required** when `ORIGIN` is https (app refuses to start without it). Leave unset for a LAN test (http ORIGIN) without the tunnel. |
+| `TUNNEL_TOKEN` | tunnel | From Cloudflare Zero Trust. Goes in **`tunnel.env`** (not `.env`), so only `cloudflared` gets it, never the app. |
+| `CLOUDFLARED_VERSION` | tunnel | Dated tag, e.g. `2025.11.1`. Unset = `latest` (don't, in Stage C). |
 | `TZ`, `PORT`, `HOST` | defaults ok | `Asia/Kuala_Lumpur`, `3000`, `0.0.0.0`. |
 | `DATABASE_PATH`, `SEED_DIR` | set by compose | `/app/data/app.db`, `/app/data/seed`. Do not change. |
 
@@ -60,8 +60,9 @@ Host prep (Ubuntu): Docker Engine + compose plugin, `sqlite3` (`apt install sqli
 
 ```bash
 sudo mkdir -p /opt/life-tracker && sudo chown $USER /opt/life-tracker && cd /opt/life-tracker
-# get compose.yaml, .env.example, backup.sh, restore.sh from the release (deploy-vX.Y.Z.tar.gz)
+gh release download vX.Y.Z -R chicenwangs/lifetracker -p 'deploy-*.tar.gz' && tar -xzf deploy-vX.Y.Z.tar.gz
 cp .env.example .env && chmod 600 .env && nano .env      # APP_VERSION, ORIGIN, APP_SECRET, SETUP_TOKEN
+cp tunnel.env.example tunnel.env && chmod 600 tunnel.env # TUNNEL_TOKEN (Stage C); compose needs the file to exist
 mkdir -p data && sudo chown -R 1000:1000 data
 echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 ```
@@ -69,7 +70,7 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 **Stage B, LAN smoke test (optional, before the tunnel):** in `.env` set `ORIGIN=http://<homelab-ip>:3000` and leave `ADDRESS_HEADER` empty; in `compose.yaml` uncomment `ports: "3000:3000"`. `docker compose up -d`, check `curl http://<ip>:3000/healthz`. Then undo both changes before Stage C. Do not create real accounts on the LAN URL if you will switch ORIGIN later (cookies are per origin; accounts are fine, sessions are not).
 
 **Stage C, tunnel:**
-1. Cloudflare: domain `jeremyjosh.org` on Cloudflare DNS. Zero Trust → Networks → Tunnels → Create (Cloudflared) → name `life-tracker` → copy token into `TUNNEL_TOKEN`.
+1. Cloudflare: domain `jeremyjosh.org` on Cloudflare DNS. Zero Trust → Networks → Tunnels → Create (Cloudflared) → name `life-tracker` → copy token into `TUNNEL_TOKEN` in `tunnel.env`.
 2. Public hostname: `planner.jeremyjosh.org` → `http://app:3000` (compose service name).
 3. `.env`: `ORIGIN=https://planner.jeremyjosh.org`, `ADDRESS_HEADER=CF-Connecting-IP`, `CLOUDFLARED_VERSION=<dated tag>`. No published port.
 4. `docker compose --profile tunnel up -d` → `docker compose ps` shows app `healthy`, cloudflared up.
@@ -85,13 +86,13 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 
 ## 5. Operations
 
-**Upgrade:** read the release notes → `./backup.sh` → set `APP_VERSION=X.Y.Z` in `.env` → `docker compose pull app && docker compose up -d app` → watch `docker compose logs -f app` for `[boot] vX.Y.Z` → `curl -s https://planner.jeremyjosh.org/healthz` shows the new version.
+**Upgrade:** read the release notes → `sudo ./backup.sh` → set `APP_VERSION=X.Y.Z` in `.env` → `docker compose pull app && docker compose up -d app` → watch `docker compose logs -f app` for `[boot] vX.Y.Z` → `curl -s https://planner.jeremyjosh.org/healthz` shows the new version.
 
-**Roll back:** set `APP_VERSION` back → `docker compose up -d app`. If the newer release ran a DB migration (release notes say "migration"), the old version may not read the new schema: restore the backup taken before the upgrade (`./restore.sh data/backups/app-<ts>.db.gz`). Migrations are forward-only.
+**Roll back:** set `APP_VERSION` back → `docker compose up -d app`. If the newer release ran a DB migration (release notes say "migration"), the old version may not read the new schema: restore the backup taken before the upgrade (`sudo ./restore.sh data/backups/app-<ts>.db.gz`). Migrations are forward-only.
 
-**Backup:** `backup.sh` = online SQLite backup + integrity check + gzip, keeps 14 days in `data/backups/`. Cron `15 3 * * * /opt/life-tracker/backup.sh >> /opt/life-tracker/backup.log 2>&1`. Set `LT_OFFSITE=/mnt/nas/life-tracker` (or another host via rsync) so one copy lives off the box.
+**Backup:** `backup.sh` = online SQLite backup + integrity check + gzip, keeps 14 days in `data/backups/`. Runs as root (`data/` is owned by uid 1000; the script refuses otherwise). Root cron (`sudo crontab -e`): `15 3 * * * /opt/life-tracker/backup.sh >> /var/log/life-tracker-backup.log 2>&1`. Set `LT_OFFSITE=/mnt/nas/life-tracker` (or another host via rsync) so one copy lives off the box.
 
-**Restore (drill it monthly):** `./restore.sh data/backups/app-<ts>.db.gz` → checks integrity, stops app, keeps the current DB as `app.db.pre-restore-<ts>`, swaps, starts app. Then log in and check recent items.
+**Restore (drill it monthly):** `sudo ./restore.sh data/backups/app-<ts>.db.gz` → checks integrity, stops app, keeps the current DB as `app.db.pre-restore-<ts>`, swaps, starts app. Then log in and check recent items.
 
 **Locked-out user / forgot password:** `docker compose exec -it app node scripts/reset-password.mjs <username>` (asks for the new password twice, signs that user out everywhere). Login lockout itself clears after 15 minutes.
 
@@ -132,7 +133,7 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 - [ ] `curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://evil.example' https://planner.jeremyjosh.org/api/items` → 403.
 - [ ] Create a planner block, reload, it stays. Delete it, Undo works.
 - [ ] Second account: sign up (or invite), swap share codes in Settings → Sharing, each sees the other's calendar striped with a badge; types not shared show only as "Busy".
-- [ ] `backup.sh` run by hand succeeds; restore drill into a scratch folder passes integrity check.
+- [ ] `sudo ./backup.sh` run by hand succeeds; restore drill into a scratch folder passes integrity check.
 - [ ] 5 wrong passwords → lockout message with minutes; other users unaffected (real IPs work).
 
 ## 9. Known limits

@@ -5,10 +5,11 @@ import { db, txImmediate } from './db';
 import { invites } from './schema';
 import { formatCode, hmac, newId, normaliseCode, randomBase32 } from './crypto';
 import { hashPassword, passwordSchema } from './auth';
-import { usernameSchema } from './setup';
 import * as rl from './ratelimit';
 import * as usersRepo from './repo/users';
 import * as meta from './repo/meta';
+import { serial } from './serial';
+import { isSetupDone, usernameSchema } from './setup';
 import { isoPlus, nowUtcIso } from '$lib/time';
 
 const EXPIRY = { '1d': 1, '3d': 3, '7d': 7 } as const;
@@ -90,7 +91,15 @@ const BAD = 'Invite code not valid.';
 
 export type SignupResult = { ok: true; userId: string } | { ok: false; status: 400 | 429; message: string };
 
-export async function signup(input: unknown, ip: string): Promise<SignupResult> {
+export function signup(input: unknown, ip: string): Promise<SignupResult> {
+	// no accounts before the admin exists (else a stranger's sign-up could block /setup for good)
+	if (!isSetupDone())
+		return Promise.resolve({ ok: false, status: 400, message: 'Sign-up opens after setup is finished.' });
+	// one sign-up at a time per IP: limits are checked and recorded around the argon2 await
+	return serial(`signup:${ip}`, () => signupOnce(input, ip));
+}
+
+async function signupOnce(input: unknown, ip: string): Promise<SignupResult> {
 	const key = `signup:ip:${ip}`;
 	const st = rl.check(key);
 	if (st.locked)
@@ -140,7 +149,8 @@ export async function signup(input: unknown, ip: string): Promise<SignupResult> 
 	const now = nowUtcIso();
 	const userId = newId('usr');
 
-	const ok = txImmediate(() => {
+	const ok = txImmediate((): 'ok' | 'bad' | 'taken' => {
+		if (usersRepo.byUsername(p.data.username)) return 'taken';
 		const used = db()
 			.update(invites)
 			.set({ usedAt: now })
@@ -153,7 +163,7 @@ export async function signup(input: unknown, ip: string): Promise<SignupResult> 
 				),
 			)
 			.run().changes;
-		if (used !== 1) return false;
+		if (used !== 1) return 'bad';
 		const color = MEMBER_COLORS[(usersRepo.count() - 1 + MEMBER_COLORS.length) % MEMBER_COLORS.length];
 		usersRepo.createWithCalendar({
 			id: userId,
@@ -168,9 +178,10 @@ export async function signup(input: unknown, ip: string): Promise<SignupResult> 
 			.set({ usedBy: userId })
 			.where(eq(invites.codeHash, hmac(norm)))
 			.run();
-		return true;
+		return 'ok';
 	});
-	if (!ok) {
+	if (ok === 'taken') return { ok: false, status: 400, message: 'Username taken.' };
+	if (ok === 'bad') {
 		rl.fail(key, 10);
 		return { ok: false, status: 400, message: BAD };
 	}

@@ -194,6 +194,7 @@ export function patch(meId: string, id: string, p: ItemPatch): ItemRow {
 	checkDates(date, endDate);
 	if (time && !date) bad('time needs a date');
 	if (p.parentId !== undefined) checkParent(meId, p.parentId, id);
+	if (p.parentId && steps(meId, id).length) bad('an item with steps cannot become a step');
 	const now = nowUtcIso();
 	db()
 		.update(items)
@@ -275,6 +276,24 @@ export function trash(meId: string) {
 		.from(items)
 		.where(and(inArray(items.calendarId, cals), isNotNull(items.deletedAt)))
 		.orderBy(desc(items.deletedAt))
+		.all();
+}
+
+/** deleted planner blocks (their own batch when a block was deleted alone) */
+export function trashBlocks(meId: string) {
+	const cals = myCalendarIds(meId);
+	if (!cals.length) return [];
+	return db()
+		.select({
+			label: blocks.label,
+			type: blocks.type,
+			startAt: blocks.startAt,
+			deletedAt: blocks.deletedAt,
+			batch: blocks.deletedBatch,
+		})
+		.from(blocks)
+		.where(and(inArray(blocks.calendarId, cals), isNotNull(blocks.deletedAt)))
+		.orderBy(desc(blocks.deletedAt))
 		.all();
 }
 

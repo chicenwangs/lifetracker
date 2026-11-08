@@ -20,7 +20,7 @@ Caveman doc. Rev 2026-11-08: the app ships as a released container image. Server
 | SEED_DIR | ../data/seed | Notion import input |
 | ORIGIN | http://localhost:5173 | must equal browser URL exactly |
 | APP_SECRET | 32+ random | HMAC key. Required |
-| SETUP_TOKEN | 32+ random | empty = /setup off |
+| SETUP_TOKEN | 32+ random | 20+ chars; empty = /setup off |
 | TZ | Asia/Kuala_Lumpur | |
 | ADDRESS_HEADER | unset | prod behind tunnel only |
 
@@ -44,7 +44,7 @@ Checks before a release: `npm run lint && npm run check && npm run test:unit && 
 1. Main is green in GitHub Actions (`ci.yml`: lint, svelte-check, unit, e2e, Docker build).
 2. Bump `app/package.json` `version`, commit "release: vX.Y.Z" with notes in the message.
 3. `git tag vX.Y.Z && git push origin vX.Y.Z`.
-4. `release.yml`: runs CI again → builds `app/Dockerfile` → pushes `ghcr.io/chicenwangs/lifetracker:X.Y.Z`, `:X.Y`, `:sha-<short>` → creates the GitHub Release (auto notes + `deploy/compose.yaml`, `deploy/.env.example`, `SERVICE-HANDOFF.md`, `deploy-vX.Y.Z.tar.gz`).
+4. `release.yml`: runs CI again → builds `app/Dockerfile` → pushes `ghcr.io/chicenwangs/lifetracker:X.Y.Z`, `:X.Y`, `:sha-<short>` → creates the GitHub Release (auto notes + `SERVICE-HANDOFF.md` + flat `deploy-vX.Y.Z.tar.gz` of `deploy/`). Only plain `vX.Y.Z` tags publish; `v1.1.0-rc1` does nothing.
 5. First release only: GitHub → Packages → `lifetracker` → keep it **private**; link it to the repo.
 6. Hand the version number to the deploy side. They change `APP_VERSION` and pull.
 

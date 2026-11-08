@@ -2,9 +2,11 @@ import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { signup, signupOpen } from '$lib/server/invites';
 import { createSession } from '$lib/server/auth';
+import { isSetupDone } from '$lib/server/setup';
 
 export const load: PageServerLoad = ({ locals }) => {
 	if (locals.user) redirect(303, '/');
+	if (!isSetupDone()) redirect(303, '/login'); // -> /setup while first run is open
 	return { open: signupOpen() };
 };
 

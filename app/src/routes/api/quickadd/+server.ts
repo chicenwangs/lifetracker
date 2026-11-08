@@ -12,7 +12,8 @@ const slotSchema = z
 		end: z.number().int().min(1).max(2880),
 	})
 	.strict()
-	.refine((s) => s.end > s.start, 'end must be after start');
+	.refine((s) => s.end > s.start, 'end must be after start')
+	.refine((s) => s.end - s.start <= 1440, 'slot can be at most 24 h');
 
 export const POST = api(async (e) => {
 	const u = me(e);

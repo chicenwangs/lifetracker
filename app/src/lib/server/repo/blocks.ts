@@ -53,7 +53,13 @@ export function inRange(calendarId: string, fromZ: string, toZ: string): BlockDT
 /** for sharing filters: blocks in range + their linked item's type and private flag (null = unlinked/deleted) */
 export function inRangeForShare(calendarId: string, fromZ: string, toZ: string) {
 	return db()
-		.select({ b: blocks, itemType: items.type, itemPrivate: items.private, itemId: items.id })
+		.select({
+			b: blocks,
+			itemType: items.type,
+			itemPrivate: items.private,
+			itemId: items.id,
+			itemParent: items.parentId,
+		})
 		.from(blocks)
 		.leftJoin(items, and(eq(items.id, blocks.itemId), isNull(items.deletedAt)))
 		.where(and(eq(blocks.calendarId, calendarId), live, lt(blocks.startAt, toZ), gt(blocks.endAt, fromZ)))
@@ -61,7 +67,13 @@ export function inRangeForShare(calendarId: string, fromZ: string, toZ: string) 
 		.all()
 		.map((r) => ({
 			block: toDTO(r.b, r.itemType),
-			linked: r.itemId ? { type: r.itemType, private: !!r.itemPrivate } : null,
+			// linked to an item we can't see (deleted) or a step: treat as private (Busy / hidden)
+			linked: r.b.itemId
+				? {
+						type: r.itemType,
+						private: !r.itemId || !!r.itemPrivate || !!r.itemParent,
+					}
+				: null,
 		}));
 }
 

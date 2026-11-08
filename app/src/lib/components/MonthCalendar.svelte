@@ -22,6 +22,7 @@
 		onpick,
 		ondropout,
 		onnav,
+		ontoday,
 		ondelete,
 	}: {
 		items: ItemDTO[];
@@ -35,6 +36,7 @@
 		onpick: (date: string) => void;
 		ondropout: (id: string, x: number, y: number) => boolean;
 		onnav: (year: number, month: number) => void;
+		ontoday?: () => void;
 		ondelete: (id: string) => void;
 	} = $props();
 
@@ -250,7 +252,8 @@
 		<button
 			class="btn sm"
 			type="button"
-			onclick={() => onnav(Number(today.slice(0, 4)), Number(today.slice(5, 7)))}>Today</button
+			onclick={() => (ontoday ? ontoday() : onnav(Number(today.slice(0, 4)), Number(today.slice(5, 7))))}
+			>Today</button
 		>
 		<div class="sp"></div>
 		<OverlapToggle />

@@ -16,7 +16,7 @@
 	import { calendarBus } from '$lib/client/bus.svelte';
 	import { colorsFor } from '$lib/colors';
 	import { openItem } from '$lib/client/peek.svelte';
-	import { addDays, hhmm, isoPlus, localToUtc, prettyDate, utcToLocal } from '$lib/time';
+	import { addDays, diffDays, hhmm, isoPlus, localToUtc, prettyDate, utcToLocal } from '$lib/time';
 
 	let { data } = $props();
 	let side: HTMLElement | undefined = $state();
@@ -79,6 +79,11 @@
 		const it = data.notBlocked.find((i) => i.id === id);
 		await wrap(async () => {
 			if (it && !it.date) await patch(`/api/items/${id}`, { date });
+			else if (it?.date && it.date !== date && minutes === null)
+				await patch(`/api/items/${id}`, {
+					date,
+					endDate: it.endDate ? addDays(it.endDate, diffDays(it.date, date)) : null,
+				});
 			if (minutes !== null) {
 				const s = localToUtc(date, minutes, tz);
 				await post('/api/blocks', { itemId: id, startAt: s, endAt: isoPlus(s, 3_600_000) });
@@ -87,6 +92,7 @@
 	}
 
 	function createBlock(date: string, start: number, end: number, at: { x: number; y: number }) {
+		live = null;
 		const W = 340;
 		const H = 150;
 		slot = {
@@ -113,29 +119,33 @@
 		const b = data.cal.blocks.find((x) => x.id === id);
 		if (!b) return;
 		try {
-			let itemId = b.itemId;
-			let made = false;
-			if (!itemId) {
-				const r = await post<{ item: { id: string } }>('/api/items', {
-					title: b.label,
-					type: b.type,
-					date: utcToLocal(b.startAt, tz).date,
-				});
-				itemId = r.item.id;
-				made = true;
+			// block first: if it fails nothing changed; if the item create fails, put the block back
+			const { batch } = await del<{ batch?: string }>(`/api/blocks/${id}`);
+			let made: string | null = null;
+			if (!b.itemId) {
+				try {
+					const r = await post<{ item: { id: string } }>('/api/items', {
+						title: b.label,
+						type: b.type,
+						date: utcToLocal(b.startAt, tz).date,
+					});
+					made = r.item.id;
+				} catch (e) {
+					if (batch) await post(`/api/trash/${batch}/restore`).catch(() => {});
+					await refresh();
+					throw e;
+				}
 			}
-			const r = await del<{ batch?: string }>(`/api/blocks/${id}`);
 			await refresh();
-			const batch = r.batch;
 			showToast(`Moved "${b.label}" to Not scheduled`, {
 				undo: async () => {
 					try {
-						if (made && itemId) await del(`/api/items/${itemId}`);
 						if (batch) await post(`/api/trash/${batch}/restore`);
-						await refresh();
+						if (made) await del(`/api/items/${made}`);
 					} catch (e) {
 						showError(e);
 					}
+					await refresh();
 				},
 			});
 		} catch (e) {

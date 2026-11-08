@@ -50,16 +50,16 @@
 		in:grow
 		out:grow={{ duration: 150 }}
 	>
-		<ItemView
-			{id}
-			peek
-			{onclose}
-			onchanged={calendarChanged}
-			ondeleted={() => {
-				calendarChanged();
-				onclose();
-			}}
-		/>
+		{#key id}<ItemView
+				{id}
+				peek
+				{onclose}
+				onchanged={calendarChanged}
+				ondeleted={() => {
+					calendarChanged();
+					onclose();
+				}}
+			/>{/key}
 	</div>
 </div>
 
