@@ -107,3 +107,14 @@ Gone from the app: Home goals panel, Settings > Goals / Courses pages + header m
 Kept on purpose (non-destructive): DB tables `goals`, `courses` and column `items.course_id` stay with their data, marked DORMANT in `schema.ts`; nothing reads or writes them. A drop migration can be added later (needs an `items` table rebuild because of the FK).
 Seed import no longer reads `courses.json` / `goals.json` and strips `course_id` from items; `scripts/transform_notion.py` still writes those files (ignored).
 Tests: quick-add/seed/time units updated; e2e checks the two APIs now 404 and `#ds` opens no menu. REQUIREMENTS updated; TECHNICAL/PSEUDOCODE/STRUCTURE still mention them historically.
+
+## Sign-up + calendar sharing — 2026-11-08 (owner ask)
+
+**Auth pages.** New app mark (`AppIcon.svelte`, currentColor: white on dark, ink on light) replaces the 4-square logo + name (name kept as a hidden `<h1>` for screen readers). Consistency fixes: signup password hint matches setup ("10–128 characters. Common passwords blocked."), no hard-coded "Ask Jeremy", active tab uses the same `--rule` pill as the header/settings nav, checkboxes/radios use `accent-color: var(--ink)` app-wide (no browser blue).
+
+**Open sign-up.** `invites.signupOpen()` (app_meta `signup_open`, default open). Open: no code, 5 new accounts per IP per 15 min, username race checked inside the transaction. Admin page Settings > Users: Open / Invite only, invite codes (7 days) when invite-only, account list. Header menu + settings nav: Sharing (all), Users (admin).
+
+**Sharing (view-only).** Settings > Sharing: 1 make a code (pick Work/Exam/Event/Hobby/Dating/No type/Planner blocks; rest Busy or hidden; 24 h / 7 d) → `LT-XXXX-XXXX-XXXX` shown once + Copy; unused codes cancel. 2 enter their code. Calendars I can see (Shown/Hidden, Leave). Who can see mine (Remove).
+Server: `repo/sharekeys.ts` (HMAC only, single use, own code refused, 5 bad tries/15 min, re-redeem replaces + reopens), `repo/grants.ts`, `access.ts` filter (visible = full read-only DTO, `itemId` null; hidden = `busy_<hmac>` id + "Busy", or dropped; private always Busy; steps never; no notes). `getCalendar` adds partner rows when `overlapOn` and grant `inOverlap`; stats/heatmap/plan-ahead use own only. API: `/api/share-keys`, `/api/share-keys/[id]`, `/api/share-keys/redeem`, `/api/grants`, `/api/grants/[id]`.
+UI: partner entries striped in type colour + dashed edge + owner initial badge, no square/drag/click/delete (month, week, planner); Busy = grey italic. **Overlap** switch (faces + switch) on Home month header and Week header, only when something is shared with you.
+Tests: unit `sharekeys.test.ts`, `access.test.ts` (leak check on JSON), open/invite-only signup in `auth.test.ts`; e2e: Jeremy code → Neina signs up (no invite) → redeems → sees Groceries with J badge, DS Quiz only as Busy (not in API JSON) → overlap switch → mutual → Remove hides it.

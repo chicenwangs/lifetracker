@@ -10,16 +10,19 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const w = url.searchParams.get('w');
 	const { from, to } = weekRange(w && isDate(w) ? w : today);
 	const cal = getCalendar(me, from, to);
-	const done = cal.items.filter((i) => i.status === 'done').length;
-	const doing = cal.items.filter((i) => i.status === 'doing').length;
-	const blockedMin = cal.blocks.reduce((s, b) => s + Math.max(0, durationMin(b.startAt, b.endAt)), 0);
+	const ownItems = cal.items.filter((i) => !i.theirs);
+	const done = ownItems.filter((i) => i.status === 'done').length;
+	const doing = ownItems.filter((i) => i.status === 'doing').length;
+	const blockedMin = cal.blocks
+		.filter((b) => !b.theirs)
+		.reduce((s, b) => s + Math.max(0, durationMin(b.startAt, b.endAt)), 0);
 
 	// month heatmap: the month this week belongs to (its Thursday, ISO style)
 	const thu = addDays(from, 3);
 	const year = Number(thu.slice(0, 4));
 	const month = Number(thu.slice(5, 7));
 	const grid = monthGridRange(year, month);
-	const mcal = getCalendar(me, grid.from, grid.to);
+	const mcal = getCalendar(me, grid.from, grid.to, { shared: false });
 	const unblocked = itemsRepo.allDayUnblocked(me.id, grid.from, grid.to);
 	const heat: HeatDay[] = [];
 	for (let d = grid.from; d < grid.to; d = addDays(d, 1)) {

@@ -5,6 +5,7 @@
 		{ href: '/settings/account', label: 'Account' },
 		{ href: '/settings/preferences', label: 'Preferences' },
 		{ href: '/settings/sessions', label: 'Devices' },
+		{ href: '/settings/sharing', label: 'Sharing' },
 	];
 </script>
 
@@ -18,6 +19,13 @@
 				aria-current={page.url.pathname === l.href ? 'page' : undefined}>{l.label}</a
 			>
 		{/each}
+		{#if page.data.user?.role === 'admin'}
+			<a
+				href="/settings/users"
+				class:on={page.url.pathname === '/settings/users'}
+				aria-current={page.url.pathname === '/settings/users' ? 'page' : undefined}>Users</a
+			>
+		{/if}
 		<a href="/trash" class:on={page.url.pathname === '/trash'}>Trash</a>
 	</nav>
 	<section class="body">{@render children()}</section>

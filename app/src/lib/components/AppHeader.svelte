@@ -78,6 +78,8 @@
 					<a href="/settings/account" onclick={() => (menu = false)}>Account</a>
 					<a href="/settings/preferences" onclick={() => (menu = false)}>Preferences</a>
 					<a href="/settings/sessions" onclick={() => (menu = false)}>Devices</a>
+					<a href="/settings/sharing" onclick={() => (menu = false)}>Sharing</a>
+					{#if user.role === 'admin'}<a href="/settings/users" onclick={() => (menu = false)}>Users</a>{/if}
 					<form method="post" action="/logout"><button type="submit">Sign out</button></form>
 				</div>
 			{/if}

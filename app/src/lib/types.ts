@@ -22,7 +22,18 @@ export interface ItemDTO {
 	stepsDone: number;
 	stepsTotal: number;
 	editable: boolean;
-	theirs?: false;
+	/** someone else's calendar, shared with me (read-only) */
+	theirs?: boolean;
+	owner?: PartnerTag;
+	/** a hidden type shown only as "Busy" */
+	busy?: boolean;
+}
+
+export interface PartnerTag {
+	id: string;
+	name: string;
+	initial: string;
+	color: string;
 }
 
 export interface BlockDTO {
@@ -35,7 +46,14 @@ export interface BlockDTO {
 	itemId: string | null;
 	itemType: ItemType | null;
 	editable: boolean;
+	theirs?: boolean;
+	owner?: PartnerTag;
+	busy?: boolean;
 }
+
+/** what a share code / grant lets the other person see. 'None' = items with no type; 'Blocks' = planner blocks */
+export const SHARE_KINDS = ['Work', 'Exam', 'Event', 'Hobby', 'Dating', 'None', 'Blocks'] as const;
+export type ShareKind = (typeof SHARE_KINDS)[number];
 
 export interface CalendarPayload {
 	items: ItemDTO[];

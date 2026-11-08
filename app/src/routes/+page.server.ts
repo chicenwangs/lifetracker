@@ -13,7 +13,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	if (d && isDate(d)) day = d;
 	else if (me.planMode === 'night') {
 		// plan-ahead: no ?d= -> maybe open tomorrow (before-bed planners)
-		const near = getCalendar(me, today, addDays(today, 2));
+		const near = getCalendar(me, today, addDays(today, 2), { shared: false });
 		const own = near.items.filter((i) => i.editable);
 		day = planDay(me.planMode, today, me.timezone, [...near.blocks, ...itemSpans(own, me.timezone)]);
 		planAhead = day !== today;

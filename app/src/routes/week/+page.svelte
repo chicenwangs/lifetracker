@@ -7,6 +7,7 @@
 	import WeekCalendar from '$lib/components/WeekCalendar.svelte';
 	import SlotCommand from '$lib/components/SlotCommand.svelte';
 	import WeekMap from '$lib/components/WeekMap.svelte';
+	import OverlapToggle from '$lib/components/OverlapToggle.svelte';
 	import { del } from '$lib/client/api';
 	import { removeBlock, removeItem } from '$lib/client/remove';
 	import type { QAParse } from '$lib/quickadd';
@@ -212,6 +213,7 @@
 			</button>
 			<button class="btn sm" type="button" onclick={() => go(data.today)}>Today</button>
 			<div class="sp"></div>
+			<OverlapToggle />
 			<div class="view" role="group" aria-label="View">
 				<a href="/?m={data.from.slice(0, 7)}">Month</a>
 				<span class="on">Week</span>

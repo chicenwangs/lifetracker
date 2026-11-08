@@ -8,6 +8,7 @@ import { hashPassword, passwordSchema } from './auth';
 import { usernameSchema } from './setup';
 import * as rl from './ratelimit';
 import * as usersRepo from './repo/users';
+import * as meta from './repo/meta';
 import { isoPlus, nowUtcIso } from '$lib/time';
 
 const EXPIRY = { '1d': 1, '3d': 3, '7d': 7 } as const;
@@ -64,9 +65,20 @@ export function revokeInvite(id: string): boolean {
 	);
 }
 
+// Sign-ups: OPEN by default (anyone makes their own account). Admin can switch to invite-only.
+const SIGNUP_KEY = 'signup_open';
+export function signupOpen(): boolean {
+	return meta.get(SIGNUP_KEY) !== '0';
+}
+export function setSignupOpen(open: boolean): void {
+	meta.set(SIGNUP_KEY, open ? '1' : '0');
+}
+/** accounts one IP may create per 15 min while sign-up is open */
+const OPEN_PER_IP = 5;
+
 export const signupSchema = z
 	.object({
-		code: z.string().min(1, 'Invite code needed.'),
+		code: z.string().default(''),
 		username: usernameSchema,
 		displayName: z.string().trim().min(1, 'Display name needed.').max(60),
 		password: passwordSchema,
@@ -86,6 +98,38 @@ export async function signup(input: unknown, ip: string): Promise<SignupResult> 
 
 	const p = signupSchema.safeParse(input);
 	if (!p.success) return { ok: false, status: 400, message: p.error.issues[0]?.message ?? 'Bad input.' };
+
+	if (signupOpen()) {
+		const okKey = `signup:ok:${ip}`;
+		const made = rl.check(okKey);
+		if (made.locked)
+			return {
+				ok: false,
+				status: 429,
+				message: `Too many new accounts. Try again in ${made.minutesLeft} min.`,
+			};
+		if (usersRepo.byUsername(p.data.username)) return { ok: false, status: 400, message: 'Username taken.' };
+		const hash = await hashPassword(p.data.password);
+		const userId = newId('usr');
+		const created = txImmediate(() => {
+			if (usersRepo.byUsername(p.data.username)) return false;
+			const color = MEMBER_COLORS[(usersRepo.count() - 1 + MEMBER_COLORS.length) % MEMBER_COLORS.length];
+			usersRepo.createWithCalendar({
+				id: userId,
+				username: p.data.username,
+				displayName: p.data.displayName,
+				passwordHash: hash,
+				role: 'member',
+				color,
+			});
+			return true;
+		});
+		if (!created) return { ok: false, status: 400, message: 'Username taken.' };
+		rl.fail(okKey, OPEN_PER_IP);
+		return { ok: true, userId };
+	}
+
+	if (!p.data.code.trim()) return { ok: false, status: 400, message: 'Invite code needed.' };
 	const norm = normaliseCode(p.data.code, 'INV');
 	if (!norm) {
 		rl.fail(key, 10);

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import * as auth from '../../src/lib/server/auth';
 import { runSetup, setupOpen } from '../../src/lib/server/setup';
-import { createInvite, signup } from '../../src/lib/server/invites';
+import { createInvite, setSignupOpen, signup, signupOpen } from '../../src/lib/server/invites';
 import * as sessionsRepo from '../../src/lib/server/repo/sessions';
 import { freshDb, fakeCookies } from './helpers';
 
@@ -209,8 +209,29 @@ describe('password change', () => {
 });
 
 describe('invites + signup', () => {
-	it('single use, generic error', async () => {
+	it('open by default: no code needed, 5 accounts per IP per 15 min, usernames unique', async () => {
+		await setupAdmin();
+		expect(signupOpen()).toBe(true);
+		const r = await signup({ username: 'neina', displayName: 'Neina', password: PW }, IP);
+		expect(r.ok).toBe(true);
+		expect(await signup({ username: 'neina', displayName: 'N', password: PW }, IP)).toMatchObject({
+			ok: false,
+			message: 'Username taken.',
+		});
+		for (let i = 0; i < 4; i++)
+			expect((await signup({ username: `u${i}x`, displayName: 'U', password: PW }, IP)).ok).toBe(true);
+		expect(await signup({ username: 'u9x', displayName: 'U', password: PW }, IP)).toMatchObject({
+			ok: false,
+			status: 429,
+		});
+	});
+	it('invite-only: code needed, single use, generic error', async () => {
 		const admin = await setupAdmin();
+		setSignupOpen(false);
+		expect(await signup({ username: 'nocode', displayName: 'N', password: PW }, IP)).toMatchObject({
+			ok: false,
+			message: 'Invite code needed.',
+		});
 		const { code } = createInvite(admin, { expiry: '1d', label: 'for Neina' });
 		const ok = await signup(
 			{ code: code.toLowerCase(), username: 'neina', displayName: 'Neina', password: PW },

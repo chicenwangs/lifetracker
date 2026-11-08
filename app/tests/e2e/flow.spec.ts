@@ -277,9 +277,6 @@ test('week drag box: same commands, typed time moves the selection', async () =>
 	await page.keyboard.type('e2e week cmd /work 9:15am to 10am');
 	await expect(page.locator('.fc-highlight, .fc-event-mirror').first()).toBeVisible();
 	await page.waitForTimeout(300);
-	await page.screenshot({
-		path: '/tmp/claude-0/-home-claude/1f730014-c7d0-52ee-a785-cecc649b2d5b/scratchpad/week.png',
-	});
 	await page.keyboard.press('Enter');
 	await expect(pop).toHaveCount(0);
 	const r = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 1)}`);
@@ -402,6 +399,88 @@ test('item opens as centre peek: blur, rename in place, notes, linked block, hov
 	await expect(home).toHaveCount(0);
 	await page.locator('.toast .undo').click();
 	await expect(home).toBeAttached();
+});
+
+test('open sign-up + swap share codes: partner calendar read-only, hidden types Busy, overlap switch', async ({
+	browser,
+}) => {
+	const d = await today();
+	// Jeremy makes a code: Event + Dating + Blocks visible, rest Busy
+	await page.goto('/settings/sharing');
+	await expect(page.getByText('Nobody. Your calendar is private.')).toBeVisible();
+	await page.getByRole('button', { name: 'Make a code' }).click();
+	const jCode = (await page.getByLabel('Your share code').textContent())!.trim();
+	expect(jCode).toMatch(/^LT-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$/);
+	await expect(page.getByText(/Shows Event, Dating, Planner blocks · until/)).toBeVisible();
+
+	// Neina makes her own account (no invite code while sign-up is open)
+	const n = await (await browser.newContext()).newPage();
+	await n.goto('/signup');
+	await expect(n.getByLabel('Invite code')).toHaveCount(0);
+	await n.fill('#nu', 'neina');
+	await n.fill('#dn', 'Neina');
+	await n.fill('#np', PW + ' 2');
+	await n.fill('#cp', PW + ' 2');
+	await n.getByRole('button', { name: 'Create account' }).click();
+	await n.waitForURL((u) => u.pathname === '/');
+	// her calendar starts empty: none of Jeremy's things
+	await expect(n.locator('.lt-chip', { hasText: 'Groceries' })).toHaveCount(0);
+	// she enters his code
+	await n.goto('/settings/sharing');
+	await n.getByLabel('Code from the other person').fill(jCode.toLowerCase());
+	await n.getByRole('button', { name: 'Add calendar' }).click();
+	await expect(n.getByText(/You can now see Jeremy's calendar/)).toBeVisible();
+	// the same code cannot be used twice
+	await n.getByLabel('Code from the other person').fill(jCode);
+	await n.getByRole('button', { name: 'Add calendar' }).click();
+	await expect(n.getByRole('alert')).toContainText('not valid');
+
+	// Home: Groceries (Event) shown with J badge, read-only; DS Quiz (Exam) only as Busy
+	await n.goto('/');
+	const groc = n.locator('.lt-chip.lt-theirs', { hasText: 'Groceries' });
+	await expect(groc).toBeVisible();
+	await expect(groc.locator('.lt-who')).toHaveText('J');
+	await expect(groc.locator('.lt-sq')).toHaveCount(0);
+	await expect(n.locator('.lt-chip', { hasText: 'DS Quiz' })).toHaveCount(0);
+	await expect(n.locator('.lt-chip.lt-busy', { hasText: 'Busy' }).first()).toBeVisible();
+	const r = await n.evaluate(
+		async (q) => (await fetch(q)).text(),
+		`/api/calendar?from=${d}&to=${plusDay(d, 1)}`,
+	);
+	expect(r).not.toContain('DS Quiz');
+	// overlap switch hides them
+	const sw = n.getByRole('switch', { name: /Overlap/ });
+	await expect(sw).toHaveAttribute('aria-checked', 'true');
+	await sw.click();
+	await expect(sw).toHaveAttribute('aria-checked', 'false');
+	await expect(n.locator('.lt-chip.lt-theirs')).toHaveCount(0);
+	await sw.click();
+	await expect(n.locator('.lt-chip.lt-theirs').first()).toBeVisible();
+
+	// Neina's code -> Jeremy (mutual)
+	await n.goto('/settings/sharing');
+	await n.getByRole('button', { name: 'Make a code' }).click();
+	const nCode = (await n.getByLabel('Your share code').textContent())!.trim();
+	await page.goto('/settings/sharing');
+	await page.getByLabel('Code from the other person').fill(jCode);
+	await page.getByRole('button', { name: 'Add calendar' }).click();
+	await expect(page.getByRole('alert')).toContainText(/own code|not valid/);
+	await page.getByLabel('Code from the other person').fill(nCode);
+	await page.getByRole('button', { name: 'Add calendar' }).click();
+	await expect(page.getByText(/You can now see Neina's calendar/)).toBeVisible();
+	await page.reload();
+	await expect(page.locator('.person', { hasText: 'Neina' })).toHaveCount(2); // sees mine + I see hers
+
+	// Jeremy removes her: she no longer sees his calendar
+	await page
+		.locator('section', { hasText: 'Who can see my calendar' })
+		.getByRole('button', { name: 'Remove' })
+		.click();
+	await expect(page.getByText('Removed. They can no longer see your calendar.')).toBeVisible();
+	await n.goto('/');
+	await expect(n.locator('.lt-chip.lt-theirs')).toHaveCount(0);
+	await expect(n.getByRole('switch', { name: /Overlap/ })).toHaveCount(0);
+	await n.context().close();
 });
 
 test('theme: dark by default, toggle persists on server', async () => {

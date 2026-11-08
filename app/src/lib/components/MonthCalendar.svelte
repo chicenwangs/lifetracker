@@ -6,6 +6,8 @@
 	import interactionPlugin from '@fullcalendar/interaction';
 	import { examCountdown, fcDropToItem, itemToFc, makeDate, monthLabel, prettyTime } from '$lib/time';
 	import { colorsFor, typeClass } from '$lib/colors';
+	import { badge, entryColors, theirClasses } from '$lib/client/partner';
+	import OverlapToggle from './OverlapToggle.svelte';
 	import type { ItemDTO, Status } from '$lib/types';
 
 	let {
@@ -57,7 +59,7 @@
 		for (const i of list) {
 			const fc = itemToFc(i);
 			if (!fc) continue;
-			const c = colorsFor(i.type);
+			const c = entryColors(i);
 			out.push({
 				id: i.id,
 				title: i.title,
@@ -69,7 +71,12 @@
 				backgroundColor: c.bg,
 				borderColor: c.line,
 				textColor: c.ink,
-				classNames: ['lt-chip', typeClass(i.type), ...(i.status === 'done' ? ['is-done'] : [])],
+				classNames: [
+					'lt-chip',
+					typeClass(i.type),
+					...(i.status === 'done' ? ['is-done'] : []),
+					...theirClasses(i),
+				],
 				extendedProps: { item: i },
 			});
 		}
@@ -81,6 +88,15 @@
 		const c = colorsFor(it.type);
 		const wrap = document.createElement('div');
 		wrap.className = 'lt-inner';
+		if (it.theirs && it.owner) {
+			// shared, read-only: badge + text, no square / link / delete
+			const t = document.createElement('span');
+			t.className = 'lt-title';
+			t.textContent = (it.time ? `${prettyTime(it.time)} ` : '') + it.title;
+			t.title = `${it.owner.name}: ${t.textContent}`;
+			wrap.append(badge(it.owner), t);
+			return { domNodes: [wrap] };
+		}
 		const btn = document.createElement('button');
 		btn.type = 'button';
 		btn.className = 'lt-sq' + (it.status === 'done' ? ' on' : '');
@@ -237,6 +253,7 @@
 			onclick={() => onnav(Number(today.slice(0, 4)), Number(today.slice(5, 7)))}>Today</button
 		>
 		<div class="sp"></div>
+		<OverlapToggle />
 		<div class="view" role="group" aria-label="View">
 			<span class="on">Month</span>
 			<a href="/week">Week</a>

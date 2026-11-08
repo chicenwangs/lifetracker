@@ -171,6 +171,48 @@ h3 {
 	--fg: var(--none-ink);
 	--line: var(--none-line);
 }
+.t-busy {
+	--bg: var(--busy-bg);
+	--fg: var(--busy-ink);
+	--line: var(--busy-line);
+}
+
+/* ---- someone else's shared calendar (read-only): stripes + dashed edge + owner badge ---- */
+.lt-theirs {
+	background-image: repeating-linear-gradient(
+		135deg,
+		transparent 0 6px,
+		color-mix(in srgb, var(--fg, currentColor) 14%, transparent) 6px 9px
+	) !important;
+	outline: 1.5px dashed color-mix(in srgb, var(--fg, currentColor) 70%, transparent);
+	outline-offset: -1.5px;
+	cursor: default !important;
+}
+.lt-busy {
+	font-style: italic;
+}
+.lt-who {
+	flex: none;
+	width: 16px;
+	height: 16px;
+	border-radius: 8px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 10px;
+	font-weight: 700;
+	font-style: normal;
+	color: #fff;
+	/* ring keeps a dark (Ink) badge visible on dark backgrounds */
+	box-shadow:
+		0 0 0 1px color-mix(in srgb, var(--ink) 45%, transparent),
+		0 0 0 2.5px var(--card);
+}
+
+/* checkboxes / radios use the app's ink, not the browser's blue */
+:root {
+	accent-color: var(--ink);
+}
 
 /* ---- shared controls ---- */
 .card {

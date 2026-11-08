@@ -6,6 +6,7 @@
 	import timeGridPlugin from '@fullcalendar/timegrid';
 	import interactionPlugin, { Draggable } from '@fullcalendar/interaction';
 	import { blockType, colorsFor, typeClass } from '$lib/colors';
+	import { badge, entryColors, theirClasses } from '$lib/client/partner';
 	import RollHandle from './RollHandle.svelte';
 	import { page } from '$app/state';
 	import { hoursState } from '$lib/client/hours.svelte';
@@ -163,7 +164,7 @@
 		for (const i of items) {
 			const fc = itemToFc(i);
 			if (!fc) continue;
-			const c = colorsFor(i.type);
+			const c = entryColors(i);
 			out.push({
 				id: `i:${i.id}`,
 				title: i.title,
@@ -175,14 +176,19 @@
 				backgroundColor: c.bg,
 				borderColor: c.line,
 				textColor: c.ink,
-				classNames: ['lt-chip', typeClass(i.type), ...(i.status === 'done' ? ['is-done'] : [])],
+				classNames: [
+					'lt-chip',
+					typeClass(i.type),
+					...(i.status === 'done' ? ['is-done'] : []),
+					...theirClasses(i),
+				],
 				extendedProps: { kind: 'item', item: i },
 			});
 		}
 		for (const b of blocks) {
 			const s = utcToLocal(b.startAt, tz);
 			const e = utcToLocal(b.endAt, tz);
-			const c = colorsFor(blockType(b));
+			const c = entryColors(b);
 			out.push({
 				id: `b:${b.id}`,
 				title: b.label,
@@ -193,7 +199,12 @@
 				backgroundColor: c.bg,
 				borderColor: c.line,
 				textColor: c.ink,
-				classNames: ['lt-blk', typeClass(blockType(b)), ...(b.status === 'done' ? ['is-done'] : [])],
+				classNames: [
+					'lt-blk',
+					typeClass(blockType(b)),
+					...(b.status === 'done' ? ['is-done'] : []),
+					...theirClasses(b),
+				],
 				extendedProps: { kind: 'block', block: b, ink: c.ink },
 			});
 		}
@@ -257,7 +268,8 @@
 				if (p.kind === 'item' && p.item) {
 					const it = p.item;
 					const c = colorsFor(it.type);
-					wrap.append(square(it.status, c.ink, it.title, () => oncycleitem(it.id)));
+					if (it.theirs && it.owner) wrap.append(badge(it.owner));
+					else wrap.append(square(it.status, c.ink, it.title, () => oncycleitem(it.id)));
 					const t = document.createElement('span');
 					t.className = 'lt-title';
 					t.textContent = (it.time ? `${prettyTime(it.time)} ` : '') + it.title;
@@ -265,7 +277,8 @@
 					if (it.editable) wrap.append(xButton(it.title, () => ondelete('item', it.id, it.title)));
 				} else if (p.block) {
 					const b = p.block;
-					wrap.append(square(b.status, p.ink ?? 'var(--ink)', b.label, () => oncycleblock(b.id)));
+					if (b.theirs && b.owner) wrap.append(badge(b.owner));
+					else wrap.append(square(b.status, p.ink ?? 'var(--ink)', b.label, () => oncycleblock(b.id)));
 					const col = document.createElement('div');
 					col.className = 'lt-col';
 					const s = utcToLocal(b.startAt, tz);
@@ -286,6 +299,7 @@
 			eventClick: (info) => {
 				const p = info.event.extendedProps as { kind: string; item?: ItemDTO; block?: BlockDTO };
 				info.jsEvent.preventDefault();
+				if (p.item?.theirs || p.block?.theirs) return; // shared, read-only
 				if (p.item) onopen(p.item.id);
 				else if (p.block?.itemId) onopen(p.block.itemId);
 			},

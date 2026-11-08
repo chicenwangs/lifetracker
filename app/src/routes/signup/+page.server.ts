@@ -1,10 +1,11 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { signup } from '$lib/server/invites';
+import { signup, signupOpen } from '$lib/server/invites';
 import { createSession } from '$lib/server/auth';
 
 export const load: PageServerLoad = ({ locals }) => {
 	if (locals.user) redirect(303, '/');
+	return { open: signupOpen() };
 };
 
 export const actions: Actions = {

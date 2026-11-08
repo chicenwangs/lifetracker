@@ -52,7 +52,7 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 - FR-A4 Logout = POST. "Sign out everywhere else" kills all other sessions, keeps current.
 - FR-A5 Settings > Devices: user agent short, created, last seen, remember flag, revoke one.
 - FR-A6 First run `/setup` (only before setup done): needs `SETUP_TOKEN` env. Creates admin + calendar. After: `/setup` 404 forever (flag in DB, not "user count = 0").
-- FR-A7 (P2, needed when Neina joins) Sign-up page `/signup` (login page tab links to it) needs invite code `INV-XXXX-XXXX-XXXX`. Admin makes codes in Settings > Invites (expiry 1/3/7 days, label, shown once, revoke). Single use.
+- FR-A7 (rev 2026-11-08) Sign-up page `/signup` (login page tab). **Open by default**: anyone makes their own account (5 per IP per 15 min). Admin can switch to **invite-only** in Settings > Users; then `/signup` asks for `INV-XXXX-XXXX-XXXX` (made there, 7 days, shown once, cancel, single use).
 - FR-A8 Password 10–128 chars. Reject top-1000 common list. No other rules.
 - FR-A9 Lockout: 5 fails per (username, IP) in 15 min → that pair locked 15 min. 30 fails per IP in 15 min → IP locked. Many fails on one username from many IPs → slow down (2 s each), never hard-lock (attacker can't lock admin out). Message always "Wrong username or password. N tries left." Locked: "Too many tries. Try again in M min." Same for unknown user.
 - FR-A10 Change password (needs current). Kills other sessions, rotates current.
@@ -99,7 +99,7 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 ### 4.5 Sharing + overlap (P2)
 
 - FR-S1 Settings > Sharing (`DesktopSharing.dc.html`).
-- FR-S2 Make key: permission (view | edit), expiry (1 h | 24 h | 7 d, enforced server), visible types (Work, Exam, Event, Hobby, Dating, None, Blocks), hidden-as ("Busy" | nothing). Key shown ONCE. Copy.
+- FR-S2 Make key (rev 2026-11-08: **view only**, edit grants not built): expiry (24 h | 7 d, enforced server), visible types (Work, Exam, Event, Hobby, Dating, None, Blocks), hidden-as ("Busy" | nothing). Key shown ONCE. Copy.
 - FR-S3 Key `LT-` + 12 Crockford base32 chars (60 bits). Server stores HMAC only, no hint.
 - FR-S4 Single use. Redeem → grant. Bad/expired/used/revoked → one generic error.
 - FR-S5 Redeem: 5 bad tries per user per 15 min.
@@ -109,13 +109,13 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 - FR-S9 Grantee: "Calendars I can see" → include in overlap toggle, leave.
 - FR-S10 Home calendar header **Overlap** toggle (pill + avatars + switch). Default ON. ON = show all grants with include-in-overlap. Saved per user on server.
 - FR-S11 Partner items: striped in Type colour, dashed border, initial badge in partner's user colour (default teal #0F766E; never a Type colour). View → no square, no drag, not clickable to edit. Edit → square + drag.
-- FR-S12 Planner overlap ON: lanes "Me | <name>", max 3 lanes.
+- FR-S12 Planner overlap ON: partner blocks sit beside mine (column packing), striped + badge, read-only. (Lanes "Me | <name>" deferred.)
 - FR-S13 Server filters. Hidden types → "Busy" (times only) or nothing. **Never sent to grantee: notes, steps, parent, hidden titles.**
 - FR-S14 (P3) "Both free" green band: gaps ≥ 60 min, 08:00–22:00, across all lanes.
 - FR-S15 Only calendar (items + blocks) shareable. Places, Lists, People, Ideas, Workouts private. **People module never visible to anyone else.**
 - FR-S16 Grantee edits set `updated_by`. Owner sees "edited by N".
 - FR-S17 Private items ("Keep secret") always Busy to every grantee. Items made by "Plan it" from People default to private (surprise gifts stay secret).
-- FR-S18 Edit grant can: cycle status, move date/time, move/resize blocks, rename. Cannot: create in owner calendar, delete, change type/notes/private.
+- FR-S18 (deferred: grants are view-only) Edit grant can: cycle status, move date/time, move/resize blocks, rename. Cannot: create in owner calendar, delete, change type/notes/private.
 
 ### 4.6 Places (P2)
 

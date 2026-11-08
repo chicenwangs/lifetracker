@@ -1,18 +1,15 @@
-<!-- Login / signup / setup frame (Login.dc.html). -->
+<!-- Login / signup / setup frame (Login.dc.html). App mark only, no name (matches the app header). -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import AppIcon from './AppIcon.svelte';
 	let { tab, children }: { tab?: 'login' | 'signup' | null; children: Snippet } = $props();
 </script>
 
 <main class="wrap">
 	<div class="col">
 		<div class="brand">
-			<div class="logo" aria-hidden="true">
-				<span class="t-work"></span><span class="t-exam"></span><span class="t-event"></span><span
-					class="t-dating"
-				></span>
-			</div>
-			<h1>Life Tracker</h1>
+			<AppIcon size={44} />
+			<h1 class="sr-only">Life Tracker</h1>
 		</div>
 		<div class="card box">
 			{#if tab}
@@ -47,25 +44,8 @@
 	}
 	.brand {
 		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 10px;
-	}
-	h1 {
-		font-size: 22px;
-		font-weight: 700;
-	}
-	.logo {
-		display: grid;
-		grid-template-columns: repeat(2, 14px);
-		gap: 4px;
-	}
-	.logo span {
-		width: 14px;
-		height: 14px;
-		border-radius: 3px;
-		background: var(--bg);
-		border: 1.5px solid var(--fg);
+		justify-content: center;
+		color: var(--ink);
 	}
 	.box {
 		border-radius: 16px;
@@ -89,10 +69,10 @@
 		font-weight: 600;
 		color: var(--quiet);
 	}
+	/* same active pill as the header nav + settings menu */
 	.tabs a.on {
-		background: var(--card);
+		background: var(--rule);
 		color: var(--ink);
-		box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
 	}
 	.tabs a:hover {
 		text-decoration: none;

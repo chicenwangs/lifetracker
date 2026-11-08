@@ -13,7 +13,7 @@
 	import type { QAParse } from '$lib/quickadd';
 	import { post, patch as apiPatch } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
-	import { blockType, colorsFor } from '$lib/colors';
+	import { entryColors } from '$lib/client/partner';
 	import {
 		addDays,
 		fixRange,
@@ -411,94 +411,121 @@
 			{/if}
 
 			{#each vis as p (p.b.id)}
-				{@const c = colorsFor(blockType(p.b))}
-				<div
-					class="blk"
-					class:done={p.b.status === 'done'}
-					class:cs={p.clippedStart || p.cutTop}
-					class:ce={p.clippedEnd || p.cutBot}
-					class:lift={!!over[p.b.id]}
-					class:muted={!!focusItemId && p.b.itemId !== focusItemId}
-					style:top="{(p.vt - S) * PX_MIN}px"
-					style:height="{Math.max(18, (p.vb - p.vt) * PX_MIN)}px"
-					style:left="calc(56px + (100% - 70px) * {p.col / p.cols})"
-					style:width="calc((100% - 70px) / {p.cols} - 4px)"
-					style:background={c.bg}
-					style:color={c.ink}
-					style:--line={c.line}
-					role="button"
-					tabindex="0"
-					aria-label="{p.b.label}, {fmt(p)}. Arrows move 15 min, Shift+arrows resize, Enter edit"
-					onpointerdown={(e) => onBlockDown(e, p, 'move')}
-					onkeydown={(e) => onBlockKey(e, p)}
-				>
-					{#if !p.clippedStart && !p.cutTop && p.b.editable}
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div class="h top" onpointerdown={(e) => onBlockDown(e, p, 'top')}></div>
-					{/if}
-					<StatusSquare status={p.b.status} size={20} ink={c.ink} oncycle={() => oncycle(p.b.id)} />
-					<div class="txt">
-						<span class="lbl">{p.b.label}</span>
-						{#if (p.vb - p.vt) * PX_MIN >= 34}<span class="tm">{fmt(p)}</span>{/if}
-					</div>
-					{#if !p.clippedEnd && !p.cutBot && p.b.editable}
-						<!-- svelte-ignore a11y_no_static_element_interactions -->
-						<div class="h bot" onpointerdown={(e) => onBlockDown(e, p, 'bottom')}></div>
-					{/if}
-					{#if p.b.editable}
-						<button
-							class="bx"
-							type="button"
-							aria-label="Delete {p.b.label}"
-							title="Delete"
-							onpointerdown={(e) => e.stopPropagation()}
-							onclick={(e) => {
-								e.stopPropagation();
-								deleteBlock(p.b.id);
-							}}
-							><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"
-								><circle
-									cx="8"
-									cy="8"
-									r="7"
-									fill="var(--card)"
-									stroke="currentColor"
-									stroke-width="1.4"
-								/><path
-									d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8"
-									stroke="currentColor"
-									stroke-width="1.6"
-									stroke-linecap="round"
-								/></svg
-							></button
+				{@const c = entryColors(p.b)}
+				{#if p.b.theirs && p.b.owner}
+					<!-- shared, read-only -->
+					<div
+						class="blk theirs lt-theirs"
+						class:lt-busy={p.b.busy}
+						class:cs={p.clippedStart || p.cutTop}
+						class:ce={p.clippedEnd || p.cutBot}
+						style:top="{(p.vt - S) * PX_MIN}px"
+						style:height="{Math.max(18, (p.vb - p.vt) * PX_MIN)}px"
+						style:left="calc(56px + (100% - 70px) * {p.col / p.cols})"
+						style:width="calc((100% - 70px) / {p.cols} - 4px)"
+						style:background-color={c.bg}
+						style:color={c.ink}
+						style:--line={c.line}
+						title="{p.b.owner.name}'s calendar (view only)"
+					>
+						<span class="lt-who" style:background={p.b.owner.color} aria-hidden="true"
+							>{p.b.owner.initial}</span
 						>
-					{/if}
-				</div>
-				{#if menuFor === p.b.id}
-					<div class="menu" style:top="{(p.vb - S) * PX_MIN + 4}px">
-						<label class="sr-only" for="bl-{p.b.id}">Block label</label>
-						<!-- svelte-ignore a11y_autofocus -->
-						<input
-							id="bl-{p.b.id}"
-							class="input sm"
-							bind:value={menuLabel}
-							autofocus
-							onkeydown={(e) => {
-								if (e.key === 'Enter') renameBlock(p.b.id);
-								if (e.key === 'Escape') menuFor = null;
-							}}
-						/>
-						<div class="row">
-							<button class="btn sm primary" type="button" onclick={() => renameBlock(p.b.id)}>Save</button>
-							{#if p.b.itemId}
-								<button class="btn sm" type="button" onclick={() => p.b.itemId && onopenitem(p.b.itemId)}
-									>Open item</button
-								>
-							{/if}
-							<button class="btn sm danger" type="button" onclick={() => deleteBlock(p.b.id)}>Delete</button>
-							<button class="btn sm ghost" type="button" onclick={() => (menuFor = null)}>Close</button>
+						<div class="txt">
+							<span class="lbl"><span class="sr-only">{p.b.owner.name}: </span>{p.b.label}</span>
+							{#if (p.vb - p.vt) * PX_MIN >= 34}<span class="tm">{fmt(p)}</span>{/if}
 						</div>
 					</div>
+				{:else}
+					<div
+						class="blk"
+						class:done={p.b.status === 'done'}
+						class:cs={p.clippedStart || p.cutTop}
+						class:ce={p.clippedEnd || p.cutBot}
+						class:lift={!!over[p.b.id]}
+						class:muted={!!focusItemId && p.b.itemId !== focusItemId}
+						style:top="{(p.vt - S) * PX_MIN}px"
+						style:height="{Math.max(18, (p.vb - p.vt) * PX_MIN)}px"
+						style:left="calc(56px + (100% - 70px) * {p.col / p.cols})"
+						style:width="calc((100% - 70px) / {p.cols} - 4px)"
+						style:background={c.bg}
+						style:color={c.ink}
+						style:--line={c.line}
+						role="button"
+						tabindex="0"
+						aria-label="{p.b.label}, {fmt(p)}. Arrows move 15 min, Shift+arrows resize, Enter edit"
+						onpointerdown={(e) => onBlockDown(e, p, 'move')}
+						onkeydown={(e) => onBlockKey(e, p)}
+					>
+						{#if !p.clippedStart && !p.cutTop && p.b.editable}
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<div class="h top" onpointerdown={(e) => onBlockDown(e, p, 'top')}></div>
+						{/if}
+						<StatusSquare status={p.b.status} size={20} ink={c.ink} oncycle={() => oncycle(p.b.id)} />
+						<div class="txt">
+							<span class="lbl">{p.b.label}</span>
+							{#if (p.vb - p.vt) * PX_MIN >= 34}<span class="tm">{fmt(p)}</span>{/if}
+						</div>
+						{#if !p.clippedEnd && !p.cutBot && p.b.editable}
+							<!-- svelte-ignore a11y_no_static_element_interactions -->
+							<div class="h bot" onpointerdown={(e) => onBlockDown(e, p, 'bottom')}></div>
+						{/if}
+						{#if p.b.editable}
+							<button
+								class="bx"
+								type="button"
+								aria-label="Delete {p.b.label}"
+								title="Delete"
+								onpointerdown={(e) => e.stopPropagation()}
+								onclick={(e) => {
+									e.stopPropagation();
+									deleteBlock(p.b.id);
+								}}
+								><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"
+									><circle
+										cx="8"
+										cy="8"
+										r="7"
+										fill="var(--card)"
+										stroke="currentColor"
+										stroke-width="1.4"
+									/><path
+										d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8"
+										stroke="currentColor"
+										stroke-width="1.6"
+										stroke-linecap="round"
+									/></svg
+								></button
+							>
+						{/if}
+					</div>
+					{#if menuFor === p.b.id}
+						<div class="menu" style:top="{(p.vb - S) * PX_MIN + 4}px">
+							<label class="sr-only" for="bl-{p.b.id}">Block label</label>
+							<!-- svelte-ignore a11y_autofocus -->
+							<input
+								id="bl-{p.b.id}"
+								class="input sm"
+								bind:value={menuLabel}
+								autofocus
+								onkeydown={(e) => {
+									if (e.key === 'Enter') renameBlock(p.b.id);
+									if (e.key === 'Escape') menuFor = null;
+								}}
+							/>
+							<div class="row">
+								<button class="btn sm primary" type="button" onclick={() => renameBlock(p.b.id)}>Save</button>
+								{#if p.b.itemId}
+									<button class="btn sm" type="button" onclick={() => p.b.itemId && onopenitem(p.b.itemId)}
+										>Open item</button
+									>
+								{/if}
+								<button class="btn sm danger" type="button" onclick={() => deleteBlock(p.b.id)}>Delete</button
+								>
+								<button class="btn sm ghost" type="button" onclick={() => (menuFor = null)}>Close</button>
+							</div>
+						</div>
+					{/if}
 				{/if}
 			{/each}
 
@@ -638,6 +665,14 @@
 		cursor: grab;
 		z-index: 3;
 		border: 1px solid var(--line, transparent);
+	}
+	.blk.theirs {
+		padding-right: 8px;
+		align-items: center;
+	}
+	.blk.theirs .lt-who {
+		align-self: flex-start;
+		margin-top: 2px;
 	}
 	.blk.cs {
 		border-top: 2px dashed currentColor;

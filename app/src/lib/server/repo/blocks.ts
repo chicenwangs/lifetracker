@@ -50,6 +50,21 @@ export function inRange(calendarId: string, fromZ: string, toZ: string): BlockDT
 		.map((r) => toDTO(r.b, r.itemType));
 }
 
+/** for sharing filters: blocks in range + their linked item's type and private flag (null = unlinked/deleted) */
+export function inRangeForShare(calendarId: string, fromZ: string, toZ: string) {
+	return db()
+		.select({ b: blocks, itemType: items.type, itemPrivate: items.private, itemId: items.id })
+		.from(blocks)
+		.leftJoin(items, and(eq(items.id, blocks.itemId), isNull(items.deletedAt)))
+		.where(and(eq(blocks.calendarId, calendarId), live, lt(blocks.startAt, toZ), gt(blocks.endAt, fromZ)))
+		.orderBy(asc(blocks.startAt))
+		.all()
+		.map((r) => ({
+			block: toDTO(r.b, r.itemType),
+			linked: r.itemId ? { type: r.itemType, private: !!r.itemPrivate } : null,
+		}));
+}
+
 export function getOwn(meId: string, id: string): BlockRow | undefined {
 	const cals = myCalendarIds(meId);
 	if (!cals.length) return undefined;
