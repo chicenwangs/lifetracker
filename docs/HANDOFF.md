@@ -35,16 +35,25 @@ Parked pseudocode stubs (not planned in this app): `places-logic.ts`, `workouts-
 
 Dormant (data kept, no code uses it): DB tables `goals`, `courses`, column `items.course_id`. A drop migration needs an `items` rebuild (FK).
 
-## Next (plan rev 2026-11-08)
+## Next (plan rev 2026-11-08b)
 
-Ship first, users after. No new modules.
+Ship as a service first, users after. No new modules. Domain `planner.jeremyjosh.org`.
 
-1. **Stage B, homelab:** Docker compose on Ubuntu, /setup, import, nightly backup + test restore (DEPLOYMENT B).
-2. **Stage C, Cloudflare Tunnel:** `lt.<domain>`, no LAN port (DEPLOYMENT C). Self-host Inter before going public.
-3. **Then involve users:** Neina signs up on her device, swap share codes. Switch sign-up to Invite only once everyone is in.
-4. **Test the core loop + sharing together** for about a week on real devices. Log issues, fix them. P2 acceptance in REQUIREMENTS §6.
+**P2a, this repo (dev chat): make it a deployable service**
+1. Strip parked module stubs (places/lists/people/ideas/workouts routes, APIs, nav). Keep their tables + import.
+2. Self-host Inter (no outside calls at runtime).
+3. Prod readiness: image builds and runs from a clean checkout, migrations on boot, `/healthz`, env checked at start, logs to stdout, graceful stop, Secure cookie + real client IP behind the tunnel (`ADDRESS_HEADER=CF-Connecting-IP`), `/setup` only with `SETUP_TOKEN`.
+4. CI (GitHub Actions): lint, unit, e2e, build image, push `ghcr.io/chicenwangs/lifetracker:<version>` + `:sha-<short>`. Release = git tag `vX.Y.Z`.
+5. Ops scripts verified in the container: backup, restore, reset-password.
+6. Write `docs/SERVICE-HANDOFF.md`: the service contract for someone with no dev context (what it is, image + tags, port, env vars, volume, health check, first run, backup/restore, upgrade/rollback, logs, known limits, acceptance checks).
 
-Out of this app: Places, Lists, People, Ideas, Workouts. If built, each is its own service on its own subdomain (`places.<domain>` etc.). Their stubs stay parked in the repo; import still loads their data. Search, calendar feed, edit grants, planner lanes = later (P3).
+**P2b, separate deploy chat: deploy like an ops team** (inputs: SERVICE-HANDOFF + DEPLOYMENT only)
+Homelab Docker → backups + restore drill → Cloudflare Tunnel `planner.jeremyjosh.org`, no LAN port → monitoring/uptime check.
+
+**P2c: involve users**
+Neina signs up on her device, swap share codes, switch sign-up to Invite only. Test core loop + sharing ~1 week, log issues, fix here, ship a new tag, deploy chat rolls it out. P2 acceptance in REQUIREMENTS §6.
+
+Out of this app: Places, Lists, People, Ideas, Workouts (own services on own subdomains, e.g. `places.jeremyjosh.org`). Later (P3): search, calendar feed, edit grants, planner lanes.
 
 ## Open owner decisions (REVIEW.md "Open")
 

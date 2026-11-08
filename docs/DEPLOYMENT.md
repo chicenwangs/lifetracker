@@ -6,7 +6,7 @@ Caveman doc. Three stages. In order. No skip. Rev 2 (after review, see REVIEW.md
 |---|---|---|---|
 | A | Jeremy PC (Windows) dev | http://localhost:5173 | P1 acceptance passes |
 | B | Ubuntu homelab, Docker | http://<homelab-ip>:3000 (LAN) | used 1 week, backup restore tested |
-| C | Cloudflare Tunnel | https://lt.<your-domain> | Neina logs in from her device |
+| C | Cloudflare Tunnel | https://planner.jeremyjosh.org | Neina logs in from her device |
 
 ## 0. Env vars
 
@@ -17,7 +17,7 @@ Two templates at repo root: `.env.example` (dev → copy to `app/.env`) and `.en
 | NODE_ENV | development | production | |
 | DATABASE_PATH | ../data/app.db | /app/data/app.db | parent dir auto-created |
 | SEED_DIR | ../data/seed | /app/seed | |
-| ORIGIN | http://localhost:5173 | B http://<ip>:3000 · C https://lt.<domain> | must equal browser URL exactly. Cookie Secure only when https |
+| ORIGIN | http://localhost:5173 | B http://<ip>:3000 · C https://planner.jeremyjosh.org | must equal browser URL exactly. Cookie Secure only when https |
 | APP_SECRET | 32+ random | 32+ random (different) | HMAC pepper. Required |
 | SETUP_TOKEN | 32+ random | 32+ random, delete after /setup | empty = setup off |
 | TZ | Asia/Kuala_Lumpur | Asia/Kuala_Lumpur | container clock tz for logs |
@@ -35,7 +35,7 @@ SEED_DIR=/app/seed
 PORT=3000
 HOST=0.0.0.0
 TZ=Asia/Kuala_Lumpur
-# Stage B: http://<homelab-ip>:3000   Stage C: https://lt.<your-domain>
+# Stage B: http://<homelab-ip>:3000   Stage C: https://planner.jeremyjosh.org
 ORIGIN=http://<homelab-ip>:3000
 APP_SECRET=
 # only until /setup done, then delete + restart
@@ -169,7 +169,7 @@ Monitoring: add http://<ip>:3000/healthz to homelab monitor; alert if down > 5 m
 Need a domain on Cloudflare DNS (cheap domain, nameservers to Cloudflare). Free plan OK. No port forward. No public IP.
 
 1. Cloudflare dashboard → Zero Trust → Networks → Tunnels (menu name may say Connectors) → Create → Cloudflared → name `life-tracker` → copy token.
-2. Public hostname: `lt` . `<domain>` → service HTTP `app:3000`.
+2. Public hostname: `planner` . `jeremyjosh.org` → service HTTP `app:3000`.
 3. Compose: **remove `ports:` from app** (tunnel reaches app on compose network; published port + ADDRESS_HEADER = spoofable IP). Add:
 ```yaml
   cloudflared:
@@ -181,13 +181,13 @@ Need a domain on Cloudflare DNS (cheap domain, nameservers to Cloudflare). Free 
     depends_on:
       app: { condition: service_healthy }
 ```
-4. `.env`: `ORIGIN=https://lt.<domain>`, `ADDRESS_HEADER=CF-Connecting-IP`, `TUNNEL_TOKEN=...`. No SETUP_TOKEN.
-5. `docker compose up -d`. Open https://lt.<domain>. Check cookie `__Host-lt_session` with Secure.
+4. `.env`: `ORIGIN=https://planner.jeremyjosh.org`, `ADDRESS_HEADER=CF-Connecting-IP`, `TUNNEL_TOKEN=...`. No SETUP_TOKEN.
+5. `docker compose up -d`. Open https://planner.jeremyjosh.org. Check cookie `__Host-lt_session` with Secure.
 6. Cloudflare: "Always Use HTTPS" on. Optional rate-limit rule on `/login` (5 req / 10 s per IP).
-7. Now invite users. Sign-up is open: send Neina https://lt.<domain>/signup, she makes her own account, you swap share codes in Settings > Sharing. Once everyone is in, switch Settings > Users to Invite only (the URL is public).
+7. Now invite users. Sign-up is open: send Neina https://planner.jeremyjosh.org/signup, she makes her own account, you swap share codes in Settings > Sharing. Once everyone is in, switch Settings > Users to Invite only (the URL is public).
 8. After Stage C, everyone (you too, at home) uses the tunnel URL. No LAN port. Requests without the Cloudflare header get 400 by design.
 
-Optional Cloudflare Access (Zero Trust → Access → Applications → self-hosted `lt.<domain>`, allow Jeremy + Neina emails, one-time PIN). Add bypass for `/cal/*` (ics clients can't log in) — feed URL token is the secret (160 bits, rotate if leaked). App login still required.
+Optional Cloudflare Access (Zero Trust → Access → Applications → self-hosted `planner.jeremyjosh.org`, allow Jeremy + Neina emails, one-time PIN). Add bypass for `/cal/*` (ics clients can't log in) — feed URL token is the secret (160 bits, rotate if leaked). App login still required.
 
 Never: expose before /setup; wrong ORIGIN; commit `.env`, TUNNEL_TOKEN, or `data/`.
 

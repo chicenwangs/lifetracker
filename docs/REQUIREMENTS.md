@@ -38,8 +38,10 @@ No public sign-up. Ever.
 
 Rev 2026-11-08 (owner):
 - **P1** = core daily loop + auth + import. Desktop only. Done.
-- **P2** = ship + test with real users. Order: homelab Docker (DEPLOYMENT B) → Cloudflare Tunnel (C) → only then invite users → test the core loop + sharing together, fix what that finds.
-- **Not in this app:** Places, Lists, People, Ideas, Workouts (§4.6–4.10). If built, each is its own service on its own subdomain. Sections kept as reference only. Import still loads their data; nothing shows it.
+- **P2a (this repo, dev chat)** = finish the planner as a deployable service: core loop + sharing only, released as a versioned container image with a written service contract (`docs/SERVICE-HANDOFF.md`). No homelab work here.
+- **P2b (separate deploy chat, no dev context)** = deploy it the way a cloud/DevOps team would: homelab Docker, backups, Cloudflare Tunnel at `https://planner.jeremyjosh.org`. Works only from SERVICE-HANDOFF + DEPLOYMENT.
+- **P2c** = only then involve users (Neina signs up, swap share codes). Test core loop + sharing on real devices, fix what that finds.
+- **Not in this app:** Places, Lists, People, Ideas, Workouts (§4.6–4.10). If built, each is its own service on its own subdomain (`places.jeremyjosh.org` etc.). Sections kept as reference only. Import still loads their data; nothing shows it.
 - **P3** = search, calendar feed, automation, mobile, PWA.
 
 ## 4. Functional requirements
@@ -208,7 +210,7 @@ P1:
 
 P2 (on the tunnel URL, real devices):
 - [ ] Homelab: `docker compose up -d` → /setup → import → app survives reboot. Nightly backup restores.
-- [ ] Tunnel: https://lt.<domain> works, `__Host-lt_session` Secure cookie, no LAN port open.
+- [ ] Tunnel: https://planner.jeremyjosh.org works, `__Host-lt_session` Secure cookie, no LAN port open.
 - [ ] Neina makes her own account on her device. Jeremy code (Dating+Event, rest Busy) → Neina enters it → overlap shows Jeremy Dating/Event titles, other types "Busy", no notes; hidden titles absent from network JSON. Then mutual.
 - [ ] Private item shows Busy even if Type visible.
 - [ ] Overlap toggle persists across reload + devices.
