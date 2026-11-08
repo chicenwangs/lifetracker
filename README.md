@@ -9,17 +9,17 @@ Start here (Claude: read all before coding):
 4. `docs/REVIEW.md` — review fixes + open owner decisions.
 5. `docs/STRUCTURE.md` — full file tree.
 6. `docs/PSEUDOCODE.md` — core flows. Per-file pseudocode = comments in each file.
-7. `docs/P1-NOTES.md` — what P1 built, where it differs from spec, what is left.
-8. `docs/HANDOFF.md` — current state + Phase 2 plan. **New chat: read this first.**
+7. `docs/P1-NOTES.md` — what the app does now + where it differs from spec. Wins over 1–2.
+8. `docs/HANDOFF.md` — current state, code map, next steps. **New chat: read this first.**
 
 | Path | What |
 |---|---|
 | `data/` | Personal data (Notion raw + seed + app.db). **Gitignored. Never push.** |
 | `scripts/transform_notion.py` | raw → seed. |
 | `wireframes/` | Design canvas copies. |
-| `app/` | SvelteKit app. P1 built. P2 module files still pseudocode. |
+| `app/` | SvelteKit app. Core built. Places/Lists/People/Ideas/Workouts still pseudocode. |
 | `.env.example` / `.env.prod.example` | dev → `app/.env`; prod → root `.env`. |
 
-Status 2026-11-06: **P1 built** (auth, home month + planner, week, item, quick add, import, settings). 103 unit + 8 e2e pass. Next: use P1 daily 1 week (Stage A/B), then P2.
+Status 2026-11-08: core built (auth + open sign-up, home month + planner, week, item, quick add, import, settings, calendar sharing by code). Goals and Courses removed. 237 unit + 14 e2e pass. Next: homelab deploy (Stage B), then P2 modules.
 
 Repo private.

@@ -2,6 +2,8 @@
 
 Caveman doc. How build. Read REQUIREMENTS.md first (FR ids referenced here). Rev 2 (after 10-agent review, see REVIEW.md).
 
+> **Rev 2026-11-08 overrides (P1-NOTES.md wins):** Goals + Courses removed (tables `goals`, `courses`, column `items.course_id` dormant; no API, no `#course`). Sign-up open by default, admin can switch to invite-only (`app_meta.signup_open`). Share grants view-only (no edit grants yet). Planner shows partner blocks beside mine, no lanes. Visible hour range `lt_hours` cookie. Quick add accepts `slot` from timeline drags; drag with no `/type` = type None.
+
 ## 1. Stack (locked)
 
 | Part | Pick | Why |
@@ -420,12 +422,12 @@ StatusSquare: `<button>` 16 px chips / 20 px blocks. todo = empty border; doing 
 QuickAdd (FR-Q1..Q3c, rev 2026-11-06b): `QuickAdd.svelte` = header button + palette (fixed scrim, dialog). Parser `lib/quickadd.ts` (pure, client preview + server truth). Returns `QAParse` always (never throws): fields + `*Set` flags (slot defaults) + `notes` + `warnings` + `problems[]` (backtick = code in UI; shown only on Enter; server 400 with first problem). Helpers same file: `activeOptionToken`, `optionsFor` (menu), `ghostHint`.
 Rules:
 1. Tokenise on whitespace; match on `norm(token)` (lower-case, wrapping punctuation stripped, inner dots kept). Any order. Title = leftover original tokens, edge punctuation trimmed.
-2. `/x` options: types `work exam event hobby date dating`; destinations `planner plan timeline block` → planner, `calendar cal` → calendar, `both` → both (`/calendar` + `/planner` together = both). Unknown `/x` → problem. `#x` = course alias/code; unknown `#x` stays title.
+2. `/x` options: types `work exam event hobby date dating`; destinations `planner plan timeline block` → planner, `calendar cal` → calendar, `both` → both (`/calendar` + `/planner` together = both). Unknown `/x` → problem. `#x` stays title (courses removed).
 3. Days: word tables + typo tables (WEEKDAY_WORDS, MONTH_WORDS, W_TODAY/W_TMR/W_YDAY) + fuzzy (optimal string alignment): tomorrow ≤2 (starts `t`, 6–10 chars), yesterday ≤2, tonight ≤1, long weekday/month names ≤1 (≤2 for wednesday) and same first letter (stops remember→december); plural weekdays never. Phrases: day after tomorrow, this/tomorrow + morning|afternoon|evening|night, in N day|week|fortnight|month (N digit or one..twelve/a/an), N unit from now|today|tomorrow, next week (Mon), next/this week + wd, wd + next/this week, next weekend (Sat next week), this/the weekend (coming Sat; Sun = today), next month (1st), end of (the) month / eom, next^n wd, this wd. Explicit: YYYY-MM-DD, D/M[/YY|YYYY] (US swap only if M>12), D[th] [of] MON [YYYY], MON D[th] [YYYY], the Dth [of MON], on Dth. Weekday hit adjacent to an explicit date merges into it (+ mismatch warning). LAST date wins; earlier stay title.
 4. Times: 12h (`6pm`, `6 pm`, `6:30 p.m.`), 24h (`18:30 18.30 18h30`), noon midday midnight. Ranges `a-b` in one token, `a SEP b` with SEP `to till til until - – —`, `between a and b`; a bare start borrows am/pm from the end. Durations after `for`: `2h 90m 1h30 1.5h`, `2 hours`, `an hour`, `half an hour` (bare `for 2` = title). `all day` = no time. LAST time wins.
 5. Glue words `on at by from between around @` directly before a used day/time token → not title.
 6. Rollover: bare weekday → next occurrence incl. today, +7 if today and time passed. `D MON`/`D/M` → this year, if before today → next year. `the Dth` → this month, else next month that has it. `in 1 month` clamps to month end. No date → today.
-7. Defaults: type `#course` ? Work : Event. Destination planner.
+7. Defaults: type Event (timeline drag with no `/type` = None). Destination planner. Drag `slot` gives day + range when none typed.
 8. Planner / both: time required (problem, two fixes named). Snap start/end to 15 (`rounded to 15 min`). No end → +60 (`60 min default`). end ≤ start → +1440, min 15 min. Calendar: end dropped (`end time needs /both`). Server (`quickadd-server.ts`), one `sqlite.transaction`: calendar|both → `items.create`; planner|both → `blocks.create` (planner: own label + type, `itemId` null; both: linked to the item) via `localToUtc` (minutes > 1440 = next day). Response `{item|null, block|null, target, notes, warnings}`. Palette undo: item → DELETE item (soft-deletes linked block), planner → DELETE block.
 9. P3: `every mon[,wed]` → rrule.
 Tests: `tests/unit/quickadd.test.ts` ≈ 150 cases (days, times, destinations, problems, palette helpers, server item/block).

@@ -1,56 +1,49 @@
 # HANDOFF — read first in a new chat
 
-Caveman doc. State as of 2026-11-06. Repo: `github.com/chicenwangs/lifetracker` (private). PC copy: `Desktop\life-tracker`.
+Caveman doc. State as of 2026-11-08. Repo `github.com/chicenwangs/lifetracker` (private), branch `main`. PC copy `Desktop\life-tracker`.
 
 ## State
 
-- **P1 done + working on Jeremy PC** (Stage A, localhost:5173). Real Notion data imported.
-- Tests: 220 unit (`npm run test:unit`), 11 e2e (`npm run test:e2e`). Lint + svelte-check clean.
-- Quick add = N palette (2026-11-06): any order, slash menu, errors on Enter. Default = planner block only; `/calendar` = big event only; `/both` = item + linked block. Day words handle typos (tommorow …). Spec REQUIREMENTS §4.3, TECHNICAL §8.
-- Dark mode palette = Radix-style layered greys + tinted type colours (TECHNICAL §9). Closing the item popup now refetches Home (fixes stale planner after peek edits).
-- Read order for coding: README → REQUIREMENTS → TECHNICAL → P1-NOTES (spec deviations) → this.
+- P1 built and in daily use on Jeremy's PC (Stage A, localhost:5173). Real Notion data imported.
+- Since P1: UX rounds 1–5, Goals + Courses removed, open sign-up, calendar sharing by code (view-only). Details: `P1-NOTES.md`.
+- Tests: 237 unit (`npm run test:unit`), 14 e2e (`npm run test:e2e`). Lint, prettier, svelte-check clean.
+- When docs disagree: P1-NOTES > TECHNICAL > REQUIREMENTS. TECHNICAL top banner lists the overrides.
+- Read order for coding: README → this → P1-NOTES → REQUIREMENTS → TECHNICAL.
 
 ## Env facts (bit us before)
 
-- Node **22** only (winget `OpenJS.NodeJS.22`). Node 24 breaks native deps.
-- `better-sqlite3` pinned **12.11.1** (13.0.3 has no Windows prebuilds). SvelteKit pinned **2.x**.
-- Env loads via `$env/dynamic/private` (dev reads `app/.env`). Scripts (`db:seed`, `reset-password`) read `.env` themselves.
-- Migration `drizzle/0000_init.sql` hand-patched (COALESCE index, username NOCASE). Recheck after `db:generate`.
-- Claude cloud session pushes via GitHub app; commits authored `Claude <noreply@anthropic.com>`.
+- Node 22 only. Node 24 breaks native deps.
+- `better-sqlite3` pinned 12.11.1 (13.x has no Windows prebuilds). SvelteKit pinned 2.x.
+- Env via `$env/dynamic/private` (dev reads `app/.env`). Scripts (`db:seed`, `reset-password`) read `.env` themselves.
+- `drizzle/0000_init.sql` hand-patched (COALESCE index, username NOCASE). Recheck after `db:generate`.
+- Cloud sessions push via GitHub app as `Claude <noreply@anthropic.com>`.
+- e2e in the cloud container: `PW_CHROME=/usr/bin/google-chrome npx playwright test`.
 
-## Code map (built)
+## Code map
 
 | Area | Files |
 |---|---|
 | Boot/guard | `hooks.server.ts`, `lib/server/{env,db,purge}.ts` |
-| Auth | `lib/server/{auth,crypto,ratelimit,setup,invites}.ts`, routes `login signup setup logout` |
-| Data | `lib/server/repo/{users,calendars,sessions,items,blocks,courses,goals,meta}.ts`, `lib/server/{calendar,seed,search,quickadd-server,http,validate}.ts` |
-| Shared | `lib/{time,quickadd,types,colors}.ts`, `lib/client/{api,toast,bus,obj}` |
-| UI | `MonthCalendar` (FC dayGrid), `WeekCalendar` (FC timeGrid), `DayPlanner` (custom), `StatusSquare`, `QuickAdd`, `AppHeader`, `DueTodayChips`, `GoalsPanel`, `UndoToast`, `Markdown` |
-| Pages | `/` `/week` `/item/[id]` `/settings/{account,sessions,courses,goals}` `/trash` |
-| API | `/api/{calendar,items,items/:id(+cycle),blocks(+cycle),courses,goals,trash,unscheduled,quickadd,me/prefs}` |
+| Auth + sign-up | `lib/server/{auth,crypto,ratelimit,setup,invites}.ts`, routes `login signup setup logout`, `AuthShell`, `AppIcon` |
+| Data | `lib/server/repo/{users,calendars,sessions,items,blocks,sharekeys,grants,meta}.ts`, `lib/server/{calendar,access,seed,search,quickadd-server,http,validate}.ts` |
+| Shared | `lib/{time,quickadd,types,colors,hours,planner-layout,planahead}.ts`, `lib/client/{api,toast,bus,peek,prefs,hours,remove,partner}` |
+| UI | `MonthCalendar`, `WeekCalendar`, `WeekMap`, `DayPlanner`, `DraftBlock`, `RollHandle`, `QuickAdd`, `CommandInput`, `SlotCommand`, `TimelinePreview`, `ItemPeek`, `ItemView`, `OverlapToggle`, `AppHeader`, `StatusSquare`, `UndoToast`, `Markdown` |
+| Pages | `/` `/week` `/item/[id]` `/trash` `/settings/{account,preferences,sessions,sharing,users}` |
+| API | `/api/{calendar,items,blocks,trash,unscheduled,quickadd,me/prefs,share-keys,share-keys/redeem,grants}` |
 
-Still pseudocode stubs: `access.ts`, `sharekeys.ts`, `ics.ts`, `places-logic.ts`, `workouts-logic.ts`, repo `grants/places/lists/people/ideas/workouts/invites/sharekeys`, P2 routes + API.
+Still pseudocode stubs: `ics.ts`, `places-logic.ts`, `workouts-logic.ts`, repo `places/lists/people/ideas/workouts`, those routes + APIs, `/settings/{invites,import}` pages, `/search` page.
 
-## Phase 2 plan (order)
+Dormant (data kept, no code uses it): DB tables `goals`, `courses`, column `items.course_id`. A drop migration needs an `items` rebuild (FK).
 
-Gate: P1 used daily ~1 week first (REQUIREMENTS §3). Do DEPLOYMENT Stage B (homelab Docker + backups) in that week.
+## Next (order)
 
-1. **Access layer** — `access.ts` (listAccess, assertCanWrite, filterItem/filterBlock, busyId), grantee PATCH schema. Unit leak tests first (TECHNICAL §7).
-2. **Sharing** — share keys (make/redeem/revoke, HMAC, 60 bits, single use), grants, `/settings/sharing` (DesktopSharing.dc.html). Calendar API returns `others[]`.
-3. **Overlap UI** — toggle (FR-S10, saved server), partner chips striped + badge (FR-S11), planner lanes Me | Neina (FR-S12), edit-grant writes + `updated_by` (FR-S16/S18), read-only partner card on `/item/[id]`.
-4. **Invites UI + Users + Import UI** — `/settings/{invites,users,import}` (backend for invites/signup already done).
-5. **Places** — filters, open-now (Night 17–02 prev-day rule), pick random, stars, Been here, dup warn.
-6. **Lists** — checklist, reorder, Plan as a date.
-7. **People** — fact cards, Plan it (private=1), side panel. Never shared.
-8. **Ideas** — 4-stage board, channel filter, >70 warn.
-9. **Workouts** — split, today panel, log session, 4 ISO weeks progress.
-10. **Search** — FTS sync in repo helpers + `/search` grouped.
-11. Self-host Inter font. Nav shows new pages as they ship.
-12. **P2 acceptance** (REQUIREMENTS §6) as e2e: Neina signup → key → overlap filters (no hidden titles in network JSON) → private = Busy → revoke → 404 on every Jeremy private-module id.
-
-Then Stage C (Cloudflare Tunnel) so Neina can log in from her device.
+1. DEPLOYMENT Stage B: homelab Docker + backups. Then Stage C (Cloudflare Tunnel) so Neina can sign up from her device.
+2. Self-host Inter (Google Fonts is the only outside call).
+3. Places → Lists → People → Ideas → Workouts (REQUIREMENTS §4.6–4.10).
+4. Search page (FTS index already built on import).
+5. Settings > Import UI.
+6. Sharing extras if wanted: edit grants (FR-S16/S18), planner lanes "Me | name" (FR-S12), read-only partner card on `/item/[id]`.
 
 ## Open owner decisions (REVIEW.md "Open")
 
-Type oddities to retype, duplicate places to merge, 4 stale "doing" items, movies in Date ideas, missing place data, undrawn wireframes (setup/settings/import — built plain, fine).
+Type oddities to retype, duplicate places to merge, 4 stale "doing" items, movies in Date ideas, missing place data.
