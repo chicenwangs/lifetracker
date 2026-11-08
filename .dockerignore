@@ -1,11 +1,16 @@
+# build context = repo root. Only app/ source goes in. Never personal data.
 **/node_modules
+**/.svelte-kit
 app/build
-app/.svelte-kit
-data/app.db*
-data/backups
-data/notion-raw
+app/test-results
+app/playwright-report
+data
 .env*
+**/.env
 .git
+.github
 wireframes
 docs
-test-results
+scripts
+*.db
+*.db-*

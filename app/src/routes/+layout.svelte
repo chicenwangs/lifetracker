@@ -1,4 +1,5 @@
 <script lang="ts">
+	import '@fontsource-variable/inter';
 	import '../app.css';
 	import { closePeek, peek } from '$lib/client/peek.svelte';
 	import AppHeader from '$lib/components/AppHeader.svelte';

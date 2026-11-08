@@ -29,9 +29,9 @@ No Tailwind. Plain CSS + tokens (sec 9).
 
 ```
 life-tracker/                repo root = Docker build context
-  .env.example               dev template      .env.prod.example  prod template (NOT made yet: copy block in DEPLOYMENT §0)
+  .env.example               dev template      deploy/.env.example  prod template
   .gitignore .dockerignore   (root, see DEPLOYMENT)
-  docker-compose.yml
+  deploy/compose.yaml  deploy/backup.sh  deploy/restore.sh  .github/workflows/{ci,release}.yml
   docs/                      REQUIREMENTS / TECHNICAL / DEPLOYMENT / REVIEW
   data/
     notion-raw/              Notion export (psv + json). Source for transform

@@ -1,3 +1,5 @@
+> Rev 2026-11-08: P2 module stubs (places, lists, people, ideas, workouts, search, ics, invites) removed from the app. Tree below is the original plan.
+
 # Life Tracker — STRUCTURE
 
 Full file tree. Every file = pseudocode only (no real logic yet). Phase 1 fills them.
@@ -9,7 +11,7 @@ Specs in `docs/`, `scripts/transform_notion.py` and `wireframes/` came from your
 ```
 .dockerignore
 .env.example
-.env.prod.example
+deploy/.env.example
 .gitignore
 app
   .prettierrc
@@ -303,10 +305,10 @@ app
       time.test.ts
   tsconfig.json
   vite.config.ts
-backup.sh
+deploy/backup.sh deploy/restore.sh
 data
   .gitkeep
-docker-compose.yml
+deploy/compose.yaml
 docs
 scripts
   .gitkeep

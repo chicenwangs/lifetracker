@@ -14,11 +14,22 @@ export const init: ServerInit = async () => {
 	setHandle(h);
 	purgeAll();
 	setInterval(() => purgeAll(), 3_600_000).unref();
-	console.log(`[boot] db ready, origin=${e.ORIGIN}, secureCookies=${e.secureCookies}`);
+	// adapter-node emits this after SIGTERM/SIGINT once in-flight requests finish: close SQLite cleanly (WAL checkpoint)
+	process.once('sveltekit:shutdown' as NodeJS.Signals, () => {
+		try {
+			h.sqlite.close();
+			console.log('[shutdown] db closed');
+		} catch {
+			/* already closed */
+		}
+	});
+	console.log(
+		`[boot] v${process.env.APP_VERSION ?? 'dev'} db ready, origin=${e.ORIGIN}, secureCookies=${e.secureCookies}, proxyHeader=${e.ADDRESS_HEADER ?? 'none'}`,
+	);
 };
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-const PUBLIC = [/^\/login\/?$/, /^\/signup\/?$/, /^\/setup\/?$/, /^\/healthz\/?$/, /^\/cal\/[^/]+\.ics$/];
+const PUBLIC = [/^\/login\/?$/, /^\/signup\/?$/, /^\/setup\/?$/, /^\/healthz\/?$/];
 const isPublic = (p: string) => PUBLIC.some((r) => r.test(p));
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -26,8 +37,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
 	const api = path.startsWith('/api/');
 
-	// 1 proxy: behind tunnel, header must exist (fail closed)
-	if (e.ADDRESS_HEADER && !event.request.headers.get(e.ADDRESS_HEADER)) {
+	// 1 proxy: behind tunnel, header must exist (fail closed). /healthz exempt: the container's own
+	// HEALTHCHECK calls 127.0.0.1 without the tunnel header, and it returns nothing private.
+	if (e.ADDRESS_HEADER && path !== '/healthz' && !event.request.headers.get(e.ADDRESS_HEADER)) {
 		return new Response('Bad request', { status: 400 });
 	}
 

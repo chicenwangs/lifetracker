@@ -25,6 +25,11 @@
 				class:on={page.url.pathname === '/settings/users'}
 				aria-current={page.url.pathname === '/settings/users' ? 'page' : undefined}>Users</a
 			>
+			<a
+				href="/settings/import"
+				class:on={page.url.pathname === '/settings/import'}
+				aria-current={page.url.pathname === '/settings/import' ? 'page' : undefined}>Import</a
+			>
 		{/if}
 		<a href="/trash" class:on={page.url.pathname === '/trash'}>Trash</a>
 	</nav>
