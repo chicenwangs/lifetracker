@@ -36,11 +36,11 @@ No public sign-up. Ever.
 
 ## 3. Priorities
 
-- **P1** = core daily loop + auth + import. Desktop only.
-- **P2** = sharing + overlap + side modules + search + invites UI.
-- **P3** = automation, mobile, PWA, nice.
-
-P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 module data; P2 UI shows it later.
+Rev 2026-11-08 (owner):
+- **P1** = core daily loop + auth + import. Desktop only. Done.
+- **P2** = ship + test with real users. Order: homelab Docker (DEPLOYMENT B) → Cloudflare Tunnel (C) → only then invite users → test the core loop + sharing together, fix what that finds.
+- **Not in this app:** Places, Lists, People, Ideas, Workouts (§4.6–4.10). If built, each is its own service on its own subdomain. Sections kept as reference only. Import still loads their data; nothing shows it.
+- **P3** = search, calendar feed, automation, mobile, PWA.
 
 ## 4. Functional requirements
 
@@ -117,7 +117,7 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 - FR-S17 Private items ("Keep secret") always Busy to every grantee. Items made by "Plan it" from People default to private (surprise gifts stay secret).
 - FR-S18 (deferred: grants are view-only) Edit grant can: cycle status, move date/time, move/resize blocks, rename. Cannot: create in owner calendar, delete, change type/notes/private.
 
-### 4.6 Places (P2)
+### 4.6 Places (moved out: separate service, reference only)
 
 - FR-P1 Filters sidebar + table (`DesktopPlaces.dc.html`).
 - FR-P2 Fields: name, city, areas[], cuisines[], open_when[] (Morning | Night | All Day), closed_on[] (Mon..Sun), halal, visited, approved (Notion Stamp of Approval, own flag), rating 1–5 or empty (none imported), notes, last_visited.
@@ -127,7 +127,7 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 - FR-P6 Inline star rating (radio group). "Been here" button → visited + last_visited today.
 - FR-P7 Duplicate warning on add/rename (same city, case-insensitive, cafe≈kafe).
 
-### 4.7 Lists (P2)
+### 4.7 Lists (moved out: separate service, reference only)
 
 - FR-L1 Sidebar of lists + checklist (`DesktopLists.dc.html`).
 - FR-L2 Generic lists. Imported: Watchlist 6, Date ideas 14, Games to play 33, Soundtrack inspiration 26, chicenwangs2 rules 2.
@@ -135,7 +135,7 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 - FR-L4 "Plan as a date" → Dating item on picked date; list item links it.
 - FR-L5 Drag reorder lists + items. New, rename, delete (confirm).
 
-### 4.8 People (P2)
+### 4.8 People (moved out: separate service, reference only)
 
 - FR-PE1 Person page with category cards: likes, info, hates, wants, bucket list, misc (`DesktopPeople.dc.html`).
 - FR-PE2 Facts add/edit/delete.
@@ -143,14 +143,14 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 - FR-PE4 Side panel: own Dating items done (newest first) + Date ideas list preview.
 - FR-PE5 Private (FR-S15).
 
-### 4.9 Ideas (P2)
+### 4.9 Ideas (moved out: separate service, reference only)
 
 - FR-ID1 Board (`DesktopIdeas.dc.html`): Idea, Filmed, Edited, Posted. Drag between + reorder; keyboard move buttons.
 - FR-ID2 Channel filter All | chicenwangs | chicenwangs2. Neutral channel tags (not Type colours).
 - FR-ID3 Warn (not block) when chicenwangs2 title > 70 chars.
 - FR-ID4 Dump box adds to Idea column, current channel.
 
-### 4.10 Workouts (P2)
+### 4.10 Workouts (moved out: separate service, reference only)
 
 - FR-W1 Split table weekday → exercises (`DesktopWorkouts.dc.html`). Edit split.
 - FR-W2 Log: date, exercise, kg, effort (light|moderate|heavy), optional sets, reps.
@@ -162,7 +162,7 @@ P1 done and used daily 1 week before P2. Import (P1) loads ALL tables incl. P2 m
 
 - Goals and Courses were removed from the app. DB tables `goals`, `courses` and `items.course_id` are kept dormant (data untouched); seed import ignores them.
 
-### 4.12 Search (P2)
+### 4.12 Search (P3)
 
 - FR-SR1 One box. Own item titles+notes, places, list items, facts, ideas. Grouped results.
 
@@ -206,13 +206,15 @@ P1:
 - [x] Quick add `ds quiz fri 2pm /exam /calendar` → Exam item, Fri 14:00 (next Fri if past). `drive tommorow 6:07pm to 8pm` → planner block only 18:00–20:00. `/both` → item + linked block.
 - [ ] reset-password script works.
 
-P2:
-- [ ] Invite → Neina signs up. Jeremy key (view, Dating+Event, hidden Busy) → Neina redeems → overlap shows Jeremy Dating/Event titles, other types "Busy", no notes; hidden titles absent from network JSON.
+P2 (on the tunnel URL, real devices):
+- [ ] Homelab: `docker compose up -d` → /setup → import → app survives reboot. Nightly backup restores.
+- [ ] Tunnel: https://lt.<domain> works, `__Host-lt_session` Secure cookie, no LAN port open.
+- [ ] Neina makes her own account on her device. Jeremy code (Dating+Event, rest Busy) → Neina enters it → overlap shows Jeremy Dating/Event titles, other types "Busy", no notes; hidden titles absent from network JSON. Then mutual.
 - [ ] Private item shows Busy even if Type visible.
 - [ ] Overlap toggle persists across reload + devices.
 - [ ] Revoke → access gone next request. Re-redeem new key → access back.
-- [ ] Neina gets 404 on every Jeremy places/lists/people/ideas/workouts id.
-- [ ] Places filters, open now (incl. after midnight), pick random.
+- [ ] Neina gets 404 on every Jeremy item/block id (open, edit, delete).
+- [ ] One week of both using the core loop daily; issues logged and fixed.
 
 P3:
 - [ ] .ics feed loads in Google Calendar. Rotate kills old URL.
@@ -220,4 +222,4 @@ P3:
 
 ## 7. Out of scope (v1)
 
-Public sign-up, OAuth, email, push, sharing non-calendar modules, real-time sync (60 s poll ok), Notion page body text, native app, multi-timezone couples (both users KL; per-user tz stored for later).
+OAuth, email, push, sharing non-calendar modules, real-time sync (60 s poll ok), Notion page body text, native app, multi-timezone couples (both users KL; per-user tz stored for later).

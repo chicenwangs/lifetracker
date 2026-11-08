@@ -31,18 +31,20 @@ Caveman doc. State as of 2026-11-08. Repo `github.com/chicenwangs/lifetracker` (
 | Pages | `/` `/week` `/item/[id]` `/trash` `/settings/{account,preferences,sessions,sharing,users}` |
 | API | `/api/{calendar,items,blocks,trash,unscheduled,quickadd,me/prefs,share-keys,share-keys/redeem,grants}` |
 
-Still pseudocode stubs: `ics.ts`, `places-logic.ts`, `workouts-logic.ts`, repo `places/lists/people/ideas/workouts`, those routes + APIs, `/settings/{invites,import}` pages, `/search` page.
+Parked pseudocode stubs (not planned in this app): `places-logic.ts`, `workouts-logic.ts`, repo `places/lists/people/ideas/workouts`, those routes + APIs. Later: `ics.ts`, `/search`, `/settings/{invites,import}`.
 
 Dormant (data kept, no code uses it): DB tables `goals`, `courses`, column `items.course_id`. A drop migration needs an `items` rebuild (FK).
 
-## Next (order)
+## Next (plan rev 2026-11-08)
 
-1. DEPLOYMENT Stage B: homelab Docker + backups. Then Stage C (Cloudflare Tunnel) so Neina can sign up from her device.
-2. Self-host Inter (Google Fonts is the only outside call).
-3. Places → Lists → People → Ideas → Workouts (REQUIREMENTS §4.6–4.10).
-4. Search page (FTS index already built on import).
-5. Settings > Import UI.
-6. Sharing extras if wanted: edit grants (FR-S16/S18), planner lanes "Me | name" (FR-S12), read-only partner card on `/item/[id]`.
+Ship first, users after. No new modules.
+
+1. **Stage B, homelab:** Docker compose on Ubuntu, /setup, import, nightly backup + test restore (DEPLOYMENT B).
+2. **Stage C, Cloudflare Tunnel:** `lt.<domain>`, no LAN port (DEPLOYMENT C). Self-host Inter before going public.
+3. **Then involve users:** Neina signs up on her device, swap share codes. Switch sign-up to Invite only once everyone is in.
+4. **Test the core loop + sharing together** for about a week on real devices. Log issues, fix them. P2 acceptance in REQUIREMENTS §6.
+
+Out of this app: Places, Lists, People, Ideas, Workouts. If built, each is its own service on its own subdomain (`places.<domain>` etc.). Their stubs stay parked in the repo; import still loads their data. Search, calendar feed, edit grants, planner lanes = later (P3).
 
 ## Open owner decisions (REVIEW.md "Open")
 

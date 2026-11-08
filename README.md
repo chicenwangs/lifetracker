@@ -17,9 +17,9 @@ Start here (Claude: read all before coding):
 | `data/` | Personal data (Notion raw + seed + app.db). **Gitignored. Never push.** |
 | `scripts/transform_notion.py` | raw → seed. |
 | `wireframes/` | Design canvas copies. |
-| `app/` | SvelteKit app. Core built. Places/Lists/People/Ideas/Workouts still pseudocode. |
+| `app/` | SvelteKit app: calendar, planner, quick add, sharing. Places/Lists/People/Ideas/Workouts parked (separate services later). |
 | `.env.example` / `.env.prod.example` | dev → `app/.env`; prod → root `.env`. |
 
-Status 2026-11-08: core built (auth + open sign-up, home month + planner, week, item, quick add, import, settings, calendar sharing by code). Goals and Courses removed. 237 unit + 14 e2e pass. Next: homelab deploy (Stage B), then P2 modules.
+Status 2026-11-08: core built (auth + open sign-up, home month + planner, week, item, quick add, import, settings, calendar sharing by code). Goals and Courses removed. 237 unit + 14 e2e pass. Next: homelab (Stage B) → Cloudflare Tunnel (C) → invite users → test core loop + sharing.
 
 Repo private.
