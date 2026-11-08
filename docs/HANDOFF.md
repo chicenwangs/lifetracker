@@ -6,7 +6,8 @@ Caveman doc. State as of 2026-11-08. Repo `github.com/chicenwangs/lifetracker` (
 
 - P1 built and in daily use on Jeremy's PC (Stage A, localhost:5173). Real Notion data imported.
 - Since P1: UX rounds 1–5, Goals + Courses removed, open sign-up, calendar sharing by code (view-only). Details: `P1-NOTES.md`.
-- Tests: 237 unit (`npm run test:unit`), 14 e2e (`npm run test:e2e`). Lint, prettier, svelte-check clean.
+- P2a done (2026-11-08): service shipped (image via GitHub Actions → GHCR, deploy bundle on GitHub Release), whole-app bug review + security review (10 agents each) fixed. Ops contract = `SERVICE-HANDOFF.md`. Tag `v1.0.0` not pushed yet.
+- Tests: 258 unit (`npm run test:unit`), 14 e2e (`npm run test:e2e`). Lint, prettier, svelte-check clean. CI green.
 - When docs disagree: P1-NOTES > TECHNICAL > REQUIREMENTS. TECHNICAL top banner lists the overrides.
 - Read order for coding: README → this → P1-NOTES → REQUIREMENTS → TECHNICAL.
 
@@ -31,7 +32,7 @@ Caveman doc. State as of 2026-11-08. Repo `github.com/chicenwangs/lifetracker` (
 | Pages | `/` `/week` `/item/[id]` `/trash` `/settings/{account,preferences,sessions,sharing,users}` |
 | API | `/api/{calendar,items,blocks,trash,unscheduled,quickadd,me/prefs,share-keys,share-keys/redeem,grants}` |
 
-Parked pseudocode stubs (not planned in this app): `places-logic.ts`, `workouts-logic.ts`, repo `places/lists/people/ideas/workouts`, those routes + APIs. Later: `ics.ts`, `/search`, `/settings/{invites,import}`.
+Parked module stubs removed in P2a (tables kept). `/settings/import` = admin Notion import from `SEED_DIR`. Later: calendar feed, `/search`.
 
 Dormant (data kept, no code uses it): DB tables `goals`, `courses`, column `items.course_id`. A drop migration needs an `items` rebuild (FK).
 
@@ -39,7 +40,7 @@ Dormant (data kept, no code uses it): DB tables `goals`, `courses`, column `item
 
 Ship as a service first, users after. No new modules. Domain `planner.jeremyjosh.org`.
 
-**P2a, this repo (dev chat): make it a deployable service**
+**P2a, this repo (dev chat): make it a deployable service — DONE**
 1. Strip parked module stubs (places/lists/people/ideas/workouts routes, APIs, nav). Keep their tables + import.
 2. Self-host Inter (no outside calls at runtime).
 3. Prod readiness: image builds and runs from a clean checkout, migrations on boot, `/healthz`, env checked at start, logs to stdout, graceful stop, Secure cookie + real client IP behind the tunnel (`ADDRESS_HEADER=CF-Connecting-IP`), `/setup` only with `SETUP_TOKEN`.
