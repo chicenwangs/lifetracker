@@ -6,7 +6,8 @@
 	const html = $derived(
 		DOMPurify.sanitize(marked.parse(source, { async: false, gfm: true, breaks: true }) as string, {
 			USE_PROFILES: { html: true },
-			FORBID_TAGS: ['style', 'form', 'input', 'img'],
+			FORBID_TAGS: ['style', 'form', 'input', 'img', 'button', 'base', 'link', 'meta', 'object', 'embed'],
+			FORBID_ATTR: ['style'], // no full-screen overlays from note HTML
 		}),
 	);
 </script>

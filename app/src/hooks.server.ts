@@ -71,6 +71,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	// 5 headers (CSP comes from kit.csp)
 	res.headers.set('Referrer-Policy', 'same-origin');
 	res.headers.set('X-Content-Type-Options', 'nosniff');
+	res.headers.set('X-Frame-Options', 'DENY');
 	res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 	if (event.locals.user) res.headers.set('Cache-Control', 'private, no-store');
 	return res;
