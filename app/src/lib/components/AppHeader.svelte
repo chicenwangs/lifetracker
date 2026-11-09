@@ -110,6 +110,14 @@
 		z-index: 20;
 		background: transparent;
 		border-bottom: 0;
+	}
+	/* blur lives on a layer behind the header: a backdrop-filter on .hdr itself would make it the
+	   containing block for position:fixed children and trap the quick-add overlay inside the header */
+	.hdr::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: -1;
 		-webkit-backdrop-filter: blur(14px);
 		backdrop-filter: blur(14px);
 	}

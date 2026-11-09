@@ -4,15 +4,17 @@ import { api, body, me } from '$lib/server/http';
 import { quickAdd } from '$lib/server/quickadd-server';
 import { isDate } from '$lib/time';
 
-// slot = range dragged on a timeline (planner / week). Typed day/time in `text` still wins.
+// slot = range dragged on a timeline (planner / week), or a month day (`day`: no time, start/end ignored).
+// Typed day/time in `text` still wins.
 const slotSchema = z
 	.object({
 		date: z.string().refine(isDate, 'bad date'),
 		start: z.number().int().min(0).max(1439),
-		end: z.number().int().min(1).max(2880),
+		end: z.number().int().min(0).max(2880),
+		day: z.literal(true).optional(),
 	})
 	.strict()
-	.refine((s) => s.end > s.start, 'end must be after start')
+	.refine((s) => s.day || s.end > s.start, 'end must be after start')
 	.refine((s) => s.end - s.start <= 1440, 'slot can be at most 24 h');
 
 export const POST = api(async (e) => {

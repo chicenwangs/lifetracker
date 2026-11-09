@@ -31,7 +31,7 @@
 	}: {
 		value?: string;
 		ctx: QAContext;
-		slotted?: boolean;
+		slotted?: boolean | 'day';
 		size?: 'lg' | 'sm';
 		label?: string;
 		placeholder?: string;
@@ -183,7 +183,9 @@
 				</div>
 			{/each}
 			<div class="mfoot">
-				{#if slotted}
+				{#if slotted === 'day'}
+					Add a time and <code>/both</code> to block it too: <code>3pm to 5pm</code> <code>/both</code>
+				{:else if slotted}
 					Type a day or time to change the dragged one: <code>fri</code> <code>3pm to 5pm</code>
 				{:else}
 					Days and times need no slash: <code>fri</code> <code>next mon</code> <code>10 nov</code>

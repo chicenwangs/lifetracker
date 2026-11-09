@@ -84,3 +84,22 @@ Clean (no change needed): seed = raw Notion (412 rows accounted, no School type,
 | Wireframe mobile | Drawn before your rules: "School / Personal / Relationship" legend, "Deadline" kind, "Area: School", dots, round + 3-segment status, old blues, fake ratings, wrong list counts | Types only, Exam, colour blocks, one square ▶/✓ button, real counts (local files) |
 | By design | Login "Sign in" is a link (prototype click-through); real app = submit button | no change |
 
+
+## Audit 2026-11-09 (after theme + motion)
+
+Scope: whole app (server, API, UI, build, deps). Tools: eslint, svelte-check, `npm audit`, unit 260, e2e 15 (repeated), browser screenshots both themes.
+
+Fixed in PR "month double-click + quick-add fix":
+- **High, quick add trapped in header.** Header `backdrop-filter` (theme PR) made `.hdr` the containing block for `position: fixed` children, so the N overlay only filled the header strip. Blur moved to `.hdr::before`. e2e now checks the overlay is full height.
+- **Feature: double-click a month day** opens the same command box as a Week drag. Day-only slot (`slot.day`): no time taken from the slot, defaults to `/calendar`, Event type (N-palette default); typed time + `/both` or `/planner` adds a block. API schema accepts `day: true`.
+
+Open (not fixed):
+- Medium: Exam chip white on #C6534D = 4.4:1, just under AA for 12 px text. #B84A44 = 5.1:1.
+- Medium: e2e flaked once in ~6 runs (one test, passed on rerun, name not captured). Next time: `npx playwright test --repeat-each=5 --trace=retain-on-failure`.
+- Low: month double-click is mouse-only. Keyboard path stays the N palette.
+- Low: majors available (SvelteKit 3, FullCalendar 7, better-sqlite3 13, TypeScript 7). Pins are on purpose (Windows prebuilds); `npm audit` = 0.
+- Low: CSP keeps `style-src 'unsafe-inline'` (Svelte `style:` directives need it). Scripts stay `self` only.
+- Low: Ink badge colour (#1C1917) is near-black on dark navy; ring keeps it visible.
+- Docs: REQUIREMENTS still names removed wireframe boards (DesktopPlaces/Lists/People/Ideas/Workouts).
+
+Checked, fine: Origin check on every non-GET; session cookie httpOnly + SameSite=Lax + Secure in prod; login guard on all non-public routes; `mustOwn` on every item/block read/write (parent + linked item too); share filtering server-side only (busy ids HMAC'd); notes rendered via marked → DOMPurify (owner-only content); innerHTML only for constant SVGs; timers/listeners cleaned up on unmount; container runs as `node`; CSP + X-Frame-Options DENY.

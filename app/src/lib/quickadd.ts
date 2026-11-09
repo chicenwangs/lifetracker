@@ -21,6 +21,8 @@ export interface QASlot {
 	date: string; // local YYYY-MM-DD
 	start: number; // minutes from 00:00
 	end: number; // minutes from the start day's 00:00 (> 1440 = next day)
+	/** day only (month cell double-click): no time from the slot, defaults to the calendar */
+	day?: boolean;
 }
 export type QATarget = 'planner' | 'calendar' | 'both';
 export interface QAParse {
@@ -713,7 +715,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	let start = th && !allDay ? th.start : null;
 	let end = th && !allDay ? th.end : null;
 	if (start !== null && end === null && dur !== null) end = start + dur;
-	const fromSlot = start === null && !allDay && !!ctx.slot;
+	const fromSlot = start === null && !allDay && !!ctx.slot && !ctx.slot.day;
 	if (fromSlot && ctx.slot) {
 		start = ctx.slot.start;
 		end = ctx.slot.end;
@@ -747,9 +749,11 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	}
 
 	// --- where it goes ---
-	let target: QATarget = 'planner';
+	// a month day (no time) defaults to the calendar; everything else to the planner
+	let target: QATarget = ctx.slot?.day ? 'calendar' : 'planner';
 	if (targets.has('both') || (targets.has('calendar') && targets.has('planner'))) target = 'both';
 	else if (targets.has('calendar')) target = 'calendar';
+	else if (targets.has('planner')) target = 'planner';
 	const makesBlock = target !== 'calendar';
 
 	let endNextDay = false;
@@ -859,11 +863,13 @@ export function optionsFor(token: string): QAOption[] {
 }
 
 /** Grey ghost text after the cursor: rest of an option being typed, else the slots still missing. */
-export function ghostHint(text: string, p: QAParse, slotted = false): string {
+export function ghostHint(text: string, p: QAParse, slotted: boolean | 'day' = false): string {
 	if (!text)
-		return slotted
-			? 'title   optional: /type  /calendar'
-			: 'title  day  time   optional: /type  /calendar or /both';
+		return slotted === 'day'
+			? 'title   optional: time  /type  /both'
+			: slotted
+				? 'title   optional: /type  /calendar'
+				: 'title  day  time   optional: /type  /calendar or /both';
 	const tok = activeOptionToken(text);
 	if (tok) {
 		if (tok.length < 2) return '';
@@ -875,7 +881,7 @@ export function ghostHint(text: string, p: QAParse, slotted = false): string {
 	if (!p.dateSet && !slotted) missing.push('day');
 	if (p.time === null && !slotted) missing.push('time');
 	if (!p.typeSet) missing.push('/type');
-	if (!p.targetSet) missing.push('/calendar or /both');
+	if (!p.targetSet) missing.push(slotted === 'day' ? '/both' : '/calendar or /both');
 	if (!missing.length) return '';
 	return (text.endsWith(' ') ? ' ' : '  ') + missing.join('  ');
 }

@@ -483,6 +483,29 @@ test('open sign-up + swap share codes: partner calendar read-only, hidden types 
 	await n.context().close();
 });
 
+test('month: double-click a day opens the add box; N palette covers the whole screen', async () => {
+	await page.goto('/');
+	const d = plusDay(await today(), 2);
+	const cell = page.locator(`.fc-daygrid-day[data-date="${d}"]`);
+	await cell.locator('.fc-daygrid-day-top').dblclick();
+	const box = page.locator('.slotpop .lt-slotcmd input');
+	await expect(box).toBeFocused();
+	await expect(page.locator('.slotpop')).toContainText('all day');
+	await box.fill('Picnic dblclick');
+	await page.keyboard.press('Enter');
+	await expect(page.locator('.slotpop')).toHaveCount(0);
+	await expect(cell.locator('.lt-chip', { hasText: 'Picnic dblclick' })).toBeVisible();
+	await expect(cell.locator('.lt-chip', { hasText: 'Picnic dblclick' })).toHaveClass(/t-event/);
+	// quick add overlay is full screen (not trapped in the header)
+	await page.keyboard.press('n');
+	const scrim = page.locator('.scrim');
+	await expect(scrim).toBeVisible();
+	const sb = (await scrim.boundingBox())!;
+	expect(sb.height).toBeGreaterThan(600);
+	await page.keyboard.press('Escape');
+	await expect(scrim).toHaveCount(0);
+});
+
 test('theme: dark by default, toggle persists on server', async () => {
 	await page.goto('/');
 	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');

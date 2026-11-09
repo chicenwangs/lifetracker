@@ -4,10 +4,19 @@
 	import { Calendar, type EventInput } from '@fullcalendar/core';
 	import dayGridPlugin from '@fullcalendar/daygrid';
 	import interactionPlugin from '@fullcalendar/interaction';
-	import { examCountdown, fcDropToItem, itemToFc, makeDate, monthLabel, prettyTime } from '$lib/time';
+	import {
+		examCountdown,
+		fcDropToItem,
+		itemToFc,
+		makeDate,
+		monthLabel,
+		prettyDate,
+		prettyTime,
+	} from '$lib/time';
 	import { colorsFor, typeClass } from '$lib/colors';
 	import { badge, entryColors, theirClasses } from '$lib/client/partner';
 	import OverlapToggle from './OverlapToggle.svelte';
+	import SlotCommand from './SlotCommand.svelte';
 	import type { ItemDTO, Status } from '$lib/types';
 
 	let {
@@ -180,6 +189,17 @@
 				return [s === today ? 'lt-today' : '', s === selected ? 'lt-sel' : ''].filter(Boolean);
 			},
 			dateClick: (a) => onpick(a.dateStr),
+			dayCellDidMount: (a) => {
+				const d = a.date;
+				const s = makeDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+				if (a.el.dataset.ltDbl) return; // one listener per cell, even if FullCalendar re-mounts it
+				a.el.dataset.ltDbl = '1';
+				a.el.addEventListener('dblclick', (ev) => {
+					// chips, squares, delete and "+more" keep their own clicks
+					if ((ev.target as HTMLElement).closest('.fc-event, .fc-daygrid-more-link, .fc-popover')) return;
+					openDay(s, a.el, ev);
+				});
+			},
 			eventDrop: async (info) => {
 				const it = info.event.extendedProps.item as ItemDTO;
 				const { date, endDate } = fcDropToItem(it, info.event.startStr);
@@ -199,6 +219,31 @@
 		});
 		cal.render();
 	});
+
+	// ---------- double-click a day -> command box (like dragging empty time on Week) ----------
+	let slot = $state<{ key: number; date: string; x: number; y: number } | null>(null);
+	let slotSeq = 0;
+	let slotCell: HTMLElement | null = null;
+	function openDay(date: string, cell: HTMLElement, ev: MouseEvent) {
+		window.getSelection()?.removeAllRanges();
+		slotCell?.classList.remove('lt-adding');
+		slotCell = cell;
+		cell.classList.add('lt-adding');
+		const W = 340;
+		const H = 140;
+		slot = {
+			key: ++slotSeq,
+			date,
+			x: Math.max(12, Math.min(ev.clientX + 12, window.innerWidth - W - 12)),
+			y: Math.max(12, Math.min(ev.clientY + 12, window.innerHeight - H - 12)),
+		};
+	}
+	function closeDay() {
+		slotCell?.classList.remove('lt-adding');
+		slotCell = null;
+		slot = null;
+	}
+	const dayLabel = (d: string) => prettyDate(d).split(' ').slice(0, 3).join(' ');
 
 	onDestroy(() => cal?.destroy());
 
@@ -270,9 +315,29 @@
 	<div class="grid" bind:this={el}></div>
 	<div class="foot">
 		Square: empty = not started · ▶ = in progress · ✓ = done · drag an item to another day to move it · drag
-		it onto the planner to block time
+		it onto the planner to block time · double-click a day to add
 	</div>
 </section>
+
+{#if slot}
+	<div
+		class="slotpop card"
+		style:left="{slot.x}px"
+		style:top="{slot.y}px"
+		role="dialog"
+		tabindex="-1"
+		aria-label="New entry"
+		onkeydown={(e) => e.key === 'Escape' && closeDay()}
+	>
+		<div class="sp-h">
+			<span>{dayLabel(slot.date)} · all day</span>
+			<button type="button" class="x" aria-label="Cancel" onclick={closeDay}>×</button>
+		</div>
+		{#key slot.key}
+			<SlotCommand date={slot.date} day ondone={closeDay} oncancel={closeDay} />
+		{/key}
+	</div>
+{/if}
 
 <style>
 	.cal {
@@ -528,5 +593,42 @@
 	.round:active {
 		transform: translate(-2px, 2px);
 		box-shadow: 0 0 0 var(--accent);
+	}
+
+	/* double-click a day: same popup as the Week page */
+	.slotpop {
+		position: fixed;
+		z-index: 60;
+		width: 340px;
+		padding: 10px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		border: 1.5px dashed var(--ink);
+		box-shadow: var(--shadow-card);
+		animation: lt-pop 160ms var(--ease) both;
+		transform-origin: top left;
+	}
+	.sp-h {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--quiet);
+	}
+	.x {
+		border: 0;
+		background: none;
+		color: var(--quiet);
+		font-size: 18px;
+		line-height: 1;
+		cursor: pointer;
+		padding: 0 4px;
+	}
+	.grid :global(.lt-adding) {
+		outline: 1.5px dashed var(--ink);
+		outline-offset: -3px;
+		background: color-mix(in srgb, var(--pill-card) 35%, transparent);
 	}
 </style>

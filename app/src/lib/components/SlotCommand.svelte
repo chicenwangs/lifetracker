@@ -1,5 +1,6 @@
 <!--
-  Command box for a range dragged on a timeline (planner or week).
+  Command box for a range dragged on a timeline (planner or week), or a month day (`day`: no time,
+  defaults to the calendar).
   Same grammar as the N palette. The dragged day/time is used unless you type one.
   Default goes to the planner only; Calendar / Both are one click (or /calendar, /both).
 -->
@@ -14,16 +15,18 @@
 
 	let {
 		date,
-		start,
-		end,
+		start = 0,
+		end = 0,
+		day = false,
 		autofocus = true,
 		onparsed,
 		ondone,
 		oncancel,
 	}: {
 		date: string;
-		start: number;
-		end: number;
+		start?: number;
+		end?: number;
+		day?: boolean;
 		autofocus?: boolean;
 		onparsed?: (p: QAParse) => void;
 		ondone: () => void;
@@ -39,7 +42,7 @@
 	const ctx = $derived({
 		today: todayLocal(tz),
 		nowMinutes: nowLocalMinutes(tz),
-		slot: { date, start, end },
+		slot: day ? { date, start: 0, end: 0, day: true } : { date, start, end },
 	});
 	const parsed = $derived(parseQuickAdd(text, ctx));
 	$effect(() => {
@@ -71,7 +74,10 @@
 			const r = await post<{
 				item: { id: string; title: string } | null;
 				block: { id: string; label: string } | null;
-			}>('/api/quickadd', { text: text.trim(), slot: { date, start, end } });
+			}>('/api/quickadd', {
+				text: text.trim(),
+				slot: day ? { date, start: 0, end: 0, day: true } : { date, start, end },
+			});
 			const path = r.item ? `/api/items/${r.item.id}` : `/api/blocks/${r.block?.id ?? ''}`;
 			const name = r.item?.title ?? r.block?.label ?? parsed.title;
 			const where =
@@ -101,7 +107,7 @@
 		bind:this={cmd}
 		bind:value={text}
 		{ctx}
-		slotted
+		slotted={day ? 'day' : true}
 		size="sm"
 		label="New entry. Type a title, options like /hobby or /calendar"
 		{autofocus}
