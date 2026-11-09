@@ -65,4 +65,8 @@
 		padding: 0 2px;
 		color: inherit;
 	}
+
+	.toast {
+		animation: lt-rise 240ms var(--ease) both;
+	}
 </style>

@@ -209,4 +209,50 @@
 		text-decoration: none;
 		background: var(--hover);
 	}
+
+	/* motion */
+	.theme,
+	.avatar {
+		transition:
+			transform var(--t-fast) var(--ease),
+			box-shadow var(--t-fast) var(--ease),
+			background-color var(--t) var(--ease);
+	}
+	.theme:hover,
+	.avatar:hover {
+		transform: translate(1px, -1px);
+		box-shadow: -3px 3px 0 var(--accent);
+	}
+	.theme:active,
+	.avatar:active {
+		transform: translate(-2px, 2px);
+		box-shadow: 0 0 0 var(--accent);
+	}
+
+	.menu {
+		animation: lt-pop 160ms var(--ease) both;
+		transform-origin: top right;
+	}
+
+	nav a {
+		transition:
+			background-color var(--t) var(--ease),
+			border-color var(--t) var(--ease),
+			box-shadow var(--t-fast) var(--ease);
+	}
+	nav a:not(.on):hover {
+		border-color: color-mix(in srgb, var(--border) 35%, transparent);
+	}
+	.theme svg {
+		transition: transform 400ms var(--ease);
+	}
+	.theme:hover svg {
+		transform: rotate(25deg);
+	}
+	.mark {
+		transition: transform var(--t) var(--ease);
+	}
+	.mark:hover {
+		transform: rotate(-6deg) scale(1.06);
+	}
 </style>

@@ -321,4 +321,9 @@
 		border-radius: 4px;
 		padding: 0 4px;
 	}
+
+	.menu {
+		animation: lt-pop 160ms var(--ease) both;
+		transform-origin: top left;
+	}
 </style>

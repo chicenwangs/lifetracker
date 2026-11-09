@@ -796,4 +796,35 @@
 		color: var(--quiet);
 		border-top: 1px solid var(--rule);
 	}
+
+	/* motion */
+	.round {
+		transition:
+			transform var(--t-fast) var(--ease),
+			box-shadow var(--t-fast) var(--ease),
+			background-color var(--t) var(--ease);
+	}
+	.round:hover {
+		transform: translate(1px, -1px);
+		box-shadow: -3px 3px 0 var(--accent);
+	}
+	.round:active {
+		transform: translate(-2px, 2px);
+		box-shadow: 0 0 0 var(--accent);
+	}
+
+	.menu {
+		animation: lt-pop 160ms var(--ease) both;
+		transform-origin: top center;
+	}
+
+	.blk {
+		transition: box-shadow var(--t-fast) var(--ease);
+	}
+	.blk:not(.muted):not(.lift):hover {
+		box-shadow: -3px 3px 0 var(--accent);
+	}
+	.now span {
+		animation: lt-ping 2.4s ease-out infinite;
+	}
 </style>

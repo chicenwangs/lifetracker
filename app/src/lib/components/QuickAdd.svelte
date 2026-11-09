@@ -518,4 +518,31 @@
 		color: var(--quiet);
 		border-top: 1px solid var(--rule);
 	}
+
+	/* motion */
+	.opener {
+		transition:
+			transform var(--t-fast) var(--ease),
+			box-shadow var(--t-fast) var(--ease),
+			background-color var(--t) var(--ease);
+	}
+	.opener:hover {
+		transform: translate(1px, -1px);
+		box-shadow: -3px 3px 0 var(--accent);
+	}
+	.opener:active {
+		transform: translate(-2px, 2px);
+		box-shadow: 0 0 0 var(--accent);
+	}
+
+	.scrim {
+		animation: lt-fade 160ms var(--ease) both;
+	}
+	.pal {
+		animation: lt-pop 200ms var(--ease) both;
+		transform-origin: top center;
+	}
+	.log > * {
+		animation: lt-rise 200ms var(--ease) both;
+	}
 </style>

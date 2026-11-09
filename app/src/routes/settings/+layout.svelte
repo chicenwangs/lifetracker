@@ -99,4 +99,8 @@
 		align-items: center;
 		flex-wrap: wrap;
 	}
+
+	.side a {
+		transition: background-color var(--t) var(--ease);
+	}
 </style>

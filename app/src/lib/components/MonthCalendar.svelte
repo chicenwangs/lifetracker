@@ -513,4 +513,20 @@
 	.grid :global(.fc-event-dragging) {
 		box-shadow: 0 6px 16px rgb(0 0 0 / 0.2);
 	}
+
+	/* motion */
+	.round {
+		transition:
+			transform var(--t-fast) var(--ease),
+			box-shadow var(--t-fast) var(--ease),
+			background-color var(--t) var(--ease);
+	}
+	.round:hover {
+		transform: translate(1px, -1px);
+		box-shadow: -3px 3px 0 var(--accent);
+	}
+	.round:active {
+		transform: translate(-2px, 2px);
+		box-shadow: 0 0 0 var(--accent);
+	}
 </style>
