@@ -255,14 +255,14 @@
 		top: calc(100% + 2px);
 		width: 250px;
 		background: var(--raised);
-		border: 1px solid var(--border);
 		border-radius: 10px;
-		box-shadow: 0 8px 24px var(--shadow);
 		padding: 4px;
 		z-index: 20;
 		font-size: 13px;
 		color: var(--ink);
 		cursor: default;
+		border: 1.5px solid var(--card-edge);
+		box-shadow: var(--shadow-card);
 	}
 	.mg {
 		font-size: 11px;

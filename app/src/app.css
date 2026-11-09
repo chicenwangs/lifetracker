@@ -1,50 +1,96 @@
 /* Tokens (TECHNICAL §9). No Tailwind. */
+/* Tokens: theme "gradient C" (docs LIGHT-THEME.md). Light = pastel gradient page, white cards, navy ink,
+   hard yellow shadow bottom-left. Dark = same family flipped: night gradient, navy cards, lilac edges.
+   Type chips are the same pastels in both themes (navy text; Exam = red with white text). No Tailwind. */
 :root {
-	--ground: #f5f5f4;
+	--page:
+		radial-gradient(ellipse 70% 60% at 8% 18%, #f3a2bd 0%, rgb(243 162 189 / 0) 70%),
+		radial-gradient(ellipse 60% 55% at 96% 4%, #f7e7d8 0%, rgb(247 231 216 / 0) 70%),
+		radial-gradient(ellipse 65% 60% at 4% 100%, #c9dae7 0%, rgb(201 218 231 / 0) 72%),
+		radial-gradient(ellipse 70% 65% at 100% 96%, #b6b1d9 0%, rgb(182 177 217 / 0) 72%),
+		linear-gradient(160deg, #f6c9d6 0%, #e8d9e6 50%, #c9c6e3 100%);
+	--page-base: #e8d9e6;
+	--ground: #f3f2fa; /* soft fill: tabs, hover, other-month cells */
 	--card: #ffffff;
 	--raised: #ffffff;
-	--border: #d6d3d1;
-	--rule: #e7e5e4;
-	--ink: #1c1917;
-	--quiet: #57534e;
-	--input: #78716c;
-	--link: #1e3a8a;
+	--border: #00003d; /* controls: buttons, toggles, menus */
+	--card-edge: #00003d;
+	--rule: #e3e4f0;
+	--ink: #00003d;
+	--quiet: #3d3d6b;
+	--input: #00003d;
+	--link: #2b2b8c;
 	--r-card: 14px;
 	--r-btn: 10px;
 	--r-chip: 6px;
 
-	--work-bg: #dbeafe;
-	--work-line: #dbeafe;
-	--work-ink: #1e3a8a;
-	--exam-bg: #fee2e2;
-	--exam-line: #fee2e2;
-	--exam-ink: #7f1d1d;
-	--event-bg: #dcfce7;
-	--event-line: #dcfce7;
-	--event-ink: #14532d;
-	--hobby-bg: #fef3c7;
-	--hobby-line: #fef3c7;
-	--hobby-ink: #713f12;
-	--dating-bg: #fce7f3;
-	--dating-line: #fce7f3;
-	--dating-ink: #831843;
-	--none-bg: #e7e5e4;
-	--none-line: #e7e5e4;
-	--none-ink: #292524;
-	--busy-bg: #e7e5e4;
-	--busy-line: #e7e5e4;
-	--busy-ink: #44403c;
+	--accent: #f3d053; /* hard shadow */
+	--shadow-card: -6px 6px 0 var(--accent);
+	--shadow-btn: -2px 2px 0 var(--accent);
+	--strip-a: #ced3ee; /* month / week bar, item header */
+	--strip-b: #d3eece; /* planner + previews */
+	--strip-c: #eecfd4; /* week map */
+	--strip-ink: #00003d;
+	--pill: #ffffff; /* active nav pill on the page */
+	--pill-ink: #00003d;
+	--pill-card: #ced3ee; /* active pill / chosen tile on a card */
+	--seg-on: #00003d; /* segmented toggle on */
+	--seg-on-ink: #ffffff;
+	--primary: #00003d;
+	--primary-ink: #ffffff;
+	--primary-hover: #1a1a5c;
+	--theme-btn: #faedb8;
+	--theme-ink: #00003d;
+	--today: #00003d;
+	--today-ink: #ffffff;
+	--toast: #00003d;
+	--toast-ink: #ffffff;
+	--danger: #a83a35;
+	--alert-bg: #fbe3e1;
+	--alert-ink: #8e2b26;
+	--ok-bg: #d3eece;
+	--ok-ink: #00003d;
+	--heat: #00003d; /* week map fill */
 
-	--on-ink: #ffffff; /* text on ink-filled buttons/squares */
-	--ink-hover: #000000;
-	--hover: #f5f5f4;
-	--band: rgb(0 0 0 / 0.035); /* week hour bands */
-	--today-line: #a8a29e;
-	--faint: #a8a29e;
+	--work-bg: #ced3ee;
+	--work-line: #ced3ee;
+	--work-ink: #00003d;
+	--work-edge: #00003d;
+	--exam-bg: #c6534d;
+	--exam-line: #c6534d;
+	--exam-ink: #ffffff;
+	--exam-edge: #c6534d;
+	--event-bg: #d3eece;
+	--event-line: #d3eece;
+	--event-ink: #00003d;
+	--event-edge: #00003d;
+	--hobby-bg: #faedb8;
+	--hobby-line: #faedb8;
+	--hobby-ink: #00003d;
+	--hobby-edge: #00003d;
+	--dating-bg: #eecfd4;
+	--dating-line: #eecfd4;
+	--dating-ink: #00003d;
+	--dating-edge: #00003d;
+	--none-bg: #e6e7f0;
+	--none-line: #e6e7f0;
+	--none-ink: #00003d;
+	--none-edge: #00003d;
+	--busy-bg: #e6e7f0;
+	--busy-line: #e6e7f0;
+	--busy-ink: #3d3d6b;
+	--busy-edge: #3d3d6b;
+
+	--on-ink: #ffffff; /* text on ink-filled squares */
+	--ink-hover: #1a1a5c;
+	--hover: #f3f2fa;
+	--band: rgb(0 0 61 / 0.035); /* week hour bands */
+	--today-line: #00003d;
+	--faint: #6b6b8f;
 	--field: #ffffff;
-	--now: #1c1917;
-	--shadow: rgb(0 0 0 / 0.12);
-	--scrim: rgb(28 25 23 / 0.28);
+	--now: #00003d;
+	--shadow: rgb(0 0 61 / 0.18);
+	--scrim: rgb(0 0 61 / 0.22);
 	color-scheme: light;
 
 	font-family:
@@ -55,57 +101,77 @@
 		'Segoe UI',
 		sans-serif;
 	color: var(--ink);
-	background: var(--ground);
+	background: var(--page-base);
 	font-size: 14px;
 	line-height: 1.4;
 }
 
-/* Dark (default). Layered warm greys + Radix-style tinted type colours (Radix Colors dark scales:
-   sand / blue / red / green / amber / pink). Surfaces step up in lightness: ground < card < raised.
-   Every text pair >= 6:1, input borders >= 3:1 (checked). Type chips = step 4 bg, step 6 edge, step 11 text. */
+/* Dark (default). Night version of the gradient; navy cards with lilac edges; pastels keep navy text. */
 :root[data-theme='dark'] {
-	--ground: #111110;
-	--card: #191918;
-	--raised: #222221;
-	--border: #31312e;
-	--rule: #2a2a28;
-	--ink: #eeeeec;
-	--quiet: #b5b3ad;
-	--input: #6f6d66;
-	--link: #70b8ff;
+	--page:
+		radial-gradient(ellipse 70% 60% at 8% 18%, #4a1e3f 0%, rgb(74 30 63 / 0) 70%),
+		radial-gradient(ellipse 60% 55% at 96% 4%, #3a2a30 0%, rgb(58 42 48 / 0) 70%),
+		radial-gradient(ellipse 65% 60% at 4% 100%, #16304a 0%, rgb(22 48 74 / 0) 72%),
+		radial-gradient(ellipse 70% 65% at 100% 96%, #2e2866 0%, rgb(46 40 102 / 0) 72%),
+		linear-gradient(160deg, #1a1030 0%, #0e0d2a 50%, #121436 100%);
+	--page-base: #0e0d2a;
+	--ground: #201f48;
+	--card: #17163a;
+	--raised: #1d1c45;
+	--border: #9e9bd0;
+	--card-edge: #6e6ba0;
+	--rule: #2c2b55;
+	--ink: #f3f1fa;
+	--quiet: #b9b6d6;
+	--input: #9e9bd0;
+	--link: #b8b5ff;
 
-	--work-bg: #003362;
-	--work-line: #104d87;
-	--work-ink: #70b8ff;
-	--exam-bg: #500f1c;
-	--exam-line: #72232d;
-	--exam-ink: #ff9592;
-	--event-bg: #113b29;
-	--event-line: #20573e;
-	--event-ink: #3dd68c;
-	--hobby-bg: #3f2700;
-	--hobby-line: #5c3d05;
-	--hobby-ink: #ffca16;
-	--dating-bg: #4b143d;
-	--dating-line: #692955;
-	--dating-ink: #ff8dcc;
-	--none-bg: #2a2a28;
-	--none-line: #3b3a37;
-	--none-ink: #eeeeec;
-	--busy-bg: #222221;
-	--busy-line: #31312e;
-	--busy-ink: #b5b3ad;
+	--strip-a: #2b2d5c;
+	--strip-b: #3d3d6b;
+	--strip-c: #4a2638;
+	--strip-ink: #f3f1fa;
+	--pill: #ced3ee;
+	--pill-ink: #00003d;
+	--pill-card: #ced3ee;
+	--seg-on: #ced3ee;
+	--seg-on-ink: #00003d;
+	--primary: #ced3ee;
+	--primary-ink: #00003d;
+	--primary-hover: #dde0f4;
+	--theme-btn: #17163a;
+	--theme-ink: #f3d053;
+	--today: #f3d053;
+	--today-ink: #00003d;
+	--toast: #ced3ee;
+	--toast-ink: #00003d;
+	--danger: #f2a19c;
+	--alert-bg: #4a1f1d;
+	--alert-ink: #f2a19c;
+	--ok-bg: #1e3b2c;
+	--ok-ink: #f3f1fa;
+	--heat: #ced3ee;
 
-	--on-ink: #111110;
+	--work-edge: #ced3ee;
+	--exam-edge: #f2a19c;
+	--event-edge: #d3eece;
+	--hobby-edge: #faedb8;
+	--dating-edge: #eecfd4;
+	--none-edge: #e6e7f0;
+	--busy-bg: #3a3966;
+	--busy-line: #3a3966;
+	--busy-ink: #d9d7ee;
+	--busy-edge: #b9b6d6;
+
+	--on-ink: #00003d;
 	--ink-hover: #ffffff;
-	--hover: #222221;
-	--band: rgb(0 0 0 / 0.24);
-	--today-line: #6f6d66;
-	--faint: #7c7b74;
-	--field: #111110;
-	--now: #e5484d;
+	--hover: #201f48;
+	--band: rgb(255 255 255 / 0.025);
+	--today-line: #f3f1fa;
+	--faint: #8e8bb5;
+	--field: #17163a;
+	--now: #f3d053;
 	--shadow: rgb(0 0 0 / 0.55);
-	--scrim: rgb(0 0 0 / 0.6);
+	--scrim: rgb(5 4 20 / 0.55);
 	color-scheme: dark;
 }
 
@@ -115,6 +181,8 @@
 body {
 	margin: 0;
 	min-height: 100vh;
+	background: var(--page) fixed;
+	background-color: var(--page-base);
 }
 a {
 	color: var(--link);
@@ -218,8 +286,15 @@ h3 {
 /* ---- shared controls ---- */
 .card {
 	background: var(--card);
-	border: 1px solid var(--border);
+	border: 1.5px solid var(--card-edge);
 	border-radius: var(--r-card);
+	box-shadow: var(--shadow-card);
+}
+/* coloured header strip at the top of a card */
+.strip {
+	color: var(--strip-ink);
+	border-bottom: 1.5px solid var(--card-edge) !important;
+	border-radius: calc(var(--r-card) - 1.5px) calc(var(--r-card) - 1.5px) 0 0;
 }
 .field {
 	display: flex;
@@ -237,7 +312,7 @@ h3 {
 }
 .input {
 	height: 44px;
-	border: 1px solid var(--input);
+	border: 1.5px solid var(--input);
 	border-radius: var(--r-btn);
 	padding: 0 12px;
 	font-size: 15px;
@@ -258,8 +333,9 @@ textarea.input {
 	height: 40px;
 	padding: 0 16px;
 	border-radius: var(--r-btn);
-	border: 1px solid var(--border);
+	border: 1.5px solid var(--border);
 	background: var(--card);
+	box-shadow: var(--shadow-btn);
 	font-weight: 600;
 	cursor: pointer;
 	display: inline-flex;
@@ -272,20 +348,21 @@ textarea.input {
 	background: var(--hover);
 }
 .btn.primary {
-	background: var(--ink);
-	border-color: var(--ink);
-	color: var(--on-ink);
+	background: var(--primary);
+	border-color: var(--primary);
+	color: var(--primary-ink);
 }
 .btn.primary:hover {
-	background: var(--ink-hover);
+	background: var(--primary-hover);
 }
 .btn.danger {
-	color: var(--exam-ink);
-	border-color: color-mix(in srgb, var(--exam-ink) 40%, transparent);
+	color: var(--danger);
+	border-color: var(--danger);
 }
 .btn.ghost {
 	border-color: transparent;
 	background: transparent;
+	box-shadow: none;
 }
 .btn.sm {
 	height: 32px;
@@ -295,18 +372,19 @@ textarea.input {
 .btn:disabled {
 	opacity: 0.6;
 	cursor: default;
+	box-shadow: none;
 }
 .alert {
 	font-size: 13px;
-	color: var(--exam-ink);
-	background: var(--exam-bg);
+	color: var(--alert-ink);
+	background: var(--alert-bg);
 	border-radius: 8px;
 	padding: 8px 10px;
 }
 .ok-note {
 	font-size: 13px;
-	color: var(--event-ink);
-	background: var(--event-bg);
+	color: var(--ok-ink);
+	background: var(--ok-bg);
 	border-radius: 8px;
 	padding: 8px 10px;
 }

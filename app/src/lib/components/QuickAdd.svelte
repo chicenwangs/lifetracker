@@ -346,7 +346,6 @@
 	.opener {
 		height: 36px;
 		padding: 0 12px;
-		border: 1px solid var(--border);
 		border-radius: 10px;
 		background: var(--card);
 		color: var(--ink);
@@ -355,6 +354,9 @@
 		align-items: center;
 		gap: 8px;
 		cursor: pointer;
+		border: 1.5px solid var(--border);
+		box-shadow: -3px 3px 0 var(--accent);
+		font-weight: 600;
 	}
 	.opener:hover {
 		background: var(--hover);
@@ -414,10 +416,10 @@
 	.pal {
 		width: 100%;
 		background: var(--raised);
-		border: 1px solid var(--border);
 		border-radius: 14px;
-		box-shadow: 0 16px 48px var(--shadow);
 		color: var(--ink);
+		border: 1.5px solid var(--card-edge);
+		box-shadow: -8px 8px 0 var(--accent);
 	}
 	.log {
 		max-height: 200px;
@@ -441,21 +443,23 @@
 	}
 	.me {
 		align-self: flex-end;
-		background: var(--rule);
 		border-radius: 10px;
 		padding: 5px 10px;
 		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 		font-size: 13px;
+		background: var(--primary);
+		color: var(--primary-ink);
 	}
 	.undo {
 		margin-left: 6px;
 		font-size: 12px;
 		padding: 1px 8px;
-		border: 1px solid var(--border);
 		border-radius: 6px;
 		background: var(--card);
 		color: var(--ink);
 		cursor: pointer;
+		border: 1.5px solid var(--border);
+		box-shadow: var(--shadow-btn);
 	}
 	.iwrap {
 		border-top: 1px solid var(--rule);

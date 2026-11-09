@@ -153,10 +153,10 @@
 	}
 	.seg {
 		display: inline-flex;
-		border: 1px solid var(--border);
 		border-radius: 7px;
 		overflow: hidden;
 		background: var(--card);
+		border: 1.5px solid var(--border);
 	}
 	.seg button {
 		border: 0;
@@ -170,9 +170,9 @@
 		border-left: 1px solid var(--border);
 	}
 	.seg button.on {
-		background: var(--ink);
-		color: var(--on-ink);
 		font-weight: 600;
+		background: var(--seg-on);
+		color: var(--seg-on-ink);
 	}
 	.hint {
 		font-size: 11px;

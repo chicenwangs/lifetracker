@@ -355,7 +355,7 @@
 </script>
 
 <div class="card planner">
-	<div class="head">
+	<div class="head strip">
 		<div class="dt">
 			<span class="muted">{DAYNAMES[weekdayOf(date) - 1]}</span>
 			<h2>{prettyDate(date).split(' ').slice(1, 3).join(' ')}</h2>
@@ -459,6 +459,7 @@
 						style:width="calc((100% - 70px) / {p.cols} - 4px)"
 						style:background={c.bg}
 						style:color={c.ink}
+						style:--sq-on={c.bg}
 						style:--line={c.line}
 						role="button"
 						tabindex="0"
@@ -583,11 +584,12 @@
 		flex-direction: column;
 	}
 	.head {
-		padding: 14px 16px;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		border-bottom: 1px solid var(--rule);
+		background: var(--strip-b);
+		padding: 12px 16px;
 	}
 	.dt {
 		display: flex;
@@ -607,8 +609,9 @@
 		width: 32px;
 		height: 32px;
 		border-radius: 16px;
-		border: 1px solid var(--border);
+		border: 1.5px solid var(--border);
 		background: var(--card);
+		box-shadow: var(--shadow-btn);
 		padding: 0;
 		display: flex;
 		align-items: center;
@@ -773,14 +776,14 @@
 		right: 14px;
 		z-index: 9;
 		background: var(--card);
-		border: 1px solid var(--border);
 		border-radius: 10px;
 		padding: 8px;
-		box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
 		cursor: default;
+		border: 1.5px solid var(--card-edge);
+		box-shadow: var(--shadow-card);
 	}
 	.row {
 		display: flex;

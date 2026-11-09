@@ -61,6 +61,7 @@
 		border-radius: 10px;
 		padding: 3px;
 		gap: 3px;
+		border: 1px solid var(--rule);
 	}
 	.tabs a {
 		text-align: center;
@@ -71,8 +72,9 @@
 	}
 	/* same active pill as the header nav + settings menu */
 	.tabs a.on {
-		background: var(--rule);
-		color: var(--ink);
+		background: var(--pill-card);
+		color: #00003d;
+		box-shadow: inset 0 0 0 1.5px var(--border);
 	}
 	.tabs a:hover {
 		text-decoration: none;

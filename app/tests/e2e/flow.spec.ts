@@ -85,7 +85,7 @@ test('month shows colour chips; square cycles + persists', async () => {
 	await page.goto('/');
 	const chip = page.locator('.lt-chip', { hasText: 'DS Quiz' });
 	await expect(chip).toBeVisible();
-	await expect(chip).toHaveCSS('background-color', 'rgb(80, 15, 28)'); // Exam bg (dark theme = default)
+	await expect(chip).toHaveCSS('background-color', 'rgb(198, 83, 77)'); // Exam bg #C6534D (same in both themes)
 	await chip.locator('.lt-sq').click();
 	await expect(chip.locator('.lt-sq')).toHaveAttribute('aria-label', /In progress/);
 	await page.reload();
@@ -160,7 +160,7 @@ test('drag "DS Quiz" chip to planner -> linked red block', async () => {
 		.dragTo(grid, { targetPosition: { x: 150, y: (16 - 7) * 48 + 5 } });
 	const b = page.locator('.blk[aria-label^="DS Quiz,"]');
 	await expect(b).toHaveAttribute('aria-label', /16:00 – 17:00/);
-	await expect(b).toHaveCSS('background-color', 'rgb(80, 15, 28)');
+	await expect(b).toHaveCSS('background-color', 'rgb(198, 83, 77)');
 });
 
 test('quick add palette: planner by default, /calendar big events, /both', async () => {
@@ -383,7 +383,7 @@ test('item opens as centre peek: blur, rename in place, notes, linked block, hov
 	await page.mouse.up();
 	const b = dlg.locator('.blk[aria-label^="DS Quiz 2, 10:00 – 11:00"]');
 	await expect(b).toBeVisible();
-	await expect(b).toHaveCSS('background-color', 'rgb(80, 15, 28)');
+	await expect(b).toHaveCSS('background-color', 'rgb(198, 83, 77)');
 	// Esc closes, home planner shows the same linked block
 	await page.keyboard.press('Escape');
 	await expect(dlg).toBeHidden();

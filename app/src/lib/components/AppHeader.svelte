@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import QuickAdd from './QuickAdd.svelte';
+	import AppIcon from './AppIcon.svelte';
 	import { initTheme, setTheme, themeState } from '$lib/client/prefs.svelte';
 
 	let { user }: { user: App.SafeUser } = $props();
@@ -16,6 +17,7 @@
 </script>
 
 <header class="hdr">
+	<a class="mark" href="/" aria-label="Life Tracker home"><AppIcon size={30} label="" /></a>
 	<nav aria-label="Main">
 		{#each NAV as n (n.href)}
 			<a
@@ -89,11 +91,16 @@
 <svelte:window onclick={(e) => menu && !(e.target as HTMLElement).closest('.acct') && (menu = false)} />
 
 <style>
+	.mark {
+		display: flex;
+		color: var(--ink);
+	}
+	.mark :global(svg rect:first-child) {
+		fill: var(--card);
+	}
 	.hdr {
 		min-height: 64px;
 		padding: 12px 24px;
-		background: var(--card);
-		border-bottom: 1px solid var(--border);
 		display: flex;
 		align-items: center;
 		gap: 24px;
@@ -101,20 +108,27 @@
 		position: sticky;
 		top: 0;
 		z-index: 20;
+		background: transparent;
+		border-bottom: 0;
+		-webkit-backdrop-filter: blur(14px);
+		backdrop-filter: blur(14px);
 	}
 	nav {
 		display: flex;
 		gap: 4px;
 	}
 	nav a {
-		padding: 8px 12px;
-		border-radius: 8px;
-		font-size: 13px;
-		color: var(--quiet);
+		padding: 8px 16px;
+		border-radius: 999px;
+		font-size: 14px;
+		border: 1.5px solid transparent;
+		color: var(--ink);
 	}
 	nav a.on {
-		background: var(--rule);
-		color: var(--ink);
+		background: var(--pill);
+		color: var(--pill-ink);
+		border-color: var(--border);
+		box-shadow: var(--shadow-btn);
 		font-weight: 600;
 	}
 	nav a:hover {
@@ -132,43 +146,44 @@
 		position: relative;
 	}
 	.theme {
-		width: 36px;
-		height: 36px;
-		border-radius: 18px;
-		border: 1px solid var(--border);
-		background: var(--card);
-		color: var(--ink);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
 		padding: 0;
+		width: 38px;
+		height: 38px;
+		border-radius: 19px;
+		border: 1.5px solid var(--border);
+		background: var(--theme-btn);
+		color: var(--theme-ink);
+		box-shadow: -3px 3px 0 var(--accent);
 	}
 	.theme:hover {
-		background: var(--hover);
+		filter: brightness(0.97);
 	}
 	.avatar {
-		width: 36px;
-		height: 36px;
-		border-radius: 18px;
-		border: 0;
 		color: #fff;
-		box-shadow: 0 0 0 1px var(--border);
 		font-weight: 700;
 		cursor: pointer;
+		width: 38px;
+		height: 38px;
+		border-radius: 19px;
+		border: 1.5px solid var(--border);
+		box-shadow: -3px 3px 0 var(--accent);
 	}
 	.menu {
 		position: absolute;
 		right: 0;
-		top: 44px;
 		background: var(--raised);
-		border: 1px solid var(--border);
 		border-radius: 12px;
 		min-width: 200px;
 		padding: 6px;
 		display: flex;
 		flex-direction: column;
-		box-shadow: 0 8px 24px var(--shadow);
+		top: 48px;
+		border: 1.5px solid var(--card-edge);
+		box-shadow: var(--shadow-card);
 	}
 	.who {
 		padding: 8px 10px;
@@ -191,7 +206,7 @@
 	}
 	.menu a:hover,
 	.menu button:hover {
-		background: var(--rule);
 		text-decoration: none;
+		background: var(--hover);
 	}
 </style>

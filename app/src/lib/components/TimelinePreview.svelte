@@ -54,7 +54,7 @@
 </script>
 
 <div class="tlp" aria-label="Timeline preview for {prettyDate(date)}">
-	<div class="head">
+	<div class="head strip">
 		<div>
 			<span class="muted">{DAYS[weekdayOf(date) - 1]}{isToday ? ' · today' : ''}</span>
 			<b>{prettyDate(date).split(' ').slice(1, 3).join(' ')}</b>
@@ -108,13 +108,13 @@
 <style>
 	.tlp {
 		background: var(--raised);
-		border: 1px solid var(--border);
 		border-radius: 14px;
-		box-shadow: 0 16px 48px var(--shadow);
 		color: var(--ink);
 		overflow: hidden;
 		display: flex;
 		flex-direction: column;
+		border: 1.5px solid var(--card-edge);
+		box-shadow: var(--shadow-card);
 	}
 	.head {
 		display: flex;
@@ -123,6 +123,7 @@
 		padding: 10px 14px;
 		border-bottom: 1px solid var(--rule);
 		font-size: 12px;
+		background: var(--strip-b);
 	}
 	.head > div {
 		display: flex;
