@@ -67,4 +67,14 @@
 	.sq:disabled {
 		cursor: default;
 	}
+
+	.sq {
+		transition: transform var(--t-fast) var(--ease);
+	}
+	.sq:not(:disabled):hover {
+		transform: scale(1.12);
+	}
+	.sq.done {
+		animation: lt-done 260ms var(--ease);
+	}
 </style>

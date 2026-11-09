@@ -43,3 +43,11 @@ Work #CED3EE / #00003D / navy (dark: #CED3EE) · Exam #C6534D / #FFFFFF / #C6534
 - Exam white text = 4.4:1 (just under AA). #B84A44 gives 5.1:1 if wanted.
 - Status square: transparent fill, type-ink border; done = ink fill, check in chip bg (`--sq-on` / `--bg`).
 - `USER_COLORS` unchanged (stored data). Ink badge keeps its ring on dark.
+
+## Motion (2026-11-09)
+- Light, 120–320 ms, `--ease` = cubic-bezier(0.2, 0.8, 0.2, 1). Transform/opacity only. All off under `prefers-reduced-motion`.
+- Cards fade in per page (opacity only, staggered). Theme switch fades colours.
+- Buttons, round arrows, overlap, theme, avatar, Add: lift into the yellow shadow on hover, press flat on click.
+- Menus, slot popup, command list, quick add palette: small pop in. Toast + quick-add messages rise in.
+- Chips: ring on hover (no transform, so FullCalendar drags stay exact). Planner blocks + week rows: yellow shadow on hover.
+- Status square: grows on hover, bounces when done. Now-line dot pings.

@@ -122,4 +122,20 @@
 		left: 14px;
 		background: var(--seg-on-ink);
 	}
+
+	/* motion */
+	.ov {
+		transition:
+			transform var(--t-fast) var(--ease),
+			box-shadow var(--t-fast) var(--ease),
+			background-color var(--t) var(--ease);
+	}
+	.ov:hover {
+		transform: translate(1px, -1px);
+		box-shadow: -3px 3px 0 var(--accent);
+	}
+	.ov:active {
+		transform: translate(-2px, 2px);
+		box-shadow: 0 0 0 var(--accent);
+	}
 </style>

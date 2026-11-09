@@ -415,3 +415,108 @@ table.plain th {
 	color: var(--quiet);
 	font-weight: 600;
 }
+
+/* ---- motion: light and quick, opacity/transform only. All off for prefers-reduced-motion. ---- */
+:root {
+	--ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+	--t-fast: 120ms;
+	--t: 220ms;
+}
+@keyframes lt-fade {
+	from {
+		opacity: 0;
+	}
+}
+@keyframes lt-pop {
+	from {
+		opacity: 0;
+		transform: translateY(-4px) scale(0.98);
+	}
+}
+@keyframes lt-rise {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+}
+@keyframes lt-done {
+	40% {
+		transform: scale(1.2);
+	}
+}
+@keyframes lt-ping {
+	from {
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--now) 50%, transparent);
+	}
+	to {
+		box-shadow: 0 0 0 9px transparent;
+	}
+}
+
+/* theme switch fades instead of snapping */
+body,
+.card,
+.strip,
+.input,
+.btn {
+	transition:
+		background-color var(--t) var(--ease),
+		color var(--t) var(--ease),
+		border-color var(--t) var(--ease),
+		box-shadow var(--t-fast) var(--ease),
+		transform var(--t-fast) var(--ease);
+}
+/* cards fade in on each page (opacity only: no layout or pointer offsets) */
+main .card,
+.box.card {
+	animation: lt-fade 320ms var(--ease) both;
+}
+main .card:nth-child(2) {
+	animation-delay: 60ms;
+}
+main .card:nth-child(3) {
+	animation-delay: 120ms;
+}
+main .card:nth-child(n + 4) {
+	animation-delay: 160ms;
+}
+/* tactile buttons: lift into the shadow on hover, press flat on click */
+.btn:not(:disabled):not(.ghost):hover {
+	transform: translate(1px, -1px);
+	box-shadow: -3px 3px 0 var(--accent);
+}
+.btn:not(:disabled):not(.ghost):active {
+	transform: translate(-2px, 2px);
+	box-shadow: 0 0 0 var(--accent);
+}
+.input:focus {
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--pill-card) 70%, transparent);
+	outline: none;
+}
+/* chips + legend: soft ring on hover (no transform, FullCalendar drags stay exact) */
+.lt-chip {
+	transition: box-shadow var(--t-fast) var(--ease);
+}
+.lt-chip:hover {
+	box-shadow: inset 0 0 0 1.5px var(--fg) !important;
+}
+.lt-sq {
+	transition: transform var(--t-fast) var(--ease);
+}
+.lt-sq:hover {
+	transform: scale(1.12);
+}
+.lt-sq.on {
+	animation: lt-done 260ms var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	::before,
+	::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		animation-delay: 0ms !important;
+		transition-duration: 0.01ms !important;
+	}
+}

@@ -242,4 +242,16 @@
 		position: static;
 		box-shadow: none;
 	}
+
+	.row {
+		transition:
+			background-color var(--t) var(--ease),
+			outline-color var(--t) var(--ease);
+	}
+	.c {
+		transition: transform var(--t-fast) var(--ease);
+	}
+	.row:hover .c {
+		transform: translateY(-1px);
+	}
 </style>
