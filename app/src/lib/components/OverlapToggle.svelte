@@ -61,14 +61,15 @@
 		gap: 8px;
 		height: 32px;
 		padding: 0 6px 0 6px;
-		border: 1px solid var(--border);
-		border-radius: 16px;
 		background: var(--card);
 		color: var(--ink);
 		font: inherit;
 		font-size: 13px;
 		font-weight: 600;
 		cursor: pointer;
+		border: 1.5px solid var(--border);
+		border-radius: 999px;
+		box-shadow: var(--shadow-btn);
 	}
 	.ov:hover {
 		background: var(--hover);
@@ -115,9 +116,10 @@
 		transition: left 0.15s;
 	}
 	.on .track {
-		background: var(--ink);
+		background: var(--seg-on);
 	}
 	.on .knob {
 		left: 14px;
+		background: var(--seg-on-ink);
 	}
 </style>

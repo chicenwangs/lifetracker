@@ -35,33 +35,34 @@
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		background: var(--ink);
-		color: var(--on-ink);
 		padding: 10px 14px;
-		border-radius: 10px;
 		font-size: 13px;
-		box-shadow: 0 6px 24px rgb(0 0 0 / 0.2);
 		max-width: min(560px, 90vw);
+		background: var(--toast);
+		color: var(--toast-ink);
+		border-radius: 12px;
+		box-shadow: -4px 4px 0 var(--accent);
 	}
 	.toast.error {
-		background: var(--exam-ink);
+		background: var(--exam-bg);
+		color: var(--exam-ink);
 	}
 	.undo {
-		background: var(--on-ink);
-		color: var(--ink);
-		border: 0;
-		border-radius: 6px;
 		padding: 4px 10px;
 		font-weight: 600;
 		cursor: pointer;
+		background: transparent;
+		color: inherit;
+		border: 1.5px solid currentColor;
+		border-radius: 8px;
 	}
 	.x {
 		background: none;
 		border: 0;
-		color: var(--on-ink);
 		font-size: 18px;
 		cursor: pointer;
 		line-height: 1;
 		padding: 0 2px;
+		color: inherit;
 	}
 </style>

@@ -281,8 +281,8 @@
 	{:else}
 		<div class="cols">
 			<section class="main" aria-label="Item">
-				<div class="kick" style:color={c.ink}>
-					<StatusSquare status={it.status} size={22} ink={c.ink} oncycle={() => cycle(it.id)} />
+				<div class="kick" style:color={c.edge}>
+					<StatusSquare status={it.status} size={22} ink={c.edge} oncycle={() => cycle(it.id)} />
 					<span>{(it.type ?? 'None').toUpperCase()} · {STATUS_WORD[it.status].toUpperCase()}</span>
 					{#if cd}
 						<span class="count" class:soon={cd.days <= 3}>{cd.long}</span>
@@ -418,7 +418,7 @@
 						{#each v.steps as s (s.id)}
 							{@const sc = colorsFor(s.type)}
 							<div class="step">
-								<StatusSquare status={s.status} ink={sc.ink} oncycle={() => cycle(s.id)} />
+								<StatusSquare status={s.status} ink={sc.edge} oncycle={() => cycle(s.id)} />
 								<a href="/item/{s.id}" class:done={s.status === 'done'}>{s.title}</a>
 								<span class="muted">{s.date ? prettyDate(s.date) : ''}</span>
 							</div>
@@ -602,9 +602,9 @@
 		border: 1px solid currentColor;
 	}
 	.count.soon {
-		background: var(--exam-ink);
-		color: var(--exam-bg);
-		border-color: var(--exam-ink);
+		background: var(--exam-bg);
+		color: var(--exam-ink);
+		border-color: var(--exam-bg);
 	}
 
 	/* ---- title: hover = dotted underline + pencil ---- */

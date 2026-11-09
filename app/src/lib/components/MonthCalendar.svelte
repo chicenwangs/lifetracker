@@ -225,7 +225,7 @@
 </script>
 
 <section class="card cal" aria-label="Calendar">
-	<div class="bar">
+	<div class="bar strip strip-a">
 		<button class="round" type="button" aria-label="Previous month" onclick={prev}>
 			<svg
 				width="16"
@@ -280,12 +280,13 @@
 		min-width: 0;
 	}
 	.bar {
-		padding: 16px 20px;
 		display: flex;
 		align-items: center;
 		gap: 12px;
 		flex-wrap: wrap;
 		border-bottom: 1px solid var(--rule);
+		background: var(--strip-a);
+		padding: 14px 20px;
 	}
 	h1 {
 		font-size: 20px;
@@ -297,8 +298,9 @@
 		width: 32px;
 		height: 32px;
 		border-radius: 16px;
-		border: 1px solid var(--border);
+		border: 1.5px solid var(--border);
 		background: var(--card);
+		box-shadow: var(--shadow-btn);
 		padding: 0;
 		display: flex;
 		align-items: center;
@@ -310,10 +312,11 @@
 	}
 	.view {
 		display: flex;
-		border: 1px solid var(--border);
 		border-radius: 8px;
 		overflow: hidden;
 		font-size: 12px;
+		border: 1.5px solid var(--border);
+		box-shadow: var(--shadow-btn);
 	}
 	.view > * {
 		height: 32px;
@@ -323,8 +326,8 @@
 		color: var(--ink);
 	}
 	.view .on {
-		background: var(--ink);
-		color: var(--on-ink);
+		background: var(--seg-on);
+		color: var(--seg-on-ink);
 		font-weight: 600;
 	}
 	.view a:hover {
@@ -400,17 +403,17 @@
 		color: var(--faint);
 	}
 	.grid :global(.lt-today .fc-daygrid-day-number) {
-		background: var(--ink);
-		color: var(--on-ink);
 		border-radius: 12px;
 		margin: 4px;
 		padding: 2px 7px !important;
+		background: var(--today);
+		color: var(--today-ink);
 	}
 	.grid:global(.fc) :global(.fc-daygrid-day.fc-day-today) {
 		background: transparent !important;
 	}
 	.grid :global(.lt-sel) {
-		box-shadow: inset 0 0 0 2px var(--ink);
+		box-shadow: inset 0 0 0 2px var(--today);
 	}
 	.grid :global(.lt-chip) {
 		border-radius: 5px !important;
@@ -434,16 +437,16 @@
 		padding: 0;
 		border-radius: 4px;
 		border: 1.5px solid var(--ink);
-		background: var(--card);
 		color: var(--ink);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
+		background: transparent;
 	}
 	.grid :global(.lt-sq.on) {
 		background: var(--ink);
-		color: var(--on-ink);
+		color: var(--bg, var(--on-ink));
 	}
 	.grid :global(.lt-title) {
 		flex: 1;

@@ -612,16 +612,16 @@
 		padding: 0;
 		border-radius: 4px;
 		border: 1.5px solid var(--ink);
-		background: var(--card);
 		color: var(--ink);
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
+		background: transparent;
 	}
 	.wk :global(.lt-sq.on) {
 		background: var(--ink);
-		color: var(--on-ink);
+		color: var(--bg, var(--on-ink));
 	}
 	.wk :global(.lt-title) {
 		font-weight: 600;

@@ -65,8 +65,10 @@
 		font-size: 14px;
 	}
 	.side a.on {
-		background: var(--rule);
+		background: var(--pill-card);
+		color: #00003d;
 		font-weight: 600;
+		box-shadow: inset 0 0 0 1.5px var(--border);
 	}
 	.side a:hover {
 		text-decoration: none;

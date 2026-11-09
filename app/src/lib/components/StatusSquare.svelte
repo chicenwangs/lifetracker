@@ -53,16 +53,16 @@
 		padding: 0;
 		border-radius: 4px;
 		border: 1.5px solid var(--ink);
-		background: var(--card);
 		color: var(--ink);
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
+		background: transparent;
 	}
 	.sq.done {
 		background: var(--ink);
-		color: var(--on-ink);
+		color: var(--sq-on, var(--on-ink));
 	}
 	.sq:disabled {
 		cursor: default;

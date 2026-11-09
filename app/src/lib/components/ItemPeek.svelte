@@ -87,10 +87,10 @@
 		width: min(1180px, 100%);
 		min-height: 80vh;
 		background: var(--card);
-		border: 1px solid var(--border);
 		border-radius: 16px;
-		box-shadow: 0 24px 64px var(--shadow);
 		padding: 18px 24px 24px;
 		outline: none;
+		border: 1.5px solid var(--card-edge);
+		box-shadow: -8px 8px 0 var(--accent);
 	}
 </style>

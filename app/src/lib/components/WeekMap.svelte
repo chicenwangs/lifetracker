@@ -54,7 +54,7 @@
 </script>
 
 <section class="card wm" aria-label="Month overview">
-	<div class="top">
+	<div class="top strip">
 		<h2>{MONTHS[month - 1]} {year}</h2>
 		<span class="wk">{current >= 0 ? `Week ${current + 1} of ${rows.length}` : `${rows.length} weeks`}</span>
 	</div>
@@ -111,6 +111,9 @@
 		display: flex;
 		align-items: baseline;
 		justify-content: space-between;
+		margin: -14px -16px 0;
+		padding: 12px 16px;
+		background: var(--strip-c);
 	}
 	h2 {
 		font-size: 15px;
@@ -120,9 +123,10 @@
 		font-size: 12px;
 		font-weight: 600;
 		color: var(--ink);
-		background: var(--rule);
 		border-radius: 10px;
 		padding: 1px 8px;
+		background: var(--card);
+		border: 1.5px solid var(--card-edge);
 	}
 	.grid {
 		display: flex;
@@ -155,8 +159,8 @@
 		background: var(--hover);
 	}
 	.row.on {
-		outline: 2px solid var(--ink);
 		background: var(--hover);
+		outline: 2px solid var(--today);
 	}
 	.row:focus-visible {
 		outline: 2px solid var(--ink);
@@ -185,17 +189,17 @@
 		background: var(--card);
 	}
 	.l1 {
-		background: color-mix(in srgb, var(--event-ink) 18%, var(--card));
+		background: color-mix(in srgb, var(--heat) 18%, var(--card));
 	}
 	.l2 {
-		background: color-mix(in srgb, var(--event-ink) 36%, var(--card));
+		background: color-mix(in srgb, var(--heat) 36%, var(--card));
 	}
 	.l3 {
-		background: color-mix(in srgb, var(--event-ink) 58%, var(--card));
+		background: color-mix(in srgb, var(--heat) 58%, var(--card));
 		color: var(--card);
 	}
 	.l4 {
-		background: var(--event-ink);
+		background: var(--heat);
 		color: var(--card);
 		border-color: transparent;
 	}
@@ -216,8 +220,8 @@
 		width: 6px;
 		height: 6px;
 		border-radius: 3px;
-		background: var(--exam-ink);
 		box-shadow: 0 0 0 1.5px var(--card);
+		background: var(--exam-bg);
 	}
 	.legend {
 		display: flex;

@@ -192,7 +192,7 @@
 
 <main class="wrap">
 	<section class="card wkc" aria-label="Week">
-		<div class="bar">
+		<div class="bar strip">
 			<button
 				class="round"
 				type="button"
@@ -278,7 +278,7 @@
 			</span>
 			{#each data.notBlocked as i (i.id)}
 				{@const c = colorsFor(i.type)}
-				<div class="row" data-lt-item={i.id} data-title={i.title} style:border-left-color={c.ink}>
+				<div class="row" data-lt-item={i.id} data-title={i.title} style:border-left-color={c.edge}>
 					<a
 						href="/item/{i.id}"
 						onclick={(e) => {
@@ -359,8 +359,8 @@
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
-		box-shadow: 0 16px 40px var(--shadow);
 		border: 1.5px dashed var(--ink);
+		box-shadow: var(--shadow-card);
 	}
 	.sp-h {
 		display: flex;
@@ -398,12 +398,13 @@
 		gap: 12px;
 	}
 	.bar {
-		padding: 16px 20px;
 		display: flex;
 		align-items: center;
 		gap: 12px;
 		flex-wrap: wrap;
 		border-bottom: 1px solid var(--rule);
+		background: var(--strip-a);
+		padding: 14px 20px;
 	}
 	h1 {
 		font-size: 20px;
@@ -417,8 +418,9 @@
 		width: 32px;
 		height: 32px;
 		border-radius: 16px;
-		border: 1px solid var(--border);
+		border: 1.5px solid var(--border);
 		background: var(--card);
+		box-shadow: var(--shadow-btn);
 		padding: 0;
 		display: flex;
 		align-items: center;
@@ -430,10 +432,11 @@
 	}
 	.view {
 		display: flex;
-		border: 1px solid var(--border);
 		border-radius: 8px;
 		overflow: hidden;
 		font-size: 12px;
+		border: 1.5px solid var(--border);
+		box-shadow: var(--shadow-btn);
 	}
 	.view > * {
 		height: 32px;
@@ -443,8 +446,8 @@
 		color: var(--ink);
 	}
 	.view .on {
-		background: var(--ink);
-		color: var(--on-ink);
+		background: var(--seg-on);
+		color: var(--seg-on-ink);
 		font-weight: 600;
 	}
 	.foot {

@@ -436,6 +436,8 @@ Places open-now (FR-P4), in user tz: Morning 06:00–12:00; All Day 06:00–24:0
 
 ## 9. Look (tokens from wireframe)
 
+> Superseded 2026-11-09 by `docs/THEME.md` (theme "gradient C", light + dark). Values below are the old P1 palette, kept for history.
+
 ```
 ground #F5F5F4  card #FFFFFF  border #D6D3D1  rule #E7E5E4  ink #1C1917  quiet #57534E
 input border #78716C (3:1+ on white)   focus ring 2px #1C1917 offset 2
