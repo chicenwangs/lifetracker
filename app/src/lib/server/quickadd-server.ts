@@ -17,8 +17,8 @@ export function quickContext(me: App.SafeUser, now: number = Date.now()): QACont
 export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(), slot?: QASlot) {
 	const r = parseQuickAdd(text, { ...quickContext(me, now), slot });
 	if (!r.ok) bad((r.problems[0] ?? 'Could not add that.').replace(/`/g, ''));
-	// timeline drag with no /type = no type (grey); the N palette keeps its Event default
-	const type = slot && !r.typeSet ? null : r.type;
+	// timeline drag with no /type = no type (grey); the N palette and month days keep the Event default
+	const type = slot && !slot.day && !r.typeSet ? null : r.type;
 	return handle().sqlite.transaction(() => {
 		let item: ReturnType<typeof items.withCounts>[number] | null = null;
 		let block: ReturnType<typeof blocks.toDTO> | null = null;

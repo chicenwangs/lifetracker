@@ -338,6 +338,15 @@ describe('quickAdd server', () => {
 		expect(quickAdd(me, 'focus /calendar', NOW, slot).item).toMatchObject({ type: null });
 		expect(quickAdd(me, 'focus /hobby', NOW, slot).block).toMatchObject({ type: 'Hobby' });
 	});
+	it('month day (double-click): calendar item, Event default; time + /both adds a block', () => {
+		const day = { date: '2026-11-12', start: 0, end: 0, day: true };
+		const r = quickAdd(me, 'picnic', NOW, day);
+		expect(r.block).toBeNull();
+		expect(r.item).toMatchObject({ title: 'picnic', type: 'Event', date: '2026-11-12', time: null });
+		const b = quickAdd(me, 'gym 6pm /both /hobby', NOW, day);
+		expect(b.item).toMatchObject({ date: '2026-11-12', type: 'Hobby' });
+		expect(b.block).not.toBeNull();
+	});
 	it('/calendar: item only', () => {
 		const r = quickAdd(me, 'outing sat /calendar', NOW);
 		expect(r.item).toMatchObject({ title: 'outing', date: '2026-11-07', time: null, type: 'Event' });
@@ -399,6 +408,25 @@ describe('dragged slot (planner / week drag box)', () => {
 	it('ghost hint skips day/time when slotted', () => {
 		expect(ghostHint('', p('', { slot }), true)).toBe('title   optional: /type  /calendar');
 		expect(ghostHint('gym', p('gym', { slot }), true)).toBe('  /type  /calendar or /both');
+	});
+	it('month day slot: no time from the slot, defaults to calendar, typed day/time still win', () => {
+		const day = { date: '2026-11-12', start: 0, end: 0, day: true };
+		const r = p('picnic', { slot: day });
+		expect([r.ok, r.target, r.date, r.time, r.fromSlot]).toEqual([
+			true,
+			'calendar',
+			'2026-11-12',
+			null,
+			false,
+		]);
+		expect(p('gym 6pm /planner', { slot: day })).toMatchObject({
+			ok: true,
+			target: 'planner',
+			startMinutes: 1080,
+		});
+		expect(p('gym /planner', { slot: day }).ok).toBe(false);
+		expect(p('gym fri', { slot: day }).date).not.toBe('2026-11-12');
+		expect(ghostHint('', p('', { slot: day }), 'day')).toBe('title   optional: time  /type  /both');
 	});
 	it('withTarget swaps the destination token', () => {
 		expect(withTarget('gym /hobby', 'calendar')).toBe('gym /hobby /calendar ');
