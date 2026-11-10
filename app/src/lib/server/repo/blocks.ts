@@ -2,7 +2,7 @@
 import { and, asc, eq, gt, inArray, isNull, lt } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../db';
-import { blocks, calendars, items } from '../schema';
+import { blocks, items } from '../schema';
 import { newId } from '../crypto';
 import { bad, notFound } from '../http';
 import { zIsoZ, zId, zStatus, zType } from '../validate';
@@ -15,14 +15,7 @@ export type BlockRow = typeof blocks.$inferSelect;
 const live = isNull(blocks.deletedAt);
 const MAX_MIN = 7 * 24 * 60;
 
-function myCalendarIds(meId: string): string[] {
-	return db()
-		.select({ id: calendars.id })
-		.from(calendars)
-		.where(eq(calendars.ownerId, meId))
-		.all()
-		.map((r) => r.id);
-}
+const { myCalendarIds } = itemsRepo;
 
 export function toDTO(b: BlockRow, itemType: ItemType | null = null): BlockDTO {
 	return {

@@ -232,7 +232,7 @@ describe('invites + signup', () => {
 			ok: false,
 			message: 'Invite code needed.',
 		});
-		const { code } = createInvite(admin, { expiry: '1d', label: 'for Neina' });
+		const { code } = createInvite(admin);
 		const ok = await signup(
 			{ code: code.toLowerCase(), username: 'neina', displayName: 'Neina', password: PW },
 			IP,

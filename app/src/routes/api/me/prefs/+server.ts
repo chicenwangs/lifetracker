@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { api, body, me } from '$lib/server/http';
 import * as users from '$lib/server/repo/users';
+import { USER_COLORS } from '$lib/colors';
 
-const USER_COLORS = ['#1C1917', '#0F766E', '#6D28D9', '#B45309'] as const;
 const schema = z
 	.object({
 		overlapOn: z.boolean(),

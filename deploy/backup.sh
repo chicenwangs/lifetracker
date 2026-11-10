@@ -17,5 +17,6 @@ sqlite3 "$DB" ".backup '$f'"   # $f has no quotes: built from LT_DIR + date
 [ "$(sqlite3 "$f" 'PRAGMA integrity_check')" = ok ] || { echo "integrity check failed: $f" >&2; rm -f "$f"; exit 1; }
 gzip "$f"
 find "$OUT" -name 'app-*.db.gz' -mtime +"$KEEP" -delete
-if [ -n "${LT_OFFSITE:-}" ]; then rsync -a "$OUT/" "$LT_OFFSITE/"; fi
+if [ -n "${LT_OFFSITE:-}" ]; then rsync -a "$OUT/" "$LT_OFFSITE/"
+else echo "WARNING: LT_OFFSITE not set: backups are only on this disk. One disk failure loses everything." >&2; fi
 echo "$(date -Is) backup ok: $f.gz"

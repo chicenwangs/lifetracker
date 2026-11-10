@@ -67,11 +67,6 @@ export function clear(key: string): void {
 	db().delete(rateLimits).where(eq(rateLimits.key, key)).run();
 }
 
-export function clearPrefix(prefix: string): void {
-	const rows = db().select({ key: rateLimits.key }).from(rateLimits).all();
-	for (const r of rows) if (r.key.startsWith(prefix)) clear(r.key);
-}
-
 /** drop rows older than 1 day and not locked */
 export function purgeOld(now: number = Date.now()): void {
 	db()

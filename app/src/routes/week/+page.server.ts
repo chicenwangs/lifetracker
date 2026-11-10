@@ -44,7 +44,11 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		from,
 		to,
 		cal,
-		notBlocked: itemsRepo.withCounts(itemsRepo.allDayUnblocked(me.id, from, to)),
+		// undated items have no other home in the UI: list them here too
+		notBlocked: itemsRepo.withCounts([
+			...itemsRepo.allDayUnblocked(me.id, from, to),
+			...itemsRepo.unscheduled(me.id),
+		]),
 		month: { year, month, heat },
 		stats: { done, doing, blockedH: Math.round((blockedMin / 60) * 10) / 10 },
 	};

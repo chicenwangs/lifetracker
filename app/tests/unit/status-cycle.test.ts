@@ -4,6 +4,7 @@ import * as usersRepo from '../../src/lib/server/repo/users';
 import * as items from '../../src/lib/server/repo/items';
 import * as blocks from '../../src/lib/server/repo/blocks';
 import { ApiFail } from '../../src/lib/server/http';
+import { purgeTrash } from '../../src/lib/server/purge';
 
 let me: string;
 let other: string;
@@ -82,6 +83,25 @@ describe('soft delete', () => {
 		items.restore(me, batch);
 		expect(items.getOwn(me, s.id)).toBeDefined();
 		expect(blocks.getOwn(me, b.id)).toBeDefined();
+	});
+
+	it('step restored without its deleted parent becomes a normal item', () => {
+		const p = mk();
+		const s = mk({ title: 'step 1', parentId: p.id });
+		const { batch } = items.softDelete(me, s.id);
+		items.softDelete(me, p.id);
+		items.restore(me, batch);
+		expect(items.getOwn(me, s.id)?.parentId).toBeNull();
+	});
+
+	it('purge relabels a surviving block of a purged secret item', () => {
+		const p = mk({ title: 'Therapy', private: true });
+		const b = blocks.create(me, { startAt: '2026-11-06T05:00:00Z', itemId: p.id, type: null });
+		const { batch } = blocks.softDelete(me, b.id);
+		items.softDelete(me, p.id);
+		items.restore(me, batch);
+		purgeTrash(Date.now() + 31 * 86_400_000);
+		expect(blocks.getOwn(me, b.id)).toMatchObject({ itemId: null, label: 'Block' });
 	});
 });
 

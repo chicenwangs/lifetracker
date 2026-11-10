@@ -15,7 +15,7 @@ export type ItemRow = typeof items.$inferSelect;
 const live = isNull(items.deletedAt);
 
 /** calendar ids `me` owns */
-function myCalendarIds(meId: string): string[] {
+export function myCalendarIds(meId: string): string[] {
 	return db()
 		.select({ id: calendars.id })
 		.from(calendars)
@@ -276,6 +276,13 @@ export function restore(meId: string, batch: string): number {
 			.set({ deletedAt: null, deletedBatch: null })
 			.where(and(eq(blocks.deletedBatch, batch), inArray(blocks.calendarId, cals)))
 			.run().changes;
+		// a step restored without its (still deleted) parent would be invisible: make it a normal item
+		handle()
+			.sqlite.prepare(
+				`UPDATE items SET parent_id = NULL WHERE parent_id IN (SELECT id FROM items WHERE deleted_at IS NOT NULL)
+				 AND deleted_at IS NULL AND calendar_id IN (${cals.map(() => '?').join(',')})`,
+			)
+			.run(...cals);
 	})();
 	return n;
 }
@@ -350,7 +357,6 @@ export function dueOn(meId: string, day: string): ItemRow[] {
 		.all();
 }
 
-/** FR-H8 week panel: due in [from,to), not done, no linked live block */
 /** all-day (no time) items touching [from, to) that are not done and have no planner block anywhere */
 export function allDayUnblocked(meId: string, from: string, to: string): ItemRow[] {
 	const cals = myCalendarIds(meId);
@@ -371,27 +377,6 @@ export function allDayUnblocked(meId: string, from: string, to: string): ItemRow
 			),
 		)
 		.orderBy(asc(items.date), asc(items.title))
-		.all();
-}
-
-export function dueSoonUnblocked(meId: string, from: string, to: string): ItemRow[] {
-	const cals = myCalendarIds(meId);
-	if (!cals.length) return [];
-	return db()
-		.select()
-		.from(items)
-		.where(
-			and(
-				inArray(items.calendarId, cals),
-				live,
-				isNull(items.parentId),
-				or(eq(items.status, 'todo'), eq(items.status, 'doing')),
-				gte(items.date, from),
-				lt(items.date, to),
-				sql`NOT EXISTS (SELECT 1 FROM blocks b WHERE b.item_id = ${items.id} AND b.deleted_at IS NULL)`,
-			),
-		)
-		.orderBy(asc(items.date), asc(items.time))
 		.all();
 }
 

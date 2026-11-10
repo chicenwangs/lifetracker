@@ -56,7 +56,6 @@ export async function runSetup(input: unknown, ip: string): Promise<SetupResult>
 			displayName: p.data.displayName,
 			passwordHash: hash,
 			role: 'admin',
-			color: '#1C1917',
 		});
 		meta.set('setup_done', '1');
 		return u;

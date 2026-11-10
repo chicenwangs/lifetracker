@@ -11,27 +11,21 @@ import * as meta from './repo/meta';
 import { serial } from './serial';
 import { isSetupDone, usernameSchema } from './setup';
 import { isoPlus, nowUtcIso } from '$lib/time';
+import { USER_COLORS } from '$lib/colors';
 
-const EXPIRY = { '1d': 1, '3d': 3, '7d': 7 } as const;
-export const inviteCreateSchema = z
-	.object({ expiry: z.enum(['1d', '3d', '7d']), label: z.string().trim().max(60).optional() })
-	.strict();
+const INVITE_DAYS = 7;
 
-export function createInvite(
-	adminId: string,
-	input: unknown,
-): { code: string; id: string; expiresAt: string } {
-	const p = inviteCreateSchema.parse(input);
+export function createInvite(adminId: string): { code: string; id: string; expiresAt: string } {
 	const raw = randomBase32(12);
 	const now = nowUtcIso();
 	const id = newId('inv');
-	const expiresAt = isoPlus(now, EXPIRY[p.expiry] * 86_400_000);
+	const expiresAt = isoPlus(now, INVITE_DAYS * 86_400_000);
 	db()
 		.insert(invites)
 		.values({
 			id,
 			codeHash: hmac(raw),
-			label: p.label ?? null,
+			label: null,
 			createdBy: adminId,
 			expiresAt,
 			createdAt: now,
@@ -89,7 +83,7 @@ export const signupSchema = z
 	})
 	.strict();
 
-const MEMBER_COLORS = ['#0F766E', '#6D28D9', '#B45309'];
+const MEMBER_COLORS = USER_COLORS.slice(1); // [0] is the admin's
 const BAD = 'Invite code not valid.';
 
 export type SignupResult = { ok: true; userId: string } | { ok: false; status: 400 | 429; message: string };

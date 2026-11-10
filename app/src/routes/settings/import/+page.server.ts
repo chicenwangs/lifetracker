@@ -1,15 +1,10 @@
 // Admin: one-time Notion import from SEED_DIR (mounted volume, never baked into the image). FR-IM1..3.
-import { error, fail } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
+import { admin } from '$lib/server/http';
 import type { Actions, PageServerLoad } from './$types';
 import { env } from '$lib/server/env';
 import { importSeed, readReport } from '$lib/server/seed';
 import * as usersRepo from '$lib/server/repo/users';
-
-function admin(locals: App.Locals): App.SafeUser {
-	const u = locals.user;
-	if (!u || u.role !== 'admin') error(404, { code: 'not_found', message: 'Not found' });
-	return u;
-}
 
 function report() {
 	try {
