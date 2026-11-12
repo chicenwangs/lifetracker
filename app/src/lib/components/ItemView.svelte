@@ -2,7 +2,7 @@
      Title edits in place. Properties edit inline. Right column: Delete · History · Time blocks
      (the real day timeline: this item's blocks in its colour, others muted; drag empty time = linked block). -->
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import StatusSquare from './StatusSquare.svelte';
 	import Markdown from './Markdown.svelte';
 	import DayPlanner from './DayPlanner.svelte';
@@ -200,6 +200,20 @@
 			return false;
 		}
 	}
+	// a save still waiting on its 700 ms timer must not be dropped when the view closes or the page unloads
+	onDestroy(() => {
+		if (saveTimer) void flushNotes();
+	});
+	function onUnload() {
+		if (!saveTimer || !it) return;
+		// keepalive: the request outlives the page
+		void fetch(`/api/items/${it.id}`, {
+			method: 'PATCH',
+			keepalive: true,
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ notes: notesDraft.trim() === '' ? null : notesDraft }),
+		});
+	}
 	async function endNotes() {
 		// failed save: stay in the editor so the draft isn't lost
 		if (await flushNotes()) editingNotes = false;
@@ -243,7 +257,7 @@
 	}
 </script>
 
-<svelte:window onkeydown={onKey} />
+<svelte:window onkeydown={onKey} onbeforeunload={onUnload} />
 
 <div class="iv" class:peek>
 	<header class="top">

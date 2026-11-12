@@ -3,6 +3,7 @@ import { db } from '../db';
 import { calendars, users } from '../schema';
 import { newId } from '../crypto';
 import { nowUtcIso } from '$lib/time';
+import { USER_COLORS } from '$lib/colors';
 
 export type UserRow = typeof users.$inferSelect;
 
@@ -61,7 +62,7 @@ export function createWithCalendar(input: {
 			displayName: input.displayName.trim(),
 			passwordHash: input.passwordHash,
 			role: input.role,
-			color: input.color ?? '#1C1917',
+			color: input.color ?? USER_COLORS[0],
 			createdAt: now,
 		})
 		.run();

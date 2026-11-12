@@ -6,7 +6,7 @@ import * as grantsRepo from './repo/grants';
 import { filterBlock, filterItem, type Access } from './access';
 import { bad } from './http';
 import { addDays, diffDays, isDate, localToUtc } from '$lib/time';
-import type { BlockDTO, CalendarPayload, ItemDTO } from '$lib/types';
+import type { CalendarPayload } from '$lib/types';
 
 export function getCalendar(
 	me: App.SafeUser,
@@ -48,5 +48,3 @@ export function getCalendar(
 	}
 	return { items, blocks };
 }
-
-export const isMine = (x: ItemDTO | BlockDTO) => !x.theirs;

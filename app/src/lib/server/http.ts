@@ -1,5 +1,5 @@
 // JSON API helpers. Errors {error:{code,message}}. 404 = not found OR not yours.
-import { json } from '@sveltejs/kit';
+import { error, json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import type { z } from 'zod';
 
@@ -29,6 +29,13 @@ export function errJson(e: unknown): Response {
 export function me(event: RequestEvent): App.SafeUser {
 	const u = event.locals.user;
 	if (!u) throw new ApiFail(401, 'unauthorized', 'Log in first');
+	return u;
+}
+
+/** admin-only settings pages: everyone else gets a plain 404 */
+export function admin(locals: App.Locals): App.SafeUser {
+	const u = locals.user;
+	if (!u || u.role !== 'admin') error(404, { code: 'not_found', message: 'Not found' });
 	return u;
 }
 

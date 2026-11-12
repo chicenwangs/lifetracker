@@ -1,14 +1,9 @@
 // Admin: who has an account, sign-up mode (open | invite-only), invite codes for invite-only mode.
-import { error, fail } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
+import { admin } from '$lib/server/http';
 import type { Actions, PageServerLoad } from './$types';
 import * as usersRepo from '$lib/server/repo/users';
 import { createInvite, listInvites, revokeInvite, setSignupOpen, signupOpen } from '$lib/server/invites';
-
-function admin(locals: App.Locals): App.SafeUser {
-	const u = locals.user;
-	if (!u || u.role !== 'admin') error(404, { code: 'not_found', message: 'Not found' });
-	return u;
-}
 
 export const load: PageServerLoad = ({ locals }) => {
 	admin(locals);
@@ -29,7 +24,7 @@ export const actions: Actions = {
 	},
 	invite: async ({ locals }) => {
 		const me = admin(locals);
-		const r = createInvite(me.id, { expiry: '7d' });
+		const r = createInvite(me.id);
 		return { code: r.code };
 	},
 	revoke: async ({ locals, request }) => {

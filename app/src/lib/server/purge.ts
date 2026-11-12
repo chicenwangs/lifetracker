@@ -1,4 +1,4 @@
-import { and, isNotNull, lt } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, lt } from 'drizzle-orm';
 import { db } from './db';
 import { blocks, items, places } from './schema';
 import * as sessionsRepo from './repo/sessions';
@@ -8,6 +8,20 @@ import { nowUtcIso } from '$lib/time';
 /** hard delete soft-deleted rows older than 30 days */
 export function purgeTrash(now: number = Date.now()): void {
 	const cut = nowUtcIso(now - 30 * 86_400_000);
+	// a surviving block keeps a copy of its item's title; once the FK unlinks it, a secret title would be shareable
+	db()
+		.update(blocks)
+		.set({ label: 'Block' })
+		.where(
+			inArray(
+				blocks.itemId,
+				db()
+					.select({ id: items.id })
+					.from(items)
+					.where(and(eq(items.private, true), isNotNull(items.deletedAt), lt(items.deletedAt, cut))),
+			),
+		)
+		.run();
 	for (const t of [blocks, items, places]) {
 		db()
 			.delete(t)
