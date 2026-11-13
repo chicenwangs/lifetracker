@@ -1,7 +1,7 @@
 # Life Tracker — DESIGN (how)
 
 Caveman doc. Rev 1.1, 2026-11-12. Compact of Technical Design v1.0 + error fixes (FIX LOG end).
-Read PRD.md + FEATURES.md first. Existing stack/rules = repo TECHNICAL.md (+ P1-NOTES overrides). Ops = repo SERVICE-HANDOFF.md. Decisions = PRD §12. Milestones = PRD §13.
+Read PRD.md + FEATURES.md first. Existing stack/rules = repo TECHNICAL.md (+ BUILD-NOTES overrides). Ops = repo SERVICE-HANDOFF.md. Decisions = PRD §12. Milestones = PRD §13.
 Target design, not built yet. **Spike** = prove before committing.
 
 ## 1. Baseline (live v1.1.0 — don't break)

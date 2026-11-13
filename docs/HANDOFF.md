@@ -5,11 +5,11 @@ Caveman doc. State as of 2026-11-08. Repo `github.com/chicenwangs/lifetracker` (
 ## State
 
 - P1 built and in daily use on Jeremy's PC (Stage A, localhost:5173). Real Notion data imported.
-- Since P1: UX rounds 1–5, Goals + Courses removed, open sign-up, calendar sharing by code (view-only). Details: `P1-NOTES.md`.
+- Since P1: UX rounds 1–5, Goals + Courses removed, open sign-up, calendar sharing by code (view-only). Details: `BUILD-NOTES.md`.
 - P2a done (2026-11-08): service shipped (image via GitHub Actions → GHCR, deploy bundle on GitHub Release), whole-app bug review + security review (10 agents each) fixed. Ops contract = `SERVICE-HANDOFF.md`. Tag `v1.0.0` not pushed yet.
 - Tests: 258 unit (`npm run test:unit`), 14 e2e (`npm run test:e2e`). Lint, prettier, svelte-check clean. CI green.
-- When docs disagree: P1-NOTES > TECHNICAL > REQUIREMENTS. TECHNICAL top banner lists the overrides.
-- Read order for coding: README → this → P1-NOTES → REQUIREMENTS → TECHNICAL.
+- When docs disagree: BUILD-NOTES > TECHNICAL > REQUIREMENTS. TECHNICAL top banner lists the overrides.
+- Read order for coding: README → this → BUILD-NOTES → REQUIREMENTS → TECHNICAL.
 
 ## Env facts (bit us before)
 

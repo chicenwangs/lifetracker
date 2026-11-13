@@ -35,4 +35,4 @@ export async function apiFetch<T>(
 export const get = <T>(p: string) => apiFetch<T>('GET', p);
 export const post = <T>(p: string, b: unknown = {}) => apiFetch<T>('POST', p, b);
 export const patch = <T>(p: string, b: unknown) => apiFetch<T>('PATCH', p, b);
-export const del = <T>(p: string) => apiFetch<T>('DELETE', p);
+export const del = <T>(p: string, b?: unknown) => apiFetch<T>('DELETE', p, b);

@@ -22,7 +22,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const mm = m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m) ? m : day.slice(0, 7);
 	const year = Number(mm.slice(0, 4));
 	const month = Number(mm.slice(5, 7));
-	const range = monthGridRange(year, month);
+	const range = monthGridRange(year, month, me.region === 'us' ? 7 : 1);
 	return {
 		today,
 		day,

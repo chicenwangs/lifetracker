@@ -7,9 +7,13 @@
 	import ItemPeek from '$lib/components/ItemPeek.svelte';
 	import { browser } from '$app/environment';
 	import { initHours } from '$lib/client/hours.svelte';
+	import { initTypes } from '$lib/client/itemtypes.svelte';
+	import { onUndoKey } from '$lib/client/undo.svelte';
 	let { data, children } = $props();
 	// svelte-ignore state_referenced_locally
 	if (browser) initHours(data.hours);
+	// browser only (effects never run in SSR): module state on the server would be shared between users
+	$effect.pre(() => initTypes(data.types, data.user?.hiddenTypes ?? []));
 </script>
 
 {#if data.user}
@@ -22,3 +26,4 @@
 	{/key}
 {/if}
 <UndoToast />
+<svelte:window onkeydown={(e) => data.user && onUndoKey(e)} />

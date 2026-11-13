@@ -16,7 +16,8 @@ LABEL org.opencontainers.image.title="life-tracker" \
       org.opencontainers.image.revision="${REVISION}"
 ENV NODE_ENV=production PORT=3000 HOST=0.0.0.0 \
     DATABASE_PATH=/app/data/app.db SEED_DIR=/app/data/seed \
-    APP_VERSION=${VERSION}
+    APP_VERSION=${VERSION} \
+    BODY_SIZE_LIMIT=26M
 WORKDIR /app
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules

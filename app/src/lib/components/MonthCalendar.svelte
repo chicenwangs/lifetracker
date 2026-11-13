@@ -1,5 +1,8 @@
 <!-- FR-H2..H7, H13. FullCalendar dayGridMonth (MIT plugins). Feeds local strings from lib/time (no FC tz tricks). -->
 <script lang="ts">
+	import { dragStarted, dragStopped, duplicate } from '$lib/client/altdrag';
+	import { page } from '$app/state';
+	import TypeBar from './TypeBar.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { Calendar, type EventInput } from '@fullcalendar/core';
 	import dayGridPlugin from '@fullcalendar/daygrid';
@@ -13,6 +16,7 @@
 		prettyDate,
 		prettyTime,
 	} from '$lib/time';
+	import { typeName, typeOf } from '$lib/client/itemtypes.svelte';
 	import { colorsFor, typeClass } from '$lib/colors';
 	import { badge, entryColors, theirClasses } from '$lib/client/partner';
 	import OverlapToggle from './OverlapToggle.svelte';
@@ -128,14 +132,16 @@
 		t.className = 'lt-title';
 		t.href = `/item/${it.id}`;
 		t.textContent = (it.time ? `${prettyTime(it.time)} ` : '') + it.title;
-		t.title = t.textContent + (it.stepsTotal ? ` (${it.stepsDone}/${it.stepsTotal} steps)` : '');
+		t.title =
+			`${typeName(it.type) ?? 'Custom type'} · ${t.textContent}` +
+			(it.stepsTotal ? ` (${it.stepsDone}/${it.stepsTotal} steps)` : '');
 		t.draggable = false;
 		t.addEventListener('click', (e) => {
 			e.preventDefault();
 			onopen(it.id);
 		});
 		wrap.append(btn, t);
-		const cd = examCountdown(it, today);
+		const cd = examCountdown(it, today, !!typeOf(it.type)?.countsDown);
 		if (cd) {
 			const b = document.createElement('span');
 			b.className = 'lt-dl' + (cd.days <= 3 ? ' soon' : '');
@@ -168,7 +174,7 @@
 			plugins: [dayGridPlugin, interactionPlugin],
 			initialView: 'dayGridMonth',
 			initialDate: makeDate(year, month, 1),
-			firstDay: 1,
+			firstDay: page.data.user?.region === 'us' ? 0 : 1,
 			headerToolbar: false,
 			height: 'auto',
 			fixedWeekCount: true,
@@ -200,9 +206,14 @@
 					openDay(s, a.el, ev);
 				});
 			},
+			eventDragStart: dragStarted,
 			eventDrop: async (info) => {
 				const it = info.event.extendedProps.item as ItemDTO;
 				const { date, endDate } = fcDropToItem(it, info.event.startStr);
+				if ((info.jsEvent as MouseEvent).altKey) {
+					info.revert(); // Alt = copy: the source stays
+					return duplicate('item', it.id, { date });
+				}
 				try {
 					await onmove(it.id, date, endDate);
 				} catch {
@@ -210,6 +221,7 @@
 				}
 			},
 			eventDragStop: (info) => {
+				dragStopped();
 				const e = info.jsEvent as MouseEvent;
 				const r = el.getBoundingClientRect();
 				const inside =
@@ -307,11 +319,8 @@
 			<a href="/week">Week</a>
 		</div>
 	</div>
-	<div class="legend" aria-label="Type colours">
-		{#each ['Work', 'Exam', 'Event', 'Hobby', 'Dating'] as const as t (t)}
-			<span class="lg {typeClass(t)}">{t}</span>
-		{/each}
-	</div>
+	<div class="legend"><TypeBar /></div>
+
 	<div class="grid" bind:this={el}></div>
 	<div class="foot">
 		Square: empty = not started · ▶ = in progress · ✓ = done · drag an item to another day to move it · drag
@@ -405,17 +414,6 @@
 		gap: 6px;
 		flex-wrap: wrap;
 		border-bottom: 1px solid var(--rule);
-	}
-	.lg {
-		height: 22px;
-		padding: 0 8px;
-		border-radius: 5px;
-		background: var(--bg);
-		color: var(--fg);
-		font-size: 11px;
-		font-weight: 600;
-		display: flex;
-		align-items: center;
 	}
 	.foot {
 		padding: 10px 20px;

@@ -7,15 +7,26 @@
 // · Options start with `/`; unknown `/x` = problem. `#x` is just part of the title.
 // · Days, times and their little words (on, at, by, from) need no prefix. LAST day wins, LAST time wins.
 // · Day words tolerate common typos (tommorow, wensday, febuary …) and punctuation (tomorrow, / fri.).
-// · Planner times snap to 15 min; single time = 60 min; end <= start = crosses midnight.
+// · Planner times snap to 15 min; single time = ctx.blockMin (60); end <= start = crosses midnight.
+// · v2: types, default type, default destination, block length and date order come from ctx (user prefs).
+//   Missing ctx fields = v1.1.0 behaviour.
 import { addDays, hhmm, isDate, makeDate, weekdayOf } from './time';
-import type { ItemType } from './types';
+import type { ItemType, ItemTypeDTO } from './types';
+import { defaultTypes, LEGACY_SLUGS, slugMap } from './itemtypes';
 
 export interface QAContext {
 	today: string; // local YYYY-MM-DD
 	nowMinutes: number; // local minutes since 00:00
 	/** drag-created range on a timeline: used when the text has no day / no time of its own (typed ones win) */
 	slot?: QASlot;
+	/** the user's item types (default: the 5 built-ins) */
+	types?: Pick<ItemTypeDTO, 'key' | 'slug' | 'name' | 'isDefault'>[];
+	/** no destination typed: 'planner' (default) or 'calendar' */
+	qaTarget?: 'planner' | 'calendar';
+	/** single time = this many minutes (default 60) */
+	blockMin?: number;
+	/** 'us' reads 11/16 as M/D first (default 'my' = D/M) */
+	region?: 'my' | 'us';
 }
 export interface QASlot {
 	date: string; // local YYYY-MM-DD
@@ -50,14 +61,6 @@ export interface QAParse {
 
 // ---------- vocabulary ----------
 
-export const TYPE_WORDS: Record<string, ItemType> = {
-	work: 'Work',
-	exam: 'Exam',
-	event: 'Event',
-	hobby: 'Hobby',
-	date: 'Dating',
-	dating: 'Dating',
-};
 export const TARGET_WORDS: Record<string, QATarget> = {
 	planner: 'planner',
 	plan: 'planner',
@@ -352,6 +355,8 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	const notes: string[] = [];
 	const today = ctx.today;
 	const todayWd = weekdayOf(today);
+	const types = ctx.types ?? defaultTypes();
+	const TYPE_WORDS = slugMap(types);
 
 	let type: ItemType | null = null;
 	const targets = new Set<QATarget>();
@@ -572,7 +577,8 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 		if ((m = DM.exec(t))) {
 			let d = Number(m[1]);
 			let mo = Number(m[2]);
-			if (mo > 12 && d <= 12) [d, mo] = [mo, d]; // 11/16 -> US order
+			if (ctx.region === 'us') [d, mo] = [mo, d]; // read M/D first
+			if (mo > 12 && d <= 12) [d, mo] = [mo, d]; // the other order when this one can't be valid
 			const y = m[3] ? Number(m[3]) : undefined;
 			if (calendarDate(d, mo, y)) {
 				pushDate({ idx: [i], resolve: () => calendarDate(d, mo, y), explicit: true });
@@ -750,7 +756,8 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 
 	// --- where it goes ---
 	// a month day (no time) defaults to the calendar; everything else to the planner
-	let target: QATarget = ctx.slot?.day ? 'calendar' : 'planner';
+	// a month day defaults to the calendar, a dragged time range to the planner, plain typing to the user's pref
+	let target: QATarget = ctx.slot ? (ctx.slot.day ? 'calendar' : 'planner') : (ctx.qaTarget ?? 'planner');
 	if (targets.has('both') || (targets.has('calendar') && targets.has('planner'))) target = 'both';
 	else if (targets.has('calendar')) target = 'calendar';
 	else if (targets.has('planner')) target = 'planner';
@@ -772,8 +779,9 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 			if (end !== null) end = snap(end);
 			if (s0 !== start || (e0 !== null && e0 !== end)) notes.push('rounded to 15 min');
 			if (end === null) {
-				end = start + 60;
-				notes.push('60 min default');
+				const len = ctx.blockMin ?? 60;
+				end = start + len;
+				notes.push(`${len} min default`);
 			}
 			// crosses midnight only if the typed end is really before the start (not just snapped onto it)
 			if (end <= start) end += e0 !== null && e0 <= s0 ? 1440 : 0;
@@ -811,7 +819,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	return {
 		ok: problems.length === 0,
 		title,
-		type: type ?? 'Event',
+		type: type ?? types.find((t) => t.isDefault)?.key ?? types[0]?.key ?? 'Event',
 		typeSet: type !== null,
 		target,
 		targetSet: targets.size > 0,
@@ -838,17 +846,26 @@ export interface QAOption {
 	hint: string;
 	type?: ItemType;
 	target?: QATarget;
+	/** old words that still pick this option (/exam -> Deadline) */
+	aliases?: string[];
 }
-export const SLASH_OPTIONS: QAOption[] = [
-	{ group: 'Type', token: '/work', label: 'Work', hint: 'school, jobs', type: 'Work' },
-	{ group: 'Type', token: '/exam', label: 'Exam', hint: 'deadlines, tests', type: 'Exam' },
-	{ group: 'Type', token: '/event', label: 'Event', hint: 'default', type: 'Event' },
-	{ group: 'Type', token: '/hobby', label: 'Hobby', hint: 'side projects', type: 'Hobby' },
-	{ group: 'Type', token: '/date', label: 'Dating', hint: 'dates', type: 'Dating' },
-	{ group: 'Goes to', token: '/planner', label: 'Planner', hint: 'default · time block', target: 'planner' },
-	{ group: 'Goes to', token: '/calendar', label: 'Calendar', hint: 'big event only', target: 'calendar' },
-	{ group: 'Goes to', token: '/both', label: 'Both', hint: 'calendar + block', target: 'both' },
-];
+/** the "/" menu: the user's types (default marked), then destinations (default marked) */
+export function slashOptions(ctx: Pick<QAContext, 'types' | 'qaTarget'> = {}): QAOption[] {
+	const cal = ctx.qaTarget === 'calendar';
+	return [
+		...(ctx.types ?? defaultTypes()).map((t) => ({
+			group: 'Type' as const,
+			token: `/${t.slug}`,
+			label: t.name,
+			hint: t.isDefault ? 'default' : 'type',
+			type: t.key,
+			aliases: Object.keys(LEGACY_SLUGS).filter((w) => LEGACY_SLUGS[w] === t.key && w !== t.slug),
+		})),
+		{ group: 'Goes to', token: '/planner', label: 'Planner', hint: cal ? 'time block' : 'default · time block', target: 'planner' },
+		{ group: 'Goes to', token: '/calendar', label: 'Calendar', hint: cal ? 'default · item' : 'big event only', target: 'calendar' },
+		{ group: 'Goes to', token: '/both', label: 'Both', hint: 'calendar + block', target: 'both' },
+	]; // prettier-ignore
+}
 
 /** The token being typed at the end of the text, if it is an option prefix (`/x`). */
 export function activeOptionToken(text: string): string | null {
@@ -857,13 +874,23 @@ export function activeOptionToken(text: string): string | null {
 	return t.startsWith('/') && !/^\/\d/.test(t) ? t : null;
 }
 
-export function optionsFor(token: string): QAOption[] {
+export function optionsFor(token: string, ctx: Pick<QAContext, 'types' | 'qaTarget'> = {}): QAOption[] {
 	const q = token.slice(1).toLowerCase();
-	return SLASH_OPTIONS.filter((o) => o.token.slice(1).startsWith(q) || o.label.toLowerCase().startsWith(q));
+	return slashOptions(ctx).filter(
+		(o) =>
+			o.token.slice(1).startsWith(q) ||
+			o.label.toLowerCase().startsWith(q) ||
+			!!o.aliases?.some((a) => a.startsWith(q)),
+	);
 }
 
 /** Grey ghost text after the cursor: rest of an option being typed, else the slots still missing. */
-export function ghostHint(text: string, p: QAParse, slotted: boolean | 'day' = false): string {
+export function ghostHint(
+	text: string,
+	p: QAParse,
+	slotted: boolean | 'day' = false,
+	ctx: Pick<QAContext, 'types' | 'qaTarget'> = {},
+): string {
 	if (!text)
 		return slotted === 'day'
 			? 'title   optional: time  /type  /both'
@@ -873,7 +900,7 @@ export function ghostHint(text: string, p: QAParse, slotted: boolean | 'day' = f
 	const tok = activeOptionToken(text);
 	if (tok) {
 		if (tok.length < 2) return '';
-		const first = optionsFor(tok)[0];
+		const first = optionsFor(tok, ctx)[0];
 		return first && first.token.startsWith(tok.toLowerCase()) ? first.token.slice(tok.length) : '';
 	}
 	const missing: string[] = [];

@@ -1,23 +1,16 @@
-// Quick delete (hover X) with 5 s undo. Soft delete server side; undo = trash batch restore.
-import { del, post } from './api';
+// Quick delete (hover X) with 5 s undo. Soft delete server side; Undo = the same journal entry Ctrl+Z uses.
+import { del } from './api';
 import { showError, showToast } from './toast.svelte';
+import { undoLast } from './undo.svelte';
+import type { UndoRef } from '$lib/types';
 
 async function removeWithUndo(path: string, what: string, onchanged: () => void | Promise<void>) {
 	try {
-		const r = await del<{ batch?: string }>(path);
+		const r = await del<{ undo?: UndoRef }>(path);
 		await onchanged();
-		const batch = r.batch;
+		const u = r.undo;
 		showToast(`Deleted "${what}"`, {
-			undo: batch
-				? async () => {
-						try {
-							await post(`/api/trash/${batch}/restore`);
-							await onchanged();
-						} catch (e) {
-							showError(e);
-						}
-					}
-				: undefined,
+			undo: u ? async () => void ((await undoLast(u.id)) && (await onchanged())) : undefined,
 		});
 	} catch (e) {
 		showError(e);

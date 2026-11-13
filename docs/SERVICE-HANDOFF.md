@@ -33,7 +33,7 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | Port | 3000/tcp, HTTP only (TLS ends at Cloudflare) |
 | User | `node` uid 1000. The data folder on the host must be owned by 1000:1000. |
 | Filesystem | Read-only root in compose. Writable: `/app/data` (volume), `/tmp` (tmpfs). |
-| State | `/app/data/app.db` (+ `-wal`, `-shm` while running). `/app/data/seed/` = optional Notion import input. `/app/data/backups/` = from `backup.sh`. |
+| State | `/app/data/app.db` (+ `-wal`, `-shm` while running). `/app/data/seed/` = optional Notion import input. `/app/data/backups/` = from `backup.sh`. **v2:** `/app/data/uploads/` = attached files (`<2 chars>/<key>`, temp files in `uploads/.tmp/`). Back it up with the DB. |
 | Health | `GET /healthz` → `200 {"ok":true,"db":true,"version":"1.0.0"}`; 503 if the DB is unusable. No auth. Image HEALTHCHECK every 30 s. |
 | Start | Runs DB migrations on boot (forward only), then listens. Logs `[boot] v<version> db ready, origin=…, secureCookies=…, proxyHeader=…`. Bad env = exits with `Bad env:` lines, no partial start. |
 | Stop | SIGTERM → finishes in-flight requests → closes DB (`[shutdown] db closed`). `init: true` in compose. |
@@ -53,6 +53,9 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | `CLOUDFLARED_VERSION` | tunnel | Dated tag, e.g. `2025.11.1`. Unset = `latest` (don't, in Stage C). |
 | `TZ`, `PORT`, `HOST` | defaults ok | `Asia/Kuala_Lumpur`, `3000`, `0.0.0.0`. |
 | `DATABASE_PATH`, `SEED_DIR` | set by compose | `/app/data/app.db`, `/app/data/seed`. Do not change. |
+| `UPLOAD_DIR` | v2, optional | Empty = `/app/data/uploads`. Must be on the data volume (temp files are written inside it, so rename never crosses filesystems). |
+| `MAX_UPLOAD_BYTES` | v2, optional | Default `26214400` (25 MB, D-12). Allowed types: png jpg gif webp pdf zip docx xlsx pptx doc xls ppt txt md csv. |
+| `BODY_SIZE_LIMIT` | set by the image | `26M` so uploads reach the app. The app itself refuses any other request body over 1 MB. Don't lower it below `MAX_UPLOAD_BYTES`. |
 
 ## 4. First deploy
 
@@ -90,9 +93,9 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 
 **Roll back:** set `APP_VERSION` back → `docker compose up -d app`. If the newer release ran a DB migration (release notes say "migration"), the old version may not read the new schema: restore the backup taken before the upgrade (`sudo ./restore.sh data/backups/app-<ts>.db.gz`). Migrations are forward-only.
 
-**Backup:** `backup.sh` = online SQLite backup + integrity check + gzip, keeps 14 days in `data/backups/`. Runs as root (`data/` is owned by uid 1000; the script refuses otherwise). Root cron (`sudo crontab -e`): `15 3 * * * /opt/life-tracker/backup.sh >> /var/log/life-tracker-backup.log 2>&1`. Set `LT_OFFSITE=/mnt/nas/life-tracker` (or another host via rsync) so one copy lives off the box.
+**Backup:** `backup.sh` = online SQLite backup + integrity check + gzip, **plus (v2) `uploads-<ts>.tar.gz` of `data/uploads` with the same timestamp**, keeps 14 days in `data/backups/`. Runs as root (`data/` is owned by uid 1000; the script refuses otherwise). Root cron (`sudo crontab -e`): `15 3 * * * /opt/life-tracker/backup.sh >> /var/log/life-tracker-backup.log 2>&1`. Set `LT_OFFSITE=/mnt/nas/life-tracker` (or another host via rsync) so one copy lives off the box.
 
-**Restore (drill it monthly):** `sudo ./restore.sh data/backups/app-<ts>.db.gz` → checks integrity, stops app, keeps the current DB as `app.db.pre-restore-<ts>`, swaps, starts app. Then log in and check recent items.
+**Restore (drill it monthly):** `sudo ./restore.sh data/backups/app-<ts>.db.gz` → checks integrity, stops app, keeps the current DB as `app.db.pre-restore-<ts>`, swaps (and, v2, swaps `data/uploads` from `uploads-<ts>.tar.gz` if present, old folder kept as `uploads.pre-restore-<ts>`), starts app. Then log in and check recent items.
 
 **Locked-out user / forgot password:** `docker compose exec -it app node scripts/reset-password.mjs <username>` (asks for the new password twice, signs that user out everywhere). Login lockout itself clears after 15 minutes.
 

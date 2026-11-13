@@ -8,7 +8,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const me = locals.user as App.SafeUser;
 	const today = todayLocal(me.timezone);
 	const w = url.searchParams.get('w');
-	const { from, to } = weekRange(w && isDate(w) ? w : today);
+	const ws = me.region === 'us' ? 7 : 1;
+	const { from, to } = weekRange(w && isDate(w) ? w : today, ws);
 	const cal = getCalendar(me, from, to);
 	const ownItems = cal.items.filter((i) => !i.theirs);
 	const done = ownItems.filter((i) => i.status === 'done').length;
@@ -21,7 +22,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const thu = addDays(from, 3);
 	const year = Number(thu.slice(0, 4));
 	const month = Number(thu.slice(5, 7));
-	const grid = monthGridRange(year, month);
+	const grid = monthGridRange(year, month, ws);
 	const mcal = getCalendar(me, grid.from, grid.to, { shared: false });
 	const unblocked = itemsRepo.allDayUnblocked(me.id, grid.from, grid.to);
 	const heat: HeatDay[] = [];

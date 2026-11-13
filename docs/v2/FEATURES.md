@@ -1,7 +1,7 @@
 # Life Tracker — FEATURES (behaviour)
 
 Caveman doc. Rev 1.1, 2026-11-12. Compact of Feature Spec v1.0 + error fixes (FIX LOG end).
-Read PRD.md first. Decisions = PRD §12 (D-xx). Milestones = PRD §13 (M-x). Old planner detail = repo REQUIREMENTS/P1-NOTES (P1-NOTES wins).
+Read PRD.md first. Decisions = PRD §12 (D-xx). Milestones = PRD §13 (M-x). Old planner detail = repo REQUIREMENTS/BUILD-NOTES (BUILD-NOTES wins).
 MUST = needed for acceptance. SHOULD = expected unless reason written. MAY = optional.
 Tags: **KEEP** = existing, don't break · **CORE** = first release of that feature · **EXT** = full feature, can follow · **LATER** = deferred/blocked.
 
@@ -29,7 +29,7 @@ Tests: 0 pins → Home Week Keep Pages only · 1–3 pins after Pages · 4th fai
 
 ## 3. Life Planner
 
-- **Home / Week / item / quick add (KEEP).** As P1-NOTES. Failed refresh keeps last good data + error, never blank calendar. Week ≠ Pages DB calendar view.
+- **Home / Week / item / quick add (KEEP).** As BUILD-NOTES. Failed refresh keeps last good data + error, never blank calendar. Week ≠ Pages DB calendar view.
 - **X fix (CORE).** Every deletable chip/block/all-day chip/row: control on hover + focus, stays while pointer on it, not clipped (check stacking context / overflow), touch alternative, name "Delete <title>". Double-click = one delete. Fail → item stays + error. Linked blocks follow existing delete rules (one undo unit).
 - **Undo (CORE).**
   - Ctrl+Z / Cmd+Z when focus not in input/textarea/contenteditable/editor/drawing canvas. In those, native/editor undo wins.

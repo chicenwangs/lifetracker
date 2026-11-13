@@ -1,6 +1,6 @@
 # Release parity — live v1.1.0 vs wireframes
 
-Caveman doc. 2026-11-12. Source = git tag `v1.1.0` (9 Nov, "gradient C theme, motion, month double-click add, quick add fix") in `chicenwangs/lifetracker`, routes + components + P1-NOTES. Main has 1 later merge (#4 audit fixes, not released).
+Caveman doc. 2026-11-12. Source = git tag `v1.1.0` (9 Nov, "gradient C theme, motion, month double-click add, quick add fix") in `chicenwangs/lifetracker`, routes + components + BUILD-NOTES (then P1-NOTES). Main has 1 later merge (#4 audit fixes, not released).
 Rule (owner): **every live feature stays.** Core loop tested 1 week. New design may restyle, never drop.
 
 ## Live screens (v1.1.0)

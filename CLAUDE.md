@@ -11,7 +11,7 @@ Caveman rules for Claude Code in this repo.
 - v2 truth: `docs/v2/PRD.md` → `FEATURES.md` → `DESIGN.md`. Decisions list = PRD §12 (D-xx). Don't guess an open D-xx — ask.
 - Must keep: `docs/v2/RELEASE-PARITY.md` (every v1.1.0 feature). UX rules: `UX-AUDIT.md`. De-hard-wiring: `SYSTEM-AUDIT.md` + DESIGN §5b.
 - Wireframes: `wireframes/v2/canvas.json` + `*.dc.html` (desktop rows, phone rows `M*.dc.html`). `wireframes/*.dc.html` at top level = v1, reference only.
-- v1 code docs: `docs/TECHNICAL.md`, `docs/P1-NOTES.md` (rename to `BUILD-NOTES.md` in P1), `docs/SERVICE-HANDOFF.md` (ops contract — update it when env, outbound calls or backups change).
+- v1 code docs: `docs/TECHNICAL.md`, `docs/BUILD-NOTES.md` (rename to `BUILD-NOTES.md` in P1), `docs/SERVICE-HANDOFF.md` (ops contract — update it when env, outbound calls or backups change).
 - Write docs caveman style: short lines, no filler.
 
 ## Code rules (from v1, still true)
