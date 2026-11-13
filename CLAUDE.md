@@ -4,8 +4,8 @@ Caveman rules for Claude Code in this repo.
 
 ## Now
 - Live = **v1.1.0** (planner.jeremyjosh.org, homelab Docker + Cloudflare Tunnel). Do not deploy.
-- Building **v2** on branch `v2`. Plan = `docs/v2/PHASES.md`. Do the next phase not marked DONE.
-- v2 ships once, as **v2.0.0**, after P9.
+- **v2.0.1** released (tag + GHCR image + GitHub Release), not deployed. Owner deploys (`docs/SERVICE-HANDOFF.md` §5). v2 phases all DONE (`docs/v2/PHASES.md`).
+- Next work = v2.1 backlog (`docs/v2/CHAT-HANDOFF.md`). Branch from `main`, PR into `main`; keep `v2` = `main`.
 
 ## Docs
 - v2 truth: `docs/v2/PRD.md` → `FEATURES.md` → `DESIGN.md`. Decisions list = PRD §12 (D-xx). Don't guess an open D-xx — ask.

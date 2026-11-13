@@ -3,7 +3,7 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
-## v2 fix — Pages look to wireframe (2026-11-14)
+## v2.0.1 — Pages look to wireframe + audit fixes (2026-11-14, PR #15)
 - Tree (`wireframes/v2/PagesTree`): New page button + ▤ New database + «, 32 px rows, pin icon on header-pinned pages, tools as a list (Knowledge graph, Shared with me, Archive, Trash). Current row = `--pill-card`.
 - Page (`Pages`): top bar = crumbs (… / current) · save state · **Pin** (pressed when pinned) · **Share** · ⋯ (Move, Copy link, Archive, Delete). Body = 760 px column, 32 px title. Database pages get the full width (`Database`).
 - Editor: soft toolbar, tight block spacing, to-do box lined up with its text (24 px hit area), done = struck through, quiet table borders, header cells filled. "Delete table" button gone (Delete block does it). Slash menu = name + hint, yellow shadow, key help line.

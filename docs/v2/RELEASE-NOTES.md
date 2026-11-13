@@ -1,4 +1,18 @@
-# Life Tracker v2.0.0 — release notes
+# Life Tracker v2 — release notes
+
+## v2.0.1 (2026-11-14) — fixes, no migration
+From v2.0.0: just pull the new image. From v1.1.0: go straight to 2.0.1 (same steps as 2.0.0, SERVICE-HANDOFF §5).
+- **Pages look like the wireframes:** page list with New page button, pin icons, tools list · page bar = path · save state · Pin · Share · ⋯ · text in a centred column (database pages full width) · tidy editor spacing, to-do boxes in line, calmer `/` menu.
+- **Graph:** nodes were giant circles (graph library default) → normal size, every node named, readable in dark mode.
+- **Header pins:** Settings › Preferences › Header pins = reorder (↑ ↓) + Unpin.
+- **Phone All pages:** search by title + 5 recent pages.
+- **No visible scrollbars** anywhere (scrolling still works).
+- Grey helper text was showing in full ink in some places → now grey.
+- Pin and Share moved from the page ⋯ menu to the page bar.
+
+---
+
+# v2.0.0
 
 Caveman doc. From v1.1.0. **Migration release** (0003–0008, forward-only). Back up before you pull.
 
