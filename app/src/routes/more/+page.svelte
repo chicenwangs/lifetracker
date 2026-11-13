@@ -2,9 +2,10 @@
 <script lang="ts">
 	let { data } = $props();
 	const LINKS = [
-		{ href: '/?m=', label: 'Month', hint: 'Compact month; tap a day for its planner' },
+		{ href: '/month', label: 'Month', hint: 'Compact month; tap a day for its Today' },
 		{ href: '/week', label: 'Week', hint: 'Read-first on a phone' },
 		{ href: '/pages', label: 'Pages', hint: 'All pages, then open one to read or edit' },
+		{ href: '/shared', label: 'Shared with me', hint: 'Pages and notes others shared with you' },
 		{ href: '/keep?scope=archive', label: 'Keep archive', hint: '' },
 		{ href: '/trash', label: 'Planner trash', hint: 'Deleted items and blocks, 30 days' },
 		{
@@ -12,6 +13,7 @@
 			label: 'Settings',
 			hint: 'Theme, timezone, planner defaults, types, sharing',
 		},
+		{ href: '/settings/help', label: 'Help', hint: 'Guides and the welcome tour' },
 	];
 </script>
 
@@ -21,7 +23,7 @@
 	<h1>More</h1>
 	<nav class="card" aria-label="More">
 		{#each LINKS as l (l.href)}
-			<a href={l.href === '/?m=' ? '/?desktop=1' : l.href}
+			<a href={l.href}
 				><b>{l.label}</b>{#if l.hint}<span class="hint">{l.hint}</span>{/if}</a
 			>
 		{/each}

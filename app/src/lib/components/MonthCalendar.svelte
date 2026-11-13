@@ -462,8 +462,11 @@
 		padding: 6px 8px 2px !important;
 		text-decoration: none !important;
 	}
+	.grid :global(.fc-day-other .fc-daygrid-day-top) {
+		opacity: 1; /* FullCalendar fades it to 0.3: unreadable */
+	}
 	.grid :global(.fc-day-other .fc-daygrid-day-number) {
-		color: var(--faint);
+		color: var(--muted); /* other month: dimmer, still readable (4.5:1) */
 	}
 	.grid :global(.lt-today .fc-daygrid-day-number) {
 		border-radius: 12px;

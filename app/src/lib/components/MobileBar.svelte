@@ -67,6 +67,7 @@
 		}
 		a.on {
 			background: var(--pill);
+			color: var(--pill-ink);
 			font-weight: 600;
 		}
 		.add {

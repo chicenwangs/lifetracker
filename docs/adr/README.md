@@ -15,7 +15,7 @@ Spike code + how to re-run: `spikes/README.md`. Numbers below were measured 2026
 
 | [008](008-co-edit.md) | Co-edit: none in v2.0, 409 on clash, Yjs → v2.1 | **Accepted** | P7 |
 
-Later: 009 offline sync (P8).
+| [009](009-offline-sync.md) | Offline: shell + offline page; Keep edits queue on device, clash = both copies | **Accepted** | P8 |
 
 ## Not proven yet (carry into the phase that builds it)
 

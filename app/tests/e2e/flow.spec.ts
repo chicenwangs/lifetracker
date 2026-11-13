@@ -1,5 +1,6 @@
 // P1 acceptance (REQUIREMENTS §6) end to end on a fresh DB. Runs in order.
 import { expect, test, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
@@ -39,6 +40,13 @@ test('fresh DB -> /setup -> admin; /setup then 404', async () => {
 	await page.fill('#cp', PW);
 	await page.click('button[type=submit]');
 	await expect(page).toHaveURL(/\/$/);
+	// ONB-001/002/004: the tour opens on first sign-in, Skip is saved, it never comes back by itself
+	const tour = page.getByRole('dialog', { name: 'Welcome to Life Tracker' });
+	await expect(tour).toBeVisible();
+	await tour.getByRole('button', { name: 'Skip tour' }).click();
+	await expect(tour).toHaveCount(0);
+	await page.reload();
+	await expect(page.getByRole('button', { name: 'Skip tour' })).toHaveCount(0);
 	const r = await page.request.get('/setup');
 	expect(r.status()).toBe(404);
 });
@@ -423,6 +431,7 @@ test('open sign-up + swap share codes: partner calendar read-only, hidden types 
 	await n.fill('#cp', PW + ' 2');
 	await n.getByRole('button', { name: 'Create account' }).click();
 	await n.waitForURL((u) => u.pathname === '/');
+	await n.getByRole('button', { name: 'Skip tour' }).click();
 	// her calendar starts empty: none of Jeremy's things
 	await expect(n.locator('.lt-chip', { hasText: 'Groceries' })).toHaveCount(0);
 	// she enters his code
@@ -914,6 +923,111 @@ test('v2 P7 Sharing: share a page view-only, they read it but cannot edit, revok
 	expect(r?.status()).toBe(404);
 	await expect(n.locator('body')).not.toContainText('Trip plan');
 	await n.context().close();
+});
+
+test('v2 P8: phone Week/Month/More, PWA manifest, offline badge + Keep queue, Help restarts the tour', async ({
+	browser,
+}) => {
+	const ctx = await browser.newContext({
+		storageState: await page.context().storageState(),
+		viewport: { width: 360, height: 780 },
+		timezoneId: 'Asia/Kuala_Lumpur',
+		hasTouch: true,
+	});
+	const ph = await ctx.newPage();
+	const noSideScroll = async () =>
+		expect(await ph.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+	// MOB-007: More reaches Week, Month, Pages; phone Week = read-first agenda, Month = compact grid
+	await ph.goto('/more');
+	await ph.getByRole('navigation', { name: 'More' }).getByRole('link', { name: /^Week/ }).click();
+	await expect(ph.getByRole('main', { name: 'Week agenda' })).toBeVisible();
+	await expect(ph.locator('.pweek .day')).toHaveCount(7);
+	await noSideScroll();
+	await ph.goto('/more');
+	await ph
+		.getByRole('navigation', { name: 'More' })
+		.getByRole('link', { name: /^Month/ })
+		.click();
+	await expect(ph.locator('.grid .cell')).toHaveCount(42);
+	await noSideScroll();
+	await ph.locator('.cell.today').click();
+	await expect(ph).toHaveURL(/\/today\?d=/);
+	for (const p of ['/settings/preferences', '/settings/help', '/pages', '/shared']) {
+		await ph.goto(p);
+		await noSideScroll();
+	}
+	// perf target: Home loads in < 1.5 s on the LAN (here: local preview server)
+	await ph.goto('/?desktop=1');
+	const ms = await ph.evaluate(() => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).loadEventEnd); // prettier-ignore
+	expect(ms).toBeLessThan(1500);
+	// MOB-009: installable shell
+	const m = await (await ph.request.get('/manifest.webmanifest')).json();
+	expect(m.display).toBe('standalone');
+	expect(m.icons.map((i: { sizes: string }) => i.sizes)).toEqual(
+		expect.arrayContaining(['192x192', '512x512']),
+	);
+	expect((await ph.request.get('/icon-512.png')).status()).toBe(200);
+	await ph.close();
+
+	// MOB-010: offline is visible; a Keep edit waits on the device and is sent when back online
+	const d = await ctx.newPage();
+	await d.setViewportSize({ width: 1280, height: 800 });
+	await d.goto('/keep');
+	await d.getByRole('button', { name: 'New note' }).click();
+	await d.getByPlaceholder('Title').fill('offline idea');
+	await expect(d.locator('[role=dialog].note .state')).toHaveText('Saved');
+	await ctx.setOffline(true);
+	await expect(d.getByText("Offline · changes aren't saved")).toBeVisible();
+	await d.locator('[role=dialog].note textarea.body').fill('written on the train');
+	await expect(d.locator('[role=dialog].note .state')).toContainText('kept on this device');
+	await d.locator('[role=dialog].note').getByRole('button', { name: 'Close' }).click();
+	await ctx.setOffline(false);
+	await expect(d.locator('.toast')).toContainText('Back online: 1 note change(s) sent');
+	await expect(d.locator('article.note', { hasText: 'written on the train' })).toBeVisible();
+
+	// ONB-005/006: Help restarts the tour; a resize mid-tour keeps it usable; Finish is saved
+	await d.goto('/settings/help');
+	await d.getByRole('button', { name: 'Restart the tour' }).click();
+	await expect(d.getByRole('dialog', { name: 'Welcome to Life Tracker' })).toBeVisible();
+	await d.locator('.tcard').getByRole('button', { name: 'Next', exact: true }).click();
+	await d.setViewportSize({ width: 380, height: 780 });
+	for (
+		let i = 0;
+		i < 8 && (await d.locator('.tcard').getByRole('button', { name: 'Next', exact: true }).count());
+		i++
+	)
+		await d.locator('.tcard').getByRole('button', { name: 'Next', exact: true }).click();
+	await d.locator('.tcard').getByRole('button', { name: 'Finish' }).click();
+	await expect(d.locator('.tcard')).toHaveCount(0);
+	await d.reload();
+	await expect(d.locator('.tcard')).toHaveCount(0);
+	await ctx.close();
+});
+
+test('v2 P8 a11y: axe finds no serious or critical issues on the main screens (light + dark, PC + phone)', async ({
+	browser,
+}) => {
+	const bad: string[] = [];
+	for (const [w, h] of [
+		[1280, 800],
+		[360, 780],
+	] as const)
+		for (const scheme of ['light', 'dark'] as const) {
+			const ctx = await browser.newContext({ storageState: await page.context().storageState(), viewport: { width: w, height: h }, timezoneId: 'Asia/Kuala_Lumpur', reducedMotion: 'reduce' }); // prettier-ignore
+			const p = await ctx.newPage();
+			await p.goto('/');
+			await p.evaluate((s) => document.documentElement.setAttribute('data-theme', s), scheme);
+			for (const url of ['/?desktop=1', '/today', '/week', '/month', '/keep', '/pages', '/shared', '/settings/preferences', '/settings/help', '/more']) {
+				await p.goto(url);
+				await p.evaluate((s) => document.documentElement.setAttribute('data-theme', s), scheme);
+				await p.waitForTimeout(700); // let theme transitions finish
+				const r = await new AxeBuilder({ page: p }).withTags(['wcag2a', 'wcag2aa']).analyze();
+				for (const v of r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical'))
+					for (const n of v.nodes.slice(0, 4)) bad.push(`${w}px ${scheme} ${url}: ${v.id} ${n.target.join(' ')} ${JSON.stringify((n.any[0]?.data ?? {}) as object).slice(0, 160)}`);
+			} // prettier-ignore
+			await ctx.close();
+		}
+	expect(bad).toEqual([]);
 });
 
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {

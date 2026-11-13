@@ -3,6 +3,16 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## v2 P8 — Phone rest, PWA, offline, tour, help, a11y (2026-11-14)
+
+- Phone (< 700 px): Week = read-first agenda (`PhoneWeek`, 7 day cards, tap day → Today, tap item → item); Month = `/month` compact 6×7 grid with type-colour dots, tap day → Today. More lists Month, Week, Pages, Shared with me, Keep archive, Trash, Settings, Help. Settings + Login already fit 360 px (checked).
+- PWA: real `manifest.webmanifest` (standalone, 192/512 + maskable PNGs, apple-touch-icon; PNGs rendered from `favicon.svg`), `theme-color`. `sw.js` registered on every load: caches hashed build files + `/offline.html` only; push handlers unchanged.
+- Offline (ADR-009, D-06): badge while offline; API calls fail with "You're offline. Not saved."; Keep note edits queue on the device and send when back (clash = "(offline copy)" note). Sign-out wipes the queue.
+- Tour (`Tour.svelte`): first sign-in when `tour_state = new` (existing users were set `done` in P1). 7 steps, skips any step whose target isn't on screen (PC vs phone), resize repositions, Esc/Skip saves `skipped`, Finish saves `done`. Settings › Help: Restart the tour + short guides.
+- a11y: axe (`@axe-core/playwright`, dev only) has 0 serious/critical issues on 10 screens × light/dark × PC/phone. Fixed: logo SVG without a name, planner block = focusable group (it holds buttons), active pill text in dark mode, FullCalendar other-month days faded to 0.3.
+- Perf: Home load < 1.5 s asserted in e2e (local preview server).
+- Not done: swipe gestures (buttons cover every action), phone time-picker sheet for blocks (item sheet + Schedule… cover it).
+
 ## v2 P7 — Sharing + v1 data import (2026-11-14)
 
 - Migration 0008: `page_shares`, `keep_note_shares` (one row per page/note + person, view|edit, CASCADE). Revoke = delete the row.

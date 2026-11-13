@@ -6,6 +6,7 @@
 	import { page } from '$app/state';
 	import { tick } from 'svelte';
 	import { patch, post } from '$lib/client/api';
+	import { enqueue, isOffline } from '$lib/client/offline';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import type { BinderDTO, ChecklistItem, LabelDTO, NoteDTO } from '$lib/types';
 
@@ -43,7 +44,8 @@
 	let noteLabels = $state<string[]>(start?.labels ?? []);
 	let noteBinders = $state<string[]>(start?.binders ?? []);
 	let images = $state(start?.images ?? []);
-	let saveState = $state<'idle' | 'saving' | 'saved' | 'failed'>('idle');
+	let saveState = $state<'idle' | 'saving' | 'saved' | 'failed' | 'offline'>('idle');
+	const localKey = `new_${Math.random().toString(36).slice(2)}`; // a note made offline has no id yet
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let dirty = false;
 	let saving: Promise<void> | null = null;
@@ -91,6 +93,12 @@
 				saveState = dirty ? 'saving' : 'saved';
 				onchanged();
 			} catch (e) {
+				if (isOffline(e)) {
+					// D-06: kept on this device, sent when back online (clash = both copies kept)
+					enqueue({ key: id ?? localKey, noteId: id, revision, payload: payload() });
+					saveState = 'offline';
+					return;
+				}
 				saveState = 'failed'; // text stays in the editor; Retry or keep typing
 				dirty = true;
 				showError(e);
@@ -498,7 +506,8 @@
 			{/if}
 		{/if}
 		<span class="state" role="status">
-			{#if saveState === 'saving'}Saving…{:else if saveState === 'saved'}Saved{:else if saveState === 'failed'}<button
+			{#if saveState === 'saving'}Saving…{:else if saveState === 'saved'}Saved{:else if saveState === 'offline'}Offline
+				· kept on this device, sends when you're back{:else if saveState === 'failed'}<button
 					class="mini wide"
 					type="button"
 					onclick={() => ((dirty = true), flush())}>Save failed · Retry</button

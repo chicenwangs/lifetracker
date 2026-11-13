@@ -14,12 +14,18 @@ export async function apiFetch<T>(
 	path: string,
 	body?: unknown,
 ): Promise<T> {
-	const res = await fetch(path, {
-		method,
-		headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,
-		body: body !== undefined ? JSON.stringify(body) : undefined,
-		credentials: 'same-origin',
-	});
+	let res: Response;
+	try {
+		res = await fetch(path, {
+			method,
+			headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,
+			body: body !== undefined ? JSON.stringify(body) : undefined,
+			credentials: 'same-origin',
+		});
+	} catch {
+		// no network: say so plainly, never pretend it worked (FEATURES §10)
+		throw new ApiError(0, 'offline', "You're offline. Not saved.");
+	}
 	if (res.status === 401) {
 		location.href = `/login?next=${encodeURIComponent(location.pathname + location.search)}`;
 		throw new ApiError(401, 'unauthorized', 'Log in first');
