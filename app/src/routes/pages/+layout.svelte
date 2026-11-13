@@ -30,6 +30,15 @@
 			showError(e);
 		}
 	}
+	async function createDb() {
+		try {
+			const r = await post<{ database: { pageId: string } }>('/api/databases', { title: 'Database' });
+			await invalidateAll();
+			await goto(`/pages/${r.database.pageId}`);
+		} catch (e) {
+			showError(e);
+		}
+	}
 	const onIndex = $derived(page.url.pathname === '/pages');
 </script>
 
@@ -40,6 +49,9 @@
 				<b>Pages</b>
 				<button class="mini" type="button" aria-label="New page" title="New page" onclick={() => create(null)}
 					>+</button
+				>
+				<button class="mini" type="button" aria-label="New database" title="New database" onclick={createDb}
+					>▤</button
 				>
 				<button
 					class="mini"

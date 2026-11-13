@@ -30,7 +30,7 @@ const own = (ownerId: string, id: string): Row => {
 export function tree(ownerId: string): PageNode[] {
 	return (
 		db()
-			.prepare(`SELECT id, parent_page_id, title, icon FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND archived_at IS NULL ORDER BY position`)
+			.prepare(`SELECT id, parent_page_id, title, icon FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND archived_at IS NULL AND NOT EXISTS (SELECT 1 FROM database_records r WHERE r.page_id = pages.id) ORDER BY position`)
 			.all(ownerId) as { id: string; parent_page_id: string | null; title: string; icon: string | null }[]
 	).map((r) => ({ id: r.id, parentId: r.parent_page_id, title: r.title, icon: r.icon })); // prettier-ignore
 }

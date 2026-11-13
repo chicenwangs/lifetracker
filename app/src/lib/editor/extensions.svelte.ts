@@ -6,6 +6,7 @@ import type { EditorView } from '@tiptap/pm/view';
 import { Suggestion } from '@tiptap/suggestion';
 import { mount, unmount } from 'svelte';
 import SlashMenu from './SlashMenu.svelte';
+import DatabaseView from '$lib/database/DatabaseView.svelte';
 
 /** internal link by page id (PG-10): shows the page's CURRENT title, or "unavailable". Titles come from storage. */
 export const PageLink = Node.create<{ titles: Record<string, { title: string; archived: boolean } | null> }>({
@@ -41,6 +42,32 @@ export const PageLink = Node.create<{ titles: Record<string, { title: string; ar
 			if (t?.archived) a.title = 'Archived page';
 			a.contentEditable = 'false';
 			return { dom: a };
+		};
+	},
+});
+
+/** database block (PG-DB): the doc holds only the id; rows live in their own tables (DESIGN §7) */
+export const DatabaseBlock = Node.create({
+	name: 'database',
+	group: 'block',
+	atom: true,
+	selectable: true,
+	draggable: false,
+	addAttributes: () => ({ databaseId: { default: null } }),
+	parseHTML: () => [
+		{ tag: 'div[data-database]', getAttrs: (el) => ({ databaseId: (el as HTMLElement).dataset.database }) },
+	],
+	renderHTML: ({ node }) => ['div', { 'data-database': node.attrs.databaseId }],
+	addNodeView() {
+		return ({ node }) => {
+			const dom = document.createElement('div');
+			dom.contentEditable = 'false';
+			const comp = mount(DatabaseView, {
+				target: dom,
+				props: { databaseId: node.attrs.databaseId as string },
+			});
+			// the table is its own world: ProseMirror must not eat its keys, clicks or DOM changes
+			return { dom, stopEvent: () => true, ignoreMutation: () => true, destroy: () => void unmount(comp) };
 		};
 	},
 });
