@@ -1,0 +1,370 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "AddStates.dc.html": {
+      "h": 940,
+      "title": "Add by drag / double-click + plan ahead (live)",
+      "w": 1440,
+      "x": 6080,
+      "y": 0
+    },
+    "Auth.dc.html": {
+      "h": 940,
+      "title": "Sign in, sign up, setup (live)",
+      "w": 1440,
+      "x": 10640,
+      "y": 4080
+    },
+    "DStates.dc.html": {
+      "h": 940,
+      "title": "Desktop — empty, error, search, shortcuts",
+      "w": 1440,
+      "x": 4560,
+      "y": 4080
+    },
+    "Database.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Pages — Workouts database",
+      "w": 1440,
+      "x": 1520,
+      "y": 2720
+    },
+    "Graph.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Pages — knowledge graph",
+      "w": 1440,
+      "x": 3040,
+      "y": 2720
+    },
+    "Header.dc.html": {
+      "h": 72,
+      "title": "Header (shared component)",
+      "w": 1440,
+      "x": 3040,
+      "y": 4080
+    },
+    "ItemPeek.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Item peek (live /item)",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "Keep.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Keep — notes",
+      "w": 1440,
+      "x": 0,
+      "y": 1360
+    },
+    "KeepNote.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Keep — note open",
+      "w": 1440,
+      "x": 1520,
+      "y": 1360
+    },
+    "MAdd.dc.html": {
+      "h": 844,
+      "title": "Phone — + Add sheet",
+      "w": 390,
+      "x": 470,
+      "y": 5460
+    },
+    "MBar.dc.html": {
+      "h": 84,
+      "title": "Phone bottom bar (shared)",
+      "w": 390,
+      "x": 4230,
+      "y": 6724
+    },
+    "MDb.dc.html": {
+      "h": 844,
+      "title": "Phone — database as cards",
+      "w": 390,
+      "x": 1410,
+      "y": 6724
+    },
+    "MItem.dc.html": {
+      "h": 844,
+      "title": "Phone — item sheet (no drag)",
+      "w": 390,
+      "x": 940,
+      "y": 5460
+    },
+    "MKeep.dc.html": {
+      "h": 844,
+      "title": "Phone — Keep list",
+      "w": 390,
+      "x": 2350,
+      "y": 5460
+    },
+    "MKeepNew.dc.html": {
+      "h": 844,
+      "title": "Phone — Keep: new note",
+      "w": 390,
+      "x": 2820,
+      "y": 5460
+    },
+    "MKeepNote.dc.html": {
+      "h": 844,
+      "title": "Phone — Keep: open checklist",
+      "w": 390,
+      "x": 3290,
+      "y": 5460
+    },
+    "MLogin.dc.html": {
+      "h": 844,
+      "title": "Phone — Sign in",
+      "w": 390,
+      "x": 2350,
+      "y": 6724
+    },
+    "MMonth.dc.html": {
+      "h": 844,
+      "title": "Phone — Month (from More)",
+      "w": 390,
+      "x": 1880,
+      "y": 5460
+    },
+    "MMore.dc.html": {
+      "h": 844,
+      "title": "Phone — More",
+      "w": 390,
+      "x": 0,
+      "y": 6724
+    },
+    "MPage.dc.html": {
+      "h": 844,
+      "title": "Phone — page view",
+      "w": 390,
+      "x": 940,
+      "y": 6724
+    },
+    "MPages.dc.html": {
+      "h": 844,
+      "title": "Phone — All pages",
+      "w": 390,
+      "x": 470,
+      "y": 6724
+    },
+    "MSettings.dc.html": {
+      "h": 844,
+      "title": "Phone — Settings",
+      "w": 390,
+      "x": 1880,
+      "y": 6724
+    },
+    "MStates.dc.html": {
+      "h": 844,
+      "title": "Phone states — undo, swipe, offline, push",
+      "w": 1330,
+      "x": 2820,
+      "y": 6724
+    },
+    "MToday.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "Phone — Today (opens here)",
+      "w": 390,
+      "x": 0,
+      "y": 5460
+    },
+    "MWeek.dc.html": {
+      "h": 844,
+      "title": "Phone — Week tab",
+      "w": 390,
+      "x": 1410,
+      "y": 5460
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Home — month + day planner",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Pages.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Pages — editor + / menu",
+      "w": 1440,
+      "x": 0,
+      "y": 2720
+    },
+    "PagesArchive.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Pages — Archive",
+      "w": 1440,
+      "x": 4560,
+      "y": 2720
+    },
+    "PagesTree.dc.html": {
+      "h": 440,
+      "title": "Pages tree (shared)",
+      "w": 240,
+      "x": 3040,
+      "y": 4192
+    },
+    "QuickAdd.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Quick add N (live)",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "Settings.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Settings — preferences, pins, notifications",
+      "w": 1440,
+      "x": 0,
+      "y": 4080
+    },
+    "SettingsMore.dc.html": {
+      "h": 940,
+      "title": "Account menu, Account, Devices, Users, Import, Trash (live)",
+      "w": 1440,
+      "x": 9120,
+      "y": 4080
+    },
+    "SettingsSharing.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Settings — Sharing (live)",
+      "w": 1440,
+      "x": 7600,
+      "y": 4080
+    },
+    "SettingsTypes.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Settings — Item types",
+      "w": 1440,
+      "x": 6080,
+      "y": 4080
+    },
+    "States.dc.html": {
+      "h": 940,
+      "title": "M1 states — delete, Alt-drag, undo, pin cap",
+      "w": 1440,
+      "x": 1520,
+      "y": 4080
+    },
+    "Week.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "title": "Week",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-12T05:05:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "t1": {
+      "kind": "title1",
+      "maxW": 7520,
+      "text": "Life Planner",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "t2": {
+      "kind": "title1",
+      "maxW": 2960,
+      "text": "Keep",
+      "w": 240,
+      "x": 0,
+      "y": 1060
+    },
+    "t3": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Pages",
+      "w": 240,
+      "x": 0,
+      "y": 2420
+    },
+    "t4": {
+      "kind": "title1",
+      "maxW": 8000,
+      "text": "Settings + shared states",
+      "w": 240,
+      "x": 0,
+      "y": 3780
+    },
+    "t5": {
+      "kind": "title1",
+      "maxW": 3680,
+      "text": "Phone — glance + capture",
+      "w": 240,
+      "x": 0,
+      "y": 5160
+    },
+    "t6": {
+      "kind": "title1",
+      "maxW": 4620,
+      "text": "Phone — pages, settings, states",
+      "w": 240,
+      "x": 0,
+      "y": 6424
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Week.dc.html",
+    "ItemPeek.dc.html",
+    "QuickAdd.dc.html",
+    "AddStates.dc.html",
+    "Keep.dc.html",
+    "KeepNote.dc.html",
+    "Pages.dc.html",
+    "Database.dc.html",
+    "Graph.dc.html",
+    "PagesArchive.dc.html",
+    "Settings.dc.html",
+    "SettingsTypes.dc.html",
+    "States.dc.html",
+    "Header.dc.html",
+    "MToday.dc.html",
+    "MAdd.dc.html",
+    "MItem.dc.html",
+    "MWeek.dc.html",
+    "MMonth.dc.html",
+    "MKeep.dc.html",
+    "MKeepNew.dc.html",
+    "MKeepNote.dc.html",
+    "MMore.dc.html",
+    "MPages.dc.html",
+    "MPage.dc.html",
+    "MDb.dc.html",
+    "MSettings.dc.html",
+    "MLogin.dc.html",
+    "MStates.dc.html",
+    "MBar.dc.html",
+    "PagesTree.dc.html",
+    "DStates.dc.html",
+    "SettingsSharing.dc.html",
+    "SettingsMore.dc.html",
+    "Auth.dc.html"
+  ],
+  "pages": [],
+  "title": "Life Tracker Wireframes"
+}

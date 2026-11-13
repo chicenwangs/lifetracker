@@ -7,6 +7,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import CommandInput from './CommandInput.svelte';
+	import { qaPrefs } from '$lib/client/itemtypes.svelte';
 	import { parseQuickAdd, withTarget, type QAParse, type QATarget } from '$lib/quickadd';
 	import { nowLocalMinutes, prettyDate, todayLocal } from '$lib/time';
 	import { del, post } from '$lib/client/api';
@@ -43,6 +44,7 @@
 		today: todayLocal(tz),
 		nowMinutes: nowLocalMinutes(tz),
 		slot: day ? { date, start: 0, end: 0, day: true } : { date, start, end },
+		...qaPrefs(page.data.user),
 	});
 	const parsed = $derived(parseQuickAdd(text, ctx));
 	$effect(() => {

@@ -3,14 +3,20 @@
 import { parseQuickAdd, type QAContext, type QASlot } from '$lib/quickadd';
 import * as items from './repo/items';
 import * as blocks from './repo/blocks';
-import { handle } from './db';
+import { undoable } from './undo';
+import * as reminders from './reminders';
 import { bad } from './http';
 import { localToUtc, nowLocalMinutes, todayLocal } from '$lib/time';
+import * as itemTypes from './repo/itemtypes';
 
 export function quickContext(me: App.SafeUser, now: number = Date.now()): QAContext {
 	return {
 		today: todayLocal(me.timezone, now),
 		nowMinutes: nowLocalMinutes(me.timezone, now),
+		types: itemTypes.list(me.id),
+		qaTarget: me.qaTarget === 'calendar' ? 'calendar' : 'planner',
+		blockMin: me.blockMin,
+		region: me.region,
 	};
 }
 
@@ -19,7 +25,7 @@ export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(
 	if (!r.ok) bad((r.problems[0] ?? 'Could not add that.').replace(/`/g, ''));
 	// timeline drag with no /type = no type (grey); the N palette and month days keep the Event default
 	const type = slot && !slot.day && !r.typeSet ? null : r.type;
-	return handle().sqlite.transaction(() => {
+	const made = undoable(me.id, `Add "${r.title}"`, [], () => {
 		let item: ReturnType<typeof items.withCounts>[number] | null = null;
 		let block: ReturnType<typeof blocks.toDTO> | null = null;
 		if (r.target !== 'planner') {
@@ -47,6 +53,33 @@ export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(
 			);
 			block = blocks.toDTO(b, item?.type ?? null);
 		}
-		return { item, block, target: r.target, notes: r.notes, warnings: r.warnings };
-	})();
+		// /remind: on the item when there is one, else on the block. A time that already passed = a warning, not a failure.
+		const warnings = [...r.warnings];
+		const src = item
+			? ({ t: 'planner_item', id: item.id } as const)
+			: block
+				? ({ t: 'planner_block', id: block.id } as const)
+				: null;
+		for (const o of src ? r.reminders : []) {
+			try {
+				reminders.add(
+					me.id,
+					(src as { t: reminders.Source }).t,
+					(src as { id: string }).id,
+					{ offset: o },
+					now,
+				);
+			} catch (e) {
+				warnings.push(`Reminder ${o}: ${(e as Error).message}`);
+			}
+		}
+		return {
+			result: { item, block, target: r.target, notes: r.notes, warnings, reminders: r.reminders },
+			created: [
+				...(item ? [{ t: 'items' as const, id: item.id }] : []),
+				...(block ? [{ t: 'blocks' as const, id: block.id }] : []),
+			],
+		};
+	});
+	return { ...made.result, undo: made.undo };
 }

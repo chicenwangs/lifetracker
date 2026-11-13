@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+.lbl{font-size:11px;font-weight:700;letter-spacing:.06em;color:#3D3D6B;margin:16px 4px 8px}
+.grp{background:#FFFFFF;border:1.5px solid #00003D;border-radius:14px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px;border-bottom:1px solid #E3E4F0;font-size:15px}
+.row:last-child{border-bottom:0}
+.row .v{margin-left:auto;font-size:14px;color:#3D3D6B}
+.sw{width:48px;height:28px;border-radius:999px;position:relative;flex:none;border:1.5px solid #00003D;box-sizing:border-box}
+.sw span{position:absolute;top:3px;width:19px;height:19px;border-radius:999px}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: #00003D; background: #F3F2FA">
+<div style="height: 760px; overflow: hidden; padding: 8px 16px 0; box-sizing: border-box">
+<header style="display: flex; align-items: center; gap: 4px; margin: 0 -8px">
+<a href="MMore.dc.html" aria-label="Back to More" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #00003D"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<h1 style="margin: 0; font-size: 20px">Settings</h1>
+</header>
+
+<div class="lbl">APPEARANCE</div>
+<div class="grp">
+<div style="padding: 12px 14px; border-bottom: 1px solid #E3E4F0">
+<div role="radiogroup" aria-label="Theme" style="display: flex; border: 1.5px solid #00003D; border-radius: 10px; overflow: hidden">
+<button type="button" role="radio" aria-checked="false" style="flex: 1; min-height: 40px; font: 600 14px Inter, sans-serif; border: 0; background: #FFFFFF; color: #00003D">Light</button>
+<button type="button" role="radio" aria-checked="false" style="flex: 1; min-height: 40px; font: 600 14px Inter, sans-serif; border: 0; border-left: 1.5px solid #00003D; background: #FFFFFF; color: #00003D">Dark</button>
+<button type="button" role="radio" aria-checked="true" style="flex: 1; min-height: 40px; font: 600 14px Inter, sans-serif; border: 0; border-left: 1.5px solid #00003D; background: #00003D; color: #FFFFFF">Auto</button>
+</div>
+</div>
+<div class="row">Light from<span class="v">07:00 ›</span></div>
+<div class="row">Dark from<span class="v">17:00 ›</span></div>
+<div class="row">Timezone<span class="v">Kuala Lumpur ›</span></div>
+</div>
+
+<div class="lbl">PLANNER</div>
+<div class="grp">
+<div class="row">Item types<span class="v">7 of 10 ›</span></div>
+<div class="row">Quick add goes to<span class="v">Timeline ›</span></div>
+<div class="row">Default block length<span class="v">60 min ›</span></div>
+<div class="row">Region style<span class="v">Malaysia / UK ›</span></div>
+</div>
+
+<div class="lbl">NOTIFICATIONS</div>
+<div class="grp">
+<div class="row" style="background: #FAEDB8">This phone: off<button type="button" style="margin-left: auto; min-height: 36px; font: 700 13px Inter, sans-serif; color: #FFFFFF; background: #00003D; border: 0; border-radius: 10px; padding: 0 12px">Turn on</button></div>
+<sc-for list="{{toggles}}" as="t" hint-placeholder-count="3">
+<div class="row"><span style="flex: 1">{{t.label}}</span>
+<button type="button" role="switch" aria-checked="{{t.on}}" aria-label="{{t.label}}" class="sw" style="background: {{t.track}}; padding: 0; cursor: pointer"><span style="left: {{t.knob}}; background: {{t.dot}}"></span></button>
+</div>
+</sc-for>
+</div>
+
+<div class="lbl">ACCOUNT</div>
+<div class="grp">
+<div class="row">Signed in as<span class="v">jeremy</span></div>
+<div class="row">Devices<span class="v">3 ›</span></div>
+<div class="row">Sharing codes<span class="v">›</span></div>
+<button type="button" class="row" style="width: 100%; border: 0; background: #FFFFFF; font: 600 15px Inter, sans-serif; color: #A83A35; cursor: pointer">Sign out</button>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const t = (label, on) => ({ label, on: String(on), track: on ? '#00003D' : '#FFFFFF', knob: on ? '23px' : '3px', dot: on ? '#FFFFFF' : '#00003D' });
+    return { toggles: [ t('Timeline blocks', true), t('Calendar items', true), t('Keep reminders', true) ] };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings — Preferences</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+a{color:#00003D}a:hover{color:#3D3D6B}
+.card{background:#FFFFFF;border:1.5px solid #00003D;border-radius:14px;padding:20px 22px}
+.btn{font:600 13px Inter,system-ui,sans-serif;color:#00003D;background:#FFFFFF;border:1.5px solid #00003D;border-radius:8px;padding:7px 12px;cursor:pointer}
+.in{font:14px Inter,sans-serif;color:#00003D;border:1.5px solid #6B6B8F;border-radius:8px;padding:8px 10px;background:#FFFFFF}
+.lab{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+.side a{display:block;padding:8px 12px;border-radius:999px;font-size:14px;font-weight:500;text-decoration:none;color:#00003D}
+h2{margin:0 0 4px;font-size:18px}
+.sub{margin:0 0 16px;font-size:13px;color:#3D3D6B}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #00003D; min-height: 940px; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(60% 60% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<dc-import name="Header" active="settings" hint-size="100%,72px"></dc-import>
+<main style="display: flex; flex-wrap: wrap; gap: 28px; padding: 8px 32px 40px 38px; max-width: 1440px; margin: 0 auto; box-sizing: border-box">
+<nav class="side" aria-label="Settings" style="flex: 0 1 220px">
+<h1 style="font-size: 22px; margin: 4px 12px 12px">Settings</h1>
+<a href="SettingsMore.dc.html">Account</a>
+<a href="#" style="background: #CED3EE; border: 1.5px solid #00003D">Preferences</a>
+<a href="SettingsTypes.dc.html">Item types</a>
+<a href="#">Header pins</a>
+<a href="#">Notifications</a>
+<a href="SettingsMore.dc.html">Devices</a>
+<a href="SettingsSharing.dc.html">Sharing</a>
+<a href="#">Users <span style="font-size: 11px; color: #3D3D6B">(admin)</span></a>
+<a href="#">Import</a>
+<a href="#">Help + tour</a>
+</nav>
+
+<div style="flex: 999 1 640px; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start">
+
+<section class="card" aria-label="Theme" style="grid-column: span 2">
+<h2>Theme</h2>
+<p class="sub">Auto switches light/dark at the times below, in your timezone. It never changes your calendar view.</p>
+<div role="radiogroup" aria-label="Theme mode" style="display: inline-flex; border: 1.5px solid #00003D; border-radius: 10px; overflow: hidden; margin-bottom: 18px">
+<button type="button" role="radio" aria-checked="false" style="font: 600 14px Inter, sans-serif; padding: 9px 18px; border: 0; background: #FFFFFF; color: #00003D">☀ Light</button>
+<button type="button" role="radio" aria-checked="false" style="font: 600 14px Inter, sans-serif; padding: 9px 18px; border: 0; border-left: 1.5px solid #00003D; background: #FFFFFF; color: #00003D">☾ Dark</button>
+<button type="button" role="radio" aria-checked="true" style="font: 600 14px Inter, sans-serif; padding: 9px 18px; border: 0; border-left: 1.5px solid #00003D; background: #00003D; color: #FFFFFF">◐ Auto</button>
+</div>
+<div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end">
+<div><label class="lab" for="ls">Light starts</label><input class="in" id="ls" type="time" value="07:00"></div>
+<div><label class="lab" for="ds">Dark starts</label><input class="in" id="ds" type="time" value="17:00"></div>
+<div style="flex: 1 1 260px"><label class="lab" for="tz">Timezone</label>
+<select class="in" id="tz" style="width: 100%"><option>Malaysia (Kuala Lumpur, UTC+08:00)</option><option>Singapore (UTC+08:00)</option><option>Other…</option></select></div>
+</div>
+<div aria-label="Schedule preview" style="margin-top: 18px">
+<div style="display: flex; height: 26px; border: 1.5px solid #00003D; border-radius: 8px; overflow: hidden; font-size: 11px; font-weight: 600">
+<span style="width: 29.2%; background: #00003D; color: #FFFFFF; display: flex; align-items: center; padding-left: 8px">Dark</span>
+<span style="width: 41.7%; background: #FAEDB8; display: flex; align-items: center; padding-left: 8px">Light</span>
+<span style="width: 29.1%; background: #00003D; color: #FFFFFF; display: flex; align-items: center; padding-left: 8px">Dark</span>
+</div>
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #3D3D6B; margin-top: 4px"><span>00:00</span><span>07:00</span><span>17:00</span><span>24:00</span></div>
+<p style="margin: 8px 0 0; font-size: 13px">Light 07:00–16:59 · Dark 17:00–06:59. <strong>Now: Light.</strong></p>
+</div>
+</section>
+
+<section class="card" aria-label="Planner defaults" style="grid-column: span 2">
+<h2>Planner defaults</h2>
+<p class="sub">Change how new things land. Typing <code>/calendar</code>, <code>/both</code> or a time still wins.</p>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px">
+<div><label class="lab" for="rg">Region style</label><select class="in" id="rg" style="width: 100%"><option>Malaysia / UK — Mon start · 24 h · 16/11</option><option>US — Sun start · 12 h · 11/16</option></select><div style="font-size: 12px; color: #3D3D6B; margin-top: 4px">Week start, clock and how dates you type are read.</div></div>
+<div><span class="lab">Quick add goes to</span><div role="radiogroup" aria-label="Quick add goes to" style="display: flex; border: 1.5px solid #00003D; border-radius: 10px; overflow: hidden"><button type="button" role="radio" aria-checked="true" style="flex: 1; font: 600 14px Inter, sans-serif; padding: 8px 0; border: 0; background: #00003D; color: #FFFFFF">Timeline</button><button type="button" role="radio" aria-checked="false" style="flex: 1; font: 600 14px Inter, sans-serif; padding: 8px 0; border: 0; border-left: 1.5px solid #00003D; background: #FFFFFF; color: #00003D">Calendar</button></div><div style="font-size: 12px; color: #3D3D6B; margin-top: 4px">Timeline keeps small tasks out of the month.</div></div>
+<div><label class="lab" for="bl">Default block length</label><select class="in" id="bl" style="width: 100%"><option>15 min</option><option>30 min</option><option>45 min</option><option selected="{{true}}">60 min</option><option>90 min</option></select><div style="font-size: 12px; color: #3D3D6B; margin-top: 4px">Used for a single time and when you drop an item on the timeline.</div></div>
+</div>
+<p style="margin: 14px 0 0; font-size: 12px; color: #3D3D6B">Visible hours now follow you to every device. Drag the top or bottom edge of the planner to change them.</p>
+</section>
+
+<section class="card" aria-label="Plan ahead" style="grid-column: span 2">
+<h2>When do you plan your day?</h2>
+<p class="sub">Home can open on tomorrow once today's last block is done.</p>
+<div role="radiogroup" aria-label="Plan ahead" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+<label style="display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid #00003D; border-radius: 12px; padding: 12px; background: #CED3EE"><input type="radio" name="pa" checked="{{true}}" style="accent-color: #00003D; margin-top: 3px"><span><b>Before bed</b><span style="display: block; font-size: 12px; color: #3D3D6B">After today's last block ends, Home shows tomorrow.</span></span></label>
+<label style="display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid #6B6B8F; border-radius: 12px; padding: 12px"><input type="radio" name="pa" style="accent-color: #00003D; margin-top: 3px"><span><b>First thing in the morning</b><span style="display: block; font-size: 12px; color: #3D3D6B">Home always opens on today.</span></span></label>
+<label style="display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid #6B6B8F; border-radius: 12px; padding: 12px"><input type="radio" name="pa" style="accent-color: #00003D; margin-top: 3px"><span><b>Off</b><span style="display: block; font-size: 12px; color: #3D3D6B">Home always opens on today.</span></span></label>
+</div>
+</section>
+
+<section class="card" aria-label="Header pins">
+<h2>Header pins</h2>
+<p class="sub">Up to 3 pages next to Home · Week · Keep · Pages.</p>
+<ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{pins}}" as="p" hint-placeholder-count="3">
+<li style="display: flex; align-items: center; gap: 10px; border: 1.5px solid #CED3EE; border-radius: 10px; padding: 8px 10px">
+<span aria-hidden="true" style="color: #8E8BB5; cursor: grab">⋮⋮</span>
+<span style="flex: 1; font-weight: 600">{{p}}</span>
+<button class="btn" type="button" aria-label="Move {{p}} up" style="padding: 4px 8px">↑</button>
+<button class="btn" type="button" aria-label="Move {{p}} down" style="padding: 4px 8px">↓</button>
+<button class="btn" type="button">Unpin</button>
+</li>
+</sc-for>
+</ol>
+<p style="margin: 12px 0 0; font-size: 13px; color: #3D3D6B">3 of 3 used. Pin a new page from its ⋯ menu.</p>
+</section>
+
+<section class="card" aria-label="Notifications">
+<h2>Notifications <span style="font-size: 11px; font-weight: 600; color: #3D3D6B; border: 1px solid #6B6B8F; border-radius: 999px; padding: 2px 8px; vertical-align: 2px">M6</span></h2>
+<p class="sub">Reminders from <code>/remind 1w · 3d · 2d · 1d · 2h</code>.</p>
+<div style="display: flex; align-items: center; gap: 10px; background: #F3F2FA; border-radius: 10px; padding: 10px 12px; margin-bottom: 14px">
+<span style="flex: 1; font-size: 13px"><strong>This browser:</strong> not asked yet</span>
+<button class="btn" type="button" style="background: #00003D; color: #FFFFFF; box-shadow: -2px 2px 0 #F3D053">Enable push</button>
+</div>
+<label style="display: flex; gap: 10px; align-items: center; font-size: 14px; margin: 8px 0"><input type="checkbox" checked="{{true}}" style="accent-color: #00003D; width: 16px; height: 16px">Timeline blocks</label>
+<label style="display: flex; gap: 10px; align-items: center; font-size: 14px; margin: 8px 0"><input type="checkbox" checked="{{true}}" style="accent-color: #00003D; width: 16px; height: 16px">Calendar items</label>
+<label style="display: flex; gap: 10px; align-items: center; font-size: 14px; margin: 8px 0"><input type="checkbox" checked="{{true}}" style="accent-color: #00003D; width: 16px; height: 16px">Keep notes</label>
+<label style="display: flex; gap: 10px; align-items: center; font-size: 14px; margin: 8px 0"><input type="checkbox" style="accent-color: #00003D; width: 16px; height: 16px">Pages to-dos + dates</label>
+</section>
+
+<div style="grid-column: span 2; display: flex; justify-content: flex-end; gap: 10px; align-items: center">
+<span style="font-size: 13px; color: #3D3D6B">Changes save as you go</span>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { pins: ['Workouts', 'Ops runbook', 'Homelab'] };
+  }
+}
+</script>
+</body>
+</html>

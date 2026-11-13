@@ -1,7 +1,23 @@
 // Shared types (client + server).
-export const TYPES = ['Work', 'Exam', 'Event', 'Hobby', 'Dating'] as const;
-export type ItemType = (typeof TYPES)[number];
+/** v2: an item type key from the owner's item_types (built-ins keep their v1 keys: Work Exam Event Hobby Dating). */
+export type ItemType = string;
 export type TypeKey = ItemType | 'None';
+
+export interface ItemTypeDTO {
+	id: string;
+	key: string;
+	name: string;
+	bg: string;
+	ink: string;
+	slug: string;
+	position: number;
+	builtin: boolean;
+	shareDefault: boolean;
+	countsDown: boolean;
+	isDefault: boolean;
+	/** items + blocks using it (Settings only) */
+	used?: number;
+}
 export const STATUSES = ['todo', 'doing', 'done'] as const;
 export type Status = (typeof STATUSES)[number];
 
@@ -51,13 +67,18 @@ export interface BlockDTO {
 	busy?: boolean;
 }
 
-/** what a share code / grant lets the other person see. 'None' = items with no type; 'Blocks' = planner blocks */
-export const SHARE_KINDS = ['Work', 'Exam', 'Event', 'Hobby', 'Dating', 'None', 'Blocks'] as const;
-export type ShareKind = (typeof SHARE_KINDS)[number];
+/** what a share code / grant lets the other person see: a type key, 'None' = no type, 'Blocks' = planner blocks */
+export type ShareKind = string;
 
 export interface CalendarPayload {
 	items: ItemDTO[];
 	blocks: BlockDTO[];
+}
+
+/** returned by every journaled write (DESIGN §11) */
+export interface UndoRef {
+	id: string;
+	label: string;
 }
 
 export interface ApiError {
@@ -72,4 +93,120 @@ export interface HeatDay {
 	blockedMin: number;
 	/** all-day items on this day that are not done and have no block */
 	unblocked: number;
+}
+
+/** an uploaded file (DESIGN §12) */
+export interface AttachmentDTO {
+	id: string;
+	name: string;
+	mime: string;
+	size: number;
+	url: string;
+}
+
+// ---------- Keep (FEATURES §5) ----------
+export interface ChecklistItem {
+	id: string;
+	text: string;
+	checked: boolean;
+	parentId: string | null;
+}
+export interface NoteDTO {
+	id: string;
+	type: 'text' | 'checklist';
+	title: string;
+	body: string;
+	color: string | null;
+	pinned: boolean;
+	archived: boolean;
+	trashed: boolean;
+	labels: string[];
+	binders: string[];
+	items: ChecklistItem[];
+	images: AttachmentDTO[];
+	createdAt: string;
+	updatedAt: string;
+	revision: number;
+}
+export interface LabelDTO {
+	id: string;
+	name: string;
+	count: number;
+}
+export interface BinderDTO {
+	id: string;
+	name: string;
+	count: number;
+}
+
+// ---------- Pages (FEATURES §6) ----------
+export interface PageNode {
+	id: string;
+	parentId: string | null;
+	title: string;
+	icon: string | null;
+}
+export interface PageDTO extends PageNode {
+	archived: boolean;
+	revision: number;
+	updatedAt: string;
+	createdAt: string;
+	/** Tiptap JSON doc assembled from the page's blocks */
+	doc: { type: 'doc'; content: unknown[] };
+	crumbs: { id: string; title: string }[];
+	/** internal link targets in this page -> current title, or null = unavailable (gone / not mine) */
+	links: Record<string, { title: string; archived: boolean } | null>;
+	pinned: boolean;
+	/** what the viewer may do: their own page, or a share (D-01: explicit only) */
+	access: 'owner' | 'edit' | 'view';
+}
+
+// ---------- Databases (FEATURES PG-DB, DESIGN §7) ----------
+export interface DbProp {
+	id: string;
+	name: string;
+	type: import('./dbvalues').PropType;
+	config: import('./dbvalues').PropConfig;
+}
+export interface DbView {
+	id: string;
+	name: string;
+	type: 'table' | 'board' | 'calendar' | 'list' | 'gallery';
+	config: import('./dbvalues').ViewConfig;
+}
+export interface DbRow {
+	id: string;
+	pageId: string | null;
+	/** propertyId -> stored value */
+	values: Record<string, unknown>;
+	/** properties whose stored value no longer fits the type (D-19: kept, flagged) */
+	invalid?: string[];
+}
+export interface DatabaseDTO {
+	id: string;
+	title: string;
+	pageId: string;
+	props: DbProp[];
+	views: DbView[];
+	viewId: string;
+	rows: DbRow[];
+	total: number;
+}
+
+// ---------- Graph (DESIGN §10) ----------
+export interface GraphDTO {
+	nodes: { id: string; title: string; kind: 'page' | 'record'; archived: boolean; parentId: string | null }[];
+	edges: { source: string; target: string; relation: 'parent' | 'link' }[];
+	truncated: boolean;
+	generatedAt: string;
+}
+
+// ---------- Reminders (FEATURES §9) ----------
+export interface ReminderDTO {
+	id: string;
+	kind: 'relative' | 'absolute';
+	/** "2 hour" style rule for relative ones */
+	offset: string | null;
+	dueAt: string | null;
+	status: 'scheduled' | 'processing' | 'sent' | 'failed' | 'cancelled' | 'missed';
 }

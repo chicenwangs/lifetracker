@@ -3,7 +3,7 @@
 	import { enhance } from '$app/forms';
 	import { colorsFor } from '$lib/colors';
 	import { prettyDate, utcToLocal } from '$lib/time';
-	import { SHARE_KINDS, type ItemType, type ShareKind } from '$lib/types';
+	import { typeName, typesState } from '$lib/client/itemtypes.svelte';
 	let { data, form } = $props();
 
 	const tz = $derived(data.user?.timezone ?? 'Asia/Kuala_Lumpur');
@@ -11,18 +11,17 @@
 		const l = utcToLocal(z, tz);
 		return `${prettyDate(l.date).split(' ').slice(0, 3).join(' ')} ${l.time}`;
 	};
-	const LABEL: Record<ShareKind, string> = {
-		Work: 'Work',
-		Exam: 'Exam',
-		Event: 'Event',
-		Hobby: 'Hobby',
-		Dating: 'Dating',
-		None: 'No type',
-		Blocks: 'Planner blocks',
-	};
-	const DEFAULT_ON: ShareKind[] = ['Event', 'Dating', 'Blocks'];
-	const sw = (k: ShareKind) => (k === 'Blocks' ? null : colorsFor(k === 'None' ? null : (k as ItemType)));
-	const kinds = (v: string[]) => v.map((k) => LABEL[k as ShareKind] ?? k).join(', ') || 'nothing';
+	// every type of mine (custom ones too), then No type + Planner blocks. Ticked = the type's "share by default".
+	const KINDS = $derived([
+		...typesState.list.map((t) => ({ k: t.key, label: t.name, on: t.shareDefault })),
+		{ k: 'None', label: 'No type', on: false },
+		{ k: 'Blocks', label: 'Planner blocks', on: true },
+	]);
+	const sw = (k: string) => (k === 'Blocks' ? null : colorsFor(k === 'None' ? null : k));
+	/** a partner's custom type I don't have shows as "custom type" */
+	const label = (k: string) =>
+		k === 'Blocks' ? 'Planner blocks' : k === 'None' ? 'No type' : (typeName(k) ?? 'a custom type');
+	const kinds = (v: string[]) => v.map(label).join(', ') || 'nothing';
 	let copied = $state(false);
 </script>
 
@@ -69,12 +68,12 @@
 			<fieldset>
 				<legend class="label">They can see</legend>
 				<div class="kinds">
-					{#each SHARE_KINDS as k (k)}
+					{#each KINDS as { k, label: name, on } (k)}
 						{@const c = sw(k)}
 						<label class="kind">
-							<input type="checkbox" name="types" value={k} checked={DEFAULT_ON.includes(k)} />
+							<input type="checkbox" name="types" value={k} checked={on} />
 							{#if c}<span class="swatch" style:background={c.bg} style:border-color={c.ink}></span>{/if}
-							{LABEL[k]}
+							{name}
 						</label>
 					{/each}
 				</div>

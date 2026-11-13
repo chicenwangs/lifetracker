@@ -3,9 +3,10 @@ import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import * as keys from '$lib/server/repo/sharekeys';
 import * as grants from '$lib/server/repo/grants';
-import { SHARE_KINDS } from '$lib/types';
+import * as itemTypes from '$lib/server/repo/itemtypes';
 
 const me = (l: App.Locals) => l.user as App.SafeUser;
+const shareKinds = (uid: string) => [...itemTypes.list(uid).map((t) => t.key), 'None', 'Blocks'];
 
 export const load: PageServerLoad = ({ locals }) => {
 	const u = me(locals);
@@ -17,7 +18,7 @@ export const actions: Actions = {
 		const f = await request.formData();
 		const types = f.getAll('types').map(String);
 		const p = keys.shareKeyCreateSchema.safeParse({
-			types: types.filter((t) => (SHARE_KINDS as readonly string[]).includes(t)),
+			types: types.filter((t) => shareKinds(me(locals).id).includes(t)),
 			hiddenAs: f.get('hiddenAs') === 'none' ? 'none' : 'busy',
 			expiry: f.get('expiry') === '24h' ? '24h' : '7d',
 		});

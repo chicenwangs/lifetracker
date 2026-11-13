@@ -1,4 +1,6 @@
 // Env parsed once. Fail fast on boot. Never print values.
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -29,9 +31,37 @@ const schema = z.object({
 		.optional()
 		.transform((v) => (v ? v : undefined)),
 	TZ: z.string().default('Asia/Kuala_Lumpur'),
+	/** attachments (DESIGN §12). Empty = next to the database: /app/data/uploads in the image. Must be on the volume. */
+	UPLOAD_DIR: z
+		.string()
+		.optional()
+		.transform((v) => v || undefined),
+	/** D-12: 25 MB. Server truth; the UI reads it from /api/attachments/limits. */
+	MAX_UPLOAD_BYTES: z.coerce
+		.number()
+		.int()
+		.min(1024)
+		.max(1024 * 1024 * 1024)
+		.default(25 * 1024 * 1024),
+	/** Web Push (D-23 yes). No keys = push off; the app still runs and reminders show in-app. `npx web-push generate-vapid-keys` */
+	VAPID_PUBLIC_KEY: z
+		.string()
+		.optional()
+		.transform((v) => v || undefined),
+	VAPID_PRIVATE_KEY: z
+		.string()
+		.optional()
+		.transform((v) => v || undefined),
+	VAPID_SUBJECT: z
+		.string()
+		.optional()
+		.transform((v) => v || undefined),
+	/** in-process job runner (reminders). Default on. */
+	JOBS_ENABLED: z.enum(['true', 'false']).default('true'),
+	REMINDER_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).max(3_600_000).default(30_000),
 });
 
-export type Env = z.infer<typeof schema> & { secureCookies: boolean };
+export type Env = z.infer<typeof schema> & { secureCookies: boolean; uploadDir: string };
 
 export function parseEnv(source: Record<string, string | undefined>): Env {
 	const r = schema.safeParse(source);
@@ -46,7 +76,12 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
 		throw new Error(
 			'Bad env:\n  ADDRESS_HEADER: required when ORIGIN is https in production (e.g. CF-Connecting-IP)',
 		);
-	return Object.freeze({ ...r.data, secureCookies });
+	if (!!r.data.VAPID_PUBLIC_KEY !== !!r.data.VAPID_PRIVATE_KEY)
+		throw new Error('Bad env:\n  VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY go together (set both or neither)');
+	const uploadDir =
+		r.data.UPLOAD_DIR ??
+		join(dirname(r.data.DATABASE_PATH === ':memory:' ? tmpdir() + '/x' : r.data.DATABASE_PATH), 'uploads');
+	return Object.freeze({ ...r.data, secureCookies, uploadDir });
 }
 
 let cached: Env | null = null;

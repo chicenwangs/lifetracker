@@ -7,7 +7,7 @@ Owner: Jeremy (`chicenwangs`). Target: Ubuntu homelab, Docker Compose, public at
 ## 1. What it is
 
 - Web app: personal calendar + day planner. Users sign up, plan their days, and can share a read-only view of their calendar with each other by swapping codes.
-- One container (Node 22, SvelteKit server) + one SQLite file. No other database, no cache, no queue, no outbound calls at runtime.
+- One container (Node 22, SvelteKit server) + one SQLite file. No other database, no cache, no queue. **v2: one kind of outbound call** — Web Push to the browsers' push services over HTTPS 443 (`*.notify.windows.com`, `fcm.googleapis.com`, `*.push.apple.com`, `updates.push.services.mozilla.com`), only when VAPID keys are set (D-23). Link previews stay off.
 - Expected load: a handful of users. One replica only (SQLite = one writer). Do not scale horizontally.
 - Second container `cloudflared` publishes it. No inbound ports on the router.
 
@@ -33,8 +33,8 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | Port | 3000/tcp, HTTP only (TLS ends at Cloudflare) |
 | User | `node` uid 1000. The data folder on the host must be owned by 1000:1000. |
 | Filesystem | Read-only root in compose. Writable: `/app/data` (volume), `/tmp` (tmpfs). |
-| State | `/app/data/app.db` (+ `-wal`, `-shm` while running). `/app/data/seed/` = optional Notion import input. `/app/data/backups/` = from `backup.sh`. |
-| Health | `GET /healthz` → `200 {"ok":true,"db":true,"version":"1.0.0"}`; 503 if the DB is unusable. No auth. Image HEALTHCHECK every 30 s. |
+| State | `/app/data/app.db` (+ `-wal`, `-shm` while running). `/app/data/seed/` = optional Notion import input. `/app/data/backups/` = from `backup.sh`. **v2:** `/app/data/uploads/` = attached files (`<2 chars>/<key>`, temp files in `uploads/.tmp/`). Back it up with the DB. |
+| Health | `GET /healthz` → `200 {"ok":true,"db":true,"version":"…","jobs":true,"reminderBacklog":0}`; 503 if the DB is unusable. A backlog that keeps growing = the runner is stuck (check logs for `[job]`). No auth. Image HEALTHCHECK every 30 s. |
 | Start | Runs DB migrations on boot (forward only), then listens. Logs `[boot] v<version> db ready, origin=…, secureCookies=…, proxyHeader=…`. Bad env = exits with `Bad env:` lines, no partial start. |
 | Stop | SIGTERM → finishes in-flight requests → closes DB (`[shutdown] db closed`). `init: true` in compose. |
 | Logs | stdout/stderr, plain lines. Errors: `[error] <status> <method> <path>: <message>`. Never logs bodies, cookies, passwords or tokens. json-file driver, 10 MB × 3. |
@@ -53,6 +53,13 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | `CLOUDFLARED_VERSION` | tunnel | Dated tag, e.g. `2025.11.1`. Unset = `latest` (don't, in Stage C). |
 | `TZ`, `PORT`, `HOST` | defaults ok | `Asia/Kuala_Lumpur`, `3000`, `0.0.0.0`. |
 | `DATABASE_PATH`, `SEED_DIR` | set by compose | `/app/data/app.db`, `/app/data/seed`. Do not change. |
+| `UPLOAD_DIR` | v2, optional | Empty = `/app/data/uploads`. Must be on the data volume (temp files are written inside it, so rename never crosses filesystems). |
+| `MAX_UPLOAD_BYTES` | v2, optional | Default `26214400` (25 MB, D-12). Allowed types: png jpg gif webp pdf zip docx xlsx pptx doc xls ppt txt md csv. |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | v2, optional | Both or neither (boot fails on one). Make once: `docker compose run --rm app npx web-push generate-vapid-keys`. Keep the private one in the password manager. Unset = push off; reminders still show inside the app. Changing them breaks every device's push until it re-subscribes. |
+| `VAPID_SUBJECT` | with VAPID | `mailto:you@example.com` (push services contact this if something is wrong). |
+| `JOBS_ENABLED` | v2, default `true` | In-process reminder runner. One replica only (two would double-send). |
+| `REMINDER_POLL_INTERVAL_MS` | v2, default `30000` | How often due reminders are checked. |
+| `BODY_SIZE_LIMIT` | set by the image | `26M` so uploads reach the app. The app itself refuses any other request body over 1 MB. Don't lower it below `MAX_UPLOAD_BYTES`. |
 
 ## 4. First deploy
 
@@ -88,11 +95,19 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 
 **Upgrade:** read the release notes → `sudo ./backup.sh` → set `APP_VERSION=X.Y.Z` in `.env` → `docker compose pull app && docker compose up -d app` → watch `docker compose logs -f app` for `[boot] vX.Y.Z` → `curl -s https://planner.jeremyjosh.org/healthz` shows the new version.
 
+**v1.1.0 → v2.0.0 (one time, migration release):**
+1. `sudo ./backup.sh` and copy `data/backups/app-<ts>.db.gz` off the box. This is the rollback point.
+2. Unpack the v2.0.0 `deploy-v2.0.0.tar.gz` over `/opt/life-tracker` (new `backup.sh`/`restore.sh` also back up `data/uploads`). Keep your `.env`.
+3. Optional new env (all can stay unset): `VAPID_*` for push, `UPLOAD_DIR`/`MAX_UPLOAD_BYTES`, `JOBS_ENABLED`, `REMINDER_POLL_INTERVAL_MS`. With VAPID keys: allow outbound 443 to the push services (§1).
+4. `APP_VERSION=2.0.0` → pull + up. First boot runs migrations 0003–0008 (seconds), then `[boot] v2.0.0 db ready … jobs=true push=on|off`.
+5. `/healthz` → `"version":"2.0.0"`, `"jobs":true`. Run §8 incl. the v2 lines.
+6. Rollback: `APP_VERSION=1.1.0` **and** `sudo ./restore.sh <the backup from step 1>`. v1.1.0 cannot read the v2 schema.
+
 **Roll back:** set `APP_VERSION` back → `docker compose up -d app`. If the newer release ran a DB migration (release notes say "migration"), the old version may not read the new schema: restore the backup taken before the upgrade (`sudo ./restore.sh data/backups/app-<ts>.db.gz`). Migrations are forward-only.
 
-**Backup:** `backup.sh` = online SQLite backup + integrity check + gzip, keeps 14 days in `data/backups/`. Runs as root (`data/` is owned by uid 1000; the script refuses otherwise). Root cron (`sudo crontab -e`): `15 3 * * * /opt/life-tracker/backup.sh >> /var/log/life-tracker-backup.log 2>&1`. Set `LT_OFFSITE=/mnt/nas/life-tracker` (or another host via rsync) so one copy lives off the box.
+**Backup:** `backup.sh` = online SQLite backup + integrity check + gzip, **plus (v2) `uploads-<ts>.tar.gz` of `data/uploads` with the same timestamp**, keeps 14 days in `data/backups/`. Runs as root (`data/` is owned by uid 1000; the script refuses otherwise). Root cron (`sudo crontab -e`): `15 3 * * * /opt/life-tracker/backup.sh >> /var/log/life-tracker-backup.log 2>&1`. Set `LT_OFFSITE=/mnt/nas/life-tracker` (or another host via rsync) so one copy lives off the box.
 
-**Restore (drill it monthly):** `sudo ./restore.sh data/backups/app-<ts>.db.gz` → checks integrity, stops app, keeps the current DB as `app.db.pre-restore-<ts>`, swaps, starts app. Then log in and check recent items.
+**Restore (drill it monthly):** `sudo ./restore.sh data/backups/app-<ts>.db.gz` → checks integrity, stops app, keeps the current DB as `app.db.pre-restore-<ts>`, swaps (and, v2, swaps `data/uploads` from `uploads-<ts>.tar.gz` if present, old folder kept as `uploads.pre-restore-<ts>`), starts app. Then log in and check recent items.
 
 **Locked-out user / forgot password:** `docker compose exec -it app node scripts/reset-password.mjs <username>` (asks for the new password twice, signs that user out everywhere). Login lockout itself clears after 15 minutes.
 
@@ -138,10 +153,18 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 - [ ] Second account: sign up (or invite), swap share codes in Settings → Sharing, each sees the other's calendar striped with a badge; types not shared show only as "Busy".
 - [ ] `sudo ./backup.sh` run by hand succeeds; restore drill into a scratch folder passes integrity check.
 - [ ] 5 wrong passwords → lockout message with minutes; other users unaffected (real IPs work).
+- [ ] v2: old items, blocks, share-code partners and each person's theme look the same as before the upgrade.
+- [ ] v2: Keep note with an image saves + reopens after reload; `data/uploads/` gets a file, owned by uid 1000.
+- [ ] v2: new page, type, `/` → Table; reload keeps it. Share it with the second account (view); they open it from "Shared with me", can't edit; Remove → their reload = 404.
+- [ ] v2: quick add `test /remind 15min` at a time 16 min ahead → in-app reminder ~1 min later. With VAPID: Settings › Notifications → Turn push on → Send a test arrives on a phone.
+- [ ] v2: phone browser opens on Today; "Add to Home Screen" installs it.
+- [ ] v2: `sudo ./backup.sh` writes both `app-<ts>.db.gz` and `uploads-<ts>.tar.gz`.
 
 ## 9. Known limits
 
 - Single instance, single SQLite file. Backups are the DR plan.
 - No email: password resets are the `reset-password` script.
-- Desktop-first UI; phone works but is not polished.
+- Desktop-first. Phone = Today, Keep, add, read-first Week/Month; plan the week on a PC.
+- v2: no live co-edit (a clash says "changed elsewhere", text kept). Push verified on Edge only before release.
+- v2: offline = Keep edits only (they wait in the browser); everything else needs the server.
 - DB tables `goals`, `courses` and column `items.course_id` are unused leftovers (data kept on purpose).

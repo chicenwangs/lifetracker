@@ -9,12 +9,13 @@ import * as calendarsRepo from './calendars';
 import * as rl from '../ratelimit';
 import { bad } from '../http';
 import { isoPlus, nowUtcIso } from '$lib/time';
-import { SHARE_KINDS } from '$lib/types';
+import * as itemTypes from './itemtypes';
+import { MAX_TYPES } from '$lib/itemtypes';
 
 const EXPIRY_H = { '24h': 24, '7d': 24 * 7 } as const;
 export const shareKeyCreateSchema = z
 	.object({
-		types: z.array(z.enum(SHARE_KINDS)).max(SHARE_KINDS.length),
+		types: z.array(z.string().max(40)).max(MAX_TYPES + 2),
 		hiddenAs: z.enum(['busy', 'none']),
 		expiry: z.enum(['24h', '7d']),
 	})
@@ -22,6 +23,8 @@ export const shareKeyCreateSchema = z
 
 export function create(meId: string, input: unknown): { id: string; code: string; expiresAt: string } {
 	const p = shareKeyCreateSchema.parse(input);
+	const ok = new Set([...itemTypes.list(meId).map((t) => t.key), 'None', 'Blocks']);
+	if (p.types.some((t) => !ok.has(t))) bad('unknown type in the share list', 'bad_type');
 	if (listUnused(meId).length >= 20) bad('You have 20 open codes. Cancel some first.');
 	const cal = calendarsRepo.defaultFor(meId);
 	const raw = randomBase32(12);

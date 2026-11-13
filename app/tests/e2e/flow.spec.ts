@@ -1,5 +1,6 @@
 // P1 acceptance (REQUIREMENTS §6) end to end on a fresh DB. Runs in order.
 import { expect, test, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 
@@ -39,6 +40,13 @@ test('fresh DB -> /setup -> admin; /setup then 404', async () => {
 	await page.fill('#cp', PW);
 	await page.click('button[type=submit]');
 	await expect(page).toHaveURL(/\/$/);
+	// ONB-001/002/004: the tour opens on first sign-in, Skip is saved, it never comes back by itself
+	const tour = page.getByRole('dialog', { name: 'Welcome to Life Tracker' });
+	await expect(tour).toBeVisible();
+	await tour.getByRole('button', { name: 'Skip tour' }).click();
+	await expect(tour).toHaveCount(0);
+	await page.reload();
+	await expect(page.getByRole('button', { name: 'Skip tour' })).toHaveCount(0);
 	const r = await page.request.get('/setup');
 	expect(r.status()).toBe(404);
 });
@@ -85,7 +93,7 @@ test('month shows colour chips; square cycles + persists', async () => {
 	await page.goto('/');
 	const chip = page.locator('.lt-chip', { hasText: 'DS Quiz' });
 	await expect(chip).toBeVisible();
-	await expect(chip).toHaveCSS('background-color', 'rgb(198, 83, 77)'); // Exam bg #C6534D (same in both themes)
+	await expect(chip).toHaveCSS('background-color', 'rgb(184, 74, 68)'); // Deadline (Exam) bg #B84A44, 5.1:1 with white (v2)
 	await chip.locator('.lt-sq').click();
 	await expect(chip.locator('.lt-sq')).toHaveAttribute('aria-label', /In progress/);
 	await page.reload();
@@ -160,7 +168,7 @@ test('drag "DS Quiz" chip to planner -> linked red block', async () => {
 		.dragTo(grid, { targetPosition: { x: 150, y: (16 - 7) * 48 + 5 } });
 	const b = page.locator('.blk[aria-label^="DS Quiz,"]');
 	await expect(b).toHaveAttribute('aria-label', /16:00 – 17:00/);
-	await expect(b).toHaveCSS('background-color', 'rgb(198, 83, 77)');
+	await expect(b).toHaveCSS('background-color', 'rgb(184, 74, 68)');
 });
 
 test('quick add palette: planner by default, /calendar big events, /both', async () => {
@@ -170,9 +178,9 @@ test('quick add palette: planner by default, /calendar big events, /both', async
 	await expect(dlg).toBeVisible();
 	// slash menu
 	await page.keyboard.type('ds quiz fri 2pm /ex');
-	await expect(dlg.getByRole('listbox')).toContainText('/exam');
+	await expect(dlg.getByRole('listbox')).toContainText('/deadline'); // v2: Exam shows as Deadline, /ex still finds it
 	await page.keyboard.press('Tab');
-	await expect(page.locator('#qa-slots')).toContainText('Exam');
+	await expect(page.locator('#qa-slots')).toContainText('Deadline');
 	// # is plain title text now (no course menu)
 	await page.keyboard.type('#ds');
 	await expect(dlg.getByRole('listbox')).toHaveCount(0);
@@ -383,7 +391,7 @@ test('item opens as centre peek: blur, rename in place, notes, linked block, hov
 	await page.mouse.up();
 	const b = dlg.locator('.blk[aria-label^="DS Quiz 2, 10:00 – 11:00"]');
 	await expect(b).toBeVisible();
-	await expect(b).toHaveCSS('background-color', 'rgb(198, 83, 77)');
+	await expect(b).toHaveCSS('background-color', 'rgb(184, 74, 68)');
 	// Esc closes, home planner shows the same linked block
 	await page.keyboard.press('Escape');
 	await expect(dlg).toBeHidden();
@@ -411,7 +419,7 @@ test('open sign-up + swap share codes: partner calendar read-only, hidden types 
 	await page.getByRole('button', { name: 'Make a code' }).click();
 	const jCode = (await page.getByLabel('Your share code').textContent())!.trim();
 	expect(jCode).toMatch(/^LT-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$/);
-	await expect(page.getByText(/Shows Event, Dating, Planner blocks · until/)).toBeVisible();
+	await expect(page.getByText(/Shows Event, Date, Planner blocks · until/)).toBeVisible();
 
 	// Neina makes her own account (no invite code while sign-up is open)
 	const n = await (await browser.newContext()).newPage();
@@ -423,6 +431,7 @@ test('open sign-up + swap share codes: partner calendar read-only, hidden types 
 	await n.fill('#cp', PW + ' 2');
 	await n.getByRole('button', { name: 'Create account' }).click();
 	await n.waitForURL((u) => u.pathname === '/');
+	await n.getByRole('button', { name: 'Skip tour' }).click();
 	// her calendar starts empty: none of Jeremy's things
 	await expect(n.locator('.lt-chip', { hasText: 'Groceries' })).toHaveCount(0);
 	// she enters his code
@@ -506,15 +515,519 @@ test('month: double-click a day opens the add box; N palette covers the whole sc
 	await expect(scrim).toHaveCount(0);
 });
 
-test('theme: dark by default, toggle persists on server', async () => {
+test('theme: new account = Auto (D-07); sun/moon = fixed choice; Auto schedule recalculates at once', async () => {
 	await page.goto('/');
-	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-	await page.getByRole('button', { name: 'Switch to light mode' }).click();
-	await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+	const btn = page.locator('header button.theme[aria-pressed]');
+	await expect(btn).toHaveClass(/auto/);
+	await expect(btn).toHaveAttribute('title', /^Auto:/);
+	const start = (await page.locator('html').getAttribute('data-theme')) as string;
+	const other = start === 'dark' ? 'light' : 'dark';
+	await btn.click();
+	await expect(page.locator('html')).toHaveAttribute('data-theme', other);
 	await page.reload();
+	await expect(page.locator('html')).toHaveAttribute('data-theme', other);
+	await expect(btn).not.toHaveClass(/auto/);
+	// Auto with a light window that covers now -> light; one that excludes now -> dark (no reload)
+	await page.goto('/settings/preferences');
+	await page.getByRole('radio', { name: 'Auto' }).check();
+	await page.getByLabel('Light from').fill('00:00');
+	await page.getByLabel('Light from').dispatchEvent('change');
+	await page.getByLabel('Dark from').fill('23:59');
+	await page.getByLabel('Dark from').dispatchEvent('change');
 	await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-	await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+	// D-08: same start time refused
+	await page.getByLabel('Light from').fill('23:59');
+	await page.getByLabel('Light from').dispatchEvent('change');
+	await expect(page.locator('.toast')).toContainText('different start times');
+	await page.getByRole('radio', { name: 'Dark', exact: true }).check();
 	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+});
+
+test('v2 P1: type bar hides a type, new custom type, Ctrl+Z undo, 24 px hit area, Schedule…', async () => {
+	const d = await today();
+	await page.goto('/');
+	// new type from the type bar
+	await page.getByRole('button', { name: 'New type' }).click();
+	await page.getByLabel('Name').fill('Bills');
+	await page.getByRole('button', { name: 'Add type' }).click();
+	await expect(page.getByRole('button', { name: /Bills/, pressed: true })).toBeVisible();
+	await expect(page.locator('.count')).toContainText('6 / 10 types');
+	// quick add with its slug lands as that type
+	const r = await api('POST', '/api/quickadd', { text: `rent ${d} /calendar /bills` });
+	expect(r.s).toBe(201);
+	await page.reload();
+	const chip = page.locator('.lt-chip', { hasText: 'rent' });
+	await expect(chip).toBeVisible();
+	// hide Bills -> chip gone (only for me), show again -> back
+	await page.getByRole('button', { name: /Bills/ }).click();
+	await expect(chip).toHaveCount(0);
+	await page.getByRole('button', { name: /Bills/ }).click();
+	await expect(chip).toBeVisible();
+	// 24 px: a click 10 px left of the square's centre still hits it
+	const sq = chip.locator('.lt-sq');
+	const box = await sq.boundingBox();
+	expect(box).toBeTruthy();
+	const hit = await page.evaluate(
+		([x, y]) => (document.elementFromPoint(x as number, y as number) as HTMLElement | null)?.className ?? '',
+		[(box?.x ?? 0) + (box?.width ?? 0) / 2 - 10, (box?.y ?? 0) + (box?.height ?? 0) / 2] as const,
+	);
+	expect(hit).toContain('lt-sq');
+	// rename via the item view, then Ctrl+Z (focus outside fields) undoes it
+	const id = (r.j as { item: { id: string } }).item.id;
+	expect((await api('PATCH', `/api/items/${id}`, { title: 'rent paid' })).s).toBe(200);
+	await page.reload();
+	await expect(page.locator('.lt-chip', { hasText: 'rent paid' })).toBeVisible();
+	await page.locator('body').click({ position: { x: 5, y: 880 } });
+	await page.keyboard.press('Control+z');
+	await expect(page.locator('.undid')).toContainText('Undid: Rename "rent"');
+	await expect(page.locator('.lt-chip', { hasText: 'rent paid' })).toHaveCount(0);
+	await expect(page.locator('.lt-chip', { hasText: /^.*rent$/ })).toBeVisible();
+	// Schedule… on a due chip = linked block without dragging
+	await page.goto(`/?d=${d}`);
+	await page.getByRole('button', { name: 'Schedule rent' }).click();
+	await page.locator('.sched .pop').getByLabel('Start').fill('20:00');
+	await page.getByRole('button', { name: 'Block time' }).click();
+	await expect(page.locator('.toast')).toContainText('Blocked "rent" 20:00, 60 min');
+	const cal = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 1)}`);
+	expect((cal.j as { blocks: { itemId: string | null }[] }).blocks.some((b) => b.itemId === id)).toBe(true);
+});
+
+test('v2 P2 Keep: note, checklist nesting, label + binder filters, pin/archive/trash, search', async () => {
+	await page.goto('/keep');
+	await expect(page.getByText('No notes yet.')).toBeVisible();
+	// KEEP-001: title + body, autosave, close
+	await page.getByRole('button', { name: 'New note' }).first().click();
+	await page.locator('div.note').getByPlaceholder('Title').fill('Groceries');
+	await page.locator('div.note').getByPlaceholder('Note', { exact: true }).fill('milk and eggs');
+	await expect(page.locator('.note .state')).toContainText('Saved');
+	await page.keyboard.press('Escape');
+	await expect(page.locator('article.note', { hasText: 'Groceries' })).toBeVisible();
+	// empty note is dropped on close
+	await page.getByRole('button', { name: 'New note' }).first().click();
+	await page.keyboard.press('Escape');
+	await expect(page.locator('article.note')).toHaveCount(1);
+	// KEEP-005/006: checklist, nested child, check one item only
+	await page.getByRole('button', { name: 'New note' }).first().click();
+	await page.locator('div.note').getByPlaceholder('Title').fill('Trip');
+	await page.getByRole('button', { name: 'Checklist' }).click();
+	await page.getByRole('button', { name: '+ List item' }).click();
+	await page.keyboard.type('pack');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('buy rambutan');
+	await page.keyboard.press('Tab'); // nest under "pack"
+	await page.getByRole('checkbox', { name: 'Done: buy rambutan' }).check();
+	// label from inside the note
+	await page.getByLabel('New label').fill('travel');
+	await page.getByLabel('New label').press('Enter');
+	await expect(page.locator('.note .state')).toContainText('Saved');
+	await page.keyboard.press('Escape');
+	const trip = page.locator('article.note', { hasText: 'Trip' });
+	await expect(trip.locator('li.done')).toHaveText(/buy rambutan/);
+	await expect(trip.locator('li').first()).not.toHaveClass(/done/);
+	// KEEP-014 search finds checklist text
+	await page.getByLabel('Search notes').fill('rambutan');
+	await expect(page.locator('article.note')).toHaveCount(1);
+	await page.getByRole('button', { name: 'Clear' }).first().click();
+	await expect(page.locator('article.note')).toHaveCount(2);
+	// label filter
+	await page
+		.getByRole('button', { name: /#travel/ })
+		.first()
+		.click();
+	await expect(page.locator('article.note')).toHaveCount(1);
+	await page
+		.getByRole('button', { name: /#travel/ })
+		.first()
+		.click();
+	// KEEP-010: pin then archive -> not pinned; KEEP-011 archive -> restore
+	await trip.getByRole('button', { name: 'Pin' }).click();
+	await expect(page.getByRole('heading', { name: 'Pinned' })).toBeVisible();
+	await page.locator('article.note', { hasText: 'Trip' }).getByRole('button', { name: 'Archive' }).click();
+	await expect(page.getByRole('heading', { name: 'Pinned' })).toHaveCount(0);
+	await page.goto('/keep?scope=archive');
+	await page.locator('article.note', { hasText: 'Trip' }).getByRole('button', { name: 'Unarchive' }).click();
+	await page.goto('/keep');
+	await expect(page.locator('article.note', { hasText: 'Trip' })).toBeVisible();
+	// KEEP-012/013: trash -> delete forever needs a confirm
+	await page
+		.locator('article.note', { hasText: 'Groceries' })
+		.getByRole('button', { name: 'Delete' })
+		.click();
+	await page.goto('/keep?scope=trash');
+	page.once('dialog', (d) => d.accept());
+	await page.getByRole('button', { name: 'Delete forever' }).click();
+	await expect(page.getByText('Trash is empty.')).toBeVisible();
+});
+
+test('v2 P2 phone: opens on Today, Now card, + Add, Keep quick note, no sideways scroll at 360 px', async ({
+	browser,
+}) => {
+	const ctx = await browser.newContext({
+		storageState: await page.context().storageState(),
+		viewport: { width: 390, height: 844 },
+		timezoneId: 'Asia/Kuala_Lumpur',
+		hasTouch: true,
+	});
+	const ph = await ctx.newPage();
+	await ph.goto('/');
+	await expect(ph).toHaveURL(/\/today$/); // MOB-001
+	await expect(ph.getByRole('navigation', { name: 'Phone navigation' })).toBeVisible();
+	await expect(ph.locator('.now')).toContainText(/Now/); // MOB-002 (in a block, a gap, or free)
+	// MOB-003: + Add -> Plan it makes a block
+	await ph.getByRole('button', { name: 'Add', exact: true }).click();
+	await ph.keyboard.type('stretch 23:00 to 23:30');
+	await ph.getByRole('button', { name: 'Add', exact: true }).last().click();
+	await expect(ph.locator('.toast')).toContainText('Added "stretch"');
+	await ph.locator('.sheet').getByRole('button', { name: 'Close' }).click();
+	await expect(ph.locator('.wheel')).toContainText('stretch');
+	// MOB-005: square cycles by tap
+	const row = ph.locator('.ent', { hasText: 'stretch' });
+	await row.locator('button.sq').click();
+	await expect(row.locator('button.sq')).toHaveAttribute('aria-label', /In progress/);
+	// MOB-004: Keep -> quick note saves
+	await ph.getByRole('button', { name: 'Add', exact: true }).click();
+	await ph.getByRole('tab', { name: 'Quick note' }).click();
+	await ph.getByLabel('Note').fill('phone idea');
+	await ph.getByRole('button', { name: 'Save note' }).click();
+	await ph.getByRole('link', { name: 'Keep' }).click();
+	await expect(ph.locator('article.note', { hasText: 'phone idea' })).toBeVisible();
+	// MOB-008: no horizontal overflow at 360 px on the phone screens
+	await ph.setViewportSize({ width: 360, height: 780 });
+	for (const p of ['/today', '/keep', '/more'])
+		await ph
+			.goto(p)
+			.then(async () =>
+				expect(await ph.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360),
+			);
+	await ctx.close();
+});
+
+test('v2 P3 Pages: tree, slash menu, internal link survives rename, pin cap, archive, Ctrl+K', async () => {
+	await page.goto('/pages');
+	await page.getByRole('button', { name: 'New page' }).last().click();
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	const parentUrl = page.url();
+	await page.getByLabel('Page title').fill('Gym');
+	await expect(page.locator('.state')).toContainText('Saved');
+	// "/" menu: heading, then a to-do
+	const ed = page.locator('.pm');
+	await ed.click();
+	await page.keyboard.type('/head');
+	await expect(page.getByRole('listbox', { name: 'Insert block' })).toContainText('Heading 1');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('Plan');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('/zzz');
+	await page.keyboard.press('Escape'); // cancel keeps the text as typed
+	await expect(ed).toContainText('/zzz');
+	await expect(page.locator('.state')).toContainText('Saved');
+	await expect(ed.locator('h1')).toHaveText('Plan');
+	// child page via the tree "+"
+	await page.getByRole('button', { name: 'New page inside Gym' }).click();
+	await page.waitForURL((u) => u.href !== parentUrl && /\/pages\/pg_/.test(u.pathname));
+	await expect(page.getByLabel('Page title')).toHaveValue('');
+	await page.getByLabel('Page title').fill('Leg day');
+	await expect(page.locator('.state')).toContainText('Saved');
+	const childUrl = page.url();
+	// link from the parent to the child, then rename the child: link shows the new title
+	await page.goto(parentUrl);
+	await page.locator('.pm').click();
+	await page.keyboard.press('Control+End');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('/link');
+	await page.keyboard.press('Enter');
+	await page.getByLabel('Search your pages').fill('Leg');
+	await page.getByRole('button', { name: 'Leg day' }).click();
+	await expect(page.locator('.state')).toContainText('Saved');
+	await page.goto(childUrl);
+	await expect(page.locator('.pm')).toBeVisible(); // hydrated (the editor mounts on the client)
+	await expect(page.getByLabel('Page title')).toHaveValue('Leg day');
+	await page.getByLabel('Page title').fill('Legs');
+	await expect(page.locator('.state')).toContainText('Saved');
+	await page.goto(parentUrl);
+	await expect(page.locator('a.pl')).toHaveText('↗ Legs');
+	// pin cap: 3 pins ok, 4th refused
+	const made: string[] = [];
+	for (const t of ['P1', 'P2', 'P3']) made.push((await api('POST', '/api/pages', { title: t })).j.page.id);
+	expect((await api('PUT', '/api/page-shortcuts', { ids: made })).s).toBe(200);
+	await page.reload();
+	await expect(page.locator('nav a.pin')).toHaveCount(3);
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Pin to header' }).click();
+	await expect(page.locator('.toast')).toContainText('pin 3 pages');
+	// archive parent takes the child; gone from tree; link target page still opens
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Archive' }).click();
+	await expect(page.locator('.toast')).toContainText('Archived with 1 subpages');
+	await expect(page.getByRole('tree', { name: 'Page tree' })).not.toContainText('Gym');
+	await page.goto(childUrl);
+	await expect(page.locator('.arch')).toContainText('Archived');
+	// Ctrl+K finds archived only with the toggle; finds a Keep note too
+	await page.keyboard.press('Control+k');
+	await page.keyboard.type('Legs');
+	await expect(page.getByRole('listbox', { name: 'Results' })).not.toContainText('Legs');
+	await page.getByLabel('Include archived').check();
+	await expect(page.getByRole('option', { name: /Legs/ })).toBeVisible();
+	await page.keyboard.press('Escape');
+	// restore from Archive view: back under its old parent
+	await page.goto('/pages/archive');
+	await page
+		.locator('.row')
+		.filter({ has: page.getByRole('link', { name: 'Gym', exact: true }) })
+		.getByRole('button', { name: 'Restore' })
+		.click();
+	await expect(page.getByRole('tree', { name: 'Page tree' })).toContainText('Gym');
+});
+
+test('v2 P4 Databases: new database, number property rejects text, records, sort, record opens as page', async () => {
+	await page.goto('/pages');
+	await page.getByRole('button', { name: 'New database' }).click();
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	const db = page.locator('section.dbv').first();
+	await expect(db).toBeVisible();
+	// add a number property
+	await db.getByRole('button', { name: 'Add property' }).first().click();
+	await db.getByLabel('Property name').fill('kg');
+	await db.getByRole('button', { name: '# Number' }).click();
+	await expect(db.getByLabel('Column kg')).toBeVisible();
+	// two records
+	for (const [n, w] of [
+		['Bench', '60'],
+		['Row', '80'],
+	] as const) {
+		await db.getByRole('button', { name: 'New record', exact: true }).click();
+		const name = db.getByLabel('Name of Untitled').last();
+		await name.fill(n);
+		await name.press('Enter');
+		const kg = db.getByLabel(`kg of ${n}`);
+		await kg.fill(w);
+		const saved = page.waitForResponse((r) => r.url().includes('/api/database-records/') && r.request().method() === 'PATCH'); // prettier-ignore
+		await kg.press('Enter');
+		await saved; // the next edit must not race this save's reply
+	}
+	// PAGE-012: text in a number cell is refused with a readable message
+	await db.getByLabel('kg of Row').fill('heavy');
+	await db.getByLabel('kg of Row').press('Enter');
+	await expect(page.locator('.toast, [role=alert]').first()).toContainText(/Number/);
+	await db.getByLabel('kg of Row').fill('80');
+	await db.getByLabel('kg of Row').press('Enter');
+	// PAGE-014: sort by kg desc -> Row first, and it sticks after reload
+	await db.getByRole('button', { name: '+ Sort' }).click();
+	await db.getByLabel('Sort column').selectOption({ label: 'kg' });
+	await db.getByLabel('Sort direction').selectOption('desc');
+	await db.getByRole('button', { name: 'Sort', exact: true }).click();
+	await expect(
+		db
+			.locator('tbody tr')
+			.first()
+			.getByLabel(/^Name of/),
+	).toHaveValue('Row');
+	await page.reload();
+	const db2 = page.locator('section.dbv').first();
+	await expect(
+		db2
+			.locator('tbody tr')
+			.first()
+			.getByLabel(/^Name of/),
+	).toHaveValue('Row');
+	// PAGE-015: record opens as a page with the same title
+	await db2.getByRole('button', { name: 'Open Bench as page' }).click();
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	await expect(page.getByLabel('Page title')).toHaveValue('Bench');
+});
+
+test('v2 P5 Graph: shows my pages, archived toggle, list fallback, node select opens page', async () => {
+	await page.goto('/pages/graph');
+	await expect(page.getByRole('heading', { name: 'Knowledge graph' })).toBeVisible();
+	await expect(page.locator('.canvas canvas').first()).toBeVisible(); // sigma mounted (WebGL)
+	// list fallback = the keyboard/phone path; holds the same pages
+	await page.getByRole('button', { name: 'Show as list instead' }).click();
+	const list = page.getByRole('list', { name: 'Pages and their links' });
+	await expect(list.getByRole('link', { name: 'Gym' })).toBeVisible();
+	await expect(list.getByRole('link', { name: 'Legs' })).toBeVisible();
+	// keyboard on the graph: first arrow selects a page, Enter opens it (PAGE-018)
+	await page.getByRole('button', { name: 'Show graph' }).click();
+	await page.getByRole('application').focus();
+	await page.keyboard.press('ArrowRight');
+	await expect(page.getByRole('complementary', { name: 'Selected page' })).toBeVisible();
+	const name = await page.getByRole('complementary', { name: 'Selected page' }).locator('b').textContent();
+	await page.keyboard.press('Enter');
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	await expect(page.getByLabel('Page title')).toHaveValue(name === 'Untitled' ? '' : (name ?? ''));
+});
+
+test('v2 P6 Reminders: /remind in quick add, editor on the item, in-app reminder fires, push state honest', async () => {
+	const d = await today();
+	const tmr = plusDay(d, 1);
+	const r = await api('POST', '/api/quickadd', { text: `dentist ${tmr} 3pm /calendar /remind 1d 2h` });
+	expect(r.s).toBe(201);
+	const id = (r.j as { item: { id: string } }).item.id;
+	await page.goto(`/item/${id}`);
+	const box = page.locator('.rem');
+	await expect(box.locator('.row:not(.add)')).toHaveCount(2); // NOTIF-002 two coexist
+	await box
+		.getByRole('button', { name: /Remove reminder/ })
+		.first()
+		.click(); // NOTIF-004 remove one only
+	await expect(box.locator('.row:not(.add)')).toHaveCount(1);
+	// a reminder a few seconds from now: the runner sends it, the app shows it in-app (no push keys in tests)
+	const at = new Date(Date.now() + 4000).toISOString().slice(0, 19) + 'Z';
+	expect((await api('POST', '/api/reminders', { source: 'planner_item', sourceId: id, at })).s).toBe(201);
+	await page.waitForTimeout(7000);
+	await page.reload();
+	await expect(page.locator('.toast')).toContainText('⏰ dentist');
+	// NOTIF-005: push not set up -> says so, button off, app fine
+	await page.goto('/settings/notifications');
+	await expect(page.getByText('No (the admin has not set it up')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Turn push on for this device' })).toBeDisabled();
+});
+
+test('v2 P7 Sharing: share a page view-only, they read it but cannot edit, revoke = gone next request', async ({
+	browser,
+}) => {
+	const p = (await api('POST', '/api/pages', { parentId: null, title: 'Trip plan' })).j as {
+		page: { id: string };
+	};
+	const id = p.page.id;
+	await api('PATCH', `/api/pages/${id}`, { doc: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Day 1: Penang' }] }] } }); // prettier-ignore
+	await page.goto(`/pages/${id}`);
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Share…' }).click();
+	const dlg = page.getByRole('dialog', { name: /Share/ });
+	await dlg.getByLabel('Username').fill('neina');
+	await dlg.getByRole('button', { name: 'Share', exact: true }).click();
+	await expect(dlg.getByText('@neina')).toBeVisible();
+	await dlg.getByRole('button', { name: 'Done' }).click();
+
+	const n = await (await browser.newContext()).newPage();
+	await n.goto('/login');
+	await n.fill('#u', 'neina');
+	await n.fill('#p', PW + ' 2');
+	await n.click('button[type=submit]');
+	await n.waitForURL((u) => u.pathname === '/');
+	await n.goto('/shared');
+	await n.getByRole('link', { name: /Trip plan/ }).click();
+	await expect(n.getByText('Shared with you · view only')).toBeVisible();
+	await expect(n.locator('.pm')).toContainText('Day 1: Penang');
+	await expect(n.locator('.pm')).toHaveAttribute('contenteditable', 'false');
+	await expect(n.getByLabel('Page title')).toHaveAttribute('readonly', '');
+	const w = await n.evaluate(async (u) => (await fetch(u, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'hacked' }) })).status, `/api/pages/${id}`); // prettier-ignore
+	expect(w).toBe(403);
+
+	// revoke: her very next request is denied, and the 404 says nothing about the page
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Share…' }).click();
+	await dlg.getByRole('button', { name: 'Remove' }).click();
+	await expect(dlg.getByText('Private. Only you can open it.')).toBeVisible();
+	const r = await n.goto(`/pages/${id}`);
+	expect(r?.status()).toBe(404);
+	await expect(n.locator('body')).not.toContainText('Trip plan');
+	await n.context().close();
+});
+
+test('v2 P8: phone Week/Month/More, PWA manifest, offline badge + Keep queue, Help restarts the tour', async ({
+	browser,
+}) => {
+	const ctx = await browser.newContext({
+		storageState: await page.context().storageState(),
+		viewport: { width: 360, height: 780 },
+		timezoneId: 'Asia/Kuala_Lumpur',
+		hasTouch: true,
+	});
+	const ph = await ctx.newPage();
+	const noSideScroll = async () =>
+		expect(await ph.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+	// MOB-007: More reaches Week, Month, Pages; phone Week = read-first agenda, Month = compact grid
+	await ph.goto('/more');
+	await ph.getByRole('navigation', { name: 'More' }).getByRole('link', { name: /^Week/ }).click();
+	await expect(ph.getByRole('main', { name: 'Week agenda' })).toBeVisible();
+	await expect(ph.locator('.pweek .day')).toHaveCount(7);
+	await noSideScroll();
+	await ph.goto('/more');
+	await ph
+		.getByRole('navigation', { name: 'More' })
+		.getByRole('link', { name: /^Month/ })
+		.click();
+	await expect(ph.locator('.grid .cell')).toHaveCount(42);
+	await noSideScroll();
+	await ph.locator('.cell.today').click();
+	await expect(ph).toHaveURL(/\/today\?d=/);
+	for (const p of ['/settings/preferences', '/settings/help', '/pages', '/shared']) {
+		await ph.goto(p);
+		await noSideScroll();
+	}
+	// perf target: Home loads in < 1.5 s on the LAN (here: local preview server)
+	await ph.goto('/?desktop=1');
+	const ms = await ph.evaluate(() => (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).loadEventEnd); // prettier-ignore
+	expect(ms).toBeLessThan(1500);
+	// MOB-009: installable shell
+	const m = await (await ph.request.get('/manifest.webmanifest')).json();
+	expect(m.display).toBe('standalone');
+	expect(m.icons.map((i: { sizes: string }) => i.sizes)).toEqual(
+		expect.arrayContaining(['192x192', '512x512']),
+	);
+	expect((await ph.request.get('/icon-512.png')).status()).toBe(200);
+	await ph.close();
+
+	// MOB-010: offline is visible; a Keep edit waits on the device and is sent when back online
+	const d = await ctx.newPage();
+	await d.setViewportSize({ width: 1280, height: 800 });
+	await d.goto('/keep');
+	await d.getByRole('button', { name: 'New note' }).click();
+	await d.getByPlaceholder('Title').fill('offline idea');
+	await expect(d.locator('[role=dialog].note .state')).toHaveText('Saved');
+	await ctx.setOffline(true);
+	await expect(d.getByText("Offline · changes aren't saved")).toBeVisible();
+	await d.locator('[role=dialog].note textarea.body').fill('written on the train');
+	await expect(d.locator('[role=dialog].note .state')).toContainText('kept on this device');
+	await d.locator('[role=dialog].note').getByRole('button', { name: 'Close' }).click();
+	await ctx.setOffline(false);
+	await expect(d.locator('.toast')).toContainText('Back online: 1 note change(s) sent');
+	await expect(d.locator('article.note', { hasText: 'written on the train' })).toBeVisible();
+
+	// ONB-005/006: Help restarts the tour; a resize mid-tour keeps it usable; Finish is saved
+	await d.goto('/settings/help');
+	await d.getByRole('button', { name: 'Restart the tour' }).click();
+	await expect(d.getByRole('dialog', { name: 'Welcome to Life Tracker' })).toBeVisible();
+	await d.locator('.tcard').getByRole('button', { name: 'Next', exact: true }).click();
+	await d.setViewportSize({ width: 380, height: 780 });
+	for (
+		let i = 0;
+		i < 8 && (await d.locator('.tcard').getByRole('button', { name: 'Next', exact: true }).count());
+		i++
+	)
+		await d.locator('.tcard').getByRole('button', { name: 'Next', exact: true }).click();
+	await d.locator('.tcard').getByRole('button', { name: 'Finish' }).click();
+	await expect(d.locator('.tcard')).toHaveCount(0);
+	await d.reload();
+	await expect(d.locator('.tcard')).toHaveCount(0);
+	await ctx.close();
+});
+
+test('v2 P8 a11y: axe finds no serious or critical issues on the main screens (light + dark, PC + phone)', async ({
+	browser,
+}) => {
+	const bad: string[] = [];
+	for (const [w, h] of [
+		[1280, 800],
+		[360, 780],
+	] as const)
+		for (const scheme of ['light', 'dark'] as const) {
+			const ctx = await browser.newContext({ storageState: await page.context().storageState(), viewport: { width: w, height: h }, timezoneId: 'Asia/Kuala_Lumpur', reducedMotion: 'reduce' }); // prettier-ignore
+			const p = await ctx.newPage();
+			await p.goto('/');
+			await p.evaluate((s) => document.documentElement.setAttribute('data-theme', s), scheme);
+			for (const url of ['/?desktop=1', '/today', '/week', '/month', '/keep', '/pages', '/shared', '/settings/preferences', '/settings/help', '/more']) {
+				await p.goto(url);
+				await p.evaluate((s) => document.documentElement.setAttribute('data-theme', s), scheme);
+				await p.waitForTimeout(700); // let theme transitions finish
+				const r = await new AxeBuilder({ page: p }).withTags(['wcag2a', 'wcag2aa']).analyze();
+				for (const v of r.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical'))
+					for (const n of v.nodes.slice(0, 4)) bad.push(`${w}px ${scheme} ${url}: ${v.id} ${n.target.join(' ')} ${JSON.stringify((n.any[0]?.data ?? {}) as object).slice(0, 160)}`);
+			} // prettier-ignore
+			await ctx.close();
+		}
+	expect(bad).toEqual([]);
 });
 
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {

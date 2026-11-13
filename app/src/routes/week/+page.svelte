@@ -2,9 +2,13 @@
      Right column (top to bottom): month heatmap with this week highlighted · Not scheduled (all-day items with
      no block; drag onto the grid to block time, drag a block here to unschedule it) · stats. -->
 <script lang="ts">
+	import { shown } from '$lib/client/itemtypes.svelte';
+	import TypeBar from '$lib/components/TypeBar.svelte';
+	import ScheduleButton from '$lib/components/ScheduleButton.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
 	import WeekCalendar from '$lib/components/WeekCalendar.svelte';
+	import PhoneWeek from '$lib/components/PhoneWeek.svelte';
 	import SlotCommand from '$lib/components/SlotCommand.svelte';
 	import WeekMap from '$lib/components/WeekMap.svelte';
 	import OverlapToggle from '$lib/components/OverlapToggle.svelte';
@@ -86,7 +90,11 @@
 				});
 			if (minutes !== null) {
 				const s = localToUtc(date, minutes, tz);
-				await post('/api/blocks', { itemId: id, startAt: s, endAt: isoPlus(s, 3_600_000) });
+				await post('/api/blocks', {
+					itemId: id,
+					startAt: s,
+					endAt: isoPlus(s, (data.user?.blockMin ?? 60) * 60_000),
+				});
 			}
 		}).catch(() => {});
 	}
@@ -190,6 +198,21 @@
 
 <svelte:head><title>Week · Life Tracker</title></svelte:head>
 
+<!-- phone (< 700 px): read-first agenda; the grid below is for the PC -->
+<main class="phone" aria-label="Week agenda">
+	<div class="pbar">
+		<a class="btn sm" href="/week?w={addDays(data.from, -7)}" aria-label="Previous week">‹</a>
+		<strong
+			>{prettyDate(data.from).replace(/ d{4}$/, '')} – {prettyDate(addDays(data.to, -1)).replace(
+				/ d{4}$/,
+				'',
+			)}</strong
+		>
+		<a class="btn sm" href="/week?w={addDays(data.from, 7)}" aria-label="Next week">›</a>
+	</div>
+	<PhoneWeek from={data.from} to={data.to} today={data.today} {tz} cal={data.cal} />
+</main>
+
 <main class="wrap">
 	<section class="card wkc" aria-label="Week">
 		<div class="bar strip">
@@ -229,13 +252,14 @@
 				<span class="on">Week</span>
 			</div>
 		</div>
+		<div class="types"><TypeBar /></div>
 		{#if side}
 			<WeekCalendar
 				bind:this={weekCal}
 				from={data.from}
 				{tz}
-				items={data.cal.items}
-				blocks={data.cal.blocks}
+				items={shown(data.cal.items)}
+				blocks={shown(data.cal.blocks)}
 				dragSource={side}
 				oncycleitem={(id) => wrap(() => post(`/api/items/${id}/cycle`)).catch(() => {})}
 				oncycleblock={(id) => wrap(() => post(`/api/blocks/${id}/cycle`)).catch(() => {})}
@@ -291,6 +315,7 @@
 							? ` – ${prettyDate(i.endDate).split(' ')[0]}`
 							: ''}</span
 					>
+					<ScheduleButton itemId={i.id} title={i.title} date={i.date ?? data.from} />
 					<button
 						type="button"
 						class="rx"
@@ -351,6 +376,10 @@
 {/if}
 
 <style>
+	.types {
+		padding: 8px 20px;
+		border-bottom: 1px solid var(--rule);
+	}
 	.slotpop {
 		position: fixed;
 		z-index: 60;
@@ -377,6 +406,25 @@
 		line-height: 1;
 		cursor: pointer;
 		padding: 0 4px;
+	}
+	.phone {
+		display: none;
+		padding: 8px 12px 104px;
+	}
+	.pbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		margin-bottom: 8px;
+	}
+	@media (max-width: 699px) {
+		.phone {
+			display: block;
+		}
+		.wrap {
+			display: none !important;
+		}
 	}
 	.wrap {
 		padding: 20px 24px;

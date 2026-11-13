@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+a{color:#00003D}a:hover{color:#3D3D6B}
+.card{background:#FFFFFF;border:1.5px solid #00003D;border-radius:14px;overflow:hidden}
+.btn{font:600 13px Inter,system-ui,sans-serif;color:#00003D;background:#FFFFFF;border:1.5px solid #00003D;border-radius:8px;padding:6px 10px;cursor:pointer}
+.sq{width:14px;height:14px;border-radius:3px;padding:0;flex:none;display:flex;align-items:center;justify-content:center;font-size:9px;line-height:1;cursor:pointer;position:relative}
+.sq::after{content:"";position:absolute;inset:-5px}
+.legend{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#00003D}
+.legend i{width:14px;height:10px;border-radius:3px;display:inline-block;border:1px solid #00003D}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #00003D; min-height: 940px; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(60% 60% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<dc-import name="Header" active="home" hint-size="100%,72px"></dc-import>
+<main style="display: flex; flex-wrap: wrap; gap: 24px; padding: 8px 32px 40px 38px; max-width: 1440px; margin: 0 auto; box-sizing: border-box">
+
+<section class="card" aria-label="Month calendar" style="flex: 2 1 640px; min-width: 0">
+<div style="background: #CED3EE; border-bottom: 1.5px solid #00003D; padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+<button class="btn" type="button" aria-label="Previous month">‹</button>
+<button class="btn" type="button" aria-label="Next month">›</button>
+<h1 style="margin: 0 8px; font-size: 20px; font-weight: 700">November 2026</h1>
+<button class="btn" type="button">Today</button>
+<div style="flex: 1"></div>
+<div role="group" aria-label="View" style="display: flex; border: 1.5px solid #00003D; border-radius: 8px; overflow: hidden">
+<span aria-current="page" style="padding: 6px 12px; font-size: 13px; font-weight: 600; background: #00003D; color: #FFFFFF">Month</span>
+<a href="Week.dc.html" style="padding: 6px 12px; font-size: 13px; font-weight: 600; background: #FFFFFF; color: #00003D; text-decoration: none">Week</a>
+</div>
+<button type="button" aria-pressed="true" style="font: 600 13px Inter, sans-serif; color: #00003D; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 999px; padding: 4px 6px 4px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer">Overlap
+<span aria-hidden="true" style="width: 22px; height: 22px; border-radius: 999px; background: #0F766E; color: #FFFFFF; font-size: 11px; display: flex; align-items: center; justify-content: center">N</span>
+<span aria-hidden="true" style="width: 32px; height: 18px; border-radius: 999px; background: #00003D; position: relative"><span style="position: absolute; right: 2px; top: 2px; width: 14px; height: 14px; border-radius: 999px; background: #FFFFFF"></span></span>
+</button>
+</div>
+<div role="toolbar" aria-label="Item types. Click a type to show or hide it" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px 14px; border-bottom: 1px solid #E3E4F0; position: relative">
+<sc-for list="{{types}}" as="t" hint-placeholder-count="7">
+<button type="button" aria-pressed="{{t.on}}" title="{{t.tip}}" style="display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px 0 6px; border-radius: 999px; border: 1.5px solid {{t.edge}}; background: #FFFFFF; font: 600 12px Inter, sans-serif; color: #00003D; cursor: pointer"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; border: 1px solid #00003D; background: {{t.bg}}"></span><span style="text-decoration: {{t.deco}}">{{t.name}}</span></button>
+</sc-for>
+<button type="button" aria-label="Add item type, {{typesLeft}} slots left" title="Add item type" aria-expanded="{{popOpen}}" style="width: 28px; height: 28px; border-radius: 999px; border: 1.5px dashed #00003D; background: {{plusBg}}; color: #00003D; font: 700 16px Inter, sans-serif; line-height: 1; cursor: pointer">+</button>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #00003D; margin-left: 6px"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; border: 1px dashed #00003D; background: repeating-linear-gradient(135deg, #E6E7F0 0 3px, #FFFFFF 3px 6px)"></span>Neina (shared)</span>
+<span style="margin-left: auto; font-size: 12px; color: #3D3D6B">{{typesUsed}} / 10 types</span>
+<sc-if value="{{popOpen}}" hint-placeholder-val="{{false}}">
+<div role="dialog" aria-label="New item type" style="position: absolute; left: 470px; top: 42px; width: 300px; z-index: 5; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 12px; box-shadow: -4px 4px 0 #F3D053; padding: 14px; font-size: 13px">
+<div style="font-weight: 700; font-size: 15px; margin-bottom: 10px">New item type</div>
+<label for="tn" style="display: block; font-weight: 600; margin-bottom: 4px">Name</label>
+<input id="tn" value="Side project" style="width: 100%; box-sizing: border-box; font: 14px Inter, sans-serif; color: #00003D; border: 1.5px solid #6B6B8F; border-radius: 8px; padding: 7px 10px">
+<div style="font-weight: 600; margin: 10px 0 6px">Colour</div>
+<div role="radiogroup" aria-label="Colour" style="display: flex; gap: 6px; flex-wrap: wrap">
+<sc-for list="{{swatches}}" as="s" hint-placeholder-count="8">
+<button type="button" role="radio" aria-checked="{{s.sel}}" aria-label="{{s.name}}" style="width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid #00003D; background: {{s.c}}; outline: {{s.ring}}; outline-offset: 2px; cursor: pointer"></button>
+</sc-for>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; margin: 12px 0 4px"><span style="font-weight: 600">Preview</span><span style="display: inline-flex; align-items: center; gap: 5px; padding: 3px 7px; border-radius: 5px; background: #E2D4F0; font-size: 11.5px; font-weight: 500"><span style="width: 12px; height: 12px; border: 1.5px solid #00003D; border-radius: 3px"></span>20:00 Homelab rebuild</span></div>
+<label style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: #00003D"><input type="checkbox" style="accent-color: #00003D; width: 16px; height: 16px">Counts down to its date <span style="color: #3D3D6B">(5d · Today · late)</span></label>
+<div style="color: #3D3D6B; margin-bottom: 4px">Quick add: <code style="color: #00003D">/sideproject</code> · text contrast 12:1 ✓</div>
+<div style="color: #3D3D6B; margin-bottom: 12px">3 slots left after this one.</div>
+<div style="display: flex; gap: 8px; justify-content: flex-end"><button type="button" style="font: 600 13px Inter, sans-serif; color: #00003D; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 8px; padding: 7px 12px">Cancel</button><button type="button" style="font: 600 13px Inter, sans-serif; color: #FFFFFF; background: #00003D; border: 1.5px solid #00003D; border-radius: 8px; padding: 7px 12px; box-shadow: -2px 2px 0 #F3D053">Add type</button></div>
+<a href="SettingsTypes.dc.html" style="display: block; margin-top: 10px; font-size: 12px; color: #00003D">Manage all types in Settings</a>
+</div>
+</sc-if>
+</div>
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid #E3E4F0">
+<sc-for list="{{dows}}" as="d" hint-placeholder-count="7">
+<div style="padding: 8px 10px; font-size: 12px; font-weight: 600; color: #3D3D6B">{{d}}</div>
+</sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr))">
+<sc-for list="{{cells}}" as="c" hint-placeholder-count="42">
+<div style="min-height: 112px; border-right: 1px solid #E3E4F0; border-bottom: 1px solid #E3E4F0; padding: 6px; display: flex; flex-direction: column; gap: 3px; min-width: 0; background: {{c.cellBg}}">
+<span style="align-self: flex-start; font-size: 12px; font-weight: 600; width: 24px; height: 24px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: {{c.numFg}}; background: {{c.numBg}}">{{c.n}}</span>
+<sc-for list="{{c.chips}}" as="e" hint-placeholder-count="1">
+<div title="{{e.tip}}" style="display: flex; align-items: center; gap: 5px; padding: 3px 5px; border-radius: 5px; font-size: 11.5px; font-weight: 500; min-width: 0; background: {{e.bg}}; color: {{e.fg}}; border: 1px {{e.border}} {{e.edge}}">
+<sc-if value="{{e.mine}}" hint-placeholder-val="{{true}}">
+<button class="sq" type="button" aria-label="{{e.tip}}. {{e.sqLabel}}" style="border: 1.5px solid {{e.fg}}; background: {{e.sqBg}}; color: {{e.bg}}">{{e.sq}}</button>
+</sc-if>
+<sc-if value="{{e.theirs}}" hint-placeholder-val="{{false}}">
+<span aria-label="Neina's calendar" style="width: 14px; height: 14px; border-radius: 999px; background: #0F766E; color: #FFFFFF; font-size: 8px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none">N</span>
+</sc-if>
+<span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: {{e.deco}}">{{e.time}}{{e.title}}</span>
+<sc-if value="{{e.cd}}" hint-placeholder-val="{{false}}"><span style="margin-left: auto; flex: none; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: #FFFFFF; color: {{e.cdFg}}">{{e.cd}}</span></sc-if>
+</div>
+</sc-for>
+<sc-if value="{{c.more}}" hint-placeholder-val="{{false}}">
+<a href="#" style="font-size: 11px; color: #3D3D6B; padding-left: 4px">{{c.moreLabel}}</a>
+</sc-if>
+</div>
+</sc-for>
+</div>
+<p style="margin: 0; padding: 8px 14px; border-top: 1px solid #E3E4F0; font-size: 12px; color: #3D3D6B">Square: empty = not started · ▶ = in progress · ✓ = done · drag an item to another day to move it · drag it onto the planner to block time · double-click a day to add</p>
+</section>
+
+<section class="card" aria-label="Day planner" style="flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column">
+<div style="background: #D3EECE; border-bottom: 1.5px solid #00003D; padding: 12px 16px; display: flex; align-items: center; gap: 8px">
+<button class="btn" type="button" aria-label="Previous day">‹</button>
+<h2 style="margin: 0; font-size: 17px; font-weight: 700; flex: 1; text-align: center">Thu 12 Nov</h2>
+<button class="btn" type="button" aria-label="Next day">›</button>
+<button class="btn" type="button">Today</button>
+</div>
+<div style="padding: 10px 14px; border-bottom: 1px solid #E3E4F0">
+<div style="font-size: 12px; font-weight: 600; color: #3D3D6B; margin-bottom: 6px">No time set today · drag onto timeline or press Schedule</div>
+<div style="display: flex; gap: 6px; flex-wrap: wrap">
+<sc-for list="{{due}}" as="e" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 500; background: {{e.bg}}; color: {{e.fg}}; cursor: grab">
+<button class="sq" type="button" aria-label="Not started. Click to start" style="border: 1.5px solid {{e.fg}}; background: transparent"></button>{{e.title}}<sc-if value="{{e.badge}}" hint-placeholder-val="{{false}}"><span style="font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: #FFFFFF; color: #8E2B26">{{e.badge}}</span></sc-if>
+<button type="button" aria-label="Schedule {{e.title}}: pick a time" title="Schedule" style="width: 24px; height: 24px; margin-right: -4px; border: 0; border-radius: 6px; background: transparent; color: {{e.fg}}; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 1.5"></path></svg></button>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="position: relative; height: 680px; overflow: hidden; margin: 6px 0 10px">
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 0; height: 18px; background: repeating-linear-gradient(135deg, #E3E4F0 0 4px, #FFFFFF 4px 8px); border-bottom: 1px solid #CED3EE; font-size: 10px; color: #3D3D6B; padding-left: 56px; box-sizing: border-box; line-height: 18px">00:00–07:00 hidden · 1 block (Sleep) · drag edge or click to show</div>
+<sc-for list="{{hours}}" as="h" hint-placeholder-count="17">
+<div style="position: absolute; left: 0; right: 0; height: 40px; border-top: 1px solid #E3E4F0; top: {{h.top}}px">
+<span style="position: absolute; left: 10px; top: -8px; font-size: 11px; color: #6B6B8F; background: #FFFFFF; padding: 0 2px">{{h.label}}</span>
+</div>
+</sc-for>
+<sc-for list="{{blocks}}" as="b" hint-placeholder-count="6">
+<div style="position: absolute; box-sizing: border-box; border-radius: 7px; padding: 5px 8px; font-size: 12px; overflow: hidden; display: flex; gap: 6px; top: {{b.top}}px; height: {{b.h}}px; left: {{b.l}}; right: {{b.r}}; background: {{b.bg}}; color: {{b.fg}}; border: 1.5px {{b.border}} {{b.edge}}">
+<sc-if value="{{b.mine}}" hint-placeholder-val="{{true}}">
+<button class="sq" type="button" aria-label="{{b.sqLabel}}" style="width: 16px; height: 16px; border: 1.5px solid {{b.fg}}; background: {{b.sqBg}}; color: {{b.bg}}">{{b.sq}}</button>
+</sc-if>
+<sc-if value="{{b.theirs}}" hint-placeholder-val="{{false}}">
+<span aria-label="Neina's calendar" style="width: 16px; height: 16px; border-radius: 999px; background: #0F766E; color: #FFFFFF; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none">N</span>
+</sc-if>
+<div style="min-width: 0"><div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: {{b.deco}}">{{b.title}}</div><div style="font-size: 11px">{{b.range}}</div></div>
+</div>
+</sc-for>
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: 18px; background: repeating-linear-gradient(135deg, #E3E4F0 0 4px, #FFFFFF 4px 8px); border-top: 1px solid #CED3EE; font-size: 10px; color: #3D3D6B; padding-left: 56px; box-sizing: border-box; line-height: 18px; cursor: row-resize">23:00–24:00 hidden · drag edge to show</div>
+<div aria-label="Now 13:04" style="position: absolute; left: 50px; right: 0; top: 261px; height: 2px; background: #00003D">
+<span style="position: absolute; left: -5px; top: -4px; width: 10px; height: 10px; border-radius: 999px; background: #00003D"></span>
+</div>
+</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const T = { Work: ['#CED3EE', '#00003D'], Exam: ['#B84A44', '#FFFFFF'], Event: ['#D3EECE', '#00003D'], Hobby: ['#FAEDB8', '#00003D'], Dating: ['#EECFD4', '#00003D'], None: ['#E6E7F0', '#00003D'], Busy: ['#E6E7F0', '#3D3D6B'], Errand: ['#CFE8E6', '#00003D'], Health: ['#F7D9C4', '#00003D'] };
+    const ev = {
+      2: [['Network Sec lab', 'Work', '', 'done']],
+      3: [['Lab report due', 'Exam', '', 'done'], ['Gym', 'Hobby', '18:00 ', 'done']],
+      5: [['SULAM visit', 'Work', '08:00 ', 'done']],
+      7: [['Movie night', 'Dating', '20:00 ', 'done']],
+      9: [['FYP meeting', 'Work', '10:00 ', 'done'], ['Busy', 'Busy', '', 'theirs']],
+      10: [['Gym', 'Hobby', '18:00 ', 'done']],
+      12: [['DS Quiz revision', 'Exam', '13:30 ', 'doing'], ['Submit A2 log', 'Work', '', 'todo'], ['Date night', 'Dating', '20:00 ', 'todo'], ['Gym', 'Hobby', '', 'todo']],
+      13: [['DS Quiz', 'Exam', '14:00 ', 'todo'], ['Dinner', 'Event', '19:00 ', 'theirs']],
+      14: [['Fly to Miri', 'Event', '08:30 ', 'todo']],
+      16: [['Back to Kuching', 'Event', '', 'todo']],
+      17: [['Pick up parcel', 'Errand', '', 'todo']],
+      19: [['Dentist', 'Health', '09:30 ', 'todo']],
+      18: [['FYP Ch.2 draft', 'Exam', '', 'todo']],
+      20: [['Gym', 'Hobby', '18:00 ', 'todo']],
+      21: [['Food fest', 'Event', '', 'todo'], ['Busy', 'Busy', '', 'theirs']],
+      25: [['Homelab backup drill', 'Work', '', 'todo']],
+      27: [['TMN4133 assignment', 'Exam', '', 'todo']],
+      30: [['Payday', 'None', '', 'todo']]
+    };
+    const NAME = { Work: 'Work', Exam: 'Deadline', Event: 'Event', Hobby: 'Hobby', Dating: 'Date', None: 'No type', Busy: 'Busy', Errand: 'Errand', Health: 'Health' };
+    const TYPES = [
+      ['Work', '#CED3EE'], ['Deadline', '#B84A44'], ['Event', '#D3EECE'], ['Hobby', '#FAEDB8'], ['Date', '#EECFD4'],
+      ['Errand', '#CFE8E6'], ['Health', '#F7D9C4'], ['No type', '#E6E7F0']
+    ];
+    const typeBar = TYPES.map(([name, bg]) => ({ name, bg, on: 'true', edge: '#00003D', deco: 'none', tip: 'Showing ' + name + '. Click to hide' }));
+
+    const chip = ([title, type, time, st]) => {
+      const tip = (st === 'theirs' ? 'Neina · ' : '') + NAME[type] + ': ' + title;
+      if (st === 'theirs') {
+        const [bg, fg] = type === 'Busy' ? ['#E6E7F0', '#3D3D6B'] : T[type];
+        return { tip, title, time, mine: false, theirs: true, fg: '#00003D', bg: 'repeating-linear-gradient(135deg, ' + bg + ' 0 5px, #FFFFFF 5px 8px)', border: 'dashed', edge: '#00003D', deco: 'none' };
+      }
+      const [bg, fg] = T[type];
+      const done = st === 'done', doing = st === 'doing';
+      return { tip, title, time, mine: true, theirs: false, bg, fg, border: 'solid', edge: bg, deco: done ? 'line-through' : 'none',
+        sq: done ? '✓' : (doing ? '▶' : ''), sqBg: done ? fg : 'transparent',
+        sqLabel: done ? 'Done. Click to reset' : (doing ? 'In progress. Click to finish' : 'Not started. Click to start') };
+    };
+    const cells = [];
+    for (let i = 0; i < 42; i++) {
+      let n, faint = false;
+      if (i < 6) { n = 26 + i; faint = true; } else if (i < 36) { n = i - 5; } else { n = i - 35; faint = true; }
+      const list = faint ? [] : (ev[n] || []);
+      const today = !faint && n === 12;
+      const cdOf = (x) => { if (x[1] !== 'Exam' || x[3] === 'done') return ''; const d = n - 12; return d === 0 ? 'Today' : (d < 0 ? (-d) + 'd late' : d + 'd'); };
+      const shown = list.slice(0, 3).map((x) => { const cd = cdOf(x); const d = n - 12; return { ...chip(x), cd, cdFg: cd && d <= 3 ? '#8E2B26' : '#00003D' }; });
+      cells.push({ n, chips: shown, more: list.length > 3, moreLabel: '+' + (list.length - 3) + ' more',
+        cellBg: faint ? '#F8F8FC' : '#FFFFFF', numBg: today ? '#00003D' : 'transparent', numFg: today ? '#FFFFFF' : (faint ? '#6B6B8F' : '#00003D') });
+    }
+    const hours = [];
+    for (let h = 7; h <= 23; h++) hours.push({ top: 18 + (h - 7) * 40, label: (h < 10 ? '0' : '') + h + ':00' });
+    const y = (hm) => { const [h, m] = hm.split(':').map(Number); return 18 + ((h * 60 + m) - 420) / 60 * 40; };
+    const blk = (title, type, a, b, st, l, r) => {
+      const c = chip([title, type, '', st]);
+      return { ...c, top: y(a), h: y(b) - y(a) - 2, l: l || '56px', r: r || '10px', range: a + '–' + b };
+    };
+    const blocks = [
+      blk('Lecture: Network Security', 'Work', '08:00', '10:00', 'done'),
+      blk('FYP write-up', 'Work', '10:30', '12:00', 'done'),
+      blk('DS Quiz revision', 'Exam', '13:30', '15:00', 'doing'),
+      blk('Gym', 'Hobby', '17:30', '19:00', 'todo'),
+      blk('Date night', 'Dating', '20:00', '21:30', 'todo', '56px', '50%'),
+      blk('Busy', 'Busy', '19:30', '21:00', 'theirs', '51%', '10px')
+    ];
+    return {
+      dows: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      cells, hours, blocks, types: typeBar, typesUsed: 7, typesLeft: 3, popOpen: true, plusBg: '#FAEDB8',
+      swatches: [['#CFE8E6','Mint'],['#F7D9C4','Peach'],['#E2D4F0','Lavender'],['#D9E7C4','Lime'],['#F2E2A8','Sand'],['#D4E4F2','Sky'],['#F0D4DE','Rose'],['#E3E0D7','Stone']].map(([c, name]) => ({ c, name, sel: c === '#E2D4F0' ? 'true' : 'false', ring: c === '#E2D4F0' ? '2px solid #00003D' : 'none' })),
+      due: [
+        { title: 'Send weekly ops summary', bg: T.Work[0], fg: T.Work[1], badge: '' },
+        { title: 'Renew road tax', bg: T.None[0], fg: T.None[1], badge: '' },
+        { title: 'Quarterly report', bg: T.Exam[0], fg: T.Exam[1], badge: '6d' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

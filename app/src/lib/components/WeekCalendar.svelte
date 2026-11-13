@@ -1,6 +1,8 @@
 <!-- FR-H8. FullCalendar timeGridWeek: blocks in time grid (drag/resize 15 min), items in all-day row (drag = date).
      External drops (data-lt-item elements) -> time slot = 60-min linked block, all-day row = set date. -->
 <script lang="ts">
+	import { dragStarted, dragStopped, duplicate } from '$lib/client/altdrag';
+	import { typeName } from '$lib/client/itemtypes.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { Calendar, type EventInput } from '@fullcalendar/core';
 	import timeGridPlugin from '@fullcalendar/timegrid';
@@ -25,6 +27,7 @@
 	} from '$lib/time';
 	import type { BlockDTO, ItemDTO, Status } from '$lib/types';
 
+	const us = page.data.user?.region === 'us';
 	let {
 		from,
 		tz,
@@ -235,7 +238,7 @@
 			plugins: [timeGridPlugin, interactionPlugin],
 			initialView: 'timeGridWeek',
 			initialDate: from,
-			firstDay: 1,
+			firstDay: us ? 0 : 1,
 			headerToolbar: false,
 			height: 'auto',
 			contentHeight: 'auto',
@@ -250,7 +253,9 @@
 			// every other hour gets a darker band so a drag's length can be read at a glance
 			slotLaneClassNames: (a) => (hourBand(a.time) ? ['lt-band'] : []),
 			slotLabelClassNames: (a) => (hourBand(a.time) ? ['lt-band'] : []),
-			slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+			slotLabelFormat: us
+				? { hour: 'numeric', meridiem: 'short' }
+				: { hour: '2-digit', minute: '2-digit', hour12: false },
 			nowIndicator: true,
 			dayHeaderFormat: { weekday: 'short', day: 'numeric' },
 			editable: true,
@@ -273,6 +278,7 @@
 					const t = document.createElement('span');
 					t.className = 'lt-title';
 					t.textContent = (it.time ? `${prettyTime(it.time)} ` : '') + it.title;
+					t.title = `${typeName(it.type) ?? 'Custom type'} · ${t.textContent}`;
 					wrap.append(t);
 					if (it.editable) wrap.append(xButton(it.title, () => ondelete('item', it.id, it.title)));
 				} else if (p.block) {
@@ -289,7 +295,8 @@
 					l.textContent = b.label;
 					const tm = document.createElement('span');
 					tm.className = 'lt-time';
-					tm.textContent = `${s.time} – ${e.time}`;
+					tm.textContent = us ? `${prettyTime(s.time)} – ${prettyTime(e.time)}` : `${s.time} – ${e.time}`;
+					l.title = `${b.busy ? 'Busy' : (typeName(b.itemType ?? b.type) ?? 'Custom type')} · ${b.label}`;
 					col.append(l, tm);
 					wrap.append(col);
 					if (b.editable) wrap.append(xButton(b.label, () => ondelete('block', b.id, b.label)));
@@ -304,10 +311,12 @@
 				else if (p.block?.itemId) onopen(p.block.itemId);
 			},
 			eventDragStart: (info) => {
+				dragStarted();
 				const p = info.event.extendedProps as { kind: string };
 				ondragging?.(p.kind === 'block' ? 'block' : 'item');
 			},
 			eventDragStop: (info) => {
+				dragStopped();
 				ondragging?.(null);
 				const p = info.event.extendedProps as { block?: BlockDTO };
 				const r = el.getBoundingClientRect();
@@ -317,6 +326,14 @@
 			},
 			eventDrop: async (info) => {
 				const p = info.event.extendedProps as { kind: string; item?: ItemDTO; block?: BlockDTO };
+				if ((info.jsEvent as MouseEvent).altKey) {
+					info.revert(); // Alt = copy: the source stays
+					const s = parts(info.event.startStr);
+					if (p.item && info.event.allDay) return duplicate('item', p.item.id, { date: s.date });
+					if (p.block && !info.event.allDay)
+						return duplicate('block', p.block.id, { startAt: localToUtc(s.date, s.minutes ?? 0, tz) });
+					return;
+				}
 				try {
 					if (p.item) {
 						if (!info.event.allDay) {
@@ -378,7 +395,7 @@
 				itemSelector: '[data-lt-item]',
 				eventData: (e) => ({
 					title: (e as HTMLElement).dataset.title ?? '',
-					duration: '01:00',
+					duration: { minutes: page.data.user?.blockMin ?? 60 },
 					create: false,
 				}),
 			});
@@ -391,7 +408,7 @@
 		await onmoveblock(
 			id,
 			localToUtc(s.date, s.minutes ?? 0, tz),
-			localToUtc(e.date, e.minutes ?? (s.minutes ?? 0) + 60, tz),
+			localToUtc(e.date, e.minutes ?? (s.minutes ?? 0) + (page.data.user?.blockMin ?? 60), tz),
 		);
 	}
 

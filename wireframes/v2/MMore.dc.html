@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>More</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+.lbl{font-size:11px;font-weight:700;letter-spacing:.06em;color:#3D3D6B;margin:16px 4px 8px}
+.list{background:#FFFFFF;border:1.5px solid #00003D;border-radius:14px;overflow:hidden}
+.list a{display:flex;align-items:center;gap:12px;padding:0 14px;min-height:52px;box-sizing:border-box;text-decoration:none;color:#00003D;font-size:15px;font-weight:500;border-bottom:1px solid #E3E4F0}
+.list a:last-child{border-bottom:0}
+.list .s{margin-left:auto;font-size:13px;color:#3D3D6B}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: #00003D; background: radial-gradient(80% 40% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(80% 40% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), #F3F2FA">
+<div style="height: 760px; overflow: hidden; padding: 16px 16px 0; box-sizing: border-box">
+<div style="display: flex; align-items: center; gap: 12px; margin: 0 4px 4px">
+<h1 style="margin: 0; font-size: 28px; flex: 1">More</h1>
+<a href="MSettings.dc.html" aria-label="Account: Jeremy" style="width: 44px; height: 44px; border-radius: 999px; background: #00003D; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; text-decoration: none">J</a>
+</div>
+
+<div class="lbl">PINNED PAGES</div>
+<nav class="list" aria-label="Pinned pages">
+<sc-for list="{{pins}}" as="p" hint-placeholder-count="3">
+<a href="{{p.href}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"></path></svg>{{p.label}}<span class="s">›</span></a>
+</sc-for>
+</nav>
+
+<div class="lbl">BROWSE</div>
+<nav class="list" aria-label="Browse">
+<a href="MPages.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v6H4zM14 15h6v6h-6z"></path></svg>All pages<span class="s">24 ›</span></a>
+<a href="MMonth.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="3"></rect><path d="M3 9.5h18M3 15h18M9 9.5v11M15 9.5v11"></path></svg>Month<span class="s">November ›</span></a>
+<a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path></svg>Trash<span class="s">›</span></a>
+</nav>
+
+<div class="lbl">APP</div>
+<nav class="list" aria-label="App">
+<a href="MSettings.dc.html"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-2.7-1.1l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0-1.1-2.7H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.1-2.7l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 2.7-1.1V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.1z"></path></svg>Settings<span class="s">›</span></a>
+<a href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.5"></path></svg>Help + tour<span class="s">›</span></a>
+</nav>
+</div>
+<div style="position: absolute; left: 0; bottom: 0">
+<dc-import name="MBar" active="more" hint-size="390px,84px"></dc-import>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { pins: [ { label: 'Workouts', href: 'MDb.dc.html' }, { label: 'Ops runbook', href: 'MPage.dc.html' }, { label: 'Homelab', href: 'MPage.dc.html' } ] };
+  }
+}
+</script>
+</body>
+</html>

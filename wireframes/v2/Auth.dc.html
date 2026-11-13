@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in, sign up, setup</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+.box{background:#FFFFFF;border:1.5px solid #00003D;border-radius:16px;box-shadow:-6px 6px 0 #F3D053;padding:22px;display:flex;flex-direction:column;gap:12px}
+.lab{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+.in{width:100%;box-sizing:border-box;min-height:42px;font:15px Inter,sans-serif;color:#00003D;border:1.5px solid #6B6B8F;border-radius:10px;padding:0 12px;background:#FFFFFF}
+.go{min-height:44px;font:700 15px Inter,sans-serif;color:#FFFFFF;background:#00003D;border:0;border-radius:10px;cursor:pointer}
+.tabs{display:flex;background:#F3F2FA;border-radius:10px;padding:3px}
+.tabs a{flex:1;text-align:center;min-height:34px;display:flex;align-items:center;justify-content:center;font:600 13px Inter,sans-serif;color:#00003D;text-decoration:none;border-radius:8px}
+.cap{font-size:13px;font-weight:700;color:#3D3D6B;letter-spacing:.04em;margin:0 0 10px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 940px; box-sizing: border-box; padding: 60px 40px; font-family: Inter, system-ui, sans-serif; color: #00003D; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(60% 60% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; align-items: start">
+
+<section aria-label="Sign in"><p class="cap">/LOGIN</p>
+<form method="post" class="box">
+<div class="tabs"><a href="#" aria-current="page" style="background: #FFFFFF; border: 1.5px solid #00003D">Sign in</a><a href="#">Create account</a></div>
+<div><label class="lab" for="u1">Username</label><input class="in" id="u1" autocomplete="username" value="jeremy"></div>
+<div><label class="lab" for="p1">Password</label><input class="in" id="p1" type="password" autocomplete="current-password" value="••••••••••"></div>
+<div role="alert" style="font-size: 13px; color: #8E2B26; background: #FBE3E1; border-radius: 8px; padding: 8px 10px">Wrong username or password. 4 tries left.</div>
+<label style="display: flex; gap: 8px; align-items: center; font-size: 14px"><input type="checkbox" checked="{{true}}" style="accent-color: #00003D; width: 18px; height: 18px">Remember me on this device</label>
+<button class="go" type="submit">Sign in</button>
+</form></section>
+
+<section aria-label="Create account"><p class="cap">/SIGNUP · INVITE-ONLY MODE</p>
+<form method="post" class="box">
+<div class="tabs"><a href="#">Sign in</a><a href="#" aria-current="page" style="background: #FFFFFF; border: 1.5px solid #00003D">Create account</a></div>
+<div><label class="lab" for="ic">Invite code</label><input class="in" id="ic" placeholder="INV-XXXX-XXXX-XXXX"></div>
+<div><label class="lab" for="u2">Username</label><input class="in" id="u2" autocomplete="username"></div>
+<div><label class="lab" for="d2">Display name</label><input class="in" id="d2"></div>
+<div><label class="lab" for="p2">Password</label><input class="in" id="p2" type="password" autocomplete="new-password"><div style="font-size: 12px; color: #3D3D6B; margin-top: 4px">10–128 characters. Common passwords refused.</div></div>
+<button class="go" type="submit">Create account</button>
+<div style="font-size: 12px; color: #3D3D6B">Open mode: same form without the invite code.</div>
+</form></section>
+
+<section aria-label="First-run setup"><p class="cap">/SETUP · FIRST RUN ONLY</p>
+<form method="post" class="box">
+<div style="font-weight: 700; font-size: 18px">Set up Life Tracker</div>
+<div style="font-size: 13px; color: #3D3D6B">Creates the admin account. This page disappears after.</div>
+<div><label class="lab" for="st">Setup token</label><input class="in" id="st" type="password"></div>
+<div><label class="lab" for="u3">Admin username</label><input class="in" id="u3" value="jeremy"></div>
+<div><label class="lab" for="d3">Display name</label><input class="in" id="d3" value="Jeremy"></div>
+<div><label class="lab" for="p3">Password</label><input class="in" id="p3" type="password"></div>
+<button class="go" type="submit">Create admin</button>
+</form></section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

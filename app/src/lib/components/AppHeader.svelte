@@ -3,17 +3,46 @@
 	import { page } from '$app/state';
 	import QuickAdd from './QuickAdd.svelte';
 	import AppIcon from './AppIcon.svelte';
+	import CommandPalette from './CommandPalette.svelte';
 	import { initTheme, setTheme, themeState } from '$lib/client/prefs.svelte';
 
 	let { user }: { user: App.SafeUser } = $props();
 	const NAV = [
 		{ href: '/', label: 'Home', match: (p: string) => p === '/' },
 		{ href: '/week', label: 'Week', match: (p: string) => p.startsWith('/week') },
+		{ href: '/keep', label: 'Keep', match: (p: string) => p.startsWith('/keep') },
+		{
+			href: '/pages',
+			label: 'Pages',
+			match: (p: string) => p === '/pages' || p.startsWith('/pages/archive') || p.startsWith('/pages/trash'),
+		},
 	];
 	let menu = $state(false);
+	let help = $state(false);
+	let cmdk: CommandPalette | undefined = $state();
+	const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
+	const KEYS = $derived([
+		[`${mod}+K`, 'Search pages, notes, planner; jump anywhere'],
+		['N', 'Quick add'],
+		[`${mod}+Z`, 'Undo your last change (outside text fields)'],
+		['Alt + drag', 'Copy an item or block instead of moving it'],
+		['/', 'In quick add: pick a type or where it goes'],
+		['↑ ↓ on a block', 'Move 15 min (Shift: change the end)'],
+		['Enter on a block', 'Rename, set start / end, delete'],
+		['Esc', 'Close a dialog or menu'],
+		['?', 'This list'],
+	]);
+	const typingIn = (t: EventTarget | null) =>
+		t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
 	// svelte-ignore state_referenced_locally
-	initTheme(user.theme);
+	initTheme(user);
 	const dark = $derived(themeState.value === 'dark');
+	const auto = $derived(themeState.mode === 'auto');
+	const themeTip = $derived(
+		auto
+			? `Auto: ${dark ? `dark until ${themeState.light}` : `light until ${themeState.dark}`}. Click for ${dark ? 'light' : 'dark'}.`
+			: `${dark ? 'Dark' : 'Light'} (fixed). Click for ${dark ? 'light' : 'dark'}.`,
+	);
 </script>
 
 <header class="hdr">
@@ -26,18 +55,63 @@
 				aria-current={n.match(page.url.pathname) ? 'page' : undefined}>{n.label}</a
 			>
 		{/each}
+		{#each page.data.pins ?? [] as p (p.id)}
+			<a
+				href="/pages/{p.id}"
+				class="pin"
+				class:on={page.url.pathname === `/pages/${p.id}`}
+				title="Pinned page"
+				><svg
+					width="12"
+					height="12"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"><path d="M6 3h9l3 3v15H6z" /></svg
+				>{p.title || 'Untitled'}</a
+			>
+		{/each}
 	</nav>
 	<div class="right">
+		<button
+			class="search"
+			type="button"
+			aria-label="Search (Ctrl+K)"
+			title="Search  Ctrl+K"
+			onclick={() => cmdk?.show()}>Search <kbd>{mod}+K</kbd></button
+		>
 		<QuickAdd tz={user.timezone} />
 		<button
 			class="theme"
 			type="button"
+			aria-label="Keyboard shortcuts"
+			title="Shortcuts  ?"
+			aria-expanded={help}
+			onclick={() => (help = !help)}>?</button
+		>
+		<button
+			class="theme"
+			type="button"
 			aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-			title={dark ? 'Light mode' : 'Dark mode'}
+			title={themeTip}
 			aria-pressed={dark}
+			class:auto
 			onclick={() => setTheme(dark ? 'light' : 'dark')}
 		>
-			{#if dark}
+			{#if auto}
+				<!-- half circle = Auto (UX-AUDIT #18) -->
+				<svg
+					width="18"
+					height="18"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"
+					><circle cx="12" cy="12" r="8" /><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" /></svg
+				>
+			{:else if dark}
 				<svg
 					width="18"
 					height="18"
@@ -79,6 +153,7 @@
 					</div>
 					<a href="/settings/account" onclick={() => (menu = false)}>Account</a>
 					<a href="/settings/preferences" onclick={() => (menu = false)}>Preferences</a>
+					<a href="/settings/types" onclick={() => (menu = false)}>Item types</a>
 					<a href="/settings/sessions" onclick={() => (menu = false)}>Devices</a>
 					<a href="/settings/sharing" onclick={() => (menu = false)}>Sharing</a>
 					{#if user.role === 'admin'}<a href="/settings/users" onclick={() => (menu = false)}>Users</a>{/if}
@@ -88,9 +163,98 @@
 		</div>
 	</div>
 </header>
-<svelte:window onclick={(e) => menu && !(e.target as HTMLElement).closest('.acct') && (menu = false)} />
+<CommandPalette bind:this={cmdk} />
+{#if help}
+	<div class="scrim" role="presentation" onclick={() => (help = false)}></div>
+	<div class="sheet card" role="dialog" aria-modal="true" aria-labelledby="keys-h">
+		<h2 id="keys-h">Shortcuts</h2>
+		<dl>
+			{#each KEYS as [k, v] (k)}<dt><kbd>{k}</kbd></dt>
+				<dd>{v}</dd>{/each}
+		</dl>
+		<p class="hint">Every drag also has a button: Schedule… on due items, Start / End in a block's menu.</p>
+		<button class="btn sm" type="button" onclick={() => (help = false)}>Close</button>
+	</div>
+{/if}
+<svelte:window
+	onclick={(e) => menu && !(e.target as HTMLElement).closest('.acct') && (menu = false)}
+	onkeydown={(e) => {
+		if (e.key === 'Escape' && help) help = false;
+		else if (e.key === '?' && !typingIn(e.target) && !e.ctrlKey && !e.metaKey) help = !help;
+	}}
+/>
 
 <style>
+	nav a.pin {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		max-width: 160px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		font-size: 13px;
+		opacity: 0.9;
+	}
+	.search {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 36px;
+		padding: 0 12px;
+		border-radius: 999px;
+		border: 1.5px solid var(--border);
+		background: var(--card);
+		color: var(--muted);
+		font: inherit;
+		font-size: 13px;
+		cursor: pointer;
+	}
+	.search kbd {
+		font: inherit;
+		font-size: 11px;
+		border: 1px solid var(--rule);
+		border-radius: 4px;
+		padding: 0 4px;
+	}
+	.scrim {
+		position: fixed;
+		inset: 0;
+		z-index: 90;
+		background: rgb(0 0 0 / 0.3);
+	}
+	.sheet {
+		position: fixed;
+		top: 12vh;
+		left: 50%;
+		translate: -50% 0;
+		z-index: 91;
+		width: min(440px, 92vw);
+		padding: 20px;
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+	.sheet dl {
+		display: grid;
+		grid-template-columns: max-content 1fr;
+		gap: 8px 14px;
+		margin: 0;
+		font-size: 13px;
+	}
+	.sheet dd {
+		margin: 0;
+	}
+	.sheet kbd {
+		font: inherit;
+		font-size: 12px;
+		border: 1px solid var(--rule);
+		border-radius: 5px;
+		padding: 1px 6px;
+	}
+	.sheet .btn {
+		align-self: flex-end;
+	}
 	.mark {
 		display: flex;
 		color: var(--ink);
@@ -262,5 +426,16 @@
 	}
 	.mark:hover {
 		transform: rotate(-6deg) scale(1.06);
+	}
+	/* phone: the bottom bar has nav + Add (FEATURES §10) */
+	@media (max-width: 699px) {
+		nav,
+		.right > :global(.opener) {
+			display: none;
+		}
+		.hdr {
+			padding: 8px 12px;
+			min-height: 52px;
+		}
 	}
 </style>

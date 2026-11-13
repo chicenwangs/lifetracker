@@ -1,6 +1,7 @@
 <!-- FR-H9..H13. One day, 00-24, opens at 07:00, 15-min snap, midnight-crossing blocks clipped per day.
      Drag empty = create · drag body = move · drag edge = resize · square cycles · drop item chip = 60-min linked block. -->
 <script lang="ts">
+	import { dragStarted, dragStopped, duplicate } from '$lib/client/altdrag';
 	import { onMount, type Snippet } from 'svelte';
 	import StatusSquare from './StatusSquare.svelte';
 	import DraftBlock from './DraftBlock.svelte';
@@ -17,13 +18,14 @@
 	import {
 		addDays,
 		fixRange,
-		hhmm,
+		clock,
 		isoPlus,
 		localToUtc,
 		nowLocalMinutes,
 		prettyDate,
 		snap15,
 		todayLocal,
+		utcToLocal,
 		weekdayOf,
 	} from '$lib/time';
 	import type { BlockDTO } from '$lib/types';
@@ -75,6 +77,15 @@
 	let draft = $state<{ start: number; end: number; naming: boolean; label: string } | null>(null);
 	let menuFor = $state<string | null>(null);
 	let menuLabel = $state('');
+	// Start / End fields in the block menu: move + resize without dragging (WCAG 2.5.7)
+	let menuStart = $state('');
+	let menuEnd = $state('');
+	function openMenu(b: { id: string; label: string; startAt: string; endAt: string }) {
+		menuFor = b.id;
+		menuLabel = b.label;
+		menuStart = utcToLocal(b.startAt, tz).time;
+		menuEnd = utcToLocal(b.endAt, tz).time;
+	}
 
 	// typed day/time in the drag box moves the box live (same day only)
 	let draftParse = $state<QAParse | null>(null);
@@ -104,6 +115,8 @@
 
 	const pieces = $derived(layoutDay(blocks, date, tz, over));
 
+	const h12 = $derived(page.data.user?.region === 'us');
+	const blockMin = $derived(page.data.user?.blockMin ?? 60);
 	// ---------- visible hours (rolled hours hidden, grid top-justified) ----------
 	const hr = $derived<HourRange>(
 		hoursState.ready ? hoursState : ((page.data.hours as HourRange | undefined) ?? DEFAULT_HOURS),
@@ -148,14 +161,14 @@
 	export function timeAt(x: number, y: number): number | null {
 		const r = scroller.getBoundingClientRect();
 		if (x < r.left || x > r.right || y < r.top || y > r.bottom) return null;
-		return Math.max(S, Math.min(E - 60, snap15(yToMin(y))));
+		return Math.max(S, Math.min(E - blockMin, snap15(yToMin(y))));
 	}
 
 	export async function createLinked(itemId: string, startMin: number) {
 		const s = localToUtc(date, startMin, tz);
 		try {
-			await post('/api/blocks', { itemId, startAt: s, endAt: isoPlus(s, 60 * 60_000) });
-			showToast(`Blocked ${hhmm(startMin)}–${hhmm(startMin + 60)}`);
+			await post('/api/blocks', { itemId, startAt: s, endAt: isoPlus(s, blockMin * 60_000) });
+			showToast(`Blocked ${clock(startMin, h12)}–${clock(startMin + blockMin, h12)}`);
 			onchanged();
 		} catch (e) {
 			showError(e);
@@ -187,6 +200,7 @@
 	function onBlockDown(e: PointerEvent, p: Piece, kind: 'move' | 'top' | 'bottom') {
 		if (e.button !== 0 || !p.b.editable) return;
 		e.stopPropagation();
+		dragStarted();
 		gesture = {
 			kind,
 			id: p.b.id,
@@ -226,9 +240,10 @@
 		}
 	}
 
-	async function onUp() {
+	async function onUp(e?: PointerEvent) {
 		const g = gesture;
 		gesture = null;
+		dragStopped();
 		if (!g) return;
 		if (g.kind === 'create') {
 			if (!draft) return;
@@ -258,12 +273,15 @@
 		if (!g.id) return;
 		if (!g.moved) {
 			const b = blocks.find((x) => x.id === g.id);
-			menuFor = g.id;
-			menuLabel = b?.label ?? '';
+			if (b) openMenu(b);
 			return;
 		}
 		const o = over[g.id];
 		if (!o) return;
+		if (e?.altKey && g.kind === 'move') {
+			over = without(over, g.id); // Alt = copy: the source snaps back, a copy lands at the drop
+			return duplicate('block', g.id, { startAt: o.startAt });
+		}
 		try {
 			await apiPatch(`/api/blocks/${g.id}`, { startAt: o.startAt, endAt: o.endAt });
 			onchanged();
@@ -280,9 +298,20 @@
 	async function renameBlock(id: string) {
 		const l = menuLabel.trim();
 		menuFor = null;
-		if (!l) return;
+		const b = blocks.find((x) => x.id === id);
+		if (!l || !b) return;
+		// start keeps the block's own day; an end at or before the start = next day (overnight)
+		const d0 = utcToLocal(b.startAt, tz).date;
+		const startAt = localToUtc(d0, menuStart, tz);
+		let endAt = localToUtc(d0, menuEnd, tz);
+		if (endAt <= startAt) endAt = localToUtc(addDays(d0, 1), menuEnd, tz);
+		const p: Record<string, string> = {};
+		if (l !== b.label) p.label = l;
+		if (startAt !== b.startAt) p.startAt = startAt;
+		if (endAt !== b.endAt) p.endAt = endAt;
+		if (!Object.keys(p).length) return;
 		try {
-			await apiPatch(`/api/blocks/${id}`, { label: l });
+			await apiPatch(`/api/blocks/${id}`, p);
 			onchanged();
 		} catch (e) {
 			showError(e);
@@ -299,8 +328,7 @@
 	async function onBlockKey(e: KeyboardEvent, p: Piece) {
 		if (!p.b.editable || e.target !== e.currentTarget) return; // keys typed in the menu/rename stay there
 		if (e.key === 'Enter') {
-			menuFor = p.b.id;
-			menuLabel = p.b.label;
+			openMenu(p.b);
 			e.preventDefault();
 			return;
 		}
@@ -348,8 +376,8 @@
 	}
 
 	const fmt = (p: Piece) => {
-		const s = p.clippedStart ? '…' : hhmm(p.top);
-		const en = p.clippedEnd ? '…' : hhmm(p.bottom);
+		const s = p.clippedStart ? '…' : clock(p.top, h12);
+		const en = p.clippedEnd ? '…' : clock(p.bottom, h12);
 		return `${s} – ${en}`;
 	};
 </script>
@@ -411,7 +439,7 @@
 		>
 			{#each hourList as h (h)}
 				<div class="hr" style:top="{(h * 60 - S) * PX_MIN}px">
-					<span>{String(h).padStart(2, '0')}:00</span>
+					<span>{h12 ? clock(h * 60, true) : `${String(h).padStart(2, '0')}:00`}</span>
 				</div>
 			{/each}
 
@@ -446,6 +474,8 @@
 						</div>
 					</div>
 				{:else}
+					<!-- a focusable group, not a button: it holds its own buttons (status, delete); keys move/resize it -->
+					<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 					<div
 						class="blk"
 						class:done={p.b.status === 'done'}
@@ -461,7 +491,8 @@
 						style:color={c.ink}
 						style:--sq-on={c.bg}
 						style:--line={c.line}
-						role="button"
+						role="group"
+						aria-roledescription="planner block"
 						tabindex="0"
 						aria-label="{p.b.label}, {fmt(p)}. Arrows move 15 min, Shift+arrows resize, Enter edit"
 						onpointerdown={(e) => onBlockDown(e, p, 'move')}
@@ -523,6 +554,11 @@
 									if (e.key === 'Escape') menuFor = null;
 								}}
 							/>
+							<div class="row times">
+								<label>Start <input type="time" step="900" bind:value={menuStart} /></label>
+								<label>End <input type="time" step="900" bind:value={menuEnd} /></label>
+							</div>
+							<span class="hint">Or focus the block: ↑↓ move 15 min, Shift+↑↓ change the end.</span>
 							<div class="row">
 								<button class="btn sm primary" type="button" onclick={() => renameBlock(p.b.id)}>Save</button>
 								{#if p.b.itemId}
@@ -578,6 +614,13 @@
 </div>
 
 <style>
+	.menu .times {
+		gap: 8px;
+		font-size: 12px;
+	}
+	.menu .times input {
+		width: 92px;
+	}
 	.planner {
 		overflow: hidden;
 		display: flex;

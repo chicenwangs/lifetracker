@@ -1,8 +1,8 @@
-# CI: every push to main and every PR. Lint, type check, unit, e2e, and a Docker build (not pushed).
+# CI: every push to main or v2 and every PR. Lint, type check, unit, e2e, and a Docker build (not pushed).
 name: ci
 on:
   push:
-    branches: [main]
+    branches: [main, v2]
   pull_request:
   workflow_call:
 

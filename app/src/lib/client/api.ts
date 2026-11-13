@@ -10,16 +10,22 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch<T>(
-	method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+	method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
 	path: string,
 	body?: unknown,
 ): Promise<T> {
-	const res = await fetch(path, {
-		method,
-		headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,
-		body: body !== undefined ? JSON.stringify(body) : undefined,
-		credentials: 'same-origin',
-	});
+	let res: Response;
+	try {
+		res = await fetch(path, {
+			method,
+			headers: body !== undefined ? { 'content-type': 'application/json' } : undefined,
+			body: body !== undefined ? JSON.stringify(body) : undefined,
+			credentials: 'same-origin',
+		});
+	} catch {
+		// no network: say so plainly, never pretend it worked (FEATURES §10)
+		throw new ApiError(0, 'offline', "You're offline. Not saved.");
+	}
 	if (res.status === 401) {
 		location.href = `/login?next=${encodeURIComponent(location.pathname + location.search)}`;
 		throw new ApiError(401, 'unauthorized', 'Log in first');
@@ -35,4 +41,4 @@ export async function apiFetch<T>(
 export const get = <T>(p: string) => apiFetch<T>('GET', p);
 export const post = <T>(p: string, b: unknown = {}) => apiFetch<T>('POST', p, b);
 export const patch = <T>(p: string, b: unknown) => apiFetch<T>('PATCH', p, b);
-export const del = <T>(p: string) => apiFetch<T>('DELETE', p);
+export const del = <T>(p: string, b?: unknown) => apiFetch<T>('DELETE', p, b);

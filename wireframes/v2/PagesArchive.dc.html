@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pages archive</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+a{color:#00003D}a:hover{color:#3D3D6B}
+.btn{font:600 13px Inter,system-ui,sans-serif;color:#00003D;background:#FFFFFF;border:1.5px solid #00003D;border-radius:8px;padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.side a{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:7px;font-size:13.5px;text-decoration:none;color:#00003D}
+th{text-align:left;font-size:12px;font-weight:600;color:#3D3D6B;padding:8px 12px;border-bottom:1.5px solid #00003D;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #E3E4F0;font-size:14px}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #00003D; min-height: 940px; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(60% 60% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<dc-import name="Header" active="pages" hint-size="100%,72px"></dc-import>
+<main style="display: flex; flex-wrap: wrap; gap: 24px; padding: 8px 32px 40px 38px; max-width: 1440px; margin: 0 auto; box-sizing: border-box">
+
+<dc-import name="PagesTree" current="archive" hint-size="240px,440px"></dc-import>
+
+<div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap">
+<div style="flex: 1 1 320px">
+<h1 style="margin: 0; font-size: 30px">Archive</h1>
+<p style="margin: 4px 0 0; font-size: 14px; color: #3D3D6B">Out of the sidebar and search, still in the graph. Links to these pages keep working.</p>
+</div>
+<label style="display: flex; align-items: center; gap: 8px; background: #FFFFFF; border: 1.5px solid #6B6B8F; border-radius: 10px; padding: 8px 12px; min-width: 260px">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search archive</span>
+<input type="search" placeholder="Search archived pages" style="border: 0; outline: none; font: 14px Inter, sans-serif; flex: 1; background: transparent; color: #00003D">
+</label>
+</div>
+
+<section aria-label="Suggested to archive" style="background: #FAEDB8; border: 1.5px solid #00003D; border-radius: 14px; padding: 16px 18px">
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px">
+<h2 style="margin: 0; font-size: 17px; flex: 1">Not opened in 90+ days</h2>
+<button type="button" class="btn" style="background: transparent">Dismiss for now</button>
+<button type="button" class="btn">Select all</button>
+<button type="button" class="btn" disabled="{{true}}" aria-disabled="true" style="background: #E6E7F0; color: #3D3D6B; border-color: #6B6B8F; cursor: not-allowed">Archive selected (0)</button>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{suggest}}" as="s" hint-placeholder-count="4">
+<li><label style="display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1px solid #00003D; border-radius: 10px; padding: 10px 12px; font-size: 14px; cursor: pointer">
+<input type="checkbox" checked="{{s.on}}" style="accent-color: #00003D; width: 16px; height: 16px">
+<span style="flex: 1"><span style="font-weight: 600">{{s.t}}</span><span style="display: block; font-size: 12px; color: #3D3D6B">{{s.meta}}</span></span>
+</label></li>
+</sc-for>
+</ul>
+</section>
+
+<section aria-label="Archived pages" style="background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #E3E4F0; flex-wrap: wrap">
+<h2 style="margin: 0; font-size: 17px; flex: 1">Archived · 41</h2>
+<span style="font-size: 13px; color: #3D3D6B">Sort</span>
+<select style="font: 13px Inter, sans-serif; color: #00003D; border: 1.5px solid #6B6B8F; border-radius: 8px; padding: 5px 8px; background: #FFFFFF"><option>Archived, newest</option><option>Last opened</option><option>Most linked</option></select>
+</div>
+<div style="overflow-x: auto">
+<table style="border-collapse: collapse; width: 100%">
+<thead><tr><th>Page</th><th>Was in</th><th>Archived</th><th>Last opened</th><th>Links</th><th></th></tr></thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+<tr>
+<td style="font-weight: 600"><a href="Pages.dc.html" style="text-decoration: none">{{r.t}}</a><sc-if value="{{r.kids}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; font-weight: 500; color: #3D3D6B; margin-left: 6px">{{r.kids}}</span></sc-if></td>
+<td style="color: #3D3D6B">{{r.from}}</td>
+<td>{{r.when}}</td>
+<td style="color: #3D3D6B">{{r.last}}</td>
+<td>{{r.links}}</td>
+<td style="text-align: right; white-space: nowrap"><button type="button" class="btn">Restore</button></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const r = (t, from, when, last, links, kids) => ({ t, from, when, last, links, kids: kids || '' });
+    return {
+      suggest: [
+        { t: 'SULAM log', meta: 'Last opened 7 months ago · 3 links', on: false },
+        { t: 'Internship daily log', meta: 'Last opened 4 months ago · 12 links', on: false },
+        { t: 'Trip: Miri 2025', meta: 'Last opened 11 months ago · 1 link', on: false },
+        { t: 'Rack audit checklist v1', meta: 'Last opened 3 months ago · 5 links', on: false }
+      ],
+      rows: [
+        r('TMN4133', 'Uni', '10 Nov', '7 months ago', '11', '+ 3 subpages'),
+        r('Supervisor notes 2025', 'Uni / FYP', '10 Nov', '9 months ago', '4'),
+        r('Internship onboarding', 'Work', '28 Oct', '3 months ago', '9', '+ 2 subpages'),
+        r('Old homelab (Pi cluster)', 'Homelab', '2 Oct', '6 months ago', '7'),
+        r('Reading log 2025', 'Reading log', '1 Sep', '1 year ago', '22'),
+        r('Wedding gift ideas', '—', '14 Aug', '5 months ago', '0')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

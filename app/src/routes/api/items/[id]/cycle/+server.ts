@@ -1,8 +1,14 @@
 import { json } from '@sveltejs/kit';
 import { api, me } from '$lib/server/http';
 import * as items from '$lib/server/repo/items';
+import { undoable } from '$lib/server/undo';
 
 export const POST = api((e) => {
 	const u = me(e);
-	return json({ item: items.withCounts([items.cycle(u.id, e.params.id ?? '')])[0] });
+	const id = e.params.id ?? '';
+	const cur = items.mustOwn(u.id, id);
+	const r = undoable(u.id, `Status "${cur.title}"`, [{ t: 'items', id }], () => ({
+		result: items.cycle(u.id, id),
+	}));
+	return json({ item: items.withCounts([r.result])[0], undo: r.undo });
 });
