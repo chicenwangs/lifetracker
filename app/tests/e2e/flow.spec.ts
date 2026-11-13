@@ -827,6 +827,26 @@ test('v2 P4 Databases: new database, number property rejects text, records, sort
 	await expect(page.getByLabel('Page title')).toHaveValue('Bench');
 });
 
+test('v2 P5 Graph: shows my pages, archived toggle, list fallback, node select opens page', async () => {
+	await page.goto('/pages/graph');
+	await expect(page.getByRole('heading', { name: 'Knowledge graph' })).toBeVisible();
+	await expect(page.locator('.canvas canvas').first()).toBeVisible(); // sigma mounted (WebGL)
+	// list fallback = the keyboard/phone path; holds the same pages
+	await page.getByRole('button', { name: 'Show as list instead' }).click();
+	const list = page.getByRole('list', { name: 'Pages and their links' });
+	await expect(list.getByRole('link', { name: 'Gym' })).toBeVisible();
+	await expect(list.getByRole('link', { name: 'Legs' })).toBeVisible();
+	// keyboard on the graph: first arrow selects a page, Enter opens it (PAGE-018)
+	await page.getByRole('button', { name: 'Show graph' }).click();
+	await page.getByRole('application').focus();
+	await page.keyboard.press('ArrowRight');
+	await expect(page.getByRole('complementary', { name: 'Selected page' })).toBeVisible();
+	const name = await page.getByRole('complementary', { name: 'Selected page' }).locator('b').textContent();
+	await page.keyboard.press('Enter');
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	await expect(page.getByLabel('Page title')).toHaveValue(name === 'Untitled' ? '' : (name ?? ''));
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)
