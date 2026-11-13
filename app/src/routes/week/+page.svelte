@@ -8,6 +8,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
 	import WeekCalendar from '$lib/components/WeekCalendar.svelte';
+	import PhoneWeek from '$lib/components/PhoneWeek.svelte';
 	import SlotCommand from '$lib/components/SlotCommand.svelte';
 	import WeekMap from '$lib/components/WeekMap.svelte';
 	import OverlapToggle from '$lib/components/OverlapToggle.svelte';
@@ -196,6 +197,21 @@
 </script>
 
 <svelte:head><title>Week · Life Tracker</title></svelte:head>
+
+<!-- phone (< 700 px): read-first agenda; the grid below is for the PC -->
+<main class="phone" aria-label="Week agenda">
+	<div class="pbar">
+		<a class="btn sm" href="/week?w={addDays(data.from, -7)}" aria-label="Previous week">‹</a>
+		<strong
+			>{prettyDate(data.from).replace(/ d{4}$/, '')} – {prettyDate(addDays(data.to, -1)).replace(
+				/ d{4}$/,
+				'',
+			)}</strong
+		>
+		<a class="btn sm" href="/week?w={addDays(data.from, 7)}" aria-label="Next week">›</a>
+	</div>
+	<PhoneWeek from={data.from} to={data.to} today={data.today} {tz} cal={data.cal} />
+</main>
 
 <main class="wrap">
 	<section class="card wkc" aria-label="Week">
@@ -390,6 +406,25 @@
 		line-height: 1;
 		cursor: pointer;
 		padding: 0 4px;
+	}
+	.phone {
+		display: none;
+		padding: 8px 12px 104px;
+	}
+	.pbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		margin-bottom: 8px;
+	}
+	@media (max-width: 699px) {
+		.phone {
+			display: block;
+		}
+		.wrap {
+			display: none !important;
+		}
 	}
 	.wrap {
 		padding: 20px 24px;

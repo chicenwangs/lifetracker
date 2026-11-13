@@ -1,6 +1,38 @@
-// Service worker (DESIGN §13, ADR-006): show a reminder, open its page on click. Payload = title + route only.
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+// Service worker. Push (DESIGN §13, ADR-006): show a reminder, open its page on click. Payload = title + route only.
+// PWA (DESIGN §17): cache only hashed build files + the offline page. Never pages or /api (private data, always fresh).
+const CACHE = 'lt-shell-v1';
+self.addEventListener('install', (e) => {
+	self.skipWaiting();
+	e.waitUntil(caches.open(CACHE).then((c) => c.add('/offline.html')));
+});
+self.addEventListener('activate', (e) =>
+	e.waitUntil(
+		(async () => {
+			for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
+			await self.clients.claim();
+		})(),
+	),
+);
+self.addEventListener('fetch', (e) => {
+	const r = e.request;
+	const u = new URL(r.url);
+	if (r.method !== 'GET' || u.origin !== self.location.origin) return;
+	if (u.pathname.startsWith('/_app/immutable/'))
+		e.respondWith(
+			caches.match(r).then(
+				(hit) =>
+					hit ||
+					fetch(r).then((res) => {
+						if (res.ok) {
+							const copy = res.clone();
+							void caches.open(CACHE).then((c) => c.put(r, copy));
+						}
+						return res;
+					}),
+			),
+		);
+	else if (r.mode === 'navigate') e.respondWith(fetch(r).catch(() => caches.match('/offline.html')));
+});
 
 self.addEventListener('push', (e) => {
 	let p = { title: 'Reminder', body: '', route: '/' };

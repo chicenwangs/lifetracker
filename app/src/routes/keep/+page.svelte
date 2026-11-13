@@ -420,6 +420,7 @@
 	.side a.on,
 	.lab[aria-pressed='true'] {
 		background: var(--pill);
+		color: var(--pill-ink);
 		font-weight: 600;
 	}
 	.grp {

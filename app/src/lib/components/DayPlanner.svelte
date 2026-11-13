@@ -474,6 +474,8 @@
 						</div>
 					</div>
 				{:else}
+					<!-- a focusable group, not a button: it holds its own buttons (status, delete); keys move/resize it -->
+					<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 					<div
 						class="blk"
 						class:done={p.b.status === 'done'}
@@ -489,7 +491,8 @@
 						style:color={c.ink}
 						style:--sq-on={c.bg}
 						style:--line={c.line}
-						role="button"
+						role="group"
+						aria-roledescription="planner block"
 						tabindex="0"
 						aria-label="{p.b.label}, {fmt(p)}. Arrows move 15 min, Shift+arrows resize, Enter edit"
 						onpointerdown={(e) => onBlockDown(e, p, 'move')}

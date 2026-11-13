@@ -8,6 +8,7 @@
 		{ href: '/settings/notifications', label: 'Notifications' },
 		{ href: '/settings/sessions', label: 'Devices' },
 		{ href: '/settings/sharing', label: 'Sharing' },
+		{ href: '/settings/help', label: 'Help' },
 	];
 </script>
 
