@@ -23,6 +23,7 @@
 	const title = (id: string) => byId.get(id)?.title || 'Untitled';
 	const near = $derived.by(() => {
 		if (!around || !selected) return null;
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- built fresh inside $derived, never mutated after
 		const s = new Set([selected]);
 		for (const e of g0.edges) {
 			if (e.source === selected) s.add(e.target);
@@ -69,6 +70,7 @@
 			]);
 			if (dead || !el) return;
 			const g = new Graph({ type: 'directed', multi: true });
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- plain lookup table, never rendered
 			const idx = new Map<string, number>();
 			g0.nodes.forEach((n, i) => {
 				idx.set(n.id, i);

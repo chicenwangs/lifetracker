@@ -3,6 +3,14 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## v2 P5 — Graph (2026-11-13)
+
+- `/pages/graph` (Pages sidebar → Graph, Ctrl+K → Knowledge graph). Read model built per request from my live pages + `page_links` (parent edges + link edges), cap 5,000 nodes (most recently opened first; banner when cut). Edges to anything not mine are never sent. `GET /api/graph`.
+- Renderer = sigma 4 (WebGL) + graphology; ForceAtlas2 in our own module worker (CSP-safe, ADR-007), runs a fixed number of steps then stops.
+- Show toggles: page links, parent/child, archived pages (n). Archived nodes: grey + "· archived" label (sigma has no dashed node outline; legend uses a dashed ring). Scope: whole workspace / around the selected page (1 hop = local graph).
+- Click selects (side panel: parent, children, links to, linked from, Open page), double-click opens, drag moves the node on screen only. Keyboard: focus the graph, arrows walk linked pages, Enter opens. "Show as list instead" = accessible list; phones open on the list.
+- Not built: filters by area, 2+ hop local graph, DB relations (later).
+
 ## v2 P4 — Databases (2026-11-13)
 
 - Migration 0006: `page_databases`, `database_properties`, `database_records`, `database_values`, `database_views` (rows, not JSON; ADR-004).
