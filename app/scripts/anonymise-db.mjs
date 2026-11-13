@@ -28,6 +28,28 @@ const KEEP = new Set([
 		'period',
 		'effort',
 	],
+	// v2: enums + formats with CHECKs (not personal text)
+	...[
+		'theme_mode',
+		'theme_light_start',
+		'theme_dark_start',
+		'tour_state',
+		'region',
+		'qa_target',
+		'visible_hours',
+	],
+	...[
+		'hidden_types',
+		'note_type',
+		'block_type',
+		'property_type',
+		'view_type',
+		'rule_kind',
+		'rel_unit',
+		'bg',
+		'ink',
+	],
+	...['archived_batch', 'mime_type', 'storage_key', 'endpoint_hash', 'slug', 'source_type', 'action_type'],
 ]);
 const keep = (c) => KEEP.has(c) || c.endsWith('_id') || c.endsWith('_at') || c.endsWith('_by');
 const EMPTY = ['sessions', 'rate_limits'];
