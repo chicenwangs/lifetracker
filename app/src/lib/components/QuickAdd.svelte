@@ -297,7 +297,9 @@
 							<span class="k">Type</span><span class="v">{typeName(parsed.type)}</span>
 						</div>
 					{:else}
-						<div class="s d"><span class="k">Type</span><span class="v">{typeName(parsed.type)} · default</span></div>
+						<div class="s d">
+							<span class="k">Type</span><span class="v">{typeName(parsed.type)} · default</span>
+						</div>
 					{/if}
 					<div class="s" class:d={!parsed.title}>
 						<span class="k">Title</span><span class="v">{parsed.title || 'your words'}</span>

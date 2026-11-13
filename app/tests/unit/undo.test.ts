@@ -91,4 +91,20 @@ describe('undo journal', () => {
 		}).id;
 		expect(() => undo(other)).toThrow(/Nothing to undo/);
 	});
+
+	it('Alt-drag copy: new id, allowlist only (no status, no secret flag), one undo', () => {
+		const src = items.create(me, items.itemCreateSchema.parse({ title: 'Trip', date: '2026-11-13', endDate: '2026-11-15', status: 'done', private: true, notes: 'n' }));
+		const copy = undoable(me, 'Copy', [], () => {
+			const r = items.duplicateTo(me, src.id, '2026-11-20');
+			return { result: r, created: [{ t: 'items', id: r.id }] };
+		}).result;
+		expect(copy.id).not.toBe(src.id);
+		expect(copy).toMatchObject({ title: 'Trip', date: '2026-11-20', endDate: '2026-11-22', status: 'todo', private: false, notes: 'n' });
+		const b = blocks.create(me, { label: 'Gym', startAt: '2026-11-13T10:00:00Z', endAt: '2026-11-13T11:30:00Z', itemId: null, type: null });
+		const bc = blocks.duplicateTo(me, b.id, '2026-11-14T02:00:00Z');
+		expect(bc).toMatchObject({ label: 'Gym', startAt: '2026-11-14T02:00:00Z', endAt: '2026-11-14T03:30:00Z' });
+		undo(me);
+		expect(items.getOwn(me, copy.id)).toBeUndefined();
+		expect(items.getOwn(me, src.id)).toBeDefined();
+	}); // prettier-ignore
 });

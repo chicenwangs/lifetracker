@@ -1,6 +1,7 @@
 <!-- FR-H9..H13. One day, 00-24, opens at 07:00, 15-min snap, midnight-crossing blocks clipped per day.
      Drag empty = create · drag body = move · drag edge = resize · square cycles · drop item chip = 60-min linked block. -->
 <script lang="ts">
+	import { dragStarted, dragStopped, duplicate } from '$lib/client/altdrag';
 	import { onMount, type Snippet } from 'svelte';
 	import StatusSquare from './StatusSquare.svelte';
 	import DraftBlock from './DraftBlock.svelte';
@@ -190,6 +191,7 @@
 	function onBlockDown(e: PointerEvent, p: Piece, kind: 'move' | 'top' | 'bottom') {
 		if (e.button !== 0 || !p.b.editable) return;
 		e.stopPropagation();
+		dragStarted();
 		gesture = {
 			kind,
 			id: p.b.id,
@@ -229,9 +231,10 @@
 		}
 	}
 
-	async function onUp() {
+	async function onUp(e?: PointerEvent) {
 		const g = gesture;
 		gesture = null;
+		dragStopped();
 		if (!g) return;
 		if (g.kind === 'create') {
 			if (!draft) return;
@@ -267,6 +270,10 @@
 		}
 		const o = over[g.id];
 		if (!o) return;
+		if (e?.altKey && g.kind === 'move') {
+			over = without(over, g.id); // Alt = copy: the source snaps back, a copy lands at the drop
+			return duplicate('block', g.id, { startAt: o.startAt });
+		}
 		try {
 			await apiPatch(`/api/blocks/${g.id}`, { startAt: o.startAt, endAt: o.endAt });
 			onchanged();

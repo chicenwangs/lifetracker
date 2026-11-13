@@ -1,5 +1,6 @@
 <!-- FR-H2..H7, H13. FullCalendar dayGridMonth (MIT plugins). Feeds local strings from lib/time (no FC tz tricks). -->
 <script lang="ts">
+	import { dragStarted, dragStopped, duplicate } from '$lib/client/altdrag';
 	import { page } from '$app/state';
 	import TypeBar from './TypeBar.svelte';
 	import { onDestroy, onMount } from 'svelte';
@@ -203,9 +204,14 @@
 					openDay(s, a.el, ev);
 				});
 			},
+			eventDragStart: dragStarted,
 			eventDrop: async (info) => {
 				const it = info.event.extendedProps.item as ItemDTO;
 				const { date, endDate } = fcDropToItem(it, info.event.startStr);
+				if ((info.jsEvent as MouseEvent).altKey) {
+					info.revert(); // Alt = copy: the source stays
+					return duplicate('item', it.id, { date });
+				}
 				try {
 					await onmove(it.id, date, endDate);
 				} catch {
@@ -213,6 +219,7 @@
 				}
 			},
 			eventDragStop: (info) => {
+				dragStopped();
 				const e = info.jsEvent as MouseEvent;
 				const r = el.getBoundingClientRect();
 				const inside =

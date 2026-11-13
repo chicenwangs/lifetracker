@@ -1,6 +1,7 @@
 <!-- FR-H8. FullCalendar timeGridWeek: blocks in time grid (drag/resize 15 min), items in all-day row (drag = date).
      External drops (data-lt-item elements) -> time slot = 60-min linked block, all-day row = set date. -->
 <script lang="ts">
+	import { dragStarted, dragStopped, duplicate } from '$lib/client/altdrag';
 	import { onDestroy, onMount } from 'svelte';
 	import { Calendar, type EventInput } from '@fullcalendar/core';
 	import timeGridPlugin from '@fullcalendar/timegrid';
@@ -251,7 +252,9 @@
 			// every other hour gets a darker band so a drag's length can be read at a glance
 			slotLaneClassNames: (a) => (hourBand(a.time) ? ['lt-band'] : []),
 			slotLabelClassNames: (a) => (hourBand(a.time) ? ['lt-band'] : []),
-			slotLabelFormat: us ? { hour: 'numeric', meridiem: 'short' } : { hour: '2-digit', minute: '2-digit', hour12: false },
+			slotLabelFormat: us
+				? { hour: 'numeric', meridiem: 'short' }
+				: { hour: '2-digit', minute: '2-digit', hour12: false },
 			nowIndicator: true,
 			dayHeaderFormat: { weekday: 'short', day: 'numeric' },
 			editable: true,
@@ -305,10 +308,12 @@
 				else if (p.block?.itemId) onopen(p.block.itemId);
 			},
 			eventDragStart: (info) => {
+				dragStarted();
 				const p = info.event.extendedProps as { kind: string };
 				ondragging?.(p.kind === 'block' ? 'block' : 'item');
 			},
 			eventDragStop: (info) => {
+				dragStopped();
 				ondragging?.(null);
 				const p = info.event.extendedProps as { block?: BlockDTO };
 				const r = el.getBoundingClientRect();
@@ -318,6 +323,14 @@
 			},
 			eventDrop: async (info) => {
 				const p = info.event.extendedProps as { kind: string; item?: ItemDTO; block?: BlockDTO };
+				if ((info.jsEvent as MouseEvent).altKey) {
+					info.revert(); // Alt = copy: the source stays
+					const s = parts(info.event.startStr);
+					if (p.item && info.event.allDay) return duplicate('item', p.item.id, { date: s.date });
+					if (p.block && !info.event.allDay)
+						return duplicate('block', p.block.id, { startAt: localToUtc(s.date, s.minutes ?? 0, tz) });
+					return;
+				}
 				try {
 					if (p.item) {
 						if (!info.event.allDay) {

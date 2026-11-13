@@ -143,6 +143,18 @@ export function create(meId: string, input: z.infer<typeof blockCreateSchema>): 
 	return mustOwn(meId, id);
 }
 
+/** Alt-drag copy (D-09): same length, label, type, linked item. Status starts fresh. */
+export function duplicateTo(meId: string, id: string, startAt: string): BlockRow {
+	const src = mustOwn(meId, id);
+	return create(meId, {
+		label: src.label,
+		type: src.type,
+		itemId: src.itemId,
+		startAt,
+		endAt: isoPlus(startAt, durationMin(src.startAt, src.endAt) * 60_000),
+	});
+}
+
 export const blockPatchSchema = z
 	.object({
 		label: z.string().trim().min(1).max(200),

@@ -178,6 +178,22 @@ export function create(meId: string, input: ItemCreate): ItemRow {
 	return mustOwn(meId, id);
 }
 
+/** Alt-drag copy (D-09 allowlist): title, type, time, span length, notes. Never status, audit, steps, secret flag. */
+export function duplicateTo(meId: string, id: string, date: string): ItemRow {
+	const src = mustOwn(meId, id);
+	return create(
+		meId,
+		itemCreateSchema.parse({
+			title: src.title,
+			type: src.type,
+			date,
+			time: src.time,
+			endDate: src.date && src.endDate ? addDays(date, diffDays(src.date, src.endDate)) : null,
+			notes: src.notes,
+		}),
+	);
+}
+
 // ---------- patch (owner) ----------
 export const itemPatchSchema = z
 	.object({

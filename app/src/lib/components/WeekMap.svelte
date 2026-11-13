@@ -35,7 +35,10 @@
 		'November',
 		'December',
 	];
-	const DOW = page.data.user?.region === 'us' ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+	const DOW =
+		page.data.user?.region === 'us'
+			? ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+			: ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 	const rows = $derived.by(() => {
 		const out: HeatDay[][] = [];
