@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+	<head>
+		<meta charset="utf-8" />
+		<title>S-1 Tiptap + Svelte 5</title>
+		<style>
+			:root {
+				--ink: #00003d;
+				--card: #fff;
+			}
+			:root[data-theme='dark'] {
+				--ink: #f3f1fa;
+				--card: #17163a;
+			}
+			body {
+				font: 16px system-ui;
+				background: var(--card);
+				color: var(--ink);
+			}
+			.doc .ProseMirror {
+				outline: none;
+				min-height: 200px;
+				color: var(--ink);
+			}
+			.slash {
+				position: fixed;
+				background: var(--card);
+				border: 1.5px solid var(--ink);
+				padding: 4px;
+			}
+			.slash [aria-selected='true'] {
+				background: #f3d053;
+				color: #00003d;
+			}
+			table {
+				border-collapse: collapse;
+			}
+			td,
+			th {
+				border: 1px solid var(--ink);
+				min-width: 40px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script type="module" src="./main.js"></script>
+	</body>
+</html>
