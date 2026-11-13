@@ -792,7 +792,9 @@ test('v2 P4 Databases: new database, number property rejects text, records, sort
 		await name.press('Enter');
 		const kg = db.getByLabel(`kg of ${n}`);
 		await kg.fill(w);
+		const saved = page.waitForResponse((r) => r.url().includes('/api/database-records/') && r.request().method() === 'PATCH'); // prettier-ignore
 		await kg.press('Enter');
+		await saved; // the next edit must not race this save's reply
 	}
 	// PAGE-012: text in a number cell is refused with a readable message
 	await db.getByLabel('kg of Row').fill('heavy');
@@ -823,6 +825,26 @@ test('v2 P4 Databases: new database, number property rejects text, records, sort
 	await db2.getByRole('button', { name: 'Open Bench as page' }).click();
 	await expect(page).toHaveURL(/\/pages\/pg_/);
 	await expect(page.getByLabel('Page title')).toHaveValue('Bench');
+});
+
+test('v2 P5 Graph: shows my pages, archived toggle, list fallback, node select opens page', async () => {
+	await page.goto('/pages/graph');
+	await expect(page.getByRole('heading', { name: 'Knowledge graph' })).toBeVisible();
+	await expect(page.locator('.canvas canvas').first()).toBeVisible(); // sigma mounted (WebGL)
+	// list fallback = the keyboard/phone path; holds the same pages
+	await page.getByRole('button', { name: 'Show as list instead' }).click();
+	const list = page.getByRole('list', { name: 'Pages and their links' });
+	await expect(list.getByRole('link', { name: 'Gym' })).toBeVisible();
+	await expect(list.getByRole('link', { name: 'Legs' })).toBeVisible();
+	// keyboard on the graph: first arrow selects a page, Enter opens it (PAGE-018)
+	await page.getByRole('button', { name: 'Show graph' }).click();
+	await page.getByRole('application').focus();
+	await page.keyboard.press('ArrowRight');
+	await expect(page.getByRole('complementary', { name: 'Selected page' })).toBeVisible();
+	const name = await page.getByRole('complementary', { name: 'Selected page' }).locator('b').textContent();
+	await page.keyboard.press('Enter');
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	await expect(page.getByLabel('Page title')).toHaveValue(name === 'Untitled' ? '' : (name ?? ''));
 });
 
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {

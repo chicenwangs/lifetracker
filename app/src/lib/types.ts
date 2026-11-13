@@ -190,3 +190,11 @@ export interface DatabaseDTO {
 	rows: DbRow[];
 	total: number;
 }
+
+// ---------- Graph (DESIGN §10) ----------
+export interface GraphDTO {
+	nodes: { id: string; title: string; kind: 'page' | 'record'; archived: boolean; parentId: string | null }[];
+	edges: { source: string; target: string; relation: 'parent' | 'link' }[];
+	truncated: boolean;
+	generatedAt: string;
+}

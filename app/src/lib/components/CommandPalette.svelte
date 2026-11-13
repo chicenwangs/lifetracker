@@ -28,6 +28,7 @@
 		{ group: 'Actions', label: 'Go to Keep', run: () => goto('/keep') },
 		{ group: 'Actions', label: 'Go to Pages', run: () => goto('/pages') },
 		{ group: 'Actions', label: 'Pages archive', run: () => goto('/pages/archive') },
+		{ group: 'Actions', label: 'Knowledge graph', run: () => goto('/pages/graph') },
 		{ group: 'Actions', label: 'Settings', run: () => goto('/settings/preferences') },
 	]; // prettier-ignore
 

@@ -93,6 +93,7 @@
 			{/snippet}
 			{#if nodes.length}{@render branch(null, 0)}{:else}<p class="hint">No pages yet.</p>{/if}
 			<div class="foot">
+				<a href="/pages/graph" class:on={page.url.pathname === '/pages/graph'}>Graph</a>
 				<a href="/pages/archive" class:on={page.url.pathname === '/pages/archive'}>Archive</a>
 				<a href="/pages/trash" class:on={page.url.pathname === '/pages/trash'}>Trash</a>
 			</div>
