@@ -64,12 +64,17 @@
 		let worker: Worker | null = null;
 		let dead = false;
 		void (async () => {
-			const [{ default: Graph }, { default: Sigma }] = await Promise.all([
+			const [{ default: Graph }, { default: Sigma, DEFAULT_STYLES }] = await Promise.all([
 				import('graphology'),
 				import('sigma'),
 			]);
 			if (dead || !el) return;
 			const g = new Graph({ type: 'directed', multi: true });
+			// theme colours, so nodes and labels show on dark cards too
+			const css = getComputedStyle(el);
+			const ink = css.getPropertyValue('--ink').trim() || '#00003d';
+			const quiet = css.getPropertyValue('--quiet').trim() || '#9a98b8';
+			const card = css.getPropertyValue('--card').trim() || '#ffffff';
 			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- plain lookup table, never rendered
 			const idx = new Map<string, number>();
 			g0.nodes.forEach((n, i) => {
@@ -80,14 +85,16 @@
 					y: Math.sin(i) * Math.sqrt(i + 1),
 					size: 4 + Math.min(10, Math.sqrt(deg) * 2),
 					label: (n.title || 'Untitled') + (n.archived ? ' · archived' : ''),
-					color: n.archived ? '#9a98b8' : n.kind === 'record' ? '#3d5a80' : '#00003d',
+					color: n.archived ? quiet : n.kind === 'record' ? '#3d5a80' : ink,
 				});
 			});
 			g0.edges.forEach((e, i) => g.addEdgeWithKey(`e${i}`, e.source, e.target, { relation: e.relation, size: e.relation === 'link' ? 1.5 : 1, color: e.relation === 'link' ? '#b84a44' : '#9a98b8' })); // prettier-ignore
 			graph = g;
 			sigma = new Sigma(g, el, {
 				// small nodes stay clickable when zoomed out (ADR-007)
-				settings: { nodePickingPadding: 6, labelRenderedSizeThreshold: 7 },
+				// sizes in screen px (sigma 4 default is graph units, which blows nodes up)
+				settings: { nodePickingPadding: 6, labelRenderedSizeThreshold: 0, itemSizesReference: 'screen' },
+				styles: { nodes: { ...DEFAULT_STYLES.nodes, labelColor: ink, backdropColor: card } },
 				nodeReducer: (k, a) => {
 					if (!visible(k)) return { ...a, hidden: true };
 					if (k === selected)

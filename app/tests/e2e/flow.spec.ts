@@ -752,8 +752,7 @@ test('v2 P3 Pages: tree, slash menu, internal link survives rename, pin cap, arc
 	expect((await api('PUT', '/api/page-shortcuts', { ids: made })).s).toBe(200);
 	await page.reload();
 	await expect(page.locator('nav a.pin')).toHaveCount(3);
-	await page.getByRole('button', { name: 'Page menu' }).click();
-	await page.getByRole('menuitem', { name: 'Pin to header' }).click();
+	await page.getByRole('button', { name: 'Pin', exact: true }).click();
 	await expect(page.locator('.toast')).toContainText('pin 3 pages');
 	// archive parent takes the child; gone from tree; link target page still opens
 	await page.getByRole('button', { name: 'Page menu' }).click();
@@ -891,8 +890,7 @@ test('v2 P7 Sharing: share a page view-only, they read it but cannot edit, revok
 	const id = p.page.id;
 	await api('PATCH', `/api/pages/${id}`, { doc: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Day 1: Penang' }] }] } }); // prettier-ignore
 	await page.goto(`/pages/${id}`);
-	await page.getByRole('button', { name: 'Page menu' }).click();
-	await page.getByRole('menuitem', { name: 'Share…' }).click();
+	await page.locator('.pagev .bar').getByRole('button', { name: 'Share', exact: true }).click();
 	const dlg = page.getByRole('dialog', { name: /Share/ });
 	await dlg.getByLabel('Username').fill('neina');
 	await dlg.getByRole('button', { name: 'Share', exact: true }).click();
@@ -915,8 +913,7 @@ test('v2 P7 Sharing: share a page view-only, they read it but cannot edit, revok
 	expect(w).toBe(403);
 
 	// revoke: her very next request is denied, and the 404 says nothing about the page
-	await page.getByRole('button', { name: 'Page menu' }).click();
-	await page.getByRole('menuitem', { name: 'Share…' }).click();
+	await page.locator('.pagev .bar').getByRole('button', { name: 'Share', exact: true }).click();
 	await dlg.getByRole('button', { name: 'Remove' }).click();
 	await expect(dlg.getByText('Private. Only you can open it.')).toBeVisible();
 	const r = await n.goto(`/pages/${id}`);

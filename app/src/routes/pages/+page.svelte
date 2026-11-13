@@ -17,7 +17,7 @@
 
 <svelte:head><title>Pages · Life Tracker</title></svelte:head>
 
-<div class="card panel empty">
+<div class="card panel empty" class:has={data.tree.length}>
 	<h1>Pages</h1>
 	{#if data.tree.length}
 		<p class="muted">Open a page from the list, or start a new one.</p>
@@ -34,5 +34,11 @@
 		flex-direction: column;
 		gap: 10px;
 		align-items: flex-start;
+	}
+	/* phone: the tree above is the screen and has its own New page */
+	@media (max-width: 699px) {
+		.has {
+			display: none;
+		}
 	}
 </style>

@@ -273,9 +273,9 @@
 		<button type="button" class="t" onclick={() => cmd((c) => c.addColumnAfter())}>+ Col</button>
 		<button type="button" class="t" onclick={() => cmd((c) => c.deleteRow())}>− Row</button>
 		<button type="button" class="t" onclick={() => cmd((c) => c.deleteColumn())}>− Col</button>
-		<button type="button" class="t" onclick={() => cmd((c) => c.deleteTable())}>Delete table</button>
+	{:else}
+		<span class="hint">Type / for blocks</span>
 	{/if}
-	<span class="hint">Type / for blocks</span>
 </div>
 <div class="doc" bind:this={el}></div>
 <input
@@ -320,22 +320,27 @@
 		z-index: 5;
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px;
+		gap: 2px;
 		align-items: center;
-		padding: 6px 0;
-		background: var(--card);
+		margin: 0 -8px 12px;
+		padding: 4px;
+		border-radius: 10px;
+		background: var(--ground);
 	}
 	.t {
 		min-width: 28px;
 		min-height: 28px;
 		padding: 0 8px;
-		border: 1px solid var(--rule);
+		border: 0;
 		border-radius: 6px;
 		background: transparent;
 		color: var(--ink);
 		font: inherit;
-		font-size: 12px;
+		font-size: 12.5px;
 		cursor: pointer;
+	}
+	.t:hover {
+		background: var(--card);
 	}
 	.t[aria-pressed='true'] {
 		background: var(--ink);
@@ -343,12 +348,13 @@
 	}
 	.sep {
 		width: 1px;
-		height: 20px;
+		height: 18px;
 		background: var(--rule);
 		margin: 0 4px;
 	}
 	.tools .hint {
 		margin-left: auto;
+		padding-right: 6px;
 	}
 	.doc :global(.pm) {
 		outline: none;
@@ -357,32 +363,94 @@
 		line-height: 1.6;
 		color: var(--ink);
 	}
+	.doc :global(.pm > *) {
+		margin: 3px 0;
+	}
+	.doc :global(.pm p) {
+		margin: 3px 0;
+	}
+	.doc :global(.pm h1) {
+		font-size: 26px;
+		margin: 18px 0 6px;
+	}
+	.doc :global(.pm h2) {
+		font-size: 21px;
+		margin: 14px 0 4px;
+	}
+	.doc :global(.pm h3) {
+		font-size: 17px;
+		margin: 12px 0 4px;
+	}
+	.doc :global(.pm > :first-child) {
+		margin-top: 0;
+	}
+	.doc :global(.pm ul),
+	.doc :global(.pm ol) {
+		margin: 6px 0;
+		padding-left: 22px;
+	}
+	.doc :global(.pm li p) {
+		margin: 0;
+	}
+	.doc :global(.pm hr) {
+		border: 0;
+		border-top: 1.5px solid var(--rule);
+		margin: 14px 0;
+	}
 	.doc :global(.pm p.is-empty:first-child::before),
 	.doc :global(.pm > p:only-child:empty::before) {
 		content: 'Type / to add a block';
-		color: var(--muted);
+		color: var(--quiet);
 		pointer-events: none;
 		float: left;
 		height: 0;
 	}
 	.doc :global(table) {
 		border-collapse: collapse;
+		width: 100%;
 		margin: 8px 0;
+		font-size: 14px;
 	}
 	.doc :global(td),
 	.doc :global(th) {
-		border: 1px solid var(--ink);
-		padding: 4px 8px;
+		border: 1px solid var(--rule);
+		padding: 6px 10px;
 		min-width: 60px;
 		vertical-align: top;
+		text-align: left;
+	}
+	.doc :global(th) {
+		background: var(--ground);
 	}
 	.doc :global(ul[data-type='taskList']) {
 		list-style: none;
-		padding-left: 4px;
+		padding-left: 0;
 	}
 	.doc :global(ul[data-type='taskList'] li) {
 		display: flex;
-		gap: 8px;
+		align-items: flex-start;
+		gap: 6px;
+		margin: 4px 0;
+	}
+	.doc :global(ul[data-type='taskList'] li > label) {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 24px;
+		height: max(1.6em, 24px);
+	}
+	.doc :global(ul[data-type='taskList'] input) {
+		width: 16px;
+		height: 16px;
+		margin: 0;
+	}
+	.doc :global(ul[data-type='taskList'] li > div) {
+		flex: 1;
+		min-width: 0;
+	}
+	.doc :global(ul[data-type='taskList'] li[data-checked='true'] > div) {
+		text-decoration: line-through;
+		color: var(--quiet);
 	}
 	.doc :global(img) {
 		max-width: 100%;

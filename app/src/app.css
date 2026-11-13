@@ -281,6 +281,7 @@ h3 {
 /* checkboxes / radios use the app's ink, not the browser's blue */
 :root {
 	accent-color: var(--ink);
+	--muted: var(--quiet); /* older components say --muted; same colour */
 }
 
 /* ---- shared controls ---- */
