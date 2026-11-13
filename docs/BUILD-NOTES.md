@@ -1,6 +1,23 @@
-# Build notes — what the app does now (2026-11-08)
+# Build notes — what the app does now
 
-Caveman doc. Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
+Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
+v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
+
+## v2 P1 — foundations (2026-11-13)
+
+- **Item types** (`item_types`, migration 0003). 10 per user incl. 5 built-ins. Built-in keys = the v1 values (`Work Exam Event Hobby Dating`), so `items.type`, `blocks.type` and share codes needed no rewrite. **Differs from DESIGN §5 on purpose:** column stays `type` (not `type_key`), built-in keys stay capitalised. Custom key = the type's id (`ity_…`). Labels: Work, **Deadline** (Exam), Event, Hobby, **Date** (Dating). Deadline colour #B84A44.
+- Type flags, never names: ★ default (quick add), Counts down (countdown badge), Share by default (pre-ticks share codes). Type bar on Month + Week: click = hide/show (per user, `users.hidden_types`, own rows only), + = new type, n / 10. Settings › Item types: ↑↓ order, colour, name, quick-add word, use count, flags, delete + move (one undo).
+- Quick add reads the user's types (custom `/slug`; old `/exam` `/date` `/dating` still work and still find the menu entry), default type, block length, destination (Timeline/Calendar; a dragged range still = planner, a month day still = calendar), region date order (US reads 11/16 first).
+- **Preferences:** theme Light/Dark/Auto + light/dark start (equal starts refused, D-08) + preview; timezone picker; Region (MY/UK: Mon + 24 h + D/M · US: Sun + 12 h + M/D); Quick add goes to; Default block length 15–90. New accounts = Auto (D-07), existing users keep their theme. Header sun/moon = fixed choice; half-circle icon = Auto.
+- Visible hours saved on the user (`users.visible_hours`); cookie = first paint only.
+- 8 badge colours (`USER_COLORS`).
+- **Undo journal** (`undo_actions`, 12 h): every item/block/quick-add/copy/type-delete write stores whole rows before + after. Ctrl/Cmd+Z outside text fields = undo newest; centre note "Undid: …". Refuses if any row changed since ("Can't undo safely"). Delete toasts' Undo uses the same entry. Not journaled: trash restore, settings, sharing.
+- **Alt-drag = copy** on Month chips, Week items/blocks, planner blocks (D-09: items + blocks; never status, steps, secret flag, shares). Alt keyup swallowed during a drag.
+- No-drag paths: **Schedule…** on due chips + Week "Not scheduled" rows; block menu has Start / End fields; `?` = shortcut sheet.
+- 24×24 hit area on status squares and delete buttons; delete always visible on touch. Chip tooltips name the type.
+- **Attachments** (store only, nothing uses it until Keep): `POST /api/attachments?name=` raw body, `GET /api/attachments/:id`. D-12: 25 MB, allowlist png jpg gif webp pdf zip docx xlsx pptx doc xls ppt txt md csv, magic bytes checked, temp in `uploads/.tmp`, EXDEV fallback, unreferenced files deleted after 7 days. Owner-only reads until P7. JSON routes refuse bodies > 1 MB; image sets `BODY_SIZE_LIMIT=26M`.
+- `migrateDb` turns FKs off around migrations (table rebuilds) and runs `foreign_key_check` after.
+- Not done in P1 (moved): header Search/Ctrl+K (P3), Keep + Pages links (P2/P3), pins (P3, needs pages), "Week of 9 Nov" title (kept v1 range title per parity rule).
 
 ## Differs from spec (on purpose)
 

@@ -13,13 +13,26 @@ let dir: string;
 beforeEach(() => {
 	dir = mkdtempSync(join(tmpdir(), 'lt-up-'));
 	freshDb({ UPLOAD_DIR: dir, MAX_UPLOAD_BYTES: '4096' });
-	me = usersRepo.createWithCalendar({ username: 'jeremy', displayName: 'J', passwordHash: 'x', role: 'admin' }).id;
-	other = usersRepo.createWithCalendar({ username: 'neina', displayName: 'N', passwordHash: 'x', role: 'member' }).id;
+	me = usersRepo.createWithCalendar({
+		username: 'jeremy',
+		displayName: 'J',
+		passwordHash: 'x',
+		role: 'admin',
+	}).id;
+	other = usersRepo.createWithCalendar({
+		username: 'neina',
+		displayName: 'N',
+		passwordHash: 'x',
+		role: 'member',
+	}).id;
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 const body = (b: Buffer) => new Blob([new Uint8Array(b)]).stream();
-const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(100, 1)]);
+const PNG = Buffer.concat([
+	Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+	Buffer.alloc(100, 1),
+]);
 const tmpLeft = () => (existsSync(join(dir, '.tmp')) ? readdirSync(join(dir, '.tmp')).length : 0);
 
 describe('attachments', () => {

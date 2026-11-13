@@ -2,6 +2,7 @@
      External drops (data-lt-item elements) -> time slot = 60-min linked block, all-day row = set date. -->
 <script lang="ts">
 	import { dragStarted, dragStopped, duplicate } from '$lib/client/altdrag';
+	import { typeName } from '$lib/client/itemtypes.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { Calendar, type EventInput } from '@fullcalendar/core';
 	import timeGridPlugin from '@fullcalendar/timegrid';
@@ -277,6 +278,7 @@
 					const t = document.createElement('span');
 					t.className = 'lt-title';
 					t.textContent = (it.time ? `${prettyTime(it.time)} ` : '') + it.title;
+					t.title = `${typeName(it.type) ?? 'Custom type'} · ${t.textContent}`;
 					wrap.append(t);
 					if (it.editable) wrap.append(xButton(it.title, () => ondelete('item', it.id, it.title)));
 				} else if (p.block) {
@@ -293,7 +295,8 @@
 					l.textContent = b.label;
 					const tm = document.createElement('span');
 					tm.className = 'lt-time';
-					tm.textContent = `${s.time} – ${e.time}`;
+					tm.textContent = us ? `${prettyTime(s.time)} – ${prettyTime(e.time)}` : `${s.time} – ${e.time}`;
+					l.title = `${b.busy ? 'Busy' : (typeName(b.itemType ?? b.type) ?? 'Custom type')} · ${b.label}`;
 					col.append(l, tm);
 					wrap.append(col);
 					if (b.editable) wrap.append(xButton(b.label, () => ondelete('block', b.id, b.label)));

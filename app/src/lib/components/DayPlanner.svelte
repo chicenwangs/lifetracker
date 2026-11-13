@@ -18,7 +18,6 @@
 	import {
 		addDays,
 		fixRange,
-		hhmm,
 		clock,
 		isoPlus,
 		localToUtc,

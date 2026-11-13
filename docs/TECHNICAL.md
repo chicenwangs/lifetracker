@@ -2,7 +2,7 @@
 
 Caveman doc. How build. Read REQUIREMENTS.md first (FR ids referenced here). Rev 2 (after 10-agent review, see REVIEW.md).
 
-> **Rev 2026-11-08 overrides (P1-NOTES.md wins):** Goals + Courses removed (tables `goals`, `courses`, column `items.course_id` dormant; no API, no `#course`). Sign-up open by default, admin can switch to invite-only (`app_meta.signup_open`). Share grants view-only (no edit grants yet). Planner shows partner blocks beside mine, no lanes. Visible hour range `lt_hours` cookie. Quick add accepts `slot` from timeline drags; drag with no `/type` = type None.
+> **Rev 2026-11-08 overrides (BUILD-NOTES.md wins):** Goals + Courses removed (tables `goals`, `courses`, column `items.course_id` dormant; no API, no `#course`). Sign-up open by default, admin can switch to invite-only (`app_meta.signup_open`). Share grants view-only (no edit grants yet). Planner shows partner blocks beside mine, no lanes. Visible hour range `lt_hours` cookie. Quick add accepts `slot` from timeline drags; drag with no `/type` = type None.
 
 ## 1. Stack (locked)
 

@@ -32,9 +32,17 @@ const schema = z.object({
 		.transform((v) => (v ? v : undefined)),
 	TZ: z.string().default('Asia/Kuala_Lumpur'),
 	/** attachments (DESIGN §12). Empty = next to the database: /app/data/uploads in the image. Must be on the volume. */
-	UPLOAD_DIR: z.string().optional().transform((v) => v || undefined),
+	UPLOAD_DIR: z
+		.string()
+		.optional()
+		.transform((v) => v || undefined),
 	/** D-12: 25 MB. Server truth; the UI reads it from /api/attachments/limits. */
-	MAX_UPLOAD_BYTES: z.coerce.number().int().min(1024).max(1024 * 1024 * 1024).default(25 * 1024 * 1024),
+	MAX_UPLOAD_BYTES: z.coerce
+		.number()
+		.int()
+		.min(1024)
+		.max(1024 * 1024 * 1024)
+		.default(25 * 1024 * 1024),
 });
 
 export type Env = z.infer<typeof schema> & { secureCookies: boolean; uploadDir: string };
@@ -52,7 +60,9 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
 		throw new Error(
 			'Bad env:\n  ADDRESS_HEADER: required when ORIGIN is https in production (e.g. CF-Connecting-IP)',
 		);
-	const uploadDir = r.data.UPLOAD_DIR ?? join(dirname(r.data.DATABASE_PATH === ':memory:' ? tmpdir() + '/x' : r.data.DATABASE_PATH), 'uploads');
+	const uploadDir =
+		r.data.UPLOAD_DIR ??
+		join(dirname(r.data.DATABASE_PATH === ':memory:' ? tmpdir() + '/x' : r.data.DATABASE_PATH), 'uploads');
 	return Object.freeze({ ...r.data, secureCookies, uploadDir });
 }
 

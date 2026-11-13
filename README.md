@@ -10,7 +10,7 @@ Start here (Claude: read all before coding):
 4. `docs/REVIEW.md` — review fixes + open owner decisions.
 5. `docs/STRUCTURE.md` — full file tree.
 6. `docs/PSEUDOCODE.md` — core flows. Per-file pseudocode = comments in each file.
-7. `docs/P1-NOTES.md` — what the app does now + where it differs from spec. Wins over 1–2.
+7. `docs/BUILD-NOTES.md` — what the app does now + where it differs from spec. Wins over 1–2.
 8. `docs/HANDOFF.md` — current state, code map, next steps. **New chat: read this first.**
 
 | Path | What |

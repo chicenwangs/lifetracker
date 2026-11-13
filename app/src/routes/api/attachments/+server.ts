@@ -10,6 +10,11 @@ export const GET = api(() => json({ maxBytes: env().MAX_UPLOAD_BYTES, types: ALL
 export const POST = api(async (e) => {
 	const u = me(e);
 	const len = e.request.headers.get('content-length');
-	const att = await save(u.id, e.request.body, e.url.searchParams.get('name') ?? '', len === null ? null : Number(len));
+	const att = await save(
+		u.id,
+		e.request.body,
+		e.url.searchParams.get('name') ?? '',
+		len === null ? null : Number(len),
+	);
 	return json({ attachment: att }, { status: 201 });
 });

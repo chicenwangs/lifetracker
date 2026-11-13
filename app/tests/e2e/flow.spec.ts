@@ -506,15 +506,81 @@ test('month: double-click a day opens the add box; N palette covers the whole sc
 	await expect(scrim).toHaveCount(0);
 });
 
-test('theme: dark by default, toggle persists on server', async () => {
+test('theme: new account = Auto (D-07); sun/moon = fixed choice; Auto schedule recalculates at once', async () => {
 	await page.goto('/');
-	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-	await page.getByRole('button', { name: 'Switch to light mode' }).click();
-	await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+	const btn = page.locator('header button.theme[aria-pressed]');
+	await expect(btn).toHaveClass(/auto/);
+	await expect(btn).toHaveAttribute('title', /^Auto:/);
+	const start = (await page.locator('html').getAttribute('data-theme')) as string;
+	const other = start === 'dark' ? 'light' : 'dark';
+	await btn.click();
+	await expect(page.locator('html')).toHaveAttribute('data-theme', other);
 	await page.reload();
+	await expect(page.locator('html')).toHaveAttribute('data-theme', other);
+	await expect(btn).not.toHaveClass(/auto/);
+	// Auto with a light window that covers now -> light; one that excludes now -> dark (no reload)
+	await page.goto('/settings/preferences');
+	await page.getByRole('radio', { name: 'Auto' }).check();
+	await page.getByLabel('Light from').fill('00:00');
+	await page.getByLabel('Light from').dispatchEvent('change');
+	await page.getByLabel('Dark from').fill('23:59');
+	await page.getByLabel('Dark from').dispatchEvent('change');
 	await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-	await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+	// D-08: same start time refused
+	await page.getByLabel('Light from').fill('23:59');
+	await page.getByLabel('Light from').dispatchEvent('change');
+	await expect(page.locator('.toast')).toContainText('different start times');
+	await page.getByRole('radio', { name: 'Dark', exact: true }).check();
 	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+});
+
+test('v2 P1: type bar hides a type, new custom type, Ctrl+Z undo, 24 px hit area, Schedule…', async () => {
+	const d = await today();
+	await page.goto('/');
+	// new type from the type bar
+	await page.getByRole('button', { name: 'New type' }).click();
+	await page.getByLabel('Name').fill('Bills');
+	await page.getByRole('button', { name: 'Add type' }).click();
+	await expect(page.getByRole('button', { name: /Bills/, pressed: true })).toBeVisible();
+	await expect(page.locator('.count')).toContainText('6 / 10 types');
+	// quick add with its slug lands as that type
+	const r = await api('POST', '/api/quickadd', { text: `rent ${d} /calendar /bills` });
+	expect(r.s).toBe(201);
+	await page.reload();
+	const chip = page.locator('.lt-chip', { hasText: 'rent' });
+	await expect(chip).toBeVisible();
+	// hide Bills -> chip gone (only for me), show again -> back
+	await page.getByRole('button', { name: /Bills/ }).click();
+	await expect(chip).toHaveCount(0);
+	await page.getByRole('button', { name: /Bills/ }).click();
+	await expect(chip).toBeVisible();
+	// 24 px: a click 10 px left of the square's centre still hits it
+	const sq = chip.locator('.lt-sq');
+	const box = await sq.boundingBox();
+	expect(box).toBeTruthy();
+	const hit = await page.evaluate(
+		([x, y]) => (document.elementFromPoint(x as number, y as number) as HTMLElement | null)?.className ?? '',
+		[(box?.x ?? 0) + (box?.width ?? 0) / 2 - 10, (box?.y ?? 0) + (box?.height ?? 0) / 2] as const,
+	);
+	expect(hit).toContain('lt-sq');
+	// rename via the item view, then Ctrl+Z (focus outside fields) undoes it
+	const id = (r.j as { item: { id: string } }).item.id;
+	expect((await api('PATCH', `/api/items/${id}`, { title: 'rent paid' })).s).toBe(200);
+	await page.reload();
+	await expect(page.locator('.lt-chip', { hasText: 'rent paid' })).toBeVisible();
+	await page.locator('body').click({ position: { x: 5, y: 880 } });
+	await page.keyboard.press('Control+z');
+	await expect(page.locator('.undid')).toContainText('Undid: Rename "rent"');
+	await expect(page.locator('.lt-chip', { hasText: 'rent paid' })).toHaveCount(0);
+	await expect(page.locator('.lt-chip', { hasText: /^.*rent$/ })).toBeVisible();
+	// Schedule… on a due chip = linked block without dragging
+	await page.goto(`/?d=${d}`);
+	await page.getByRole('button', { name: 'Schedule rent' }).click();
+	await page.locator('.sched .pop').getByLabel('Start').fill('20:00');
+	await page.getByRole('button', { name: 'Block time' }).click();
+	await expect(page.locator('.toast')).toContainText('Blocked "rent" 20:00, 60 min');
+	const cal = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 1)}`);
+	expect((cal.j as { blocks: { itemId: string | null }[] }).blocks.some((b) => b.itemId === id)).toBe(true);
 });
 
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {

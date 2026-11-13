@@ -39,7 +39,11 @@ export const ALLOWED_EXT = Object.keys(KINDS);
 /** strip paths, control chars and odd quotes; keep it short. Never used as a path. */
 export function cleanName(name: string): string {
 	const base = name.split(/[\\/]/).pop() ?? '';
-	const s = base.replace(/[\u0000-\u001f\u007f"<>|*?:]/g, '').trim().slice(0, 200); // eslint-disable-line no-control-regex
+	const s = [...base]
+		.filter((c) => c.charCodeAt(0) >= 32 && c.charCodeAt(0) !== 127 && !'"<>|*?:'.includes(c))
+		.join('')
+		.trim()
+		.slice(0, 200);
 	return s || 'file';
 }
 const extOf = (name: string) => (/\.([a-z0-9]{1,5})$/i.exec(name)?.[1] ?? '').toLowerCase();
@@ -67,7 +71,8 @@ async function moveInto(from: string, to: string) {
 	}
 }
 
-const tooBig = () => new ApiFail(413, 'too_large', `Files can be up to ${Math.round(env().MAX_UPLOAD_BYTES / 1048576)} MB.`);
+const tooBig = () =>
+	new ApiFail(413, 'too_large', `Files can be up to ${Math.round(env().MAX_UPLOAD_BYTES / 1048576)} MB.`);
 
 /** stream a request body to disk. `declared` = Content-Length if the client sent one. */
 export async function save(
@@ -121,7 +126,8 @@ export async function save(
 /** the file to send, if `userId` may read it. Owner only until sharing (P7) adds "can read a referencing source". */
 export function readable(userId: string, id: string): { row: Row; path: string; inline: boolean } {
 	const r = db().prepare(`SELECT * FROM attachments WHERE id = ?`).get(id) as Row | undefined;
-	if (!r || r.owner_id !== userId || r.status !== 'ready' || r.deleted_at) throw new ApiFail(404, 'not_found', 'Not found');
+	if (!r || r.owner_id !== userId || r.status !== 'ready' || r.deleted_at)
+		throw new ApiFail(404, 'not_found', 'Not found');
 	return { row: r, path: pathOf(r.storage_key), inline: !!KINDS[extOf(r.original_name)]?.inline };
 }
 
@@ -133,7 +139,9 @@ export function addRef(ownerId: string, attachmentId: string, sourceType: string
 		.run(newId('atr'), attachmentId, ownerId, sourceType, sourceId, nowUtcIso());
 } // prettier-ignore
 export function dropRefs(sourceType: string, sourceId: string): void {
-	db().prepare(`DELETE FROM attachment_refs WHERE source_type = ? AND source_id = ?`).run(sourceType, sourceId);
+	db()
+		.prepare(`DELETE FROM attachment_refs WHERE source_type = ? AND source_id = ?`)
+		.run(sourceType, sourceId);
 }
 
 /** hourly: stale uploads + .tmp leftovers; unreferenced files past the grace (D-12) */

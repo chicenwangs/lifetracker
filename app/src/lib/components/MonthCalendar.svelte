@@ -16,7 +16,7 @@
 		prettyDate,
 		prettyTime,
 	} from '$lib/time';
-	import { typeOf } from '$lib/client/itemtypes.svelte';
+	import { typeName, typeOf } from '$lib/client/itemtypes.svelte';
 	import { colorsFor, typeClass } from '$lib/colors';
 	import { badge, entryColors, theirClasses } from '$lib/client/partner';
 	import OverlapToggle from './OverlapToggle.svelte';
@@ -132,7 +132,9 @@
 		t.className = 'lt-title';
 		t.href = `/item/${it.id}`;
 		t.textContent = (it.time ? `${prettyTime(it.time)} ` : '') + it.title;
-		t.title = t.textContent + (it.stepsTotal ? ` (${it.stepsDone}/${it.stepsTotal} steps)` : '');
+		t.title =
+			`${typeName(it.type) ?? 'Custom type'} · ${t.textContent}` +
+			(it.stepsTotal ? ` (${it.stepsDone}/${it.stepsTotal} steps)` : '');
 		t.draggable = false;
 		t.addEventListener('click', (e) => {
 			e.preventDefault();
