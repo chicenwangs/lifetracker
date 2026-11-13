@@ -44,7 +44,9 @@ const tables = db
 	.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`)
 	.all()
 	.map((r) => r.name)
-	.filter((t) => !t.startsWith('search_fts') && !t.startsWith('content_search') && t !== '__drizzle_migrations');
+	.filter(
+		(t) => !t.startsWith('search_fts') && !t.startsWith('content_search') && t !== '__drizzle_migrations',
+	);
 
 const originals = new Set();
 // any failure below must not leave a half-scrubbed copy of real data on disk
