@@ -50,6 +50,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (event.request.headers.get('origin') !== e.ORIGIN) return jsonOr(api, 403, 'bad_origin', 'Bad origin');
 	}
 
+	// 2b body size: uploads may be large (adapter BODY_SIZE_LIMIT is raised for them), every other route stays small
+	const len = Number(event.request.headers.get('content-length') ?? 0);
+	if (len > 1_048_576 && !(path === '/api/attachments' && event.request.method === 'POST'))
+		return jsonOr(api, 413, 'too_large', 'Request too large');
+
 	// 3 session (+ sliding)
 	const s = path === '/healthz' ? null : loadSession(event.cookies);
 	event.locals.user = s?.user ?? null;
