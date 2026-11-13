@@ -510,6 +510,34 @@ main .card:nth-child(n + 4) {
 	animation: lt-done 260ms var(--ease);
 }
 
+/* WCAG 2.5.8 (UX-AUDIT #1): status squares and delete ✕ get a 24×24 hit area; the drawn box stays small */
+.lt-sq,
+.lt-x,
+.rx {
+	position: relative;
+}
+.lt-sq::after,
+.lt-x::after,
+.bx::after,
+.rx::after {
+	content: '';
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 24px;
+	height: 24px;
+	translate: -50% -50%;
+}
+/* touch has no hover: show the delete button instead of hiding it (FEATURES §3 X fix) */
+@media (hover: none) {
+	.lt-x,
+	.bx,
+	.rx {
+		display: flex !important;
+		opacity: 1 !important;
+	}
+}
+
 @media (prefers-reduced-motion: reduce) {
 	*,
 	::before,

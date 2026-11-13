@@ -60,6 +60,19 @@
 		cursor: pointer;
 		background: transparent;
 	}
+	/* 24×24 hit area (WCAG 2.5.8), drawn box stays --sz */
+	.sq {
+		position: relative;
+	}
+	.sq::after {
+		content: '';
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		width: max(24px, 100%);
+		height: max(24px, 100%);
+		translate: -50% -50%;
+	}
 	.sq.done {
 		background: var(--ink);
 		color: var(--sq-on, var(--on-ink));
