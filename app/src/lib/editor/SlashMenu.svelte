@@ -23,42 +23,54 @@
 	{:else}
 		<div class="none">No results</div>
 	{/each}
+	<div class="keys" aria-hidden="true">↑↓ move · Enter insert · Esc cancel</div>
 </div>
 
 <style>
 	.slash {
 		position: fixed;
 		z-index: 95;
-		min-width: 220px;
-		max-height: 300px;
+		width: 300px;
+		max-width: calc(100vw - 24px);
+		max-height: 340px;
 		overflow: auto;
 		background: var(--card);
 		color: var(--ink);
 		border: 1.5px solid var(--border);
-		border-radius: 10px;
-		padding: 4px;
-		box-shadow: var(--shadow-btn);
-		font-size: 13px;
+		border-radius: 12px;
+		padding: 6px;
+		box-shadow: -4px 4px 0 var(--accent);
 	}
 	[role='option'] {
 		display: flex;
-		justify-content: space-between;
-		gap: 12px;
-		padding: 6px 10px;
-		border-radius: 6px;
+		flex-direction: column;
+		padding: 7px 8px;
+		border-radius: 8px;
 		cursor: pointer;
 		min-height: 24px;
 	}
+	[role='option'] b {
+		font-size: 14px;
+		font-weight: 600;
+	}
 	[role='option'] span {
-		color: var(--muted);
-		font-size: 11px;
+		color: var(--quiet);
+		font-size: 12px;
 	}
 	[aria-selected='true'] {
-		background: var(--accent);
-		color: #00003d;
+		background: var(--pill-card);
+		color: var(--pill-ink);
+	}
+	[aria-selected='true'] span {
+		color: var(--pill-ink);
+	}
+	.none,
+	.keys {
+		padding: 6px 8px 2px;
+		font-size: 11px;
+		color: var(--quiet);
 	}
 	.none {
-		padding: 6px 10px;
-		color: var(--muted);
+		font-size: 13px;
 	}
 </style>

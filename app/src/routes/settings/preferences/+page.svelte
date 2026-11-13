@@ -1,7 +1,7 @@
 <!-- Theme (Light/Dark/Auto + schedule), timezone, planner defaults, plan-ahead. Each control saves on change. -->
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { patch } from '$lib/client/api';
+	import { apiFetch, patch } from '$lib/client/api';
 	import {
 		saveTheme,
 		setPlanMode,
@@ -71,6 +71,22 @@
 		} catch {
 			/* saveTheme showed the error and rolled back */
 		}
+	}
+	// header pins (FEATURES §2): order + unpin; the server keeps the cap and the order per user
+	const pins = $derived((data.pins ?? []) as { id: string; title: string }[]);
+	async function setPins(ids: string[], msg: string) {
+		try {
+			await apiFetch('PUT', '/api/page-shortcuts', { ids });
+			await invalidateAll();
+			showToast(msg);
+		} catch (e) {
+			showError(e);
+		}
+	}
+	function movePin(i: number, d: -1 | 1) {
+		const ids = pins.map((p) => p.id);
+		[ids[i], ids[i + d]] = [ids[i + d] as string, ids[i] as string];
+		void setPins(ids, 'Pins reordered');
 	}
 	const MODES: { v: ThemeMode; label: string }[] = [
 		{ v: 'light', label: 'Light' },
@@ -163,6 +179,43 @@
 	<p class="hint">Visible hours now follow you to every device.</p>
 </section>
 
+<section class="card panel" aria-labelledby="pins-h">
+	<h2 id="pins-h">Header pins</h2>
+	<p class="hint">{pins.length} of 3 used. Pin a page from its page bar (Pin).</p>
+	{#if pins.length}
+		<ol class="pins">
+			{#each pins as p, i (p.id)}
+				<li>
+					<a href="/pages/{p.id}">{p.title || 'Untitled'}</a>
+					<button
+						class="btn sm"
+						type="button"
+						aria-label="Move {p.title || 'Untitled'} up"
+						disabled={i === 0}
+						onclick={() => movePin(i, -1)}>↑</button
+					>
+					<button
+						class="btn sm"
+						type="button"
+						aria-label="Move {p.title || 'Untitled'} down"
+						disabled={i === pins.length - 1}
+						onclick={() => movePin(i, 1)}>↓</button
+					>
+					<button
+						class="btn sm"
+						type="button"
+						onclick={() =>
+							setPins(
+								pins.filter((x) => x.id !== p.id).map((x) => x.id),
+								'Unpinned from header',
+							)}>Unpin</button
+					>
+				</li>
+			{/each}
+		</ol>
+	{/if}
+</section>
+
 <section class="card panel">
 	<h2>When do you plan your day?</h2>
 	<fieldset class="field">
@@ -178,6 +231,28 @@
 </section>
 
 <style>
+	.pins {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.pins li {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.pins a {
+		flex: 1;
+		min-width: 0;
+		color: var(--ink);
+		font-weight: 600;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 	fieldset {
 		border: 0;
 		padding: 0;

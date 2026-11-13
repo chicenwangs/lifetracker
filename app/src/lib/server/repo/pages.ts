@@ -37,6 +37,13 @@ export function tree(ownerId: string): PageNode[] {
 	).map((r) => ({ id: r.id, parentId: r.parent_page_id, title: r.title, icon: r.icon })); // prettier-ignore
 }
 
+/** last opened live pages (phone All pages · Recent, wireframe MPages) */
+export function recent(ownerId: string, n = 5): { id: string; title: string; lastOpenedAt: string }[] {
+	return db()
+		.prepare(`SELECT id, title, last_opened_at AS lastOpenedAt FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND archived_at IS NULL AND last_opened_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM database_records r WHERE r.page_id = pages.id) ORDER BY last_opened_at DESC LIMIT ?`)
+		.all(ownerId, n) as { id: string; title: string; lastOpenedAt: string }[]; // prettier-ignore
+}
+
 /** ids of a page and everything under it (live rows) */
 function subtree(ownerId: string, id: string): string[] {
 	return (

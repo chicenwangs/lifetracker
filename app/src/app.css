@@ -281,6 +281,15 @@ h3 {
 /* checkboxes / radios use the app's ink, not the browser's blue */
 :root {
 	accent-color: var(--ink);
+	--muted: var(--quiet); /* older components say --muted; same colour */
+}
+
+/* no visible scrollbars anywhere (FEATURES §1.12); wheel, touch and keys still scroll */
+* {
+	scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+	display: none;
 }
 
 /* ---- shared controls ---- */

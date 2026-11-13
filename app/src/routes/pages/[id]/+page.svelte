@@ -163,21 +163,15 @@
 	</div>
 {/if}
 
-<article class="card panel pagev">
-	<nav class="crumbs" aria-label="Breadcrumbs">
-		<a href="/pages">Pages</a>
-		{#each pg.crumbs as c (c.id)}<span>›</span><a href="/pages/{c.id}">{c.title || 'Untitled'}</a>{/each}
-	</nav>
-	<div class="hd">
-		<input
-			class="title"
-			placeholder="Untitled"
-			aria-label="Page title"
-			maxlength="300"
-			readonly={pg.access === 'view'}
-			bind:value={title}
-			oninput={onTitle}
-		/>
+<article class="card pagev">
+	<div class="bar">
+		<nav class="crumbs" aria-label="Breadcrumbs">
+			<a href="/pages">Pages</a>
+			{#each pg.crumbs as c (c.id)}<span aria-hidden="true">/</span><a href="/pages/{c.id}"
+					>{c.title || 'Untitled'}</a
+				>{/each}
+			<span aria-hidden="true">/</span><span class="here">{title || 'Untitled'}</span>
+		</nav>
 		<span class="state" role="status">
 			{#if saveState === 'saving'}Saving…{:else if saveState === 'saved'}Saved{:else if saveState === 'failed'}<button
 					class="btn sm"
@@ -188,6 +182,20 @@
 					data-sveltekit-reload>reload</a
 				>{/if}
 		</span>
+		{#if mine && !pg.archived}
+			<button class="btn sm" type="button" aria-pressed={pg.pinned} title="Pin to header" onclick={pin}
+				><svg
+					width="14"
+					height="14"
+					viewBox="0 0 24 24"
+					fill={pg.pinned ? 'currentColor' : 'none'}
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"><path d="M12 17v5M9 10.8V4h6v6.8l3 3.2H6z" /></svg
+				>Pin</button
+			>
+		{/if}
+		{#if mine}<button class="btn sm" type="button" onclick={() => (sharing = true)}>Share</button>{/if}
 		<div class="menu-wrap">
 			<button
 				class="btn sm"
@@ -199,12 +207,6 @@
 			>
 			{#if menu}
 				<div class="menu card" role="menu">
-					{#if mine}<button role="menuitem" type="button" onclick={() => ((sharing = true), (menu = false))}
-							>Share…</button
-						>{/if}
-					{#if mine && !pg.archived}<button role="menuitem" type="button" onclick={pin}
-							>{pg.pinned ? 'Unpin from header' : 'Pin to header'}</button
-						>{/if}
 					{#if mine}
 						<button role="menuitem" type="button" onclick={() => ((moving = true), (menu = false))}
 							>Move to…</button
@@ -229,46 +231,57 @@
 			{/if}
 		</div>
 	</div>
-	{#if !mine}<p class="shared" role="status">
-			Shared with you · {pg.access === 'edit' ? 'you can edit' : 'view only'}
-		</p>{/if}
-	{#if sharing}<ShareDialog kind="page" id={pg.id} name={pg.title} onclose={() => (sharing = false)} />{/if}
-	{#if moving}
-		<div class="moveto">
-			<label
-				>Move "{pg.title || 'Untitled'}" inside
-				<select onchange={(e) => moveTo(e.currentTarget.value || null)}>
-					<option value="" selected={!pg.parentId}>— top level —</option>
-					{#each targets as t (t.id)}<option value={t.id} selected={pg.parentId === t.id}
-							>{t.title || 'Untitled'}</option
-						>{/each}
-				</select></label
-			>
-			<button class="btn sm" type="button" onclick={() => (moving = false)}>Cancel</button>
-		</div>
-	{/if}
-	{#if rec}
-		<div class="rec">
-			<a href="/pages/{rec.dbPageId}">← Back to {rec.dbTitle || 'database'}</a>
-			<dl>
-				{#each rec.props.filter((p) => p.type !== 'title') as p (p.id)}
-					<dt>{p.name}</dt>
-					<dd>
-						<DbCell
-							prop={p}
-							value={rec.row.values[p.id] ?? null}
-							invalid={rec.row.invalid?.includes(p.id)}
-							label={p.name}
-							onsave={(v) => setValue(p.id, v)}
-						/>
-					</dd>
-				{/each}
-			</dl>
-		</div>
-	{/if}
-	{#key pg.id}
-		<PageEditor bind:this={editor} page={pg} onstate={(s) => (saveState = s)} />
-	{/key}
+	<div class="body">
+		<input
+			class="title"
+			placeholder="Untitled"
+			aria-label="Page title"
+			maxlength="300"
+			readonly={pg.access === 'view'}
+			bind:value={title}
+			oninput={onTitle}
+		/>
+		{#if !mine}<p class="shared" role="status">
+				Shared with you · {pg.access === 'edit' ? 'you can edit' : 'view only'}
+			</p>{/if}
+		{#if sharing}<ShareDialog kind="page" id={pg.id} name={pg.title} onclose={() => (sharing = false)} />{/if}
+		{#if moving}
+			<div class="moveto">
+				<label
+					>Move "{pg.title || 'Untitled'}" inside
+					<select onchange={(e) => moveTo(e.currentTarget.value || null)}>
+						<option value="" selected={!pg.parentId}>— top level —</option>
+						{#each targets as t (t.id)}<option value={t.id} selected={pg.parentId === t.id}
+								>{t.title || 'Untitled'}</option
+							>{/each}
+					</select></label
+				>
+				<button class="btn sm" type="button" onclick={() => (moving = false)}>Cancel</button>
+			</div>
+		{/if}
+		{#if rec}
+			<div class="rec">
+				<a href="/pages/{rec.dbPageId}">← Back to {rec.dbTitle || 'database'}</a>
+				<dl>
+					{#each rec.props.filter((p) => p.type !== 'title') as p (p.id)}
+						<dt>{p.name}</dt>
+						<dd>
+							<DbCell
+								prop={p}
+								value={rec.row.values[p.id] ?? null}
+								invalid={rec.row.invalid?.includes(p.id)}
+								label={p.name}
+								onsave={(v) => setValue(p.id, v)}
+							/>
+						</dd>
+					{/each}
+				</dl>
+			</div>
+		{/if}
+		{#key pg.id}
+			<PageEditor bind:this={editor} page={pg} onstate={(s) => (saveState = s)} />
+		{/key}
+	</div>
 </article>
 <svelte:window
 	onclick={(e) => menu && !(e.target as HTMLElement).closest('.menu-wrap') && (menu = false)}
@@ -279,7 +292,7 @@
 	.shared {
 		margin: 0 0 6px;
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--quiet);
 	}
 	.rec {
 		margin: 8px 0 12px;
@@ -295,7 +308,7 @@
 		align-items: center;
 	}
 	.rec dt {
-		color: var(--muted);
+		color: var(--quiet);
 	}
 	.rec dd {
 		margin: 0;
@@ -314,35 +327,74 @@
 	.pagev {
 		min-height: 70vh;
 	}
-	.crumbs {
+	.bar {
 		display: flex;
-		gap: 6px;
-		font-size: 12px;
-		color: var(--muted);
-		flex-wrap: wrap;
-	}
-	.crumbs a {
-		color: var(--muted);
-	}
-	.hd {
-		display: flex;
-		gap: 10px;
 		align-items: center;
-		margin: 6px 0 4px;
+		gap: 10px;
+		flex-wrap: wrap;
+		padding: 12px 20px;
+		border-bottom: 1px solid var(--rule);
 	}
-	.title {
+	.crumbs {
 		flex: 1;
 		min-width: 0;
+		display: flex;
+		gap: 6px;
+		flex-wrap: wrap;
+		font-size: 13px;
+		color: var(--quiet);
+	}
+	.crumbs a {
+		color: var(--quiet);
+	}
+	.crumbs .here {
+		color: var(--ink);
+	}
+	.bar .btn {
+		gap: 6px;
+	}
+	.bar .btn[aria-pressed='true'] {
+		background: var(--pill-card);
+		color: var(--pill-ink);
+	}
+	.body {
+		max-width: 760px;
+		margin: 0 auto;
+		padding: 32px 56px 48px;
+	}
+	/* database pages need the room for columns (wireframe Database) */
+	.body:has(:global(section[data-db])) {
+		max-width: none;
+		padding: 28px 40px 40px;
+	}
+	.title {
+		display: block;
+		width: 100%;
+		margin: 0 0 12px;
+		padding: 0;
 		font: inherit;
-		font-size: 28px;
+		font-size: 32px;
 		font-weight: 700;
+		line-height: 1.25;
 		border: 0;
+		outline: none;
 		background: transparent;
 		color: var(--ink);
 	}
 	.state {
 		font-size: 12px;
-		color: var(--muted);
+		color: var(--quiet);
+	}
+	@media (max-width: 699px) {
+		.bar {
+			padding: 10px 12px;
+		}
+		.body {
+			padding: 20px 16px 32px;
+		}
+		.title {
+			font-size: 26px;
+		}
 	}
 	.menu-wrap {
 		position: relative;

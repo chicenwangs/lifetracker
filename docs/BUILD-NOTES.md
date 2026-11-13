@@ -3,6 +3,16 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## v2 fix — Pages look to wireframe (2026-11-14)
+- Tree (`wireframes/v2/PagesTree`): New page button + ▤ New database + «, 32 px rows, pin icon on header-pinned pages, tools as a list (Knowledge graph, Shared with me, Archive, Trash). Current row = `--pill-card`.
+- Page (`Pages`): top bar = crumbs (… / current) · save state · **Pin** (pressed when pinned) · **Share** · ⋯ (Move, Copy link, Archive, Delete). Body = 760 px column, 32 px title. Database pages get the full width (`Database`).
+- Editor: soft toolbar, tight block spacing, to-do box lined up with its text (24 px hit area), done = struck through, quiet table borders, header cells filled. "Delete table" button gone (Delete block does it). Slash menu = name + hint, yellow shadow, key help line.
+- Index / Archive / Trash / Graph cards get padding (`.panel` had none outside Settings). Phone: no duplicate index card, no « button.
+- Graph: sigma 4 sizes nodes in graph units by default → giant circles. Now `itemSizesReference: 'screen'`, all labels shown, colours from theme (dark mode readable).
+- `--muted` was never defined (10 files used it, fell back to ink): now = `--quiet`.
+- Audit vs FEATURES/wireframes, fixed: **no visible scrollbars** now global in `app.css` (§1.12, was only on DB tables) · **Header pins** card in Settings › Preferences: ↑ ↓ reorder + Unpin (§2, API already took the order) · phone **All pages** (MPages): title, search by title, Recent 5 (swipe row, `pages.recent`).
+- Open (owner call): Home "Due today" row vs spec "No time set today" — list also holds timed items (v1 FR-H12), so a rename alone would be wrong. Graph archived nodes = grey + "· archived", not dashed (sigma 4 has no dashed ring). `npm run dev`: graph layout worker is a `blob:` URL, CSP blocks it (prod build fine).
+
 ## v2 P9 — Release prep, no deploy (2026-11-14)
 
 - Feature freeze. Full regression: unit 340, e2e 25 (v1 flows + every v2 phase + axe sweep), lint, types.
