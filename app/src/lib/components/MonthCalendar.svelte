@@ -13,6 +13,7 @@
 		prettyDate,
 		prettyTime,
 	} from '$lib/time';
+	import { typeOf, typesState } from '$lib/client/itemtypes.svelte';
 	import { colorsFor, typeClass } from '$lib/colors';
 	import { badge, entryColors, theirClasses } from '$lib/client/partner';
 	import OverlapToggle from './OverlapToggle.svelte';
@@ -135,7 +136,7 @@
 			onopen(it.id);
 		});
 		wrap.append(btn, t);
-		const cd = examCountdown(it, today);
+		const cd = examCountdown(it, today, !!typeOf(it.type)?.countsDown);
 		if (cd) {
 			const b = document.createElement('span');
 			b.className = 'lt-dl' + (cd.days <= 3 ? ' soon' : '');
@@ -308,8 +309,8 @@
 		</div>
 	</div>
 	<div class="legend" aria-label="Type colours">
-		{#each ['Work', 'Exam', 'Event', 'Hobby', 'Dating'] as const as t (t)}
-			<span class="lg {typeClass(t)}">{t}</span>
+		{#each typesState.list as t (t.key)}
+			<span class="lg {typeClass(t.key)}" style:--bg={colorsFor(t.key).bg} style:--fg={colorsFor(t.key).ink}>{t.name}</span>
 		{/each}
 	</div>
 	<div class="grid" bind:this={el}></div>

@@ -52,8 +52,8 @@
 
 	const parsed = $derived(parseQuickAdd(value, ctx));
 	const optTok = $derived(activeOptionToken(value));
-	const options = $derived(optTok ? optionsFor(optTok) : []);
-	const ghost = $derived(placeholder && !value ? '' : ghostHint(value, parsed, slotted));
+	const options = $derived(optTok ? optionsFor(optTok, ctx) : []);
+	const ghost = $derived(placeholder && !value ? '' : ghostHint(value, parsed, slotted, ctx));
 	const menuOpen = $derived(!menuHidden && options.length > 0);
 	const before = $derived(optTok ? parseQuickAdd(value.slice(0, value.length - optTok.length), ctx) : parsed);
 

@@ -3,6 +3,7 @@ import { db } from './db';
 import { blocks, items, places } from './schema';
 import * as sessionsRepo from './repo/sessions';
 import * as rl from './ratelimit';
+import * as undo from './undo';
 import { nowUtcIso } from '$lib/time';
 
 /** hard delete soft-deleted rows older than 30 days */
@@ -34,5 +35,6 @@ export function purgeAll(now: number = Date.now()): void {
 	sessionsRepo.purgeExpired(now);
 	rl.purgeOld(now);
 	purgeTrash(now);
+	undo.purgeExpired(now);
 	// P2: sharekeys.purgeExpired()
 }

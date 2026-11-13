@@ -4,6 +4,8 @@ import { calendars, users } from '../schema';
 import { newId } from '../crypto';
 import { nowUtcIso } from '$lib/time';
 import { USER_COLORS } from '$lib/colors';
+import { seedFor } from './itemtypes';
+import { resolveTheme } from '$lib/theme';
 
 export type UserRow = typeof users.$inferSelect;
 
@@ -16,8 +18,17 @@ export function safe(u: UserRow): App.SafeUser {
 		color: u.color,
 		timezone: u.timezone,
 		overlapOn: u.overlapOn,
-		theme: u.theme,
+		theme: resolveTheme(u.themeMode, u.themeLightStart, u.themeDarkStart, u.timezone),
+		themeMode: u.themeMode,
+		themeLightStart: u.themeLightStart,
+		themeDarkStart: u.themeDarkStart,
 		planMode: u.planMode,
+		tourState: u.tourState,
+		region: u.region,
+		qaTarget: u.qaTarget,
+		blockMin: u.blockMin,
+		visibleHours: u.visibleHours,
+		hiddenTypes: u.hiddenTypes,
 	};
 }
 
@@ -70,6 +81,7 @@ export function createWithCalendar(input: {
 		.insert(calendars)
 		.values({ id: newId('cal'), ownerId: id, name: 'My calendar', isDefault: true, createdAt: now })
 		.run();
+	seedFor(id);
 	const u = byId(id);
 	if (!u) throw new Error('user insert failed');
 	return u;
@@ -79,15 +91,13 @@ export function setPasswordHash(id: string, hash: string): void {
 	db().update(users).set({ passwordHash: hash }).where(eq(users.id, id)).run();
 }
 
-export function setPrefs(
-	id: string,
-	prefs: {
-		overlapOn?: boolean;
-		displayName?: string;
-		color?: string;
-		theme?: 'dark' | 'light';
-		planMode?: 'night' | 'morning' | 'off' | null;
-	},
-): void {
+export type Prefs = Partial<
+	Pick<
+		UserRow,
+		| 'overlapOn' | 'displayName' | 'color' | 'theme' | 'themeMode' | 'themeLightStart' | 'themeDarkStart'
+		| 'planMode' | 'tourState' | 'timezone' | 'region' | 'qaTarget' | 'blockMin' | 'visibleHours' | 'hiddenTypes'
+	>
+>; // prettier-ignore
+export function setPrefs(id: string, prefs: Prefs): void {
 	db().update(users).set(prefs).where(eq(users.id, id)).run();
 }

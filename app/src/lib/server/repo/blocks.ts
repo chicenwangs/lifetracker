@@ -8,6 +8,7 @@ import { bad, notFound } from '../http';
 import { zIsoZ, zId, zStatus, zType } from '../validate';
 import * as calendarsRepo from './calendars';
 import * as itemsRepo from './items';
+import * as itemTypesRepo from './itemtypes';
 import { durationMin, isoPlus, nowUtcIso } from '$lib/time';
 import { nextStatus, type BlockDTO, type ItemType } from '$lib/types';
 
@@ -81,7 +82,7 @@ export function getOwn(meId: string, id: string): BlockRow | undefined {
 		.where(and(eq(blocks.id, id), inArray(blocks.calendarId, cals), live))
 		.get();
 }
-const mustOwn = (meId: string, id: string) => getOwn(meId, id) ?? notFound();
+export const mustOwn = (meId: string, id: string) => getOwn(meId, id) ?? notFound();
 
 export function forItem(meId: string, itemId: string): BlockRow[] {
 	itemsRepo.mustOwn(meId, itemId);
@@ -110,6 +111,7 @@ export const blockCreateSchema = z
 	.strict();
 
 export function create(meId: string, input: z.infer<typeof blockCreateSchema>): BlockRow {
+	itemTypesRepo.mustHave(meId, input.type);
 	let label = input.label;
 	if (input.itemId) {
 		const it = itemsRepo.mustOwn(meId, input.itemId);
@@ -155,6 +157,7 @@ export const blockPatchSchema = z
 
 export function patch(meId: string, id: string, p: z.infer<typeof blockPatchSchema>): BlockRow {
 	const cur = mustOwn(meId, id);
+	if (p.type !== undefined) itemTypesRepo.mustHave(meId, p.type);
 	const s = p.startAt ?? cur.startAt;
 	const e = p.endAt ?? cur.endAt;
 	checkRange(s, e);
@@ -180,7 +183,8 @@ export function cycle(meId: string, id: string): BlockRow {
 export function softDelete(meId: string, id: string): { batch: string } {
 	mustOwn(meId, id);
 	const batch = newId('del');
-	db().update(blocks).set({ deletedAt: nowUtcIso(), deletedBatch: batch }).where(eq(blocks.id, id)).run();
+	const now = nowUtcIso();
+	db().update(blocks).set({ deletedAt: now, deletedBatch: batch, updatedAt: now }).where(eq(blocks.id, id)).run();
 	return { batch };
 }
 

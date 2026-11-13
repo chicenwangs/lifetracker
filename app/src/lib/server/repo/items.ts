@@ -7,6 +7,7 @@ import { newId } from '../crypto';
 import { notFound, bad } from '../http';
 import { zDate, zStatus, zTime, zTitle, zType, zId } from '../validate';
 import * as calendarsRepo from './calendars';
+import * as itemTypesRepo from './itemtypes';
 import { addDays, diffDays, nowUtcIso } from '$lib/time';
 import { nextStatus, type ItemDTO, type Status } from '$lib/types';
 
@@ -144,6 +145,7 @@ export const itemCreateSchema = z
 export type ItemCreate = z.infer<typeof itemCreateSchema>;
 
 export function create(meId: string, input: ItemCreate): ItemRow {
+	itemTypesRepo.mustHave(meId, input.type);
 	checkDates(input.date, input.endDate);
 	if (input.time && !input.date) bad('time needs a date');
 	checkParent(meId, input.parentId);
@@ -202,6 +204,7 @@ function statusStamps(prev: ItemRow, s: Status, now: string) {
 
 export function patch(meId: string, id: string, p: ItemPatch): ItemRow {
 	const cur = mustOwn(meId, id);
+	if (p.type !== undefined) itemTypesRepo.mustHave(meId, p.type);
 	const date = p.date !== undefined ? p.date : cur.date;
 	let endDate = p.endDate !== undefined ? p.endDate : cur.endDate;
 	// moving date without explicit endDate keeps the span
@@ -239,6 +242,18 @@ export function cycle(meId: string, id: string): ItemRow {
 }
 
 // ---------- delete / trash (FR-I5) ----------
+/** rows a delete of this item touches (for the undo journal): it, its live steps, their live blocks */
+export function deleteSet(meId: string, id: string): { t: 'items' | 'blocks'; id: string }[] {
+	const cur = mustOwn(meId, id);
+	const ids = [cur.id, ...steps(meId, cur.id).map((s) => s.id)];
+	const bl = db()
+		.select({ id: blocks.id })
+		.from(blocks)
+		.where(and(inArray(blocks.itemId, ids), isNull(blocks.deletedAt)))
+		.all();
+	return [...ids.map((i) => ({ t: 'items' as const, id: i })), ...bl.map((b) => ({ t: 'blocks' as const, id: b.id }))];
+}
+
 export function softDelete(meId: string, id: string): { batch: string } {
 	const cur = mustOwn(meId, id);
 	const batch = newId('del');
@@ -251,10 +266,10 @@ export function softDelete(meId: string, id: string): { batch: string } {
 			.all()
 			.map((r) => r.id);
 		const all = [cur.id, ...stepIds];
-		db().update(items).set({ deletedAt: now, deletedBatch: batch }).where(inArray(items.id, all)).run();
+		db().update(items).set({ deletedAt: now, deletedBatch: batch, updatedAt: now }).where(inArray(items.id, all)).run();
 		db()
 			.update(blocks)
-			.set({ deletedAt: now, deletedBatch: batch })
+			.set({ deletedAt: now, deletedBatch: batch, updatedAt: now })
 			.where(and(inArray(blocks.itemId, all), isNull(blocks.deletedAt)))
 			.run();
 	})();

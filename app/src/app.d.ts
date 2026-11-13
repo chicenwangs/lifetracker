@@ -9,8 +9,18 @@ declare global {
 			color: string;
 			timezone: string;
 			overlapOn: boolean;
+			/** theme to paint now (themeMode resolved against the clock) */
 			theme: 'dark' | 'light';
+			themeMode: 'dark' | 'light' | 'auto';
+			themeLightStart: string;
+			themeDarkStart: string;
 			planMode: 'night' | 'morning' | 'off' | null;
+			tourState: 'new' | 'skipped' | 'done';
+			region: 'my' | 'us';
+			qaTarget: 'timeline' | 'calendar';
+			blockMin: number;
+			visibleHours: string;
+			hiddenTypes: string[];
 		}
 		interface SessionInfo {
 			id: string;

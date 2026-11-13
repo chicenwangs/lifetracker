@@ -6,9 +6,10 @@
 	import StatusSquare from './StatusSquare.svelte';
 	import Markdown from './Markdown.svelte';
 	import DayPlanner from './DayPlanner.svelte';
+	import { typeOf, typesState } from '$lib/client/itemtypes.svelte';
 	import { colorsFor } from '$lib/colors';
 	import { addDays, examCountdown, prettyDate, utcToLocal } from '$lib/time';
-	import { TYPES, type BlockDTO, type ItemDTO, type ItemType } from '$lib/types';
+	import type { BlockDTO, ItemDTO, ItemType } from '$lib/types';
 	import { get, patch, post } from '$lib/client/api';
 	import { showError } from '$lib/client/toast.svelte';
 	import { removeItem } from '$lib/client/remove';
@@ -55,7 +56,7 @@
 
 	const it = $derived(v?.item);
 	const c = $derived(colorsFor(it?.type ?? null));
-	const cd = $derived(it && v ? examCountdown(it, v.today) : null);
+	const cd = $derived(it && v ? examCountdown(it, v.today, !!typeOf(it.type)?.countsDown) : null);
 	const STATUS_WORD = { todo: 'Not started', doing: 'In progress', done: 'Done' } as const;
 
 	// sequence numbers: a slow older response never overwrites a newer one
@@ -350,7 +351,7 @@
 							onchange={(e) => save({ type: (e.currentTarget.value || null) as ItemType | null })}
 						>
 							<option value="">None</option>
-							{#each TYPES as t (t)}<option value={t}>{t}</option>{/each}
+							{#each typesState.list as t (t.key)}<option value={t.key}>{t.name}</option>{/each}
 						</select>
 					</label>
 					<label class="prop">

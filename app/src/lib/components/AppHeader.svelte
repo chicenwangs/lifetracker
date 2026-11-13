@@ -12,8 +12,14 @@
 	];
 	let menu = $state(false);
 	// svelte-ignore state_referenced_locally
-	initTheme(user.theme);
+	initTheme(user);
 	const dark = $derived(themeState.value === 'dark');
+	const auto = $derived(themeState.mode === 'auto');
+	const themeTip = $derived(
+		auto
+			? `Auto: ${dark ? `dark until ${themeState.light}` : `light until ${themeState.dark}`}. Click for ${dark ? 'light' : 'dark'}.`
+			: `${dark ? 'Dark' : 'Light'} (fixed). Click for ${dark ? 'light' : 'dark'}.`,
+	);
 </script>
 
 <header class="hdr">
@@ -33,11 +39,17 @@
 			class="theme"
 			type="button"
 			aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-			title={dark ? 'Light mode' : 'Dark mode'}
+			title={themeTip}
 			aria-pressed={dark}
+			class:auto
 			onclick={() => setTheme(dark ? 'light' : 'dark')}
 		>
-			{#if dark}
+			{#if auto}
+				<!-- half circle = Auto (UX-AUDIT #18) -->
+				<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"
+					><circle cx="12" cy="12" r="8" /><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" /></svg
+				>
+			{:else if dark}
 				<svg
 					width="18"
 					height="18"

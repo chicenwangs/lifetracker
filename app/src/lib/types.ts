@@ -1,7 +1,23 @@
 // Shared types (client + server).
-export const TYPES = ['Work', 'Exam', 'Event', 'Hobby', 'Dating'] as const;
-export type ItemType = (typeof TYPES)[number];
+/** v2: an item type key from the owner's item_types (built-ins keep their v1 keys: Work Exam Event Hobby Dating). */
+export type ItemType = string;
 export type TypeKey = ItemType | 'None';
+
+export interface ItemTypeDTO {
+	id: string;
+	key: string;
+	name: string;
+	bg: string;
+	ink: string;
+	slug: string;
+	position: number;
+	builtin: boolean;
+	shareDefault: boolean;
+	countsDown: boolean;
+	isDefault: boolean;
+	/** items + blocks using it (Settings only) */
+	used?: number;
+}
 export const STATUSES = ['todo', 'doing', 'done'] as const;
 export type Status = (typeof STATUSES)[number];
 
@@ -51,9 +67,8 @@ export interface BlockDTO {
 	busy?: boolean;
 }
 
-/** what a share code / grant lets the other person see. 'None' = items with no type; 'Blocks' = planner blocks */
-export const SHARE_KINDS = ['Work', 'Exam', 'Event', 'Hobby', 'Dating', 'None', 'Blocks'] as const;
-export type ShareKind = (typeof SHARE_KINDS)[number];
+/** what a share code / grant lets the other person see: a type key, 'None' = no type, 'Blocks' = planner blocks */
+export type ShareKind = string;
 
 export interface CalendarPayload {
 	items: ItemDTO[];

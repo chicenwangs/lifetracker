@@ -8,6 +8,8 @@
 -->
 <script lang="ts">
 	import { tick } from 'svelte';
+	import { page } from '$app/state';
+	import { qaPrefs } from '$lib/client/itemtypes.svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
 	import CommandInput from './CommandInput.svelte';
@@ -43,7 +45,7 @@
 	let opener: HTMLButtonElement | undefined = $state();
 	let logEl: HTMLDivElement | undefined = $state();
 
-	const ctx = $derived({ today: todayLocal(tz), nowMinutes: nowLocalMinutes(tz) });
+	const ctx = $derived({ today: todayLocal(tz), nowMinutes: nowLocalMinutes(tz), ...qaPrefs(page.data.user) });
 	const parsed = $derived(parseQuickAdd(text, ctx));
 
 	// ---------- live timeline ----------
