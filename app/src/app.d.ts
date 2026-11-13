@@ -21,6 +21,9 @@ declare global {
 			blockMin: number;
 			visibleHours: string;
 			hiddenTypes: string[];
+			notifyPlanner: boolean;
+			notifyKeep: boolean;
+			notifyPages: boolean;
 		}
 		interface SessionInfo {
 			id: string;

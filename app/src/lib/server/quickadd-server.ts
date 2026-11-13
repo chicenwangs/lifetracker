@@ -4,6 +4,7 @@ import { parseQuickAdd, type QAContext, type QASlot } from '$lib/quickadd';
 import * as items from './repo/items';
 import * as blocks from './repo/blocks';
 import { undoable } from './undo';
+import * as reminders from './reminders';
 import { bad } from './http';
 import { localToUtc, nowLocalMinutes, todayLocal } from '$lib/time';
 import * as itemTypes from './repo/itemtypes';
@@ -52,8 +53,28 @@ export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(
 			);
 			block = blocks.toDTO(b, item?.type ?? null);
 		}
+		// /remind: on the item when there is one, else on the block. A time that already passed = a warning, not a failure.
+		const warnings = [...r.warnings];
+		const src = item
+			? ({ t: 'planner_item', id: item.id } as const)
+			: block
+				? ({ t: 'planner_block', id: block.id } as const)
+				: null;
+		for (const o of src ? r.reminders : []) {
+			try {
+				reminders.add(
+					me.id,
+					(src as { t: reminders.Source }).t,
+					(src as { id: string }).id,
+					{ offset: o },
+					now,
+				);
+			} catch (e) {
+				warnings.push(`Reminder ${o}: ${(e as Error).message}`);
+			}
+		}
 		return {
-			result: { item, block, target: r.target, notes: r.notes, warnings: r.warnings },
+			result: { item, block, target: r.target, notes: r.notes, warnings, reminders: r.reminders },
 			created: [
 				...(item ? [{ t: 'items' as const, id: item.id }] : []),
 				...(block ? [{ t: 'blocks' as const, id: block.id }] : []),

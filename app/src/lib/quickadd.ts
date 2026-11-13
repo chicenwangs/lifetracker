@@ -13,6 +13,7 @@
 import { addDays, hhmm, isDate, makeDate, weekdayOf } from './time';
 import type { ItemType, ItemTypeDTO } from './types';
 import { defaultTypes, LEGACY_SLUGS, slugMap } from './itemtypes';
+import { parseOffset } from './remind';
 
 export interface QAContext {
 	today: string; // local YYYY-MM-DD
@@ -56,6 +57,8 @@ export interface QAParse {
 	fromSlot: boolean;
 	notes: string[]; // informational, e.g. "rounded to 15 min"
 	warnings: string[]; // shown with the result, never block
+	/** /remind offsets (1w 3d 2d 1d 2h 15min), set on what gets created */
+	reminders: string[];
 	problems: string[]; // shown on Enter; `code` in backticks
 }
 
@@ -358,6 +361,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	const types = ctx.types ?? defaultTypes();
 	const TYPE_WORDS = slugMap(types);
 
+	const reminders: string[] = [];
 	let type: ItemType | null = null;
 	const targets = new Set<QATarget>();
 	let dur: number | null = null;
@@ -404,6 +408,25 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 				.replace(/[,.;:!?]+$/, '');
 			if (!k) {
 				used.add(i);
+				continue;
+			}
+			// /remind 2h · /remind 1d 2h · /remind2h (PRD §8: before the item's time; exact words only)
+			if (k.startsWith('remind') && !own(TYPE_WORDS, k)) {
+				used.add(i);
+				const glued = k.slice(6);
+				const found: string[] = [];
+				if (glued) {
+					if (parseOffset(glued)) found.push(glued);
+					else problems.push(`\`${raw}\`: reminder times are 1w, 3d, 2d, 1d, 2h or 15min.`);
+				}
+				for (let j = i + 1; j < tokens.length && parseOffset(low[j] ?? ''); j++) {
+					found.push(low[j] as string);
+					used.add(j);
+					i = j;
+				}
+				if (!found.length && !glued)
+					problems.push('`/remind` needs a time after it: 1w, 3d, 2d, 1d, 2h or 15min.');
+				for (const o of found) if (!reminders.includes(o)) reminders.push(o);
 				continue;
 			}
 			if (!k.includes('/')) {
@@ -833,6 +856,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 		fromSlot,
 		notes,
 		warnings,
+		reminders,
 		problems,
 	};
 }
@@ -840,7 +864,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 // ---------- palette helpers (pure, used by QuickAdd.svelte) ----------
 
 export interface QAOption {
-	group: 'Type' | 'Goes to';
+	group: 'Type' | 'Goes to' | 'Remind';
 	token: string; // inserted text incl. prefix, e.g. "/hobby"
 	label: string;
 	hint: string;
@@ -864,6 +888,7 @@ export function slashOptions(ctx: Pick<QAContext, 'types' | 'qaTarget'> = {}): Q
 		{ group: 'Goes to', token: '/planner', label: 'Planner', hint: cal ? 'time block' : 'default · time block', target: 'planner' },
 		{ group: 'Goes to', token: '/calendar', label: 'Calendar', hint: cal ? 'default · item' : 'big event only', target: 'calendar' },
 		{ group: 'Goes to', token: '/both', label: 'Both', hint: 'calendar + block', target: 'both' },
+		{ group: 'Remind', token: '/remind', label: 'Reminder', hint: 'then 1w 3d 2d 1d 2h 15min' },
 	]; // prettier-ignore
 }
 

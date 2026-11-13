@@ -76,6 +76,10 @@ export const users = sqliteTable(
 			.$type<string[]>()
 			.notNull()
 			.default(sql`'[]'`),
+		// D-15 per-kind reminder toggles. On by default: v1 had no reminders, so nobody gets one they didn't add.
+		notifyPlanner: integer('notify_planner', { mode: 'boolean' }).notNull().default(true),
+		notifyKeep: integer('notify_keep', { mode: 'boolean' }).notNull().default(true),
+		notifyPages: integer('notify_pages', { mode: 'boolean' }).notNull().default(true),
 		createdAt: text('created_at').notNull().default(nowZ),
 	},
 	// v2 column CHECKs (theme_mode, tour_state, region, qa_target, block_min, hidden_types) are in drizzle/0003 SQL:
@@ -633,6 +637,64 @@ export const databaseViews = sqliteTable(
 		index('db_views_db').on(t.databaseId, t.position),
 		check('db_views_config', jsonValid('config_json')),
 	],
+);
+
+// ---------- v2: Reminders + push (DESIGN §13, §5) ----------
+export const REMINDER_SOURCES = ['planner_item', 'planner_block', 'keep_note', 'database_record'] as const;
+export const reminders = sqliteTable(
+	'reminders',
+	{
+		id: text('id').primaryKey(),
+		ownerId: text('owner_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		sourceType: text('source_type', { enum: REMINDER_SOURCES }).notNull(),
+		sourceId: text('source_id').notNull(),
+		ruleKind: text('rule_kind', { enum: ['relative', 'absolute'] }).notNull(),
+		relValue: integer('rel_value'),
+		relUnit: text('rel_unit', { enum: ['minute', 'hour', 'day', 'week'] }),
+		/** absolute rules: the chosen instant (UTC Z). relative: due_at is recalculated from the source */
+		atTime: text('at_time'),
+		dueAt: text('due_at'),
+		status: text('status', {
+			enum: ['scheduled', 'processing', 'sent', 'failed', 'cancelled', 'missed'],
+		}).notNull(),
+		attempts: integer('attempts').notNull().default(0),
+		lastError: text('last_error'),
+		claimedAt: text('claimed_at'),
+		sentAt: text('sent_at'),
+		seenAt: text('seen_at'),
+		createdAt: text('created_at').notNull(),
+		updatedAt: text('updated_at').notNull(),
+	},
+	(t) => [
+		index('reminders_due').on(t.status, t.dueAt),
+		index('reminders_source').on(t.sourceType, t.sourceId),
+		check('reminders_source_type', inList('source_type', REMINDER_SOURCES)),
+		check('reminders_rule', inList('rule_kind', ['relative', 'absolute'])),
+		check(
+			'reminders_status',
+			inList('status', ['scheduled', 'processing', 'sent', 'failed', 'cancelled', 'missed']),
+		),
+	],
+);
+export const pushSubscriptions = sqliteTable(
+	'push_subscriptions',
+	{
+		id: text('id').primaryKey(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		endpointHash: text('endpoint_hash').notNull().unique(),
+		endpoint: text('endpoint').notNull(),
+		p256dh: text('p256dh').notNull(),
+		auth: text('auth').notNull(),
+		userAgent: text('user_agent'),
+		createdAt: text('created_at').notNull(),
+		lastSuccessAt: text('last_success_at'),
+		revokedAt: text('revoked_at'),
+	},
+	(t) => [index('push_user').on(t.userId)],
 );
 
 // ---------- sharing ----------

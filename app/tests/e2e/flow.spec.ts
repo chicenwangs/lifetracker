@@ -847,6 +847,32 @@ test('v2 P5 Graph: shows my pages, archived toggle, list fallback, node select o
 	await expect(page.getByLabel('Page title')).toHaveValue(name === 'Untitled' ? '' : (name ?? ''));
 });
 
+test('v2 P6 Reminders: /remind in quick add, editor on the item, in-app reminder fires, push state honest', async () => {
+	const d = await today();
+	const tmr = plusDay(d, 1);
+	const r = await api('POST', '/api/quickadd', { text: `dentist ${tmr} 3pm /calendar /remind 1d 2h` });
+	expect(r.s).toBe(201);
+	const id = (r.j as { item: { id: string } }).item.id;
+	await page.goto(`/item/${id}`);
+	const box = page.locator('.rem');
+	await expect(box.locator('.row:not(.add)')).toHaveCount(2); // NOTIF-002 two coexist
+	await box
+		.getByRole('button', { name: /Remove reminder/ })
+		.first()
+		.click(); // NOTIF-004 remove one only
+	await expect(box.locator('.row:not(.add)')).toHaveCount(1);
+	// a reminder a few seconds from now: the runner sends it, the app shows it in-app (no push keys in tests)
+	const at = new Date(Date.now() + 4000).toISOString().slice(0, 19) + 'Z';
+	expect((await api('POST', '/api/reminders', { source: 'planner_item', sourceId: id, at })).s).toBe(201);
+	await page.waitForTimeout(7000);
+	await page.reload();
+	await expect(page.locator('.toast')).toContainText('⏰ dentist');
+	// NOTIF-005: push not set up -> says so, button off, app fine
+	await page.goto('/settings/notifications');
+	await expect(page.getByText('No (the admin has not set it up')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Turn push on for this device' })).toBeDisabled();
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)

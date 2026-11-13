@@ -198,3 +198,13 @@ export interface GraphDTO {
 	truncated: boolean;
 	generatedAt: string;
 }
+
+// ---------- Reminders (FEATURES §9) ----------
+export interface ReminderDTO {
+	id: string;
+	kind: 'relative' | 'absolute';
+	/** "2 hour" style rule for relative ones */
+	offset: string | null;
+	dueAt: string | null;
+	status: 'scheduled' | 'processing' | 'sent' | 'failed' | 'cancelled' | 'missed';
+}

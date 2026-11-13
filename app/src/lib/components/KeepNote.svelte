@@ -1,6 +1,8 @@
 <!-- Keep note editor (FEATURES §5 K-NOTE, K-CHECK, K-IMG, K-LABEL, K-BINDER, K-PIN). Autosave ~600 ms + on close.
      A new note is only created once it has content; an empty one is simply dropped on close. -->
 <script lang="ts">
+	import Reminders from './Reminders.svelte';
+	import { page } from '$app/state';
 	import { tick } from 'svelte';
 	import { patch, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
@@ -485,6 +487,12 @@
 		</span>
 		<button class="btn sm" type="button" onclick={close} title="Esc">Close</button>
 	</div>
+	{#if id}<Reminders
+			source="keep_note"
+			sourceId={id}
+			tz={page.data.user?.timezone ?? 'Asia/Kuala_Lumpur'}
+			relative={false}
+		/>{/if}
 	{#if start}<span class="hint"
 			>Edited {new Date(start.updatedAt).toLocaleString()} · Created {new Date(
 				start.createdAt,

@@ -1,6 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import * as items from '$lib/server/repo/items';
+import { recalcOwner } from '$lib/server/reminders';
 import { utcToLocal } from '$lib/time';
 
 export const load: PageServerLoad = ({ locals }) => {
@@ -57,6 +58,7 @@ export const actions: Actions = {
 	restore: async ({ request, locals }) => {
 		const batch = String((await request.formData()).get('batch') ?? '');
 		const n = items.restore((locals.user as App.SafeUser).id, batch);
+		recalcOwner((locals.user as App.SafeUser).id);
 		if (!n) return fail(404, { message: 'Not found' });
 		return { restored: n };
 	},

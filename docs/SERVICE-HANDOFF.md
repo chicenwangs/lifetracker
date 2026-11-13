@@ -7,7 +7,7 @@ Owner: Jeremy (`chicenwangs`). Target: Ubuntu homelab, Docker Compose, public at
 ## 1. What it is
 
 - Web app: personal calendar + day planner. Users sign up, plan their days, and can share a read-only view of their calendar with each other by swapping codes.
-- One container (Node 22, SvelteKit server) + one SQLite file. No other database, no cache, no queue, no outbound calls at runtime.
+- One container (Node 22, SvelteKit server) + one SQLite file. No other database, no cache, no queue. **v2: one kind of outbound call** — Web Push to the browsers' push services over HTTPS 443 (`*.notify.windows.com`, `fcm.googleapis.com`, `*.push.apple.com`, `updates.push.services.mozilla.com`), only when VAPID keys are set (D-23). Link previews stay off.
 - Expected load: a handful of users. One replica only (SQLite = one writer). Do not scale horizontally.
 - Second container `cloudflared` publishes it. No inbound ports on the router.
 
@@ -34,7 +34,7 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | User | `node` uid 1000. The data folder on the host must be owned by 1000:1000. |
 | Filesystem | Read-only root in compose. Writable: `/app/data` (volume), `/tmp` (tmpfs). |
 | State | `/app/data/app.db` (+ `-wal`, `-shm` while running). `/app/data/seed/` = optional Notion import input. `/app/data/backups/` = from `backup.sh`. **v2:** `/app/data/uploads/` = attached files (`<2 chars>/<key>`, temp files in `uploads/.tmp/`). Back it up with the DB. |
-| Health | `GET /healthz` → `200 {"ok":true,"db":true,"version":"1.0.0"}`; 503 if the DB is unusable. No auth. Image HEALTHCHECK every 30 s. |
+| Health | `GET /healthz` → `200 {"ok":true,"db":true,"version":"…","jobs":true,"reminderBacklog":0}`; 503 if the DB is unusable. A backlog that keeps growing = the runner is stuck (check logs for `[job]`). No auth. Image HEALTHCHECK every 30 s. |
 | Start | Runs DB migrations on boot (forward only), then listens. Logs `[boot] v<version> db ready, origin=…, secureCookies=…, proxyHeader=…`. Bad env = exits with `Bad env:` lines, no partial start. |
 | Stop | SIGTERM → finishes in-flight requests → closes DB (`[shutdown] db closed`). `init: true` in compose. |
 | Logs | stdout/stderr, plain lines. Errors: `[error] <status> <method> <path>: <message>`. Never logs bodies, cookies, passwords or tokens. json-file driver, 10 MB × 3. |
@@ -55,6 +55,10 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | `DATABASE_PATH`, `SEED_DIR` | set by compose | `/app/data/app.db`, `/app/data/seed`. Do not change. |
 | `UPLOAD_DIR` | v2, optional | Empty = `/app/data/uploads`. Must be on the data volume (temp files are written inside it, so rename never crosses filesystems). |
 | `MAX_UPLOAD_BYTES` | v2, optional | Default `26214400` (25 MB, D-12). Allowed types: png jpg gif webp pdf zip docx xlsx pptx doc xls ppt txt md csv. |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | v2, optional | Both or neither (boot fails on one). Make once: `docker compose run --rm app npx web-push generate-vapid-keys`. Keep the private one in the password manager. Unset = push off; reminders still show inside the app. Changing them breaks every device's push until it re-subscribes. |
+| `VAPID_SUBJECT` | with VAPID | `mailto:you@example.com` (push services contact this if something is wrong). |
+| `JOBS_ENABLED` | v2, default `true` | In-process reminder runner. One replica only (two would double-send). |
+| `REMINDER_POLL_INTERVAL_MS` | v2, default `30000` | How often due reminders are checked. |
 | `BODY_SIZE_LIMIT` | set by the image | `26M` so uploads reach the app. The app itself refuses any other request body over 1 MB. Don't lower it below `MAX_UPLOAD_BYTES`. |
 
 ## 4. First deploy

@@ -50,6 +50,13 @@
       "when": 1794571681992,
       "tag": "0006_v2_databases",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1794585254393,
+      "tag": "0007_v2_reminders",
+      "breakpoints": true
     }
   ]
 }

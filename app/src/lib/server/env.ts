@@ -43,6 +43,22 @@ const schema = z.object({
 		.min(1024)
 		.max(1024 * 1024 * 1024)
 		.default(25 * 1024 * 1024),
+	/** Web Push (D-23 yes). No keys = push off; the app still runs and reminders show in-app. `npx web-push generate-vapid-keys` */
+	VAPID_PUBLIC_KEY: z
+		.string()
+		.optional()
+		.transform((v) => v || undefined),
+	VAPID_PRIVATE_KEY: z
+		.string()
+		.optional()
+		.transform((v) => v || undefined),
+	VAPID_SUBJECT: z
+		.string()
+		.optional()
+		.transform((v) => v || undefined),
+	/** in-process job runner (reminders). Default on. */
+	JOBS_ENABLED: z.enum(['true', 'false']).default('true'),
+	REMINDER_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).max(3_600_000).default(30_000),
 });
 
 export type Env = z.infer<typeof schema> & { secureCookies: boolean; uploadDir: string };
@@ -60,6 +76,8 @@ export function parseEnv(source: Record<string, string | undefined>): Env {
 		throw new Error(
 			'Bad env:\n  ADDRESS_HEADER: required when ORIGIN is https in production (e.g. CF-Connecting-IP)',
 		);
+	if (!!r.data.VAPID_PUBLIC_KEY !== !!r.data.VAPID_PRIVATE_KEY)
+		throw new Error('Bad env:\n  VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY go together (set both or neither)');
 	const uploadDir =
 		r.data.UPLOAD_DIR ??
 		join(dirname(r.data.DATABASE_PATH === ':memory:' ? tmpdir() + '/x' : r.data.DATABASE_PATH), 'uploads');

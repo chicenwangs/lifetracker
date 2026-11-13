@@ -3,6 +3,16 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## v2 P6 — Reminders + push (2026-11-14)
+
+- Migration 0007: `reminders`, `push_subscriptions`, `users.notify_planner|keep|pages`.
+- `/remind 1w|3d|2d|1d|2h|15min` in quick add (several: `/remind 1d 2h`, glued `/remind2h` ok; anything else = a problem). Lands on the item (calendar/both) or the block (planner). A time already passed = warning, the item is still made.
+- Reminder editor on the item view (offset before its time, or an exact time) and on Keep notes (exact time). API also takes database records (exact time). Not built: page to-dos (cut to v2.1).
+- Rules: D-13 all-day items count from 09:00 on their date (1d = 09:00 the day before). D-14 more than 1 h late = sent once marked "missed". D-15 per-kind toggles + 15min, no quiet hours. D-16 archived notes still remind, trashed ones don't. Duplicate time refused. Move/delete/restore/undo re-checks the user's reminders; the runner re-checks the source again before sending.
+- Runner in-process (every 30 s, stops before the DB closes); claim in a txn, send outside it, retry with backoff up to 5 times; `/healthz` shows `jobs` + `reminderBacklog`.
+- Channels: in-app (toast while the app is open, checked every minute + on tab focus) and Web Push (`web-push`, VAPID from env; payload = title + route only; 404/410 revokes; turning off deletes our row first). Settings › Notifications: explain first, ask the browser only on a click, three honest states, Send a test.
+- Push itself is tested only by spike S-4 (Edge). Chrome/Android/iOS + from the homelab = ADR-006 conditions, still open.
+
 ## v2 P5 — Graph (2026-11-13)
 
 - `/pages/graph` (Pages sidebar → Graph, Ctrl+K → Knowledge graph). Read model built per request from my live pages + `page_links` (parent edges + link edges), cap 5,000 nodes (most recently opened first; banner when cut). Edges to anything not mine are never sent. `GET /api/graph`.
