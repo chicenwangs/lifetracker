@@ -13,7 +13,9 @@ Spike code + how to re-run: `spikes/README.md`. Numbers below were measured 2026
 | [006](006-scheduler-push.md) | In-process job runner + `web-push` | **GO with conditions** | S-4, 6/6 on Edge only |
 | [007](007-graph-renderer.md) | Graph = sigma (WebGL) + own layout worker | **GO with limits** | S-2, 14/14 |
 
-Later: 008 co-edit (P7), 009 offline sync (P8).
+| [008](008-co-edit.md) | Co-edit: none in v2.0, 409 on clash, Yjs → v2.1 | **Accepted** | P7 |
+
+Later: 009 offline sync (P8).
 
 ## Not proven yet (carry into the phase that builds it)
 

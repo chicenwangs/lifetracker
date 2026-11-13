@@ -3,6 +3,19 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## v2 P7 — Sharing + v1 data import (2026-11-14)
+
+- Migration 0008: `page_shares`, `keep_note_shares` (one row per page/note + person, view|edit, CASCADE). Revoke = delete the row.
+- `repo/shares.ts` = the one access check. `need(kind, user, id, min)` → owner id to run the owner-scoped repos with; no access = 404 `Not found` (nothing about the thing), too low = 403.
+- Rules: D-01 explicit only (subpages stay private) · D-02 links + breadcrumbs show only pages the viewer can open (else "unavailable", no title) · D-03 a shared page shares its database (rows, record pages) · D-04 no public links. Trashed = gone for them too; archived still shared.
+- View = read. Edit = page title/text, database rows; note title/text/checklist. Owner only: share, move, archive, delete, pins, labels, binders, colour, files on notes, database columns + views.
+- Files: page docs now keep `attachment_refs` (`page_block`, page id) — before this, page images had no ref and GC would have removed them after 7 d. Download = owner, or can read a page/note that uses it. A pasted URL to someone else's file gives nothing.
+- UI: page ⋯ › Share… and note Share… (username + Can view/Can edit, change, Remove) · `/shared` "Shared with me" (link in Pages + Keep sidebars) · "Shared with you · view only" line, read-only editor.
+- Co-edit: ADR-008, none in v2.0 (409 + keep text). Search + graph stay mine-only (shared things never leak in).
+- D-22: Settings › Account "Old v1 data" turns dormant lists, people + facts, ideas, places, goals, workout split + log into Keep notes labelled "From v1". Once per user (`app_meta`), all or nothing, old tables untouched.
+- Cut to v2.1: Keep Takeout import + export, live co-edit.
+- Tests: `shares.test.ts` = DESIGN §21 matrix (owner/view/edit/other/revoked/guessed id/guessed file id, 404 bodies say only "Not found") + D-01..D-03 + importer. e2e: share view-only → read, PATCH 403 → revoke → 404 next load.
+
 ## v2 P6 — Reminders + push (2026-11-14)
 
 - Migration 0007: `reminders`, `push_subscriptions`, `users.notify_planner|keep|pages`.

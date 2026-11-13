@@ -157,6 +157,8 @@ export interface PageDTO extends PageNode {
 	/** internal link targets in this page -> current title, or null = unavailable (gone / not mine) */
 	links: Record<string, { title: string; archived: boolean } | null>;
 	pinned: boolean;
+	/** what the viewer may do: their own page, or a share (D-01: explicit only) */
+	access: 'owner' | 'edit' | 'view';
 }
 
 // ---------- Databases (FEATURES PG-DB, DESIGN §7) ----------

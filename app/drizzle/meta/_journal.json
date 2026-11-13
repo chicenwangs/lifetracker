@@ -57,6 +57,13 @@
       "when": 1794585254393,
       "tag": "0007_v2_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1794586194905,
+      "tag": "0008_v2_shares",
+      "breakpoints": true
     }
   ]
 }

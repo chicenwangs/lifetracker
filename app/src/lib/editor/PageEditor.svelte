@@ -175,6 +175,7 @@
 				Slash.configure({ items }),
 			],
 			content: (page.doc.content.length ? page.doc : { type: 'doc', content: [{ type: 'paragraph' }] }) as Content,
+			editable: page.access !== 'view',
 			editorProps: { attributes: { 'aria-label': 'Page content', class: 'pm' } },
 			onUpdate: changed,
 			onSelectionUpdate: ({ editor: e }) => {

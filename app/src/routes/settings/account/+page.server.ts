@@ -1,6 +1,8 @@
 import { fail } from '@sveltejs/kit';
 import { z } from 'zod';
-import type { Actions } from './$types';
+import type { Actions, PageServerLoad } from './$types';
+import { ApiFail } from '$lib/server/http';
+import { importDormant, pending } from '$lib/server/dormant';
 import { changePassword } from '$lib/server/auth';
 import * as users from '$lib/server/repo/users';
 import { USER_COLORS } from '$lib/colors';
@@ -12,7 +14,21 @@ const profile = z
 	})
 	.strict();
 
+/** D-22: old v1 lists, people, ideas, places, goals, workouts waiting to become Keep notes (null = done) */
+export const load: PageServerLoad = ({ locals }) => {
+	const p = pending((locals.user as App.SafeUser).id);
+	return { v1: p && Object.values(p).some((n) => n > 0) ? p : null };
+};
+
 export const actions: Actions = {
+	importV1: ({ locals }) => {
+		try {
+			return { v1Ok: importDormant((locals.user as App.SafeUser).id).notes };
+		} catch (e) {
+			if (e instanceof ApiFail) return fail(e.status, { v1Msg: e.message });
+			throw e;
+		}
+	},
 	profile: async ({ request, locals }) => {
 		const me = locals.user as App.SafeUser;
 		const f = await request.formData();

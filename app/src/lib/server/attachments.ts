@@ -49,6 +49,7 @@ export function cleanName(name: string): string {
 const extOf = (name: string) => (/\.([a-z0-9]{1,5})$/i.exec(name)?.[1] ?? '').toLowerCase();
 
 import type { AttachmentDTO } from '$lib/types';
+import { accessOf, type Kind } from './repo/shares';
 export type { AttachmentDTO };
 type Row = { id: string; owner_id: string; storage_key: string; original_name: string; mime_type: string; byte_size: number; status: string; deleted_at: string | null }; // prettier-ignore
 const db = () => handle().sqlite;
@@ -118,12 +119,38 @@ export async function save(
 	}
 } // prettier-ignore
 
-/** the file to send, if `userId` may read it. Owner only until sharing (P7) adds "can read a referencing source". */
+/** the file to send, if `userId` owns it or can read a note/page that uses it (shares, DESIGN §12) */
 export function readable(userId: string, id: string): { row: Row; path: string; inline: boolean } {
 	const r = db().prepare(`SELECT * FROM attachments WHERE id = ?`).get(id) as Row | undefined;
-	if (!r || r.owner_id !== userId || r.status !== 'ready' || r.deleted_at)
+	if (!r || r.status !== 'ready' || r.deleted_at || (r.owner_id !== userId && !viaSource(userId, id)))
 		throw new ApiFail(404, 'not_found', 'Not found');
 	return { row: r, path: pathOf(r.storage_key), inline: !!KINDS[extOf(r.original_name)]?.inline };
+}
+
+const SOURCE_KIND: Record<string, Kind> = { keep_note: 'note', page_block: 'page' };
+function viaSource(userId: string, id: string): boolean {
+	const refs = db().prepare(`SELECT source_type, source_id FROM attachment_refs WHERE attachment_id = ?`).all(id) as { source_type: string; source_id: string }[]; // prettier-ignore
+	return refs.some((x) => { const k = SOURCE_KIND[x.source_type]; return !!k && !!accessOf(k, userId, x.source_id); }); // prettier-ignore
+}
+
+/** replace a source's refs with `ids`; only ready files owned by one of `owners` count (a pasted foreign URL gives no access) */
+export function syncRefs(
+	sourceType: string,
+	sourceId: string,
+	refOwner: string,
+	ids: string[],
+	owners: string[],
+): void {
+	dropRefs(sourceType, sourceId);
+	const ok = db().prepare(
+		`SELECT owner_id FROM attachments WHERE id = ? AND status = 'ready' AND deleted_at IS NULL`,
+	);
+	const ins = db().prepare(`INSERT OR IGNORE INTO attachment_refs (id, attachment_id, owner_id, source_type, source_id, created_at) VALUES (?, ?, ?, ?, ?, ?)`); // prettier-ignore
+	for (const a of ids) {
+		const r = ok.get(a) as { owner_id: string } | undefined;
+		if (r && owners.includes(r.owner_id))
+			ins.run(newId('atr'), a, refOwner, sourceType, sourceId, nowUtcIso());
+	}
 }
 
 /** link an attachment to its source (Keep note, page block …) */

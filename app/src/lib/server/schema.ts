@@ -697,6 +697,31 @@ export const pushSubscriptions = sqliteTable(
 	(t) => [index('push_user').on(t.userId)],
 );
 
+// ---------- v2: page + note shares (DESIGN §14, D-01..D-04). Explicit rows only; revoke = delete the row. ----------
+const shareTable = (name: string, col: string, target: () => typeof pages.id | typeof keepNotes.id) =>
+	sqliteTable(
+		name,
+		{
+			id: text('id').primaryKey(),
+			resourceId: text(col).notNull().references(target, { onDelete: 'cascade' }),
+			ownerId: text('owner_id')
+				.notNull()
+				.references(() => users.id, { onDelete: 'cascade' }),
+			granteeId: text('grantee_id')
+				.notNull()
+				.references(() => users.id, { onDelete: 'cascade' }),
+			permission: text('permission', { enum: ['view', 'edit'] }).notNull(),
+			createdAt: text('created_at').notNull(),
+		},
+		(t) => [
+			uniqueIndex(`${name}_unique`).on(t.resourceId, t.granteeId),
+			index(`${name}_grantee`).on(t.granteeId),
+			check(`${name}_permission`, inList('permission', ['view', 'edit'])),
+		],
+	);
+export const pageShares = shareTable('page_shares', 'page_id', () => pages.id);
+export const keepNoteShares = shareTable('keep_note_shares', 'note_id', () => keepNotes.id);
+
 // ---------- sharing ----------
 export const shareKeys = sqliteTable(
 	'share_keys',

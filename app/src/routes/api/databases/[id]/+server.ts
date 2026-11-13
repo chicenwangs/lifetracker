@@ -3,11 +3,12 @@ import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { api, body, me } from '$lib/server/http';
 import * as dbs from '$lib/server/repo/databases';
+import { needDb } from '$lib/server/repo/shares';
 
 export const GET = api((e) => {
 	const q = e.url.searchParams;
 	return json({
-		database: dbs.get(me(e).id, e.params.id ?? '', {
+		database: dbs.get(needDb(me(e).id, e.params.id ?? ''), e.params.id ?? '', {
 			viewId: q.get('view') ?? undefined,
 			offset: Number(q.get('offset')) || 0,
 			limit: Number(q.get('limit')) || undefined,
