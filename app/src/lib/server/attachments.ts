@@ -48,13 +48,8 @@ export function cleanName(name: string): string {
 }
 const extOf = (name: string) => (/\.([a-z0-9]{1,5})$/i.exec(name)?.[1] ?? '').toLowerCase();
 
-export interface AttachmentDTO {
-	id: string;
-	name: string;
-	mime: string;
-	size: number;
-	url: string;
-}
+import type { AttachmentDTO } from '$lib/types';
+export type { AttachmentDTO };
 type Row = { id: string; owner_id: string; storage_key: string; original_name: string; mime_type: string; byte_size: number; status: string; deleted_at: string | null }; // prettier-ignore
 const db = () => handle().sqlite;
 const toDTO = (r: Row): AttachmentDTO => ({ id: r.id, name: r.original_name, mime: r.mime_type, size: r.byte_size, url: `/api/attachments/${r.id}` }); // prettier-ignore

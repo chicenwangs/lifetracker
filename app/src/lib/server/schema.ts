@@ -2,7 +2,17 @@
 // Not expressible here, patched into drizzle/0000 SQL by hand:
 //   users.username COLLATE NOCASE. FTS5 table lives in custom migration 0001.
 import { sql } from 'drizzle-orm';
-import { check, index, integer, real, sqliteTable, text, uniqueIndex, unique } from 'drizzle-orm/sqlite-core';
+import {
+	check,
+	index,
+	integer,
+	primaryKey,
+	real,
+	sqliteTable,
+	text,
+	uniqueIndex,
+	unique,
+} from 'drizzle-orm/sqlite-core';
 
 // v2: item/block `type` = an item_types.key of the calendar owner (validated in the service), NULL = No type.
 // Built-in keys keep the v1 values (Work Exam Event Hobby Dating) so live data and share codes need no rewrite.
@@ -321,6 +331,111 @@ export const undoActions = sqliteTable(
 		index('undo_user').on(t.userId, t.createdAt),
 		index('undo_expires').on(t.expiresAt),
 		check('undo_rows_json', jsonValid('rows')),
+	],
+);
+
+// ---------- v2: Keep (DESIGN §5, §8). Order = REAL position (midpoint insert); see BUILD-NOTES. ----------
+export const keepNotes = sqliteTable(
+	'keep_notes',
+	{
+		id: text('id').primaryKey(),
+		ownerId: text('owner_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		noteType: text('note_type', { enum: ['text', 'checklist'] })
+			.notNull()
+			.default('text'),
+		title: text('title').notNull().default(''),
+		body: text('body').notNull().default(''),
+		color: text('color'),
+		pinned: integer('pinned', { mode: 'boolean' }).notNull().default(false),
+		position: real('position').notNull(),
+		archivedAt: text('archived_at'),
+		deletedAt: text('deleted_at'),
+		createdAt: text('created_at').notNull(),
+		updatedAt: text('updated_at').notNull(),
+		revision: integer('revision').notNull().default(1),
+	},
+	(t) => [
+		index('keep_notes_list').on(t.ownerId, t.deletedAt, t.archivedAt, t.pinned, t.position),
+		check('keep_notes_type', inList('note_type', ['text', 'checklist'])),
+		check('keep_notes_title_len', sql`length(title) <= 300`),
+		check('keep_notes_body_len', sql`length(body) <= 20000`),
+	],
+);
+
+export const keepChecklistItems = sqliteTable(
+	'keep_checklist_items',
+	{
+		id: text('id').primaryKey(),
+		noteId: text('note_id')
+			.notNull()
+			.references(() => keepNotes.id, { onDelete: 'cascade' }),
+		parentItemId: text('parent_item_id'),
+		text: text('text').notNull().default(''),
+		checked: integer('checked', { mode: 'boolean' }).notNull().default(false),
+		position: real('position').notNull(),
+	},
+	(t) => [
+		index('keep_items_note').on(t.noteId, t.position),
+		check('keep_items_text_len', sql`length(text) <= 1000`),
+	],
+);
+
+export const keepLabels = sqliteTable(
+	'keep_labels',
+	{
+		id: text('id').primaryKey(),
+		ownerId: text('owner_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		position: real('position').notNull(),
+		createdAt: text('created_at').notNull(),
+	},
+	(t) => [uniqueIndex('keep_labels_owner_name').on(t.ownerId, sql`name COLLATE NOCASE`)],
+);
+export const keepNoteLabels = sqliteTable(
+	'keep_note_labels',
+	{
+		noteId: text('note_id')
+			.notNull()
+			.references(() => keepNotes.id, { onDelete: 'cascade' }),
+		labelId: text('label_id')
+			.notNull()
+			.references(() => keepLabels.id, { onDelete: 'cascade' }),
+	},
+	(t) => [primaryKey({ columns: [t.noteId, t.labelId] }), index('keep_nl_label').on(t.labelId)],
+);
+
+export const keepBinders = sqliteTable(
+	'keep_binders',
+	{
+		id: text('id').primaryKey(),
+		ownerId: text('owner_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		position: real('position').notNull(),
+		createdAt: text('created_at').notNull(),
+		updatedAt: text('updated_at').notNull(),
+	},
+	(t) => [index('keep_binders_owner').on(t.ownerId, t.position)],
+);
+export const keepNoteBinders = sqliteTable(
+	'keep_note_binders',
+	{
+		noteId: text('note_id')
+			.notNull()
+			.references(() => keepNotes.id, { onDelete: 'cascade' }),
+		binderId: text('binder_id')
+			.notNull()
+			.references(() => keepBinders.id, { onDelete: 'cascade' }),
+		position: real('position').notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.noteId, t.binderId] }),
+		index('keep_nb_binder').on(t.binderId, t.position),
 	],
 );
 

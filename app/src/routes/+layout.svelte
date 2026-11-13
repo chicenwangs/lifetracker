@@ -4,6 +4,8 @@
 	import { closePeek, peek } from '$lib/client/peek.svelte';
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import UndoToast from '$lib/components/UndoToast.svelte';
+	import MobileBar from '$lib/components/MobileBar.svelte';
+	import MobileAdd from '$lib/components/MobileAdd.svelte';
 	import ItemPeek from '$lib/components/ItemPeek.svelte';
 	import { browser } from '$app/environment';
 	import { initHours } from '$lib/client/hours.svelte';
@@ -24,6 +26,10 @@
 	{#key peek.id}
 		<ItemPeek id={peek.id} origin={peek.origin ?? undefined} onclose={closePeek} />
 	{/key}
+{/if}
+{#if data.user}
+	<MobileBar />
+	<MobileAdd />
 {/if}
 <UndoToast />
 <svelte:window onkeydown={(e) => data.user && onUndoKey(e)} />

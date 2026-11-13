@@ -9,6 +9,7 @@
 	const NAV = [
 		{ href: '/', label: 'Home', match: (p: string) => p === '/' },
 		{ href: '/week', label: 'Week', match: (p: string) => p.startsWith('/week') },
+		{ href: '/keep', label: 'Keep', match: (p: string) => p.startsWith('/keep') },
 	];
 	let menu = $state(false);
 	let help = $state(false);
@@ -360,5 +361,16 @@
 	}
 	.mark:hover {
 		transform: rotate(-6deg) scale(1.06);
+	}
+	/* phone: the bottom bar has nav + Add (FEATURES §10) */
+	@media (max-width: 699px) {
+		nav,
+		.right > :global(.opener) {
+			display: none;
+		}
+		.hdr {
+			padding: 8px 12px;
+			min-height: 52px;
+		}
 	}
 </style>

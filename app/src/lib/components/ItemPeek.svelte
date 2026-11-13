@@ -93,4 +93,17 @@
 		border: 1.5px solid var(--card-edge);
 		box-shadow: -8px 8px 0 var(--accent);
 	}
+	/* phone: item opens as a bottom sheet (FEATURES §10), edits stay simple; Open as page for the rest */
+	@media (max-width: 699px) {
+		.scrim {
+			padding: 12vh 0 0;
+			align-items: flex-end;
+		}
+		.panel {
+			border-radius: 16px 16px 0 0;
+			min-height: 88vh;
+			padding: 14px 14px 96px;
+			box-shadow: none;
+		}
+	}
 </style>

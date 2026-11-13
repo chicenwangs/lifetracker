@@ -94,3 +94,47 @@ export interface HeatDay {
 	/** all-day items on this day that are not done and have no block */
 	unblocked: number;
 }
+
+/** an uploaded file (DESIGN §12) */
+export interface AttachmentDTO {
+	id: string;
+	name: string;
+	mime: string;
+	size: number;
+	url: string;
+}
+
+// ---------- Keep (FEATURES §5) ----------
+export interface ChecklistItem {
+	id: string;
+	text: string;
+	checked: boolean;
+	parentId: string | null;
+}
+export interface NoteDTO {
+	id: string;
+	type: 'text' | 'checklist';
+	title: string;
+	body: string;
+	color: string | null;
+	pinned: boolean;
+	archived: boolean;
+	trashed: boolean;
+	labels: string[];
+	binders: string[];
+	items: ChecklistItem[];
+	images: AttachmentDTO[];
+	createdAt: string;
+	updatedAt: string;
+	revision: number;
+}
+export interface LabelDTO {
+	id: string;
+	name: string;
+	count: number;
+}
+export interface BinderDTO {
+	id: string;
+	name: string;
+	count: number;
+}
