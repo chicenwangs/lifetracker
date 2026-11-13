@@ -4,6 +4,7 @@
 	const LINKS = [
 		{ href: '/?m=', label: 'Month', hint: 'Compact month; tap a day for its planner' },
 		{ href: '/week', label: 'Week', hint: 'Read-first on a phone' },
+		{ href: '/pages', label: 'Pages', hint: 'All pages, then open one to read or edit' },
 		{ href: '/keep?scope=archive', label: 'Keep archive', hint: '' },
 		{ href: '/trash', label: 'Planner trash', hint: 'Deleted items and blocks, 30 days' },
 		{

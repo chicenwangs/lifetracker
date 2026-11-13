@@ -138,3 +138,23 @@ export interface BinderDTO {
 	name: string;
 	count: number;
 }
+
+// ---------- Pages (FEATURES §6) ----------
+export interface PageNode {
+	id: string;
+	parentId: string | null;
+	title: string;
+	icon: string | null;
+}
+export interface PageDTO extends PageNode {
+	archived: boolean;
+	revision: number;
+	updatedAt: string;
+	createdAt: string;
+	/** Tiptap JSON doc assembled from the page's blocks */
+	doc: { type: 'doc'; content: unknown[] };
+	crumbs: { id: string; title: string }[];
+	/** internal link targets in this page -> current title, or null = unavailable (gone / not mine) */
+	links: Record<string, { title: string; archived: boolean } | null>;
+	pinned: boolean;
+}

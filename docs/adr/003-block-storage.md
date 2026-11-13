@@ -1,6 +1,6 @@
 # ADR-003 — block storage
 
-Status: **Accepted, 1 open point** (2026-11-13). Proof: S-1 JSON round-trip. Schema = DESIGN §5 `page_blocks`.
+Status: **Accepted** (2026-11-13). Open point closed in P3: **replace-all save** (below). Proof: S-1 JSON round-trip. Schema = DESIGN §5 `page_blocks`.
 
 ## Decision
 - A page = metadata row + ordered rows in `page_blocks`. Never one HTML or JSON blob per page.
@@ -15,7 +15,10 @@ Status: **Accepted, 1 open point** (2026-11-13). Proof: S-1 JSON round-trip. Sch
 - Search, graph links and "changed blocks only" autosave need addressable blocks.
 - One long page edit rewrites a few rows, not the whole page.
 
-## Open point (P3, first task)
+## Open point — CLOSED in P3 (2026-11-13): replace-all
+Chosen: every save replaces all of the page's `page_blocks` rows in one transaction (+ `page_links` and the search row). No stable block ids needed. Cost: no per-block history (not planned anyway); a save rewrites the page's rows (fine up to the 1 MB page cap). Revisit only if co-edit (ADR-008) needs block identity.
+
+### Original note
 **Stable block ids.** Rows need the same id across saves. Plan: a small extension that puts an `id` attr on every top-level node and fills it on create/split/paste (duplicates get a new id). Not spiked. If it can't be made reliable: fall back to "replace all blocks of the page in one txn" (simple, loses per-block history) and write a new ADR.
 
 ## Consequences

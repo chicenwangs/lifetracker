@@ -693,6 +693,83 @@ test('v2 P2 phone: opens on Today, Now card, + Add, Keep quick note, no sideways
 	await ctx.close();
 });
 
+test('v2 P3 Pages: tree, slash menu, internal link survives rename, pin cap, archive, Ctrl+K', async () => {
+	await page.goto('/pages');
+	await page.getByRole('button', { name: 'New page' }).last().click();
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	const parentUrl = page.url();
+	await page.getByLabel('Page title').fill('Gym');
+	await expect(page.locator('.state')).toContainText('Saved');
+	// "/" menu: heading, then a to-do
+	const ed = page.locator('.pm');
+	await ed.click();
+	await page.keyboard.type('/head');
+	await expect(page.getByRole('listbox', { name: 'Insert block' })).toContainText('Heading 1');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('Plan');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('/zzz');
+	await page.keyboard.press('Escape'); // cancel keeps the text as typed
+	await expect(ed).toContainText('/zzz');
+	await expect(page.locator('.state')).toContainText('Saved');
+	await expect(ed.locator('h1')).toHaveText('Plan');
+	// child page via the tree "+"
+	await page.getByRole('button', { name: 'New page inside Gym' }).click();
+	await page.waitForURL((u) => u.href !== parentUrl && /\/pages\/pg_/.test(u.pathname));
+	await expect(page.getByLabel('Page title')).toHaveValue('');
+	await page.getByLabel('Page title').fill('Leg day');
+	await expect(page.locator('.state')).toContainText('Saved');
+	const childUrl = page.url();
+	// link from the parent to the child, then rename the child: link shows the new title
+	await page.goto(parentUrl);
+	await page.locator('.pm').click();
+	await page.keyboard.press('Control+End');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('/link');
+	await page.keyboard.press('Enter');
+	await page.getByLabel('Search your pages').fill('Leg');
+	await page.getByRole('button', { name: 'Leg day' }).click();
+	await expect(page.locator('.state')).toContainText('Saved');
+	await page.goto(childUrl);
+	await expect(page.locator('.pm')).toBeVisible(); // hydrated (the editor mounts on the client)
+	await expect(page.getByLabel('Page title')).toHaveValue('Leg day');
+	await page.getByLabel('Page title').fill('Legs');
+	await expect(page.locator('.state')).toContainText('Saved');
+	await page.goto(parentUrl);
+	await expect(page.locator('a.pl')).toHaveText('↗ Legs');
+	// pin cap: 3 pins ok, 4th refused
+	const made: string[] = [];
+	for (const t of ['P1', 'P2', 'P3']) made.push((await api('POST', '/api/pages', { title: t })).j.page.id);
+	expect((await api('PUT', '/api/page-shortcuts', { ids: made })).s).toBe(200);
+	await page.reload();
+	await expect(page.locator('nav a.pin')).toHaveCount(3);
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Pin to header' }).click();
+	await expect(page.locator('.toast')).toContainText('pin 3 pages');
+	// archive parent takes the child; gone from tree; link target page still opens
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Archive' }).click();
+	await expect(page.locator('.toast')).toContainText('Archived with 1 subpages');
+	await expect(page.getByRole('tree', { name: 'Page tree' })).not.toContainText('Gym');
+	await page.goto(childUrl);
+	await expect(page.locator('.arch')).toContainText('Archived');
+	// Ctrl+K finds archived only with the toggle; finds a Keep note too
+	await page.keyboard.press('Control+k');
+	await page.keyboard.type('Legs');
+	await expect(page.getByRole('listbox', { name: 'Results' })).not.toContainText('Legs');
+	await page.getByLabel('Include archived').check();
+	await expect(page.getByRole('option', { name: /Legs/ })).toBeVisible();
+	await page.keyboard.press('Escape');
+	// restore from Archive view: back under its old parent
+	await page.goto('/pages/archive');
+	await page
+		.locator('.row')
+		.filter({ has: page.getByRole('link', { name: 'Gym', exact: true }) })
+		.getByRole('button', { name: 'Restore' })
+		.click();
+	await expect(page.getByRole('tree', { name: 'Page tree' })).toContainText('Gym');
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)

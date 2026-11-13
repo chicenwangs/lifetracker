@@ -439,6 +439,102 @@ export const keepNoteBinders = sqliteTable(
 	],
 );
 
+// ---------- v2: Pages (DESIGN §5, §6, ADR-003) ----------
+export const pages = sqliteTable(
+	'pages',
+	{
+		id: text('id').primaryKey(),
+		ownerId: text('owner_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		parentPageId: text('parent_page_id').references((): ReturnType<typeof text> => pages.id, {
+			onDelete: 'set null',
+		}),
+		title: text('title').notNull().default(''),
+		icon: text('icon'),
+		position: real('position').notNull(),
+		archivedAt: text('archived_at'),
+		archivedBatch: text('archived_batch'),
+		lastOpenedAt: text('last_opened_at'),
+		deletedAt: text('deleted_at'),
+		deletedBatch: text('deleted_batch'),
+		createdAt: text('created_at').notNull(),
+		updatedAt: text('updated_at').notNull(),
+		createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+		updatedBy: text('updated_by').references(() => users.id, { onDelete: 'set null' }),
+		revision: integer('revision').notNull().default(1),
+	},
+	(t) => [
+		index('pages_tree').on(t.ownerId, t.parentPageId, t.position),
+		index('pages_archived').on(t.ownerId, t.archivedAt),
+		index('pages_opened').on(t.ownerId, t.lastOpenedAt),
+		check('pages_title_len', sql`length(title) <= 300`),
+	],
+);
+
+/** one row per top-level editor node; content_json = that node's Tiptap JSON (ADR-003) */
+export const pageBlocks = sqliteTable(
+	'page_blocks',
+	{
+		id: text('id').primaryKey(),
+		pageId: text('page_id')
+			.notNull()
+			.references(() => pages.id, { onDelete: 'cascade' }),
+		parentBlockId: text('parent_block_id'),
+		blockType: text('block_type').notNull(),
+		position: real('position').notNull(),
+		contentJson: text('content_json').notNull(),
+		schemaVersion: integer('schema_version').notNull().default(1),
+		createdAt: text('created_at').notNull(),
+		updatedAt: text('updated_at').notNull(),
+		updatedBy: text('updated_by').references(() => users.id, { onDelete: 'set null' }),
+	},
+	(t) => [
+		index('page_blocks_page').on(t.pageId, t.position),
+		check('page_blocks_json', jsonValid('content_json')),
+	],
+);
+
+/** projection of internal links, rebuilt on every save (never the source of truth) */
+export const pageLinks = sqliteTable(
+	'page_links',
+	{
+		id: text('id').primaryKey(),
+		sourcePageId: text('source_page_id')
+			.notNull()
+			.references(() => pages.id, { onDelete: 'cascade' }),
+		targetPageId: text('target_page_id')
+			.notNull()
+			.references(() => pages.id, { onDelete: 'cascade' }),
+		sourceBlockId: text('source_block_id').notNull(),
+		createdAt: text('created_at').notNull(),
+	},
+	(t) => [
+		uniqueIndex('page_links_unique').on(t.sourceBlockId, t.targetPageId),
+		index('page_links_target').on(t.targetPageId),
+		index('page_links_source').on(t.sourcePageId),
+	],
+);
+
+export const pageShortcuts = sqliteTable(
+	'page_shortcuts',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		pageId: text('page_id')
+			.notNull()
+			.references(() => pages.id, { onDelete: 'cascade' }),
+		slot: integer('slot').notNull(),
+		createdAt: text('created_at').notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.userId, t.pageId] }),
+		uniqueIndex('page_shortcuts_slot').on(t.userId, t.slot),
+		check('page_shortcuts_slot_range', sql`slot BETWEEN 0 AND 2`),
+	],
+);
+
 // ---------- sharing ----------
 export const shareKeys = sqliteTable(
 	'share_keys',

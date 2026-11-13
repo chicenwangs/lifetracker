@@ -44,7 +44,7 @@ const tables = db
 	.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`)
 	.all()
 	.map((r) => r.name)
-	.filter((t) => !t.startsWith('search_fts') && t !== '__drizzle_migrations');
+	.filter((t) => !t.startsWith('search_fts') && !t.startsWith('content_search') && t !== '__drizzle_migrations');
 
 const originals = new Set();
 // any failure below must not leave a half-scrubbed copy of real data on disk
@@ -59,7 +59,9 @@ process.on('exit', (code) => {
 });
 db.transaction(() => {
 	for (const t of EMPTY) db.prepare(`DELETE FROM ${t}`).run();
-	db.prepare(`DELETE FROM search_fts`).run();
+	// search indexes hold copies of real text: empty them (the app rebuilds on use)
+	for (const t of ['search_fts', 'content_search'])
+		if (db.prepare(`SELECT 1 FROM sqlite_master WHERE name = ?`).get(t)) db.prepare(`DELETE FROM ${t}`).run();
 	for (const t of tables) {
 		for (const { name: c } of db.prepare(`PRAGMA table_info(${t})`).all()) {
 			if (keep(c)) continue;

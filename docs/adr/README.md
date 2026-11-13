@@ -7,7 +7,7 @@ Spike code + how to re-run: `spikes/README.md`. Numbers below were measured 2026
 |---|---|---|---|
 | [001](001-monolith-sqlite.md) | One SvelteKit process + one SQLite file | Accepted | v1.1.0 in production |
 | [002](002-editor-tiptap.md) | Pages editor = Tiptap 3 | **GO** | S-1, 22/22 |
-| [003](003-block-storage.md) | One row per top-level block, Tiptap JSON inside | Accepted, 1 open point | S-1 round-trip |
+| [003](003-block-storage.md) | One row per top-level block, Tiptap JSON inside; save = replace all | Accepted | S-1 round-trip, P3 tests |
 | [004](004-db-record-model.md) | Databases = rows (props, records, values) | Accepted | design only, no spike |
 | [005](005-attachments.md) | Stream to `uploads/.tmp`, rename into place | **GO**, 2 things unproven | S-3, 11/11 |
 | [006](006-scheduler-push.md) | In-process job runner + `web-push` | **GO with conditions** | S-4, 6/6 on Edge only |
@@ -25,4 +25,3 @@ Later: 008 co-edit (P7), 009 offline sync (P8).
 | Real cross-disk rename (EXDEV) | one disk here; error was injected | same |
 | Graph at 5k/20k at 60 fps | 29 fps on the integrated GPU; cause not found | P5, first task |
 | Dashed archived nodes, phone graph fallback | not spiked | P5 |
-| Stable block ids inside the editor | not spiked | P3, first task |
