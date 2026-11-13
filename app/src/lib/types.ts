@@ -158,3 +158,35 @@ export interface PageDTO extends PageNode {
 	links: Record<string, { title: string; archived: boolean } | null>;
 	pinned: boolean;
 }
+
+// ---------- Databases (FEATURES PG-DB, DESIGN §7) ----------
+export interface DbProp {
+	id: string;
+	name: string;
+	type: import('./dbvalues').PropType;
+	config: import('./dbvalues').PropConfig;
+}
+export interface DbView {
+	id: string;
+	name: string;
+	type: 'table' | 'board' | 'calendar' | 'list' | 'gallery';
+	config: import('./dbvalues').ViewConfig;
+}
+export interface DbRow {
+	id: string;
+	pageId: string | null;
+	/** propertyId -> stored value */
+	values: Record<string, unknown>;
+	/** properties whose stored value no longer fits the type (D-19: kept, flagged) */
+	invalid?: string[];
+}
+export interface DatabaseDTO {
+	id: string;
+	title: string;
+	pageId: string;
+	props: DbProp[];
+	views: DbView[];
+	viewId: string;
+	rows: DbRow[];
+	total: number;
+}

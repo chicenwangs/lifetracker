@@ -535,6 +535,106 @@ export const pageShortcuts = sqliteTable(
 	],
 );
 
+// ---------- v2: Databases (DESIGN §5, §7, ADR-004). A database lives on a page (its block). ----------
+export const pageDatabases = sqliteTable(
+	'page_databases',
+	{
+		id: text('id').primaryKey(),
+		ownerId: text('owner_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		pageId: text('page_id')
+			.notNull()
+			.references(() => pages.id, { onDelete: 'cascade' }),
+		title: text('title').notNull().default(''),
+		createdAt: text('created_at').notNull(),
+		updatedAt: text('updated_at').notNull(),
+		revision: integer('revision').notNull().default(1),
+	},
+	(t) => [index('page_databases_owner').on(t.ownerId), index('page_databases_page').on(t.pageId)],
+);
+export const PROPERTY_TYPES = [
+	'title',
+	'text',
+	'number',
+	'date',
+	'checkbox',
+	'select',
+	'multi_select',
+	'url',
+] as const;
+export const databaseProperties = sqliteTable(
+	'database_properties',
+	{
+		id: text('id').primaryKey(),
+		databaseId: text('database_id')
+			.notNull()
+			.references(() => pageDatabases.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		propertyType: text('property_type', { enum: PROPERTY_TYPES }).notNull(),
+		configJson: text('config_json').notNull().default('{}'),
+		position: real('position').notNull(),
+		createdAt: text('created_at').notNull(),
+		updatedAt: text('updated_at').notNull(),
+	},
+	(t) => [
+		index('db_props_db').on(t.databaseId, t.position),
+		check('db_props_type', inList('property_type', PROPERTY_TYPES)),
+		check('db_props_config', jsonValid('config_json')),
+	],
+);
+export const databaseRecords = sqliteTable(
+	'database_records',
+	{
+		id: text('id').primaryKey(),
+		databaseId: text('database_id')
+			.notNull()
+			.references(() => pageDatabases.id, { onDelete: 'cascade' }),
+		pageId: text('page_id').references(() => pages.id, { onDelete: 'set null' }),
+		position: real('position').notNull(),
+		createdAt: text('created_at').notNull(),
+		updatedAt: text('updated_at').notNull(),
+		revision: integer('revision').notNull().default(1),
+	},
+	(t) => [index('db_records_db').on(t.databaseId, t.position), uniqueIndex('db_records_page').on(t.pageId)],
+);
+export const databaseValues = sqliteTable(
+	'database_values',
+	{
+		recordId: text('record_id')
+			.notNull()
+			.references(() => databaseRecords.id, { onDelete: 'cascade' }),
+		propertyId: text('property_id')
+			.notNull()
+			.references(() => databaseProperties.id, { onDelete: 'cascade' }),
+		valueJson: text('value_json').notNull(),
+		updatedAt: text('updated_at').notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.recordId, t.propertyId] }),
+		check('db_values_json', jsonValid('value_json')),
+	],
+);
+export const databaseViews = sqliteTable(
+	'database_views',
+	{
+		id: text('id').primaryKey(),
+		databaseId: text('database_id')
+			.notNull()
+			.references(() => pageDatabases.id, { onDelete: 'cascade' }),
+		name: text('name').notNull(),
+		viewType: text('view_type', { enum: ['table', 'board', 'calendar', 'list', 'gallery'] })
+			.notNull()
+			.default('table'),
+		configJson: text('config_json').notNull().default('{}'),
+		position: real('position').notNull(),
+	},
+	(t) => [
+		index('db_views_db').on(t.databaseId, t.position),
+		check('db_views_config', jsonValid('config_json')),
+	],
+);
+
 // ---------- sharing ----------
 export const shareKeys = sqliteTable(
 	'share_keys',
