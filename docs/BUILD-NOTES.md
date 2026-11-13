@@ -3,6 +3,15 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## v2 P3 — Pages + Ctrl+K (2026-11-13)
+
+- **Pages** at `/pages` (header link): left tree on every Pages screen (collapsible; phone = All pages), create root/child, rename (title), Move to… (rejects self/descendant), Move up/down, Copy link, Pin to header (≤ 3, D-20 title only, PUT full list), Archive (page + subpages, one undo; pins removed; stays in links/graph; "Archived · Restore" bar), Archive view (search, sort, Was in, Restore → old parent or root) + 90-day suggestions (unticked, Select all, never automatic), Trash (D-18, 30 d, confirm first).
+- Editor = Tiptap 3 (ADR-002): text, H1–H3, bullet, numbered, to-do, divider, table (+/− row/col), quote, code, image (upload, **alt text required**), file (upload → link), internal page link (shows the target's current title; archived = italic; gone = "Unavailable page"), external links (http/https/mailto only). `/` menu (Esc keeps "/text"). Inline B I U S code link. Block ↑↓ (also Alt+↑/↓), Duplicate, Delete; block ops close the undo group. Autosave 600 ms; failed save keeps text + Retry; stale revision = 409, text kept.
+- Save = replace all of the page's blocks in one txn + rebuild `page_links` + search (ADR-003 closed). Server checks every node/mark/attr against an allowlist, image src must be an uploaded file, page ≤ 1 MB.
+- **Search**: one FTS5 index `content_search` (Keep notes + Pages, updated in the same txn; archived hidden unless asked). Replaces the never-used `search_fts` (dropped). Planner items: title match.
+- **Ctrl/Cmd+K** palette + header Search button: actions (Quick add, New note, New page, go to …), pages, notes, planner items; Include archived toggle. Owner-only everywhere.
+- Not built: drag handle for blocks (menu/keys instead), multi-select blocks, page icons picker, database block (P4).
+
 ## v2 P2 — Keep + phone Today (2026-11-13)
 
 - **Keep** at `/keep` (header link): notes (title + body, both optional; created on first content, an empty one is dropped), checklists (nest 4 levels, D-10; Tab/Shift+Tab or →/← buttons; ↑↓ moves an item with its children; collapse), images (attachment store, png/jpg/gif/webp), labels (filter = all ticked labels), binders (note in many; own order), colours (7 pastel, look only), pin, archive, Trash (30 d, D-17; delete forever = confirm), duplicate, Select mode (bulk archive/delete/restore), search over title/body/checklist text (`LIKE`, newest first; FTS comes in P3), ↑↓ reorder (no drag needed).

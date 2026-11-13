@@ -6,6 +6,7 @@ import { handle, txImmediate } from '../db';
 import { newId } from '../crypto';
 import { ApiFail, bad, notFound } from '../http';
 import * as attachments from '../attachments';
+import * as fts from '../search';
 import { nowUtcIso } from '$lib/time';
 
 export const MAX_DEPTH = 4; // D-10
@@ -178,6 +179,13 @@ function writeParts(ownerId: string, id: string, p: NoteInput) {
 	}
 } // prettier-ignore
 
+/** keep the search index in step (same transaction as the write): trash = out, archive = hidden by default */
+function reindex(ownerId: string, id: string) {
+	const n = get(ownerId, id);
+	if (n.trashed) return fts.unindex('note', id);
+	fts.index(ownerId, 'note', id, n.title, `${n.body} ${n.items.map((i) => i.text).join(' ')}`, n.archived);
+}
+
 export function create(ownerId: string, p: NoteInput): NoteDTO {
 	const empty =
 		!p.title?.trim() && !p.body?.trim() && !p.items?.some((i) => i.text.trim()) && !p.images?.length;
@@ -189,6 +197,7 @@ export function create(ownerId: string, p: NoteInput): NoteDTO {
 			.prepare(`INSERT INTO keep_notes (id, owner_id, note_type, title, body, color, pinned, position, archived_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 			.run(id, ownerId, p.type ?? 'text', p.title ?? '', p.body ?? '', p.color ?? null, p.pinned ? 1 : 0, maxPos(`SELECT max(position) AS m FROM keep_notes WHERE owner_id = ?`, ownerId), p.archived ? now : null, now, now); // prettier-ignore
 		writeParts(ownerId, id, p);
+		reindex(ownerId, id);
 		return get(ownerId, id);
 	});
 }
@@ -214,6 +223,7 @@ export function update(ownerId: string, id: string, p: NoteInput): NoteDTO {
 			.prepare(`UPDATE keep_notes SET ${[...cols.map((c) => `${c} = @${c}`), 'updated_at = @now', 'revision = revision + 1'].join(', ')} WHERE id = @id`)
 			.run({ ...set, now, id }); // prettier-ignore
 		writeParts(ownerId, id, p);
+		reindex(ownerId, id);
 		return get(ownerId, id);
 	});
 }
@@ -224,6 +234,7 @@ export function destroy(ownerId: string, id: string): void {
 		const cur = own(ownerId, id);
 		if (!cur.deleted_at) bad('Move the note to Trash first.', 'not_in_trash');
 		attachments.dropRefs('keep_note', id);
+		fts.unindex('note', id);
 		db().prepare(`DELETE FROM keep_notes WHERE id = ?`).run(id);
 	});
 }
@@ -341,6 +352,7 @@ export function purgeTrash(now: number = Date.now()): void {
 	const cut = nowUtcIso(now - TRASH_DAYS * 86_400_000);
 	for (const r of db().prepare(`SELECT id FROM keep_notes WHERE deleted_at IS NOT NULL AND deleted_at < ?`).all(cut) as { id: string }[]) {
 		attachments.dropRefs('keep_note', r.id);
+		fts.unindex('note', r.id);
 		db().prepare(`DELETE FROM keep_notes WHERE id = ?`).run(r.id);
 	}
 } // prettier-ignore

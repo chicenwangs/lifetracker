@@ -52,7 +52,7 @@ describe('migrations', () => {
 
 	it('all tables exist incl. fts5', () => {
 		const names = sqlite
-			.prepare(`SELECT name FROM sqlite_master WHERE type IN ('table') AND name NOT LIKE 'search_fts_%'`)
+			.prepare(`SELECT name FROM sqlite_master WHERE type IN ('table') AND name NOT LIKE 'content_search_%'`)
 			.all()
 			.map((r) => (r as { name: string }).name);
 		for (const t of [
@@ -77,7 +77,9 @@ describe('migrations', () => {
 			'person_facts',
 			'ideas',
 			'step_templates',
-			'search_fts',
+			'content_search',
+			'pages',
+			'keep_notes',
 		])
 			expect(names).toContain(t);
 	});
@@ -151,11 +153,11 @@ describe('constraints', () => {
 
 	it('fts5 works', () => {
 		sqlite.exec(
-			`INSERT INTO search_fts (kind, ref_id, owner_id, text) VALUES ('item','itm_1','usr_a','Café quiz')`,
+			`INSERT INTO content_search (kind, ref_id, owner_id, archived, title, body) VALUES ('page','pg_1','usr_a',0,'Café quiz','')`,
 		);
 		const r = sqlite
-			.prepare(`SELECT ref_id FROM search_fts WHERE search_fts MATCH 'cafe' AND owner_id='usr_a'`)
+			.prepare(`SELECT ref_id FROM content_search WHERE content_search MATCH 'cafe' AND owner_id='usr_a'`)
 			.all();
-		expect(r).toEqual([{ ref_id: 'itm_1' }]);
+		expect(r).toEqual([{ ref_id: 'pg_1' }]);
 	});
 });

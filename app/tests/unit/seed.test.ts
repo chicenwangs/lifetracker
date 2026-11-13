@@ -170,7 +170,10 @@ describe('importSeed', () => {
 			halal: 1,
 			open_when: '["Night"]',
 		});
-		expect(s.prepare(`SELECT count(*) c FROM search_fts WHERE owner_id=?`).get(ownerId)).toEqual({ c: 6 });
+		// v2: the index holds Keep + Pages only (old planner/places index dropped, DESIGN §9); import adds neither
+		expect(s.prepare(`SELECT count(*) c FROM content_search WHERE owner_id=?`).get(ownerId)).toEqual({
+			c: 0,
+		});
 		expect(r.warnings).toEqual(['4 stale doing']);
 	});
 

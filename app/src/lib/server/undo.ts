@@ -9,7 +9,7 @@ import { newId } from './crypto';
 import { isoPlus, nowUtcIso } from '$lib/time';
 
 /** tables the journal may touch. Never sessions, users, grants, share codes. */
-const TABLES = ['items', 'blocks', 'item_types'] as const;
+const TABLES = ['items', 'blocks', 'item_types', 'pages'] as const;
 export type Table = (typeof TABLES)[number];
 export interface Target {
 	t: Table;

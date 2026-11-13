@@ -10,7 +10,7 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch<T>(
-	method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+	method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
 	path: string,
 	body?: unknown,
 ): Promise<T> {

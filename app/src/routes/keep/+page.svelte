@@ -39,6 +39,7 @@
 	$effect(() => {
 		const id = page.url.searchParams.get('note');
 		if (id) open = notes.find((n) => n.id === id) ?? open;
+		if (page.url.searchParams.has('new')) open = 'new'; // Ctrl+K "New note"
 	});
 	const refresh = () => invalidateAll();
 
