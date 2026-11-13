@@ -583,6 +583,116 @@ test('v2 P1: type bar hides a type, new custom type, Ctrl+Z undo, 24 px hit area
 	expect((cal.j as { blocks: { itemId: string | null }[] }).blocks.some((b) => b.itemId === id)).toBe(true);
 });
 
+test('v2 P2 Keep: note, checklist nesting, label + binder filters, pin/archive/trash, search', async () => {
+	await page.goto('/keep');
+	await expect(page.getByText('No notes yet.')).toBeVisible();
+	// KEEP-001: title + body, autosave, close
+	await page.getByRole('button', { name: 'New note' }).first().click();
+	await page.locator('div.note').getByPlaceholder('Title').fill('Groceries');
+	await page.locator('div.note').getByPlaceholder('Note', { exact: true }).fill('milk and eggs');
+	await expect(page.locator('.note .state')).toContainText('Saved');
+	await page.keyboard.press('Escape');
+	await expect(page.locator('article.note', { hasText: 'Groceries' })).toBeVisible();
+	// empty note is dropped on close
+	await page.getByRole('button', { name: 'New note' }).first().click();
+	await page.keyboard.press('Escape');
+	await expect(page.locator('article.note')).toHaveCount(1);
+	// KEEP-005/006: checklist, nested child, check one item only
+	await page.getByRole('button', { name: 'New note' }).first().click();
+	await page.locator('div.note').getByPlaceholder('Title').fill('Trip');
+	await page.getByRole('button', { name: 'Checklist' }).click();
+	await page.getByRole('button', { name: '+ List item' }).click();
+	await page.keyboard.type('pack');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('buy rambutan');
+	await page.keyboard.press('Tab'); // nest under "pack"
+	await page.getByRole('checkbox', { name: 'Done: buy rambutan' }).check();
+	// label from inside the note
+	await page.getByLabel('New label').fill('travel');
+	await page.getByLabel('New label').press('Enter');
+	await expect(page.locator('.note .state')).toContainText('Saved');
+	await page.keyboard.press('Escape');
+	const trip = page.locator('article.note', { hasText: 'Trip' });
+	await expect(trip.locator('li.done')).toHaveText(/buy rambutan/);
+	await expect(trip.locator('li').first()).not.toHaveClass(/done/);
+	// KEEP-014 search finds checklist text
+	await page.getByLabel('Search notes').fill('rambutan');
+	await expect(page.locator('article.note')).toHaveCount(1);
+	await page.getByRole('button', { name: 'Clear' }).first().click();
+	await expect(page.locator('article.note')).toHaveCount(2);
+	// label filter
+	await page
+		.getByRole('button', { name: /#travel/ })
+		.first()
+		.click();
+	await expect(page.locator('article.note')).toHaveCount(1);
+	await page
+		.getByRole('button', { name: /#travel/ })
+		.first()
+		.click();
+	// KEEP-010: pin then archive -> not pinned; KEEP-011 archive -> restore
+	await trip.getByRole('button', { name: 'Pin' }).click();
+	await expect(page.getByRole('heading', { name: 'Pinned' })).toBeVisible();
+	await page.locator('article.note', { hasText: 'Trip' }).getByRole('button', { name: 'Archive' }).click();
+	await expect(page.getByRole('heading', { name: 'Pinned' })).toHaveCount(0);
+	await page.goto('/keep?scope=archive');
+	await page.locator('article.note', { hasText: 'Trip' }).getByRole('button', { name: 'Unarchive' }).click();
+	await page.goto('/keep');
+	await expect(page.locator('article.note', { hasText: 'Trip' })).toBeVisible();
+	// KEEP-012/013: trash -> delete forever needs a confirm
+	await page
+		.locator('article.note', { hasText: 'Groceries' })
+		.getByRole('button', { name: 'Delete' })
+		.click();
+	await page.goto('/keep?scope=trash');
+	page.once('dialog', (d) => d.accept());
+	await page.getByRole('button', { name: 'Delete forever' }).click();
+	await expect(page.getByText('Trash is empty.')).toBeVisible();
+});
+
+test('v2 P2 phone: opens on Today, Now card, + Add, Keep quick note, no sideways scroll at 360 px', async ({
+	browser,
+}) => {
+	const ctx = await browser.newContext({
+		storageState: await page.context().storageState(),
+		viewport: { width: 390, height: 844 },
+		timezoneId: 'Asia/Kuala_Lumpur',
+		hasTouch: true,
+	});
+	const ph = await ctx.newPage();
+	await ph.goto('/');
+	await expect(ph).toHaveURL(/\/today$/); // MOB-001
+	await expect(ph.getByRole('navigation', { name: 'Phone navigation' })).toBeVisible();
+	await expect(ph.locator('.now')).toContainText(/Now/); // MOB-002 (in a block, a gap, or free)
+	// MOB-003: + Add -> Plan it makes a block
+	await ph.getByRole('button', { name: 'Add', exact: true }).click();
+	await ph.keyboard.type('stretch 23:00 to 23:30');
+	await ph.getByRole('button', { name: 'Add', exact: true }).last().click();
+	await expect(ph.locator('.toast')).toContainText('Added "stretch"');
+	await ph.locator('.sheet').getByRole('button', { name: 'Close' }).click();
+	await expect(ph.locator('.wheel')).toContainText('stretch');
+	// MOB-005: square cycles by tap
+	const row = ph.locator('.ent', { hasText: 'stretch' });
+	await row.locator('button.sq').click();
+	await expect(row.locator('button.sq')).toHaveAttribute('aria-label', /In progress/);
+	// MOB-004: Keep -> quick note saves
+	await ph.getByRole('button', { name: 'Add', exact: true }).click();
+	await ph.getByRole('tab', { name: 'Quick note' }).click();
+	await ph.getByLabel('Note').fill('phone idea');
+	await ph.getByRole('button', { name: 'Save note' }).click();
+	await ph.getByRole('link', { name: 'Keep' }).click();
+	await expect(ph.locator('article.note', { hasText: 'phone idea' })).toBeVisible();
+	// MOB-008: no horizontal overflow at 360 px on the phone screens
+	await ph.setViewportSize({ width: 360, height: 780 });
+	for (const p of ['/today', '/keep', '/more'])
+		await ph
+			.goto(p)
+			.then(async () =>
+				expect(await ph.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360),
+			);
+	await ctx.close();
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)

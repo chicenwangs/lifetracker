@@ -3,6 +3,14 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## v2 P2 — Keep + phone Today (2026-11-13)
+
+- **Keep** at `/keep` (header link): notes (title + body, both optional; created on first content, an empty one is dropped), checklists (nest 4 levels, D-10; Tab/Shift+Tab or →/← buttons; ↑↓ moves an item with its children; collapse), images (attachment store, png/jpg/gif/webp), labels (filter = all ticked labels), binders (note in many; own order), colours (7 pastel, look only), pin, archive, Trash (30 d, D-17; delete forever = confirm), duplicate, Select mode (bulk archive/delete/restore), search over title/body/checklist text (`LIKE`, newest first; FTS comes in P3), ↑↓ reorder (no drag needed).
+- Autosave 600 ms + on close; failed save keeps the text with Retry; `revision` refuses stale writes (409). Undo for Keep = toast Undo (archive, trash, pin); Ctrl+Z journal still covers planner only.
+- Order = REAL `position` (midpoint insert), not DESIGN's text `position_key`: same behaviour, less code. Rebalance not needed at this scale.
+- Not built (EXT/later): drawings, link previews (D-23 off), file (non-image) cards, grid/list toggle, background images (D-11 later), swipe-to-archive (menu action instead).
+- **Phone** (< 700 px): bottom bar Today · Week · + Add · Keep · More. `/` opens `/today` on a phone (`/?desktop=1` = desktop Home). Today: day step + swipe, Now card (current block/timed item + time left, else "Free until"), "To do today · no time set" (square, countdown, clock = give it a time), timeline wheel (snap, centred on now, past dimmed, Back to now). + Add sheet: Plan it (same grammar, batch) / Quick note. Item opens as a bottom sheet. Header hides nav + Add on a phone.
+
 ## v2 P1 — foundations (2026-11-13)
 
 - **Item types** (`item_types`, migration 0003). 10 per user incl. 5 built-ins. Built-in keys = the v1 values (`Work Exam Event Hobby Dating`), so `items.type`, `blocks.type` and share codes needed no rewrite. **Differs from DESIGN §5 on purpose:** column stays `type` (not `type_key`), built-in keys stay capitalised. Custom key = the type's id (`ity_…`). Labels: Work, **Deadline** (Exam), Event, Hobby, **Date** (Dating). Deadline colour #B84A44.

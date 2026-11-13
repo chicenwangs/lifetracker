@@ -120,6 +120,10 @@
 		});
 	});
 	onMount(() => {
+		// phone opens on Today (FEATURES §10). ?d / ?m / ?desktop = the user asked for this page.
+		const q = new URL(location.href).searchParams;
+		if (matchMedia('(max-width: 699px)').matches && !q.has('d') && !q.has('m') && !q.has('desktop'))
+			void goto('/today', { replaceState: true });
 		const t = setInterval(() => document.visibilityState === 'visible' && refresh(), 60_000);
 		const f = () => refresh();
 		window.addEventListener('focus', f);
