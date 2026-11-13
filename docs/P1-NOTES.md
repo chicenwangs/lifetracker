@@ -61,8 +61,16 @@ Caveman doc. Wins over REQUIREMENTS + TECHNICAL where they differ. History is in
 
 ## Tests
 
-- Unit 237: quickadd, time, hours, planahead, auth (open + invite-only sign-up), seed, schema, sharekeys, access (JSON leak check), places stub.
-- e2e 14 (serial, fresh DB): setup, remember cookie, lockout, month chips, planner drag/resize/overnight, chip → block, N palette + live timeline, planner drag commands, week drag box + Not scheduled + heatmap + roll, peek, sign-up + share codes + overlap + remove, theme, plan-ahead (skips near midnight), reset-password.
+**v2 baseline (P0, 2026-11-13).** Branch `v2` starts at `main` `6c69301` (v1.1.0 + PR #4); CI run #15 on that commit = green. Same suite run locally on Node 22.23.4:
+- lint (prettier + eslint) clean · svelte-check 0 errors / 0 warnings
+- **Unit 262** in 12 files + 1 migration-snapshot test (13th file) that runs only when `data/snapshot/anon.db` exists, so **CI shows 262 passed + 1 skipped, a dev PC with the snapshot shows 263**.
+- **e2e 15.**
+- Every later phase: these numbers may only go up. A lower count = a removed test, explain it in the PR.
+
+**Migration test on real data.** `cd app && node scripts/anonymise-db.mjs ../data/app.db ../data/snapshot/anon.db` makes a scrubbed copy (ids, dates, links kept; every other text replaced; sessions dropped; self-check fails if any original text is left). `tests/unit/migrate-snapshot.test.ts` then runs all migrations on a copy of it and checks integrity, foreign keys and v1 row counts. Snapshot is gitignored. The dev DB has 1 user and 0 grants: for the P9 rehearsal, make the snapshot from a **live backup** (`LT_SNAPSHOT=<path>`).
+
+- Unit (v1.0.0 note, count now above): quickadd, time, hours, planahead, auth (open + invite-only sign-up), seed, schema, sharekeys, access (JSON leak check).
+- e2e (serial, fresh DB): setup, remember cookie, lockout, month chips, planner drag/resize/overnight, chip → block, N palette + live timeline, planner drag commands, week drag box + Not scheduled + heatmap + roll, peek, sign-up + share codes + overlap + remove, theme, plan-ahead (skips near midnight), reset-password.
 
 ## Known small things
 
