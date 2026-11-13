@@ -792,7 +792,9 @@ test('v2 P4 Databases: new database, number property rejects text, records, sort
 		await name.press('Enter');
 		const kg = db.getByLabel(`kg of ${n}`);
 		await kg.fill(w);
+		const saved = page.waitForResponse((r) => r.url().includes('/api/database-records/') && r.request().method() === 'PATCH'); // prettier-ignore
 		await kg.press('Enter');
+		await saved; // the next edit must not race this save's reply
 	}
 	// PAGE-012: text in a number cell is refused with a readable message
 	await db.getByLabel('kg of Row').fill('heavy');
