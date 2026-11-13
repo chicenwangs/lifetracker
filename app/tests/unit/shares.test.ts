@@ -37,8 +37,9 @@ function denied(fn: () => unknown, status = 404) {
 	}
 	throw new Error('expected a denial');
 }
+let files = 0; // unique per test run (ids must be 16 chars after att_, like real ones)
 function fakeFile(ownerId: string): string {
-	const id = `att_${'a'.repeat(15)}${ownerId.slice(-1)}`;
+	const id = `att_${String(++files).padStart(16, '0')}`;
 	handle().sqlite.prepare(`INSERT INTO attachments (id, owner_id, storage_key, original_name, mime_type, byte_size, status, created_at) VALUES (?, ?, ?, 'secret.png', 'image/png', 3, 'ready', '2026-11-14T00:00:00Z')`).run(id, ownerId, `k${id}`); // prettier-ignore
 	return id;
 }
