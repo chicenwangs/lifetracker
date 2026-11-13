@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Keep</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+.n{border:1.5px solid #00003D;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.4;break-inside:avoid;margin-bottom:10px}
+.n b{display:block;font-size:14px;margin-bottom:3px}
+.lbl{font-size:11px;font-weight:700;letter-spacing:.06em;color:#3D3D6B;margin:4px 0 8px}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: #00003D; background: radial-gradient(80% 40% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(80% 40% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<div style="height: 760px; overflow: hidden; padding: 20px 16px 0; box-sizing: border-box">
+<header style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px">
+<h1 style="margin: 0; font-size: 28px; flex: 1">Keep</h1>
+<a href="MKeepNew.dc.html" style="font: 700 14px Inter, sans-serif; color: #FFFFFF; background: #00003D; border-radius: 10px; padding: 10px 14px; text-decoration: none; box-shadow: -3px 3px 0 #F3D053">New note</a>
+</header>
+<label style="display: flex; align-items: center; gap: 8px; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 12px; padding: 10px 12px; margin-bottom: 10px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search notes</span>
+<input type="search" placeholder="Search notes" style="border: 0; outline: none; font: 15px Inter, sans-serif; flex: 1; min-width: 0; background: transparent; color: #00003D">
+</label>
+<div style="display: flex; gap: 6px; overflow: hidden; margin-bottom: 14px">
+<sc-for list="{{filters}}" as="f" hint-placeholder-count="5">
+<button type="button" style="font: 600 12.5px Inter, sans-serif; border: 1.5px solid #00003D; border-radius: 999px; padding: 7px 12px; white-space: nowrap; cursor: pointer; background: {{f.bg}}; color: {{f.fg}}">{{f.label}}</button>
+</sc-for>
+</div>
+<div class="lbl">PINNED</div>
+<div style="column-count: 2; column-gap: 10px">
+<div class="n" style="background: #FAEDB8"><b>Groceries</b>☐ Eggs<br>☐ Milo<br>☐ Bread</div>
+<div class="n" style="background: #D3EECE"><b>Homelab IPs</b>mini PC .20 · NAS .30</div>
+</div>
+<div class="lbl">OTHERS</div>
+<div style="column-count: 2; column-gap: 10px">
+<div class="n" style="background: #FFFFFF"><b>Ask Dr. about FYP</b>WireGuard vs Tailscale</div>
+<div class="n" style="background: #FFFFFF"><b>Pack for Miri</b>☐ Charger<br>☐ Laptop<br><span style="font-size: 11.5px; color: #3D3D6B">Reminder · Fri 18:00</span></div>
+<div class="n" style="background: #CED3EE"><b>FYP idea dump</b>Compare latency on homelab…</div>
+<div class="n" style="background: #EECFD4"><b>Gift ideas</b>Film camera strap</div>
+<div class="n" style="background: #FFFFFF; padding: 0; overflow: hidden"><div role="img" aria-label="Image placeholder" style="height: 70px; background: repeating-linear-gradient(135deg, #E3E4F0 0 8px, #F3F2FA 8px 16px)"></div><div style="padding: 8px 12px">Lecture 8 board</div></div>
+</div>
+</div>
+<div style="position: absolute; left: 0; bottom: 0">
+<dc-import name="MBar" active="keep" hint-size="390px,84px"></dc-import>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      filters: [
+        { label: 'All', bg: '#00003D', fg: '#FFFFFF' },
+        { label: 'Uni', bg: '#FFFFFF', fg: '#00003D' },
+        { label: 'Homelab', bg: '#FFFFFF', fg: '#00003D' },
+        { label: 'Date ideas', bg: '#FFFFFF', fg: '#00003D' },
+        { label: 'Archive', bg: '#FFFFFF', fg: '#00003D' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

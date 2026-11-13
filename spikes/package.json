@@ -1,0 +1,29 @@
+{
+	"name": "life-tracker-spikes",
+	"private": true,
+	"type": "module",
+	"description": "P0 spikes S-1..S-4 (docs/adr). Throwaway proof code: not shipped, not in the app image.",
+	"scripts": {
+		"dev": "vite --port 5199 --strictPort",
+		"s1": "node s1-tiptap/run.mjs",
+		"s2": "node s2-graph/run.mjs",
+		"s3": "node s3-upload/run.mjs",
+		"s4": "node s4-push/run.mjs"
+	},
+	"devDependencies": {
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"@tiptap/core": "^3.33.1",
+		"@tiptap/extension-list": "^3.33.1",
+		"@tiptap/extension-table": "^3.33.1",
+		"@tiptap/pm": "^3.33.1",
+		"@tiptap/starter-kit": "^3.33.1",
+		"@tiptap/suggestion": "^3.33.1",
+		"graphology": "^0.26.0",
+		"graphology-layout-forceatlas2": "^0.10.1",
+		"playwright-core": "^1.65.0",
+		"sigma": "^4.0.6",
+		"svelte": "^5.57.3",
+		"vite": "^8.3.8",
+		"web-push": "^4.0.0"
+	}
+}

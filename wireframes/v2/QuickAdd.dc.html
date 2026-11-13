@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Quick add</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+.slot{display:flex;flex-direction:column;gap:3px;font-size:13px;font-weight:600;min-width:0}
+.slot>span{font-size:10.5px;font-weight:700;letter-spacing:.05em;color:#3D3D6B}
+kbd{font:600 11px Inter,sans-serif;border:1px solid #6B6B8F;border-radius:4px;padding:1px 5px;color:#00003D;background:#FFFFFF}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #00003D; min-height: 940px; position: relative; overflow: hidden; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<dc-import name="Header" active="home" hint-size="100%,72px"></dc-import>
+<div aria-hidden="true" style="position: absolute; inset: 72px 32px 32px; display: grid; grid-template-columns: 2fr 1fr; gap: 24px; filter: blur(6px)">
+<div style="background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px"></div><div style="background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px"></div>
+</div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(0,0,61,0.25)"></div>
+
+<div style="position: relative; display: flex; gap: 24px; justify-content: center; align-items: flex-start; padding: 60px 32px 0; flex-wrap: wrap">
+<section role="dialog" aria-label="Quick add" style="width: 620px; max-width: 100%; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 16px; box-shadow: -6px 6px 0 #F3D053; overflow: hidden">
+<div style="display: flex; align-items: center; padding: 12px 18px; border-bottom: 1px solid #E3E4F0"><h1 style="margin: 0; font-size: 16px; flex: 1">Quick add</h1><span style="font-size: 12px; color: #3D3D6B">Stays open for more</span></div>
+<ol aria-label="Added just now" style="list-style: none; margin: 0; padding: 8px 18px; display: flex; flex-direction: column; gap: 6px; background: #FCFCFE; border-bottom: 1px solid #E3E4F0">
+<sc-for list="{{log}}" as="l" hint-placeholder-count="2">
+<li style="display: flex; align-items: center; gap: 10px; font-size: 13px"><span aria-hidden="true" style="color: #2F7D5B; font-weight: 700">✓</span><span style="flex: 1"><b>{{l.t}}</b> <span style="color: #3D3D6B">→ {{l.where}}</span></span><button type="button" style="font: 600 12px Inter, sans-serif; color: #00003D; background: transparent; border: 1px solid #00003D; border-radius: 6px; padding: 3px 8px; cursor: pointer">Undo</button></li>
+</sc-for>
+</ol>
+<div style="padding: 14px 18px">
+<label for="qa" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">What and when</label>
+<div style="border: 1.5px solid #00003D; border-radius: 12px; padding: 12px 14px; font-size: 17px; display: flex; align-items: center">
+<span id="qa">change review fri 3pm to 4:30 /work</span><span aria-hidden="true" style="display: inline-block; width: 1.5px; height: 22px; background: #00003D; margin: 0 2px"></span><span style="color: #6B6B8F">  /calendar or /both</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 14px 0 4px">
+<div class="slot"><span>TYPE</span><span style="align-self: flex-start; font-size: 12px; font-weight: 600; color: #00003D; background: #CED3EE; border-radius: 5px; padding: 1px 7px">Work</span></div>
+<div class="slot"><span>TITLE</span>Change review</div>
+<div class="slot"><span>GOES TO</span><span style="align-self: flex-start; font-size: 12px; font-weight: 600; color: #00003D; border: 1.5px dashed #6B6B8F; border-radius: 6px; padding: 0 6px">Timeline · default</span></div>
+<div class="slot"><span>DAY</span>Fri 13 Nov</div>
+<div class="slot"><span>TIME</span>15:00–16:30</div>
+</div>
+</div>
+<div style="display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 18px; border-top: 1px solid #E3E4F0; font-size: 12px; color: #3D3D6B"><span><kbd>Enter</kbd> add</span><span><kbd>/</kbd> options</span><span><kbd>↑</kbd> last line</span><span><kbd>Esc</kbd> close</span></div>
+</section>
+
+<section aria-label="Timeline preview, Friday 13 November" style="width: 300px; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 16px; overflow: hidden">
+<div style="background: #D3EECE; border-bottom: 1.5px solid #00003D; padding: 10px 14px; display: flex; align-items: center"><b style="flex: 1">Fri 13 Nov</b><span style="font-size: 11px; font-weight: 700; border: 1px solid #00003D; border-radius: 999px; padding: 2px 8px; background: #FAEDB8">overlaps 1</span></div>
+<div style="position: relative; height: 360px; background: repeating-linear-gradient(180deg, #FFFFFF 0 60px, #F8F8FC 60px 120px)">
+<sc-for list="{{hrs}}" as="h" hint-placeholder-count="6"><span style="position: absolute; left: 8px; font-size: 11px; color: #6B6B8F; top: {{h.top}}px">{{h.l}}</span></sc-for>
+<div style="position: absolute; left: 52px; right: 50%; top: 60px; height: 88px; border-radius: 7px; background: #B84A44; color: #FFFFFF; padding: 5px 8px; box-sizing: border-box; font-size: 12px"><b>Report: send</b><br>14:00–15:30</div>
+<div style="position: absolute; left: 51%; right: 10px; top: 120px; height: 88px; border-radius: 7px; background: #CED3EE; border: 2px dashed #00003D; padding: 5px 8px; box-sizing: border-box; font-size: 12px"><b>Change review</b><br>15:00–16:30 · draft</div>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const hrs = []; for (let i = 0; i < 6; i++) hrs.push({ top: i * 60 + 2, l: (13 + i) + ':00' });
+    return {
+      hrs,
+      log: [ { t: 'Standup', where: 'Timeline · Fri 13 Nov 09:00–09:15' }, { t: 'Team lunch', where: 'Calendar + timeline · Fri 13 Nov 12:30' } ]
+    };
+  }
+}
+</script>
+</body>
+</html>

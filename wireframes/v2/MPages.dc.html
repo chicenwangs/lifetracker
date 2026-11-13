@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>All pages</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+.lbl{font-size:11px;font-weight:700;letter-spacing:.06em;color:#3D3D6B;margin:14px 2px 8px}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: #00003D; background: #F3F2FA">
+<div style="height: 760px; overflow: hidden; padding: 8px 16px 0; box-sizing: border-box">
+<header style="display: flex; align-items: center; gap: 4px; margin: 0 -8px 8px">
+<a href="MMore.dc.html" aria-label="Back to More" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #00003D"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<h1 style="margin: 0; font-size: 20px; flex: 1">All pages</h1>
+<button type="button" aria-label="New page" style="width: 44px; height: 44px; border-radius: 12px; border: 1.5px solid #00003D; background: #FFFFFF; color: #00003D; font: 600 22px Inter, sans-serif; box-shadow: -2px 2px 0 #F3D053; cursor: pointer">+</button>
+</header>
+<label style="display: flex; align-items: center; gap: 8px; background: #FFFFFF; border: 1.5px solid #6B6B8F; border-radius: 12px; padding: 0 12px; min-height: 44px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search pages</span>
+<input type="search" placeholder="Search pages and text" style="border: 0; outline: none; font: 15px Inter, sans-serif; flex: 1; min-width: 0; background: transparent; color: #00003D">
+</label>
+
+<div class="lbl" style="display: flex; justify-content: space-between"><span>RECENT</span><span style="letter-spacing: 0; font-weight: 500">Swipe</span></div>
+<div style="position: relative; margin: 0 -16px">
+<div aria-label="Recent pages" role="list" style="display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 16px; padding: 2px 16px 10px; overscroll-behavior-x: contain">
+<sc-for list="{{recent}}" as="r" hint-placeholder-count="5">
+<a href="MPage.dc.html" role="listitem" style="flex: none; width: 132px; min-height: 96px; box-sizing: border-box; scroll-snap-align: start; border: 1.5px solid #00003D; border-radius: 14px; padding: 10px; text-decoration: none; color: #00003D; display: flex; flex-direction: column; gap: 6px; box-shadow: -3px 3px 0 #F3D053; background: {{r.bg}}">
+<span aria-hidden="true" style="width: 28px; height: 28px; border-radius: 8px; background: #FFFFFF; border: 1.5px solid #00003D; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700">{{r.i}}</span>
+<span style="font-weight: 700; font-size: 14px; line-height: 1.25">{{r.t}}</span>
+<span style="font-size: 12px; color: #3D3D6B; margin-top: auto">{{r.when}}</span></a>
+</sc-for>
+</div>
+<div aria-hidden="true" style="position: absolute; right: 0; top: 0; bottom: 10px; width: 32px; background: linear-gradient(90deg, rgba(243,242,250,0), #F3F2FA); pointer-events: none"></div>
+</div>
+
+<div class="lbl">ALL</div>
+<ul role="tree" aria-label="Pages" style="list-style: none; margin: 0; padding: 0; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px; overflow: hidden">
+<sc-for list="{{tree}}" as="t" hint-placeholder-count="9">
+<li role="treeitem" aria-expanded="{{t.exp}}" style="display: flex; align-items: center; min-height: 48px; border-bottom: 1px solid #E3E4F0; padding-left: {{t.pad}}px">
+<button type="button" aria-label="{{t.toggle}}" style="width: 40px; height: 44px; border: 0; background: transparent; color: #3D3D6B; font-size: 12px; cursor: pointer; visibility: {{t.vis}}">{{t.chev}}</button>
+<a href="{{t.href}}" style="flex: 1; display: flex; align-items: center; gap: 8px; min-height: 48px; text-decoration: none; color: #00003D; font-size: 15px; font-weight: 500">{{t.title}}</a>
+<sc-if value="{{t.pin}}" hint-placeholder-val="{{false}}"><span aria-label="Pinned" style="font-size: 11px; font-weight: 600; color: #3D3D6B; padding-right: 14px">Pinned</span></sc-if>
+</li>
+</sc-for>
+</ul>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 52px; margin-top: 10px; padding: 0 14px; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px; text-decoration: none; color: #00003D; font-size: 15px; font-weight: 500"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 5h18v4H3zM5 9v11h14V9M10 13h4"></path></svg>Archive<span style="margin-left: auto; font-size: 13px; color: #3D3D6B">41 ›</span></a>
+</div>
+<div style="position: absolute; left: 0; bottom: 0">
+<dc-import name="MBar" active="more" hint-size="390px,84px"></dc-import>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const t = (title, depth, kids, open, pin, href) => ({ title, pad: depth * 20, chev: kids ? (open ? '▾' : '▸') : '', vis: kids ? 'visible' : 'hidden',
+      exp: kids ? String(!!open) : 'false', toggle: (open ? 'Collapse ' : 'Expand ') + title, pin: !!pin, href: href || 'MPage.dc.html' });
+    return {
+      recent: [
+        { t: 'Ops runbook', when: '10 min ago', i: 'O', bg: '#CED3EE' },
+        { t: 'Workouts', when: 'Yesterday', i: 'W', bg: '#FAEDB8' },
+        { t: 'Network map', when: 'Tue', i: 'N', bg: '#D3EECE' },
+        { t: '1:1 notes', when: 'Mon', i: '1', bg: '#EECFD4' },
+        { t: 'Reading log', when: 'Last week', i: 'R', bg: '#FFFFFF' }
+      ],
+      tree: [
+        t('Work', 0, true, true),
+        t('Ops runbook', 1, true, false, true),
+        t('1:1 notes', 1, false),
+        t('Homelab', 0, true, true, true),
+        t('Network map', 1, false),
+        t('Inventory', 1, false),
+        t('Workouts', 0, false, false, true, 'MDb.dc.html'),
+        t('Reading log', 0, false),
+        t('Travel', 0, true, false)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

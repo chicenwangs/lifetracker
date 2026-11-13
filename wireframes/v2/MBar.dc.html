@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bottom bar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+</style>
+</helmet>
+<nav aria-label="Main" style="width: 390px; height: 84px; box-sizing: border-box; font-family: Inter, system-ui, sans-serif; color: #00003D; background: #FFFFFF; border-top: 1.5px solid #00003D; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: start; padding: 6px 4px 22px">
+<sc-for list="{{left}}" as="t" hint-placeholder-count="2">
+<a href="{{t.href}}" aria-current="{{t.cur}}" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #00003D; font-size: 11px; padding-top: 2px; font-weight: {{t.w}}">
+<span style="width: 56px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; background: {{t.bg}}">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.icon}}"></path></svg></span>{{t.label}}</a>
+</sc-for>
+<a href="MAdd.dc.html" aria-label="Add to planner" style="display: flex; justify-content: center; text-decoration: none; padding-top: 0">
+<span style="width: 56px; height: 56px; margin-top: -2px; border-radius: 16px; background: #00003D; color: #FFFFFF; display: flex; align-items: center; justify-content: center; box-shadow: -3px 3px 0 #F3D053">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></span></a>
+<sc-for list="{{right}}" as="t" hint-placeholder-count="2">
+<a href="{{t.href}}" aria-current="{{t.cur}}" style="display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; color: #00003D; font-size: 11px; padding-top: 2px; font-weight: {{t.w}}">
+<span style="width: 56px; height: 32px; border-radius: 999px; display: flex; align-items: center; justify-content: center; background: {{t.bg}}">
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{t.icon}}"></path></svg></span>{{t.label}}</a>
+</sc-for>
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["today","week","keep","more","none"],"default":"today"},"$preview":{"width":390,"height":84}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const a = this.props.active ?? 'today';
+    const t = (id, label, href, icon) => ({ label, href, icon, cur: a === id ? 'page' : 'false', bg: a === id ? '#CED3EE' : 'transparent', w: a === id ? 700 : 500 });
+    return {
+      left: [
+        t('today', 'Today', 'MToday.dc.html', 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 7.5V12l3 2'),
+        t('week', 'Week', 'MWeek.dc.html', 'M5 4.5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2zM3 9.5h18M9 9.5v11M15 9.5v11')
+      ],
+      right: [
+        t('keep', 'Keep', 'MKeep.dc.html', 'M5 3h10l4 4v14H5zM9 12h6M9 16h4'),
+        t('more', 'More', 'MMore.dc.html', 'M4 7h16M4 12h16M4 17h16')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

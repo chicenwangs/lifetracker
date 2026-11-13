@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pages tree</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+</style>
+</helmet>
+<nav aria-label="Pages" style="width: 240px; box-sizing: border-box; font-family: Inter, system-ui, sans-serif; color: #00003D; background: rgba(255,255,255,0.75); border: 1.5px solid #00003D; border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; gap: 6px; margin-bottom: 8px">
+<button type="button" style="flex: 1; font: 600 13px Inter, sans-serif; color: #FFFFFF; background: #00003D; border: 1.5px solid #00003D; border-radius: 8px; min-height: 34px; box-shadow: -2px 2px 0 #F3D053; cursor: pointer">New page</button>
+<button type="button" aria-label="Collapse sidebar" title="Collapse sidebar ([)" style="width: 34px; min-height: 34px; font: 600 14px Inter, sans-serif; color: #00003D; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 8px; cursor: pointer">«</button>
+</div>
+<sc-for list="{{tree}}" as="t" hint-placeholder-count="10">
+<div role="treeitem" aria-expanded="{{t.exp}}" aria-current="{{t.cur}}" style="display: flex; align-items: center; border-radius: 7px; min-height: 32px; padding-left: {{t.pad}}px; background: {{t.bg}}">
+<button type="button" aria-label="{{t.toggle}}" style="width: 24px; height: 28px; border: 0; background: transparent; color: #3D3D6B; font-size: 10px; cursor: pointer; visibility: {{t.vis}}">{{t.chev}}</button>
+<a href="{{t.href}}" style="flex: 1; display: flex; align-items: center; gap: 6px; padding: 5px 6px 5px 0; font-size: 13.5px; text-decoration: none; color: #00003D; font-weight: {{t.weight}}; min-width: 0">
+<span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{t.title}}</span>
+<sc-if value="{{t.pin}}" hint-placeholder-val="{{false}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" role="img" aria-label="Pinned to header"><path d="M12 17v5M9 10.8V4h6v6.8l3 3.2H6z"></path></svg></sc-if>
+</a>
+</div>
+</sc-for>
+<div style="height: 1.5px; background: #CED3EE; margin: 8px 4px"></div>
+<sc-for list="{{tools}}" as="o" hint-placeholder-count="3">
+<a href="{{o.href}}" aria-current="{{o.cur}}" style="display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 8px; border-radius: 7px; font-size: 13.5px; text-decoration: none; color: #00003D; font-weight: {{o.weight}}; background: {{o.bg}}"><span style="flex: 1">{{o.label}}</span><span style="font-size: 12px; color: #3D3D6B">{{o.n}}</span></a>
+</sc-for>
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"current":{"editor":"enum","options":["editor","workouts","graph","archive"],"default":"editor"},"$preview":{"width":240,"height":440}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const c = this.props.current ?? 'editor';
+    const t = (title, depth, kids, open, o) => {
+      o = o || {};
+      const cur = !!o.id && o.id === c;
+      return { title, pad: depth * 14, chev: kids ? (open ? '▾' : '▸') : '', vis: kids ? 'visible' : 'hidden', exp: kids ? String(!!open) : 'false',
+        toggle: (open ? 'Collapse ' : 'Expand ') + title, pin: !!o.pin, href: o.href || 'Pages.dc.html',
+        cur: cur ? 'page' : 'false', bg: cur ? '#CED3EE' : 'transparent', weight: cur ? 700 : 500 };
+    };
+    const tool = (id, label, href, n) => ({ label, href, n: n || '', cur: c === id ? 'page' : 'false', bg: c === id ? '#CED3EE' : 'transparent', weight: c === id ? 700 : 500 });
+    return {
+      tree: [
+        t('Work', 0, true, true),
+        t('Ops runbook', 1, false, false, { pin: true }),
+        t('1:1 notes', 1, false),
+        t('Uni', 0, true, true),
+        t('FYP', 1, true, true),
+        t('Chapter 2 plan', 2, false, false, { id: 'editor' }),
+        t('Homelab', 0, true, false, { pin: true }),
+        t('Workouts', 0, false, false, { pin: true, id: 'workouts', href: 'Database.dc.html' }),
+        t('Reading log', 0, false)
+      ],
+      tools: [
+        tool('graph', 'Knowledge graph', 'Graph.dc.html'),
+        tool('archive', 'Archive', 'PagesArchive.dc.html', '41'),
+        tool('trash', 'Trash', '#')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

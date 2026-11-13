@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<!-- same policy as the app (svelte.config.js): the renderer and the layout worker must run under it -->
+		<meta
+			http-equiv="Content-Security-Policy"
+			content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'self'"
+		/>
+		<title>S-2 graph renderer</title>
+		<style>
+			body {
+				margin: 0;
+				font: 14px system-ui;
+			}
+			#graph {
+				width: 100vw;
+				height: 100vh;
+			}
+			#graph:focus-visible {
+				outline: 3px solid #f3d053;
+				outline-offset: -3px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script type="module" src="./main.js"></script>
+	</body>
+</html>

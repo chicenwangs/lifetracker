@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Week</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+a{color:#00003D}a:hover{color:#3D3D6B}
+.card{background:#FFFFFF;border:1.5px solid #00003D;border-radius:14px;overflow:hidden}
+.btn{font:600 13px Inter,system-ui,sans-serif;color:#00003D;background:#FFFFFF;border:1.5px solid #00003D;border-radius:8px;padding:6px 10px;cursor:pointer}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #00003D; min-height: 940px; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(60% 60% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<dc-import name="Header" active="week" hint-size="100%,72px"></dc-import>
+<main style="display: flex; flex-wrap: wrap; gap: 24px; padding: 8px 32px 40px 38px; max-width: 1440px; margin: 0 auto; box-sizing: border-box">
+
+<section class="card" aria-label="Week grid" style="flex: 3 1 760px; min-width: 0">
+<div style="background: #CED3EE; border-bottom: 1.5px solid #00003D; padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+<button class="btn" type="button" aria-label="Previous week">‹</button>
+<button class="btn" type="button" aria-label="Next week">›</button>
+<h1 style="margin: 0 8px; font-size: 20px; font-weight: 700">Week of 9 Nov 2026</h1>
+<button class="btn" type="button">Today</button>
+<div style="flex: 1"></div>
+<div role="group" aria-label="View" style="display: flex; border: 1.5px solid #00003D; border-radius: 8px; overflow: hidden">
+<a href="Main.dc.html" style="padding: 6px 12px; font-size: 13px; font-weight: 600; background: #FFFFFF; color: #00003D; text-decoration: none">Month</a>
+<span aria-current="page" style="padding: 6px 12px; font-size: 13px; font-weight: 600; background: #00003D; color: #FFFFFF">Week</span>
+</div>
+</div>
+<div role="toolbar" aria-label="Item types. Click a type to show or hide it" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px 14px; border-bottom: 1px solid #E3E4F0; position: relative">
+<sc-for list="{{types}}" as="t" hint-placeholder-count="7">
+<button type="button" aria-pressed="{{t.on}}" title="{{t.tip}}" style="display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 10px 0 6px; border-radius: 999px; border: 1.5px solid {{t.edge}}; background: #FFFFFF; font: 600 12px Inter, sans-serif; color: #00003D; cursor: pointer"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; border: 1px solid #00003D; background: {{t.bg}}"></span><span style="text-decoration: {{t.deco}}">{{t.name}}</span></button>
+</sc-for>
+<button type="button" aria-label="Add item type, {{typesLeft}} slots left" title="Add item type" aria-expanded="{{popOpen}}" style="width: 28px; height: 28px; border-radius: 999px; border: 1.5px dashed #00003D; background: {{plusBg}}; color: #00003D; font: 700 16px Inter, sans-serif; line-height: 1; cursor: pointer">+</button>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #00003D; margin-left: 6px"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; border: 1px dashed #00003D; background: repeating-linear-gradient(135deg, #E6E7F0 0 3px, #FFFFFF 3px 6px)"></span>Neina (shared)</span>
+<span style="margin-left: auto; font-size: 12px; color: #3D3D6B">{{typesUsed}} / 10 types</span>
+</div>
+<div style="display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)); border-bottom: 1px solid #E3E4F0">
+<div></div>
+<sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+<div style="padding: 8px 6px; text-align: center; font-size: 12px; font-weight: 600; color: #3D3D6B">{{d.dow}} <span style="display: inline-flex; width: 24px; height: 24px; border-radius: 999px; align-items: center; justify-content: center; color: {{d.numFg}}; background: {{d.numBg}}">{{d.n}}</span></div>
+</sc-for>
+</div>
+<div style="display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)); border-bottom: 1.5px solid #CED3EE; margin-bottom: 20px">
+<div style="font-size: 10px; color: #6B6B8F; padding: 6px 4px">all-day</div>
+<sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+<div style="padding: 4px; display: flex; flex-direction: column; gap: 3px; min-height: 30px; border-left: 1px solid #E3E4F0">
+<sc-for list="{{d.allday}}" as="e" hint-placeholder-count="1">
+<div style="font-size: 11px; font-weight: 500; padding: 3px 6px; border-radius: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: {{e.bg}}; color: {{e.fg}}">{{e.title}}</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+<div style="position: relative; display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)); height: 600px; margin-bottom: 12px">
+<div style="position: relative">
+<sc-for list="{{hours}}" as="h" hint-placeholder-count="15">
+<span style="position: absolute; right: 6px; font-size: 11px; color: #6B6B8F; top: {{h.top}}px">{{h.label}}</span>
+</sc-for>
+</div>
+<sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+<div style="position: relative; border-left: 1px solid #E3E4F0; background: repeating-linear-gradient(180deg, #FFFFFF 0 40px, #F8F8FC 40px 80px); outline: {{d.outline}}; outline-offset: -2px">
+<sc-for list="{{d.blocks}}" as="b" hint-placeholder-count="2">
+<div style="position: absolute; left: 3px; right: 3px; box-sizing: border-box; border-radius: 6px; padding: 4px 6px; font-size: 11px; overflow: hidden; top: {{b.top}}px; height: {{b.h}}px; background: {{b.bg}}; color: {{b.fg}}; border: 1.5px {{b.border}} {{b.edge}}"><div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: {{b.deco}}">{{b.title}}</div><div>{{b.range}}</div></div>
+</sc-for>
+</div>
+</sc-for>
+<div aria-label="Now 13:04" style="position: absolute; height: 2px; background: #00003D; top: 202px; left: calc(52px + (100% - 52px) * 3 / 7); width: calc((100% - 52px) / 7)"></div>
+</div>
+</section>
+
+<aside style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+<section class="card" aria-label="Month map">
+<div style="background: #EECFD4; border-bottom: 1.5px solid #00003D; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center">
+<h2 style="margin: 0; font-size: 15px; font-weight: 700">November</h2><span style="font-size: 12px; color: #3D3D6B">Week 2 of 5</span>
+</div>
+<div style="padding: 10px 12px; display: flex; flex-direction: column; gap: 4px">
+<sc-for list="{{heat}}" as="w" hint-placeholder-count="5">
+<a href="#" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 3px; border-radius: 6px; text-decoration: none; border: 1.5px solid {{w.edge}}">
+<sc-for list="{{w.d}}" as="c" hint-placeholder-count="7">
+<span style="height: 20px; border-radius: 4px; position: relative; background: {{c.bg}}"><sc-if value="{{c.dot}}" hint-placeholder-val="{{false}}"><span aria-label="All-day item not blocked" style="position: absolute; right: 2px; top: 2px; width: 6px; height: 6px; border-radius: 999px; background: #B84A44"></span></sc-if></span>
+</sc-for>
+</a>
+</sc-for>
+<div aria-hidden="true" style="display: flex; align-items: center; gap: 4px; font-size: 11px; color: #3D3D6B; margin-top: 6px"><span>Blocked</span><span style="width: 12px; height: 12px; border-radius: 3px; background: #F3F2FA; border: 1px solid #CED3EE"></span><span style="width: 12px; height: 12px; border-radius: 3px; background: #E3E4F0"></span><span style="width: 12px; height: 12px; border-radius: 3px; background: #CED3EE"></span><span style="width: 12px; height: 12px; border-radius: 3px; background: #8E8BB5"></span><span style="width: 12px; height: 12px; border-radius: 3px; background: #3D3D6B"></span><span>6 h+</span><span style="flex: 1"></span><span style="width: 6px; height: 6px; border-radius: 999px; background: #B84A44"></span><span>not blocked</span></div>
+</div>
+</section>
+<section class="card" aria-label="Not scheduled">
+<div style="background: #D3EECE; border-bottom: 1.5px solid #00003D; padding: 10px 14px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 700">Not scheduled</h2>
+<div style="font-size: 12px; color: #3D3D6B">Drag onto the grid or press Schedule · drop a block here to unschedule</div>
+</div>
+<ul style="list-style: none; margin: 0; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{unsched}}" as="u" hint-placeholder-count="4">
+<li style="display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 8px; border-radius: 6px; cursor: grab; background: {{u.bg}}; color: {{u.fg}}"><span style="flex: 1">{{u.title}}</span><span style="font-size: 11px">{{u.when}}</span><button type="button" aria-label="Schedule {{u.title}}" style="min-height: 28px; padding: 0 8px; font: 600 12px Inter, sans-serif; color: #00003D; background: #FFFFFF; border: 1px solid #00003D; border-radius: 6px; cursor: pointer">Schedule</button></li>
+</sc-for>
+</ul>
+</section>
+<section class="card" aria-label="Week stats" style="padding: 12px 14px">
+<h2 style="margin: 0 0 8px; font-size: 15px; font-weight: 700">This week</h2>
+<dl style="display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0 0 10px; font-size: 13px"><dt>Blocked time</dt><dd style="margin: 0; font-weight: 700">31 h</dd><dt>Completed</dt><dd style="margin: 0; font-weight: 700">18</dd><dt>In progress</dt><dd style="margin: 0; font-weight: 700">2</dd></dl>
+<div style="font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #3D3D6B">BY TYPE</div>
+<sc-for list="{{stats}}" as="s" hint-placeholder-count="4">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 6px 0"><span style="width: 70px">{{s.label}}</span><span style="flex: 1; height: 10px; border-radius: 999px; background: #F3F2FA; overflow: hidden"><span style="display: block; height: 100%; border: 1px solid #00003D; box-sizing: border-box; border-radius: 999px; width: {{s.w}}; background: {{s.bg}}"></span></span><span style="width: 36px; text-align: right; color: #3D3D6B">{{s.h}}</span></div>
+</sc-for>
+</section>
+</aside>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const T = { Work: ['#CED3EE', '#00003D'], Exam: ['#B84A44', '#FFFFFF'], Event: ['#D3EECE', '#00003D'], Hobby: ['#FAEDB8', '#00003D'], Dating: ['#EECFD4', '#00003D'], None: ['#E6E7F0', '#00003D'], Busy: ['#E6E7F0', '#3D3D6B'], Errand: ['#CFE8E6', '#00003D'], Health: ['#F7D9C4', '#00003D'] };
+    const TYPES = [
+      ['Work', '#CED3EE'], ['Deadline', '#B84A44'], ['Event', '#D3EECE'], ['Hobby', '#FAEDB8'], ['Date', '#EECFD4'],
+      ['Errand', '#CFE8E6'], ['Health', '#F7D9C4'], ['No type', '#E6E7F0']
+    ];
+    const typeBar = TYPES.map(([name, bg]) => ({ name, bg, on: 'true', edge: '#00003D', deco: 'none', tip: 'Showing ' + name + '. Click to hide' }));
+    const y = (hm) => { const [h, m] = hm.split(':').map(Number); return ((h * 60 + m) - 480) / 60 * 40; };
+    const b = (title, type, a, z, st) => {
+      const [bg, fg] = T[type];
+      const theirs = st === 'theirs';
+      return { title, range: a + '–' + z, top: y(a), h: y(z) - y(a) - 2, fg: theirs ? '#00003D' : fg,
+        bg: theirs ? 'repeating-linear-gradient(135deg, ' + bg + ' 0 5px, #FFFFFF 5px 8px)' : bg,
+        border: theirs ? 'dashed' : 'solid', edge: theirs ? '#00003D' : bg, deco: st === 'done' ? 'line-through' : 'none' };
+    };
+    const a = (title, type) => ({ title, bg: T[type][0], fg: T[type][1] });
+    const days = [
+      { dow: 'Mon', n: 9, allday: [], blocks: [b('FYP meeting', 'Work', '10:00', '11:00', 'done'), b('Lecture', 'Work', '14:00', '16:00', 'done'), b('Busy', 'Busy', '19:00', '21:00', 'theirs')] },
+      { dow: 'Tue', n: 10, allday: [], blocks: [b('Lab', 'Work', '08:00', '11:00', 'done'), b('Gym', 'Hobby', '18:00', '19:30', 'done')] },
+      { dow: 'Wed', n: 11, allday: [a('Pay bills', 'None')], blocks: [b('Post office', 'Errand', '17:00', '17:30', 'done'), b('FYP write-up', 'Work', '09:00', '12:00', 'done'), b('Drive to campus', 'None', '13:00', '13:30', 'done')] },
+      { dow: 'Thu', n: 12, allday: [a('Submit A2 log', 'Work')], blocks: [b('Lecture: NetSec', 'Work', '08:00', '10:00', 'done'), b('FYP write-up', 'Work', '10:30', '12:00', 'done'), b('DS Quiz revision', 'Exam', '13:30', '15:00', 'doing'), b('Gym', 'Hobby', '17:30', '19:00', 'todo'), b('Date night', 'Dating', '20:00', '21:30', 'todo')] },
+      { dow: 'Fri', n: 13, allday: [], blocks: [b('DS Quiz', 'Exam', '14:00', '15:00', 'todo'), b('Dinner', 'Event', '19:00', '21:00', 'theirs')] },
+      { dow: 'Sat', n: 14, allday: [a('Fly to Miri', 'Event')], blocks: [b('Flight', 'Event', '08:30', '09:30', 'todo')] },
+      { dow: 'Sun', n: 15, allday: [], blocks: [] }
+    ].map((d) => ({ ...d, numBg: d.n === 12 ? '#00003D' : 'transparent', numFg: d.n === 12 ? '#FFFFFF' : '#00003D', outline: d.n === 12 ? '2px dotted #8E8BB5' : 'none' }));
+    const hours = [];
+    for (let h = 8; h <= 22; h++) hours.push({ top: (h - 8) * 40 - 7, label: (h < 10 ? '0' : '') + h + ':00' });
+    const shade = ['#F3F2FA', '#E3E4F0', '#CED3EE', '#8E8BB5', '#3D3D6B'];
+    const lv = [[0,1,2,1,2,0,0],[3,2,2,4,2,1,0],[1,2,0,1,2,0,0],[0,0,1,0,0,0,0],[0,0,0,0,0,0,0]];
+    const dots = { '1-5': true, '2-3': true };
+    const heat = lv.map((row, wi) => ({ edge: wi === 1 ? '#00003D' : 'transparent', d: row.map((v, di) => ({ bg: shade[v], dot: !!dots[wi + '-' + di] })) }));
+    return {
+      days, hours, heat, types: typeBar, typesUsed: 7, typesLeft: 3, popOpen: false, plusBg: '#FFFFFF',
+      unsched: [
+        { ...a('Send weekly ops summary', 'Work'), when: 'Today' },
+        { ...a('Pay bills', 'None'), when: 'Wed' },
+        { ...a('Quarterly report', 'Exam'), when: '18 Nov' },
+        { ...a('Her Birthday', 'Dating'), when: 'no date' }
+      ],
+      stats: [
+        { label: 'Work', w: '70%', bg: '#CED3EE', h: '14h' },
+        { label: 'Deadline', w: '20%', bg: '#B84A44', h: '3h' },
+        { label: 'Hobby', w: '18%', bg: '#FAEDB8', h: '3h' },
+        { label: 'Dating', w: '10%', bg: '#EECFD4', h: '1.5h' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

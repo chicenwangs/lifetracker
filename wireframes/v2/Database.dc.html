@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workouts database</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+a{color:#00003D}a:hover{color:#3D3D6B}
+.btn{font:600 13px Inter,system-ui,sans-serif;color:#00003D;background:#FFFFFF;border:1.5px solid #00003D;border-radius:8px;padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.pill{font:500 12.5px Inter,sans-serif;color:#00003D;border-radius:999px;padding:5px 10px;border:1.5px dashed #6B6B8F;background:#FFFFFF;cursor:pointer}
+th{text-align:left;font-size:12px;font-weight:600;color:#3D3D6B;padding:8px 10px;border-bottom:1.5px solid #00003D;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid #E3E4F0;font-size:13.5px;white-space:nowrap}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #00003D; min-height: 940px; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(60% 60% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<dc-import name="Header" active="pages" hint-size="100%,72px"></dc-import>
+<main style="display: flex; flex-wrap: wrap; gap: 24px; padding: 8px 32px 40px 38px; max-width: 1440px; margin: 0 auto; box-sizing: border-box">
+<dc-import name="PagesTree" current="workouts" hint-size="240px,440px"></dc-import>
+<article style="flex: 999 1 640px; min-width: 0; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid #E3E4F0; flex-wrap: wrap">
+<nav aria-label="Breadcrumb" style="font-size: 13px; color: #3D3D6B; flex: 1">Workouts</nav>
+<span style="font-size: 12px; color: #3D3D6B">Saved</span>
+<button class="btn" type="button" aria-pressed="true">Pinned</button>
+<button class="btn" type="button">Share</button>
+<button class="btn" type="button" aria-label="Page actions">⋯</button>
+</div>
+<div style="padding: 28px 40px 40px">
+<h1 style="font-size: 32px; margin: 0 0 6px; font-weight: 700">Workouts</h1>
+<p style="margin: 0 0 22px; color: #3D3D6B; font-size: 15px">A normal page. The table below is a database block — no Workouts module needed.</p>
+
+<div style="display: flex; align-items: center; gap: 4px; border-bottom: 1.5px solid #E3E4F0; margin-bottom: 12px; flex-wrap: wrap">
+<sc-for list="{{views}}" as="v" hint-placeholder-count="3">
+<button type="button" aria-pressed="{{v.on}}" style="font: 600 13px Inter, sans-serif; color: #00003D; background: transparent; border: 0; border-bottom: 2.5px solid {{v.edge}}; padding: 8px 12px; margin-bottom: -1.5px; cursor: pointer">{{v.icon}} {{v.name}}</button>
+</sc-for>
+<button type="button" style="font: 500 13px Inter, sans-serif; color: #3D3D6B; background: transparent; border: 0; padding: 8px 10px; cursor: pointer">+ View</button>
+</div>
+
+<div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap">
+<button type="button" class="pill" style="border-style: solid; border-color: #00003D; background: #CED3EE">Exercise is Bench press ✕</button>
+<button type="button" class="pill" style="border-style: solid; border-color: #00003D; background: #CED3EE">Date ↓ ✕</button>
+<button type="button" class="pill">+ Filter</button>
+<button type="button" class="pill">+ Sort</button>
+<div style="flex: 1"></div>
+<button class="btn" type="button">Columns</button>
+<button class="btn" type="button" style="background: #00003D; color: #FFFFFF; box-shadow: -2px 2px 0 #F3D053">New record</button>
+</div>
+
+<div style="overflow-x: auto; border: 1.5px solid #00003D; border-radius: 10px">
+<table style="border-collapse: collapse; width: 100%">
+<thead><tr><th style="width: 34px"></th><th>Aa Exercise</th><th>Date</th><th>Day</th><th># Weight (kg)</th><th># Sets</th><th># Reps</th><th>Effort</th><th>Done</th><th>+</th></tr></thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+<tr>
+<td style="color: #8E8BB5">⋮⋮</td>
+<td style="font-weight: 600"><a href="#" style="text-decoration: none">{{r.ex}}</a> <span style="font-size: 11px; color: #3D3D6B; border: 1px solid #CED3EE; border-radius: 4px; padding: 1px 5px; margin-left: 6px">Open</span></td>
+<td>{{r.date}}</td>
+<td><span style="font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #D3EECE">{{r.day}}</span></td>
+<td>{{r.kg}}</td><td>{{r.sets}}</td><td>{{r.reps}}</td>
+<td><span style="font-size: 12px; padding: 2px 8px; border-radius: 999px; background: {{r.effBg}}">{{r.eff}}</span></td>
+<td><input type="checkbox" aria-label="Done" checked="{{r.done}}" style="accent-color: #00003D; width: 16px; height: 16px"></td>
+<td></td>
+</tr>
+</sc-for>
+<tr><td></td><td colspan="9" style="color: #6B6B8F">+ New record</td></tr>
+</tbody>
+</table>
+</div>
+<div style="font-size: 12px; color: #3D3D6B; margin-top: 8px">7 records · filtered · sample data</div>
+
+<div style="margin-top: 28px; display: flex; gap: 24px; flex-wrap: wrap">
+<div style="flex: 1 1 360px; border: 1.5px solid #00003D; border-radius: 12px; padding: 14px 16px">
+<div style="font-size: 12px; font-weight: 700; letter-spacing: .06em; color: #3D3D6B; margin-bottom: 10px">ADD PROPERTY</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; font-size: 13px">
+<sc-for list="{{types}}" as="t" hint-placeholder-count="8">
+<button type="button" style="font: 500 13px Inter, sans-serif; color: #00003D; background: #F3F2FA; border: 1px solid #CED3EE; border-radius: 8px; padding: 8px; cursor: pointer; text-align: left">{{t}}</button>
+</sc-for>
+</div>
+</div>
+<div style="flex: 1 1 360px; border: 1.5px solid #00003D; border-radius: 12px; padding: 14px 16px; font-size: 13px">
+<div style="font-size: 12px; font-weight: 700; letter-spacing: .06em; color: #3D3D6B; margin-bottom: 10px">INVALID VALUE</div>
+<label style="display: block; font-weight: 600; margin-bottom: 4px" for="kg">Weight (kg)</label>
+<input id="kg" value="heavy" style="font: 14px Inter, sans-serif; border: 1.5px solid #A83A35; border-radius: 8px; padding: 7px 10px; width: 160px; color: #00003D">
+<div style="color: #8E2B26; margin-top: 6px">Weight is a number column. Type a number, e.g. 42.5.</div>
+</div>
+</div>
+</div>
+</article>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const eff = { light: '#D3EECE', moderate: '#FAEDB8', heavy: '#EECFD4' };
+    const r = (date, day, kg, sets, reps, e, done) => ({ ex: 'Bench press', date, day, kg, sets, reps, eff: e, effBg: eff[e], done });
+    return {
+      views: [
+        { name: 'All sessions', icon: '▤', on: 'true', edge: '#00003D' },
+        { name: 'By day', icon: '▥', on: 'false', edge: 'transparent' },
+        { name: 'Calendar', icon: '▦', on: 'false', edge: 'transparent' }
+      ],
+      rows: [
+        r('12 Nov', 'Thu', '42.5', '3', '8', 'heavy', false),
+        r('9 Nov', 'Mon', '40', '3', '8', 'moderate', true),
+        r('5 Nov', 'Thu', '40', '3', '6', 'heavy', true),
+        r('2 Nov', 'Mon', '37.5', '3', '8', 'moderate', true),
+        r('29 Oct', 'Thu', '37.5', '3', '6', 'moderate', true),
+        r('26 Oct', 'Mon', '35', '3', '8', 'light', true),
+        r('22 Oct', 'Thu', '35', '3', '8', 'light', true)
+      ],
+      types: ['Aa Title', '¶ Text', '# Number', '▦ Date', '☑ Checkbox', '◉ Select', '◎ Multi-select', '↗ URL']
+    };
+  }
+}
+</script>
+</body>
+</html>

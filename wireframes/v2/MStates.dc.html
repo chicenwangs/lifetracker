@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+.ph{width:390px;height:780px;position:relative;overflow:hidden;background:#F3F2FA;border:1.5px solid #00003D;border-radius:24px;box-sizing:border-box}
+.cap{font-size:14px;font-weight:700;margin:0 0 10px;height:24px}
+.n{background:#FFFFFF;border:1.5px solid #00003D;border-radius:12px;padding:12px 14px;font-size:14px;min-height:56px;box-sizing:border-box}
+</style>
+</helmet>
+<div style="width: 1330px; height: 844px; box-sizing: border-box; padding: 20px 40px; font-family: Inter, system-ui, sans-serif; color: #00003D; background: #FFFFFF; display: flex; gap: 40px">
+
+<section aria-label="Swipe and undo">
+<h2 class="cap">Swipe a note → archive, Undo snackbar</h2>
+<div class="ph">
+<div style="padding: 16px">
+<div style="font-size: 26px; font-weight: 700; margin-bottom: 12px">Keep</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div class="n"><b>Groceries</b><br>Eggs, Milo, Bread</div>
+<div style="position: relative; height: 56px; border-radius: 12px; overflow: hidden; background: #D3EECE; border: 1.5px solid #00003D">
+<div style="position: absolute; right: 0; top: 0; bottom: 0; width: 120px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; font-size: 14px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 5h18v4H3zM5 9v11h14V9M10 13h4"></path></svg>Archive</div>
+<div style="position: absolute; left: -120px; top: -1.5px; width: 100%; height: 56px; background: #FFFFFF; border-right: 1.5px solid #00003D; padding: 10px 14px; box-sizing: border-box; font-size: 14px"><b>Cafe to try</b><br>example.com</div>
+</div>
+<div class="n"><b>Gift ideas</b><br>Film camera strap</div>
+</div>
+</div>
+<div role="status" style="position: absolute; left: 12px; right: 12px; bottom: 96px; display: flex; align-items: center; gap: 12px; background: #00003D; color: #FFFFFF; border-radius: 12px; padding: 0 8px 0 16px; min-height: 52px; box-shadow: -3px 3px 0 #F3D053; font-size: 14px">
+<span style="flex: 1">Note archived</span>
+<button type="button" style="min-height: 44px; padding: 0 14px; font: 700 14px Inter, sans-serif; color: #F3D053; background: transparent; border: 0; cursor: pointer">Undo</button>
+</div>
+<div style="position: absolute; left: -1.5px; bottom: -1.5px"><dc-import name="MBar" active="keep" hint-size="390px,84px"></dc-import></div>
+</div>
+</section>
+
+<section aria-label="Offline">
+<h2 class="cap">Offline — honest save state</h2>
+<div class="ph">
+<div role="status" style="background: #3D3D6B; color: #FFFFFF; font-size: 13px; padding: 10px 16px; display: flex; gap: 8px; align-items: center">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0M12 19h0M3 3l18 18"></path></svg>
+Offline. Notes save on this phone and sync later.</div>
+<div style="padding: 16px">
+<div style="font-size: 26px; font-weight: 700; margin-bottom: 12px">Keep</div>
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div class="n"><div style="display: flex; justify-content: space-between; gap: 8px"><b>Ask manager about leave</b><span style="font-size: 11px; font-weight: 700; border: 1.5px dashed #00003D; border-radius: 999px; padding: 2px 8px; white-space: nowrap">Waiting to sync</span></div>Week of 22 Dec</div>
+<div class="n"><b>Groceries</b><br>Eggs, Milo, Bread</div>
+<div class="n" style="background: #F3F2FA; border-style: dashed; color: #3D3D6B">Pages and calendar edits need a connection. You can still read today.</div>
+</div>
+</div>
+<div style="position: absolute; left: -1.5px; bottom: -1.5px"><dc-import name="MBar" active="keep" hint-size="390px,84px"></dc-import></div>
+</div>
+</section>
+
+<section aria-label="Push permission">
+<h2 class="cap">Ask for push only after a tap</h2>
+<div class="ph">
+<div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(0,0,61,0.35)"></div>
+<div role="dialog" aria-label="Turn on reminders" style="position: absolute; left: 0; right: 0; bottom: 0; background: #FFFFFF; border-top: 1.5px solid #00003D; border-radius: 20px 20px 0 0; padding: 10px 20px 28px">
+<div aria-hidden="true" style="width: 40px; height: 4px; border-radius: 999px; background: #8E8BB5; margin: 0 auto 16px"></div>
+<div style="width: 48px; height: 48px; border-radius: 14px; background: #FAEDB8; border: 1.5px solid #00003D; display: flex; align-items: center; justify-content: center; margin-bottom: 12px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00003D" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4"></path></svg></div>
+<h3 style="margin: 0 0 6px; font-size: 20px">Get reminders on this phone?</h3>
+<p style="margin: 0 0 16px; font-size: 15px; line-height: 1.5; color: #3D3D6B">Only for items you add <code>/remind</code> to, like "Quarterly ops report — 1 day before". Your phone will ask next.</p>
+<button type="button" style="width: 100%; min-height: 50px; font: 700 16px Inter, sans-serif; color: #FFFFFF; background: #00003D; border: 0; border-radius: 12px; box-shadow: -3px 3px 0 #F3D053; margin-bottom: 8px; cursor: pointer">Turn on</button>
+<button type="button" style="width: 100%; min-height: 48px; font: 600 15px Inter, sans-serif; color: #00003D; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 12px; cursor: pointer">Not now</button>
+</div>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1330,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

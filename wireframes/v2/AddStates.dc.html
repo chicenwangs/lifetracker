@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Add states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+.panel{background:#FFFFFF;border:1.5px solid #00003D;border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+.ph{background:#CED3EE;border-bottom:1.5px solid #00003D;padding:10px 16px;font-weight:700;font-size:15px}
+.pb{flex:1;position:relative;background:#F8F8FC;overflow:hidden}
+.cmd{border:1.5px solid #00003D;border-radius:8px;background:#FFFFFF;padding:7px 9px;font-size:13px}
+.seg{display:flex;border:1.5px solid #00003D;border-radius:8px;overflow:hidden;font:600 12px Inter,sans-serif}
+.seg span{flex:1;text-align:center;padding:5px 0}
+.grid40{background:repeating-linear-gradient(180deg,#FFFFFF 0 40px,#F3F2FA 40px 80px)}
+</style>
+</helmet>
+<div style="width: 1440px; height: 940px; box-sizing: border-box; padding: 40px; font-family: Inter, system-ui, sans-serif; color: #00003D; background: #F3F2FA; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 32px">
+
+<section class="panel">
+<div class="ph">Planner: drag empty time → draft box with command</div>
+<div class="pb grid40">
+<sc-for list="{{hrs}}" as="h" hint-placeholder-count="10"><span style="position: absolute; left: 12px; font-size: 11px; color: #6B6B8F; top: {{h.top}}px">{{h.l}}</span></sc-for>
+<div style="position: absolute; left: 64px; right: 24px; top: 0; height: 58px; border-radius: 7px; background: #CED3EE; padding: 6px 10px; box-sizing: border-box; font-size: 12px"><b>Standup</b> · 09:00–09:15</div>
+<div role="dialog" aria-label="New block 10:00 to 11:30" style="position: absolute; left: 64px; right: 24px; top: 80px; height: 140px; border: 2px dashed #00003D; border-radius: 8px; background: #E6E7F0; padding: 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 12px; font-weight: 600">10:00–11:30 · no type yet (grey)</div>
+<div class="cmd">rack audit prep<span aria-hidden="true" style="display: inline-block; width: 1.5px; height: 15px; background: #00003D; vertical-align: -3px"></span><span style="color: #6B6B8F">  /type</span></div>
+<div class="seg" role="radiogroup" aria-label="Goes to"><span role="radio" aria-checked="true" style="background: #00003D; color: #FFFFFF">Planner</span><span role="radio" aria-checked="false" style="border-left: 1.5px solid #00003D">Calendar</span><span role="radio" aria-checked="false" style="border-left: 1.5px solid #00003D">Both</span></div>
+</div>
+</div>
+</section>
+
+<section class="panel">
+<div class="ph">Week: drag a slot → popover command</div>
+<div class="pb" style="display: grid; grid-template-columns: 52px repeat(5, minmax(0, 1fr))">
+<div></div>
+<sc-for list="{{cols}}" as="c" hint-placeholder-count="5"><div style="border-left: 1px solid #E3E4F0; position: relative; background: repeating-linear-gradient(180deg, #FFFFFF 0 40px, #F3F2FA 40px 80px)"><span style="position: absolute; top: 6px; left: 0; right: 0; text-align: center; font-size: 12px; font-weight: 600; color: #3D3D6B">{{c}}</span></div></sc-for>
+<div style="position: absolute; left: calc(52px + (100% - 52px) * 2 / 5 + 3px); width: calc((100% - 52px) / 5 - 6px); top: 120px; height: 78px; border: 2px dashed #00003D; border-radius: 6px; background: rgba(206,211,238,0.5)"></div>
+<div role="dialog" aria-label="New entry Wed 15:00 to 17:00" style="position: absolute; left: calc(52px + (100% - 52px) * 3 / 5 + 4px); top: 110px; width: 270px; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 12px; box-shadow: -4px 4px 0 #F3D053; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 12px; font-weight: 600">Wed 11 Nov · 15:00–17:00</div>
+<div class="cmd">vendor call /work<span aria-hidden="true" style="display: inline-block; width: 1.5px; height: 15px; background: #00003D; vertical-align: -3px"></span></div>
+<div class="seg" role="radiogroup" aria-label="Goes to"><span role="radio" aria-checked="true" style="background: #00003D; color: #FFFFFF">Planner</span><span role="radio" aria-checked="false" style="border-left: 1.5px solid #00003D">Calendar</span><span role="radio" aria-checked="false" style="border-left: 1.5px solid #00003D">Both</span></div>
+<div style="display: flex; justify-content: flex-end; gap: 6px; font-size: 12px"><span style="padding: 5px 10px; border: 1.5px solid #00003D; border-radius: 8px">Cancel</span><span style="padding: 5px 10px; background: #00003D; color: #FFFFFF; border-radius: 8px">Add</span></div>
+</div>
+</div>
+</section>
+
+<section class="panel">
+<div class="ph">Month: double-click a day → slot popover</div>
+<div class="pb" style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr))">
+<sc-for list="{{mcells}}" as="m" hint-placeholder-count="15"><div style="border-right: 1px solid #E3E4F0; border-bottom: 1px solid #E3E4F0; background: {{m.bg}}; padding: 6px; font-size: 12px; font-weight: 600; outline: {{m.ol}}; outline-offset: -2px">{{m.n}}</div></sc-for>
+<div role="dialog" aria-label="New entry Thu 19 Nov" style="position: absolute; left: 46%; top: 90px; width: 280px; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 12px; box-shadow: -4px 4px 0 #F3D053; padding: 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 12px; font-weight: 600">Thu 19 Nov · all day</div>
+<div class="cmd">dentist 9:30 /health<span aria-hidden="true" style="display: inline-block; width: 1.5px; height: 15px; background: #00003D; vertical-align: -3px"></span></div>
+<div style="font-size: 12px; color: #3D3D6B">Default: Calendar · Event. Add a time + /both to block it.</div>
+<div class="seg" role="radiogroup" aria-label="Goes to"><span role="radio" aria-checked="false">Planner</span><span role="radio" aria-checked="true" style="border-left: 1.5px solid #00003D; background: #00003D; color: #FFFFFF">Calendar</span><span role="radio" aria-checked="false" style="border-left: 1.5px solid #00003D">Both</span></div>
+</div>
+</div>
+</section>
+
+<section class="panel">
+<div class="ph">Plan before bed: Home flips to tomorrow</div>
+<div class="pb" style="padding: 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px; overflow: hidden">
+<div style="background: #D3EECE; border-bottom: 1.5px solid #00003D; padding: 10px 14px; display: flex; align-items: center; gap: 8px"><span style="border: 1.5px solid #00003D; border-radius: 8px; padding: 3px 8px">‹</span><b style="flex: 1; text-align: center">Fri 13 Nov</b><span style="border: 1.5px solid #00003D; border-radius: 8px; padding: 3px 8px">›</span><span style="border: 1.5px solid #00003D; border-radius: 8px; padding: 3px 8px">Today</span></div>
+<p role="status" style="margin: 0; padding: 10px 14px; font-size: 13px; background: #FAEDB8; border-bottom: 1px solid #00003D">Today is wrapped up, so this is tomorrow. Plan away.</p>
+<div class="grid40" style="height: 200px; position: relative">
+<div style="position: absolute; left: 56px; right: 12px; top: 20px; height: 26px; border-radius: 7px; background: #CED3EE; padding: 4px 8px; box-sizing: border-box; font-size: 12px">09:00 Standup</div>
+<div style="position: absolute; left: 56px; right: 12px; top: 120px; height: 56px; border-radius: 7px; background: #B84A44; color: #FFFFFF; padding: 4px 8px; box-sizing: border-box; font-size: 12px">14:00 Report: send</div>
+</div>
+</div>
+<div style="font-size: 12px; color: #3D3D6B">Shown at 22:40 Thu after the last block ended. Setting: Preferences › When do you plan your day.</div>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const hrs = []; for (let i = 0; i < 10; i++) hrs.push({ top: i * 40 + 2, l: (9 + i) + ':00' });
+    const mcells = []; for (let i = 0; i < 15; i++) { const n = 16 + i; mcells.push({ n, bg: n === 19 ? '#FAEDB8' : '#FFFFFF', ol: n === 19 ? '2px dashed #00003D' : 'none' }); }
+    return { hrs, cols: ['Mon 9', 'Tue 10', 'Wed 11', 'Thu 12', 'Fri 13'], mcells };
+  }
+}
+</script>
+</body>
+</html>
