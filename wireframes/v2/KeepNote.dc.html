@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Keep note open</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+a{color:#00003D}a:hover{color:#3D3D6B}
+.ib{width:36px;height:36px;border:0;border-radius:8px;background:transparent;color:#00003D;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:4px 10px;border-radius:999px;border:1px solid #6B6B8F;color:#3D3D6B;background:#FFFFFF}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #00003D; min-height: 940px; position: relative; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(60% 60% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<dc-import name="Header" active="keep" hint-size="100%,72px"></dc-import>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(0,0,61,0.35)"></div>
+<div role="dialog" aria-modal="true" aria-label="Note: Pack for Miri trip" style="position: relative; max-width: 640px; margin: 40px auto 0; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 16px; box-shadow: -8px 8px 0 #F3D053; overflow: hidden">
+<div style="padding: 20px 24px 8px; display: flex; gap: 12px; align-items: flex-start">
+<h1 contenteditable="true" style="margin: 0; flex: 1; font-size: 22px; font-weight: 700; outline: none">Pack for Miri trip</h1>
+<button class="ib" type="button" aria-label="Unpin" aria-pressed="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 17v5M9 10.8V4h6v6.8l3 3.2H6z"></path></svg></button>
+</div>
+
+<ul aria-label="Checklist" style="list-style: none; margin: 0; padding: 4px 24px 8px; display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{items}}" as="i" hint-placeholder-count="7">
+<li style="display: flex; align-items: center; gap: 10px; padding: 6px 0; padding-left: {{i.indent}}px; font-size: 15px">
+<span aria-hidden="true" style="color: #8E8BB5; cursor: grab; font-size: 14px">⋮⋮</span>
+<input type="checkbox" aria-label="{{i.text}}" checked="{{i.done}}" style="width: 16px; height: 16px; accent-color: #00003D; margin: 0">
+<span style="flex: 1; text-decoration: {{i.deco}}; color: {{i.fg}}">{{i.text}}</span>
+</li>
+</sc-for>
+<li style="display: flex; align-items: center; gap: 10px; padding: 6px 0 6px 24px; font-size: 15px; color: #6B6B8F">+ List item</li>
+</ul>
+
+<div style="margin: 4px 24px 12px; border: 1px solid #CED3EE; border-radius: 10px; padding: 10px 12px; display: flex; gap: 12px; align-items: center">
+<div role="img" aria-label="Image attachment placeholder" style="width: 64px; height: 48px; border-radius: 6px; background: repeating-linear-gradient(135deg, #E3E4F0 0 6px, #F3F2FA 6px 12px)"></div>
+<div style="flex: 1; font-size: 13px"><div style="font-weight: 600">boarding-pass.png</div><div style="color: #3D3D6B">Image · 240 KB</div></div>
+<button class="ib" type="button" aria-label="Remove boarding-pass.png from note">✕</button>
+</div>
+
+<div style="padding: 0 24px 14px; display: flex; gap: 8px; flex-wrap: wrap">
+<span class="chip" style="background: #FAEDB8; border-color: #00003D; color: #00003D"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path></svg>Fri 14 Nov, 18:00</span>
+<span class="chip">Binder: Uni</span>
+<span class="chip">Binder: Travel</span>
+<span class="chip">travel</span>
+</div>
+
+<div style="border-top: 1px solid #E3E4F0; padding: 8px 16px; display: flex; align-items: center; gap: 2px; flex-wrap: wrap">
+<button class="ib" type="button" aria-label="Add reminder"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4"></path></svg></button>
+<button class="ib" type="button" aria-label="Note colour"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="8.5" cy="10" r="1"></circle><circle cx="12" cy="7.5" r="1"></circle><circle cx="15.5" cy="10" r="1"></circle></svg></button>
+<button class="ib" type="button" aria-label="Add image or file"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12l-9 9a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5l-9 9a2 2 0 0 1-3-3l8-8"></path></svg></button>
+<button class="ib" type="button" aria-label="Labels and binders"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"></path></svg></button>
+<button class="ib" type="button" aria-label="Archive"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 5h18v4H3zM5 9v11h14V9M10 13h4"></path></svg></button>
+<button class="ib" type="button" aria-label="More: duplicate, move to trash"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+<div style="flex: 1"></div>
+<span style="font-size: 12px; color: #3D3D6B">Saved · edited 12:58</span>
+<button type="button" style="font: 600 14px Inter, sans-serif; color: #00003D; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 8px; padding: 7px 14px; margin-left: 10px; box-shadow: -2px 2px 0 #F3D053; cursor: pointer" title="Close (Esc)">Close <kbd style="font: 600 10px Inter, sans-serif; border: 1px solid #6B6B8F; border-radius: 4px; padding: 0 4px; color: #3D3D6B; margin-left: 4px">Esc</kbd></button>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const it = (text, depth, done) => ({ text, indent: depth * 24, done, deco: done ? 'line-through' : 'none', fg: done ? '#6B6B8F' : '#00003D' });
+    return {
+      items: [
+        it('Clothes for 3 days', 0, false),
+        it('Batik shirt for dinner', 1, false),
+        it('Charger', 0, false),
+        it('Laptop + phone', 1, false),
+        it('Power bank (cabin bag)', 1, false),
+        it('IC + boarding pass', 0, true),
+        it('Book flight', 0, true)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

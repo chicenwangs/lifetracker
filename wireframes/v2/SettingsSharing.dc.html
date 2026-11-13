@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings — Sharing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+a{color:#00003D}
+.card{background:#FFFFFF;border:1.5px solid #00003D;border-radius:14px;padding:18px 20px}
+.btn{font:600 13px Inter,system-ui,sans-serif;color:#00003D;background:#FFFFFF;border:1.5px solid #00003D;border-radius:8px;padding:6px 12px;cursor:pointer}
+.side a{display:block;padding:8px 12px;border-radius:999px;font-size:14px;font-weight:500;text-decoration:none;color:#00003D}
+h2{margin:0 0 4px;font-size:17px}
+.sub{margin:0 0 12px;font-size:13px;color:#3D3D6B}
+.row{display:flex;align-items:center;gap:10px;min-height:44px;border-bottom:1px solid #E3E4F0;font-size:14px}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;border:1.5px solid #6B6B8F;border-radius:999px;padding:4px 10px}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #00003D; min-height: 940px; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<dc-import name="Header" active="settings" hint-size="100%,72px"></dc-import>
+<main style="display: flex; flex-wrap: wrap; gap: 28px; padding: 8px 32px 40px 38px; max-width: 1440px; margin: 0 auto; box-sizing: border-box">
+<nav class="side" aria-label="Settings" style="flex: 0 1 220px">
+<h1 style="font-size: 22px; margin: 4px 12px 12px">Settings</h1>
+<a href="SettingsMore.dc.html">Account</a><a href="Settings.dc.html">Preferences</a><a href="SettingsTypes.dc.html">Item types</a><a href="SettingsMore.dc.html">Devices</a>
+<a href="SettingsSharing.dc.html" aria-current="page" style="background: #CED3EE; border: 1.5px solid #00003D">Sharing</a>
+<a href="SettingsMore.dc.html">Users <span style="font-size: 11px; color: #3D3D6B">(admin)</span></a><a href="SettingsMore.dc.html">Import</a><a href="#">Help + tour</a>
+</nav>
+<div style="flex: 999 1 640px; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; align-items: start">
+
+<section class="card" aria-label="Share my calendar">
+<h2>1 · Share my calendar</h2>
+<p class="sub">Make a one-time code. Send it to them yourself. View-only.</p>
+<div style="font-size: 13px; font-weight: 600; margin-bottom: 6px">They can see</div>
+<div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px">
+<sc-for list="{{kinds}}" as="k" hint-placeholder-count="9"><label class="chk" style="background: {{k.bg}}"><input type="checkbox" checked="{{k.on}}" style="accent-color: #00003D">{{k.n}}</label></sc-for>
+</div>
+<div style="font-size: 13px; font-weight: 600; margin-bottom: 6px">Everything else</div>
+<div role="radiogroup" style="display: flex; gap: 14px; font-size: 14px; margin-bottom: 12px"><label><input type="radio" name="ee" checked="{{true}}" style="accent-color: #00003D"> Show as Busy (time only)</label><label><input type="radio" name="ee" style="accent-color: #00003D"> Hide completely</label></div>
+<div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><span style="font-size: 13px; font-weight: 600">Code works for</span><select style="font: 14px Inter, sans-serif; border: 1.5px solid #6B6B8F; border-radius: 8px; padding: 5px 8px"><option>24 hours</option><option>7 days</option></select><span style="flex: 1"></span><button class="btn" type="button" style="background: #00003D; color: #FFFFFF; box-shadow: -2px 2px 0 #F3D053">Make a code</button></div>
+<div aria-label="Your share code" style="margin-top: 14px; display: flex; align-items: center; gap: 10px; background: #FAEDB8; border: 1.5px solid #00003D; border-radius: 10px; padding: 10px 12px"><code style="font-size: 16px; font-weight: 700; flex: 1">LT-7K2M-QX9P-4HDW</code><button class="btn" type="button">Copy</button></div>
+<div style="font-size: 12px; color: #3D3D6B; margin-top: 6px">Shown once. Works one time.</div>
+</section>
+
+<section class="card" aria-label="Enter their code">
+<h2>2 · Enter their code</h2>
+<p class="sub">Their calendar shows striped next to yours when Overlap is on.</p>
+<label for="code" style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px">Code from the other person</label>
+<div style="display: flex; gap: 8px"><input id="code" placeholder="LT-XXXX-XXXX-XXXX" style="flex: 1; font: 15px Inter, sans-serif; border: 1.5px solid #6B6B8F; border-radius: 8px; padding: 8px 10px; color: #00003D"><button class="btn" type="button">Add calendar</button></div>
+</section>
+
+<section class="card" aria-label="Calendars I can see">
+<h2>Calendars I can see</h2>
+<div class="row"><span style="width: 24px; height: 24px; border-radius: 999px; background: #0F766E; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700">N</span><span style="flex: 1">Neina</span>
+<div role="group" aria-label="In overlap" style="display: flex; border: 1.5px solid #00003D; border-radius: 8px; overflow: hidden; font: 600 12px Inter, sans-serif"><span style="padding: 4px 10px; background: #00003D; color: #FFFFFF">Shown</span><span style="padding: 4px 10px">Hidden</span></div><button class="btn" type="button">Leave</button></div>
+</section>
+
+<section class="card" aria-label="Who can see my calendar">
+<h2>Who can see my calendar</h2>
+<div class="row"><span style="flex: 1">Neina <span style="font-size: 12px; color: #3D3D6B">· Date, Event, Errand · rest Busy</span></span><button class="btn" type="button">Remove</button></div>
+<h3 style="font-size: 14px; margin: 14px 0 6px">Codes not used yet</h3>
+<div class="row"><code style="flex: 1">LT-7K2M-…</code><span style="font-size: 12px; color: #3D3D6B">expires in 23 h</span><button class="btn" type="button">Cancel</button></div>
+</section>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const k = (n, bg, on) => ({ n, bg, on });
+    return { kinds: [k('Work', '#CED3EE', false), k('Deadline', '#F2C4C1', false), k('Event', '#D3EECE', true), k('Hobby', '#FAEDB8', false), k('Date', '#EECFD4', true), k('Errand', '#CFE8E6', true), k('Health', '#F7D9C4', false), k('No type', '#E6E7F0', false), k('Planner blocks', '#FFFFFF', true)] };
+  }
+}
+</script>
+</body>
+</html>

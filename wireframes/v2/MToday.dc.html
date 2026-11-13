@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Today</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+.sq{width:24px;height:24px;border-radius:6px;padding:0;flex:none;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer}
+.ib{width:44px;height:44px;border-radius:12px;border:1.5px solid #00003D;background:#FFFFFF;color:#00003D;font:600 18px Inter,sans-serif;cursor:pointer}
+.lbl{font-size:11px;font-weight:700;letter-spacing:.06em;color:#3D3D6B;margin:0 0 8px;display:flex;justify-content:space-between;align-items:center}
+.wheel{scrollbar-width:none}
+.wheel::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: #00003D; background: radial-gradient(80% 40% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(80% 40% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(80% 40% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), radial-gradient(80% 40% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<div style="height: 760px; padding: 16px 16px 0; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+
+<header style="display: flex; align-items: center; gap: 8px">
+<div style="flex: 1">
+<div style="font-size: 13px; font-weight: 600; color: #3D3D6B">Thursday 12 Nov</div>
+<h1 style="margin: 2px 0 0; font-size: 28px; font-weight: 700">Today</h1>
+</div>
+<button class="ib" type="button" aria-label="Previous day">‹</button>
+<button class="ib" type="button" aria-label="Next day">›</button>
+</header>
+
+<section aria-label="Happening now" style="background: #CED3EE; border: 1.5px solid #00003D; border-radius: 16px; box-shadow: -5px 5px 0 #F3D053; padding: 14px 16px">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 13px">
+<span style="font-size: 11px; font-weight: 700; letter-spacing: .06em; background: #00003D; color: #FFFFFF; border-radius: 999px; padding: 2px 8px">NOW</span>
+<span>13:30–15:00</span><span style="margin-left: auto; font-weight: 700">1 h 15 min left</span>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; margin-top: 10px">
+<button class="sq" type="button" aria-label="In progress. Tap to mark done" style="border: 2px solid #00003D; background: transparent; color: #00003D">▶</button>
+<div style="font-size: 19px; font-weight: 700; flex: 1">Client call: rack audit</div>
+</div>
+<div role="progressbar" aria-label="Time elapsed" aria-valuenow="17" aria-valuemin="0" aria-valuemax="100" style="height: 6px; border-radius: 999px; background: #FFFFFF; margin-top: 12px; overflow: hidden; border: 1px solid #00003D"><div style="width: 17%; height: 100%; background: #00003D"></div></div>
+</section>
+
+<section aria-label="To do today, no time set">
+<h2 class="lbl"><span>TO DO TODAY · NO TIME SET</span><span style="letter-spacing: 0; font-weight: 600">3</span></h2>
+<ul style="list-style: none; margin: 0; padding: 0; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px; overflow: hidden">
+<sc-for list="{{todo}}" as="t" hint-placeholder-count="3">
+<li style="display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0 6px 0 12px; border-bottom: 1px solid #E3E4F0">
+<button class="sq" type="button" aria-label="Not started. Tap to start" style="border: 2px solid #00003D; background: transparent"></button>
+<span style="flex: 1; font-size: 15px; font-weight: 500">{{t.title}}</span>
+<sc-if value="{{t.due}}" hint-placeholder-val="{{false}}"><span style="font-size: 11px; font-weight: 700; color: #FFFFFF; background: #B84A44; border-radius: 999px; padding: 2px 8px">Due 17:00</span></sc-if>
+<a href="MAdd.dc.html" aria-label="Give {{t.title}} a time" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #00003D"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 1.5M9 2.5h6"></path></svg></a>
+</li>
+</sc-for>
+</ul>
+</section>
+
+<section aria-label="Timeline" style="flex: 1; min-height: 0; display: flex; flex-direction: column">
+<h2 class="lbl"><span>TIMELINE</span><span style="letter-spacing: 0; font-weight: 500">Scroll up = earlier</span></h2>
+<div style="position: relative; flex: 1; min-height: 0; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px; overflow: hidden">
+<div class="wheel" ref="{{wheelRef}}" onScroll="{{onScroll}}" tabindex="0" aria-label="Today's timeline, scrollable" style="position: absolute; inset: 0; overflow-y: auto; scroll-snap-type: y mandatory; padding: 92px 0">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+<div style="height: 56px; scroll-snap-align: center; display: flex; align-items: center; gap: 10px; padding: 0 12px; box-sizing: border-box; transform: scale({{r.scale}}); transform-origin: center">
+<span style="width: 42px; font-size: 12px; text-align: right; color: {{r.timeFg}}; font-weight: {{r.timeW}}">{{r.t}}</span>
+<div style="flex: 1; display: flex; align-items: center; gap: 10px; height: 46px; border-radius: 10px; padding: 0 10px; min-width: 0; background: {{r.bg}}; color: {{r.fg}}; border: 1.5px {{r.border}} {{r.edge}}">
+<sc-if value="{{r.mine}}" hint-placeholder-val="{{true}}"><span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 5px; border: 2px solid {{r.fg}}; background: {{r.sqBg}}; color: {{r.bgSolid}}; font-size: 10px; display: flex; align-items: center; justify-content: center; flex: none">{{r.sq}}</span></sc-if>
+<sc-if value="{{r.theirs}}" hint-placeholder-val="{{false}}"><span aria-label="Neina's calendar" style="width: 18px; height: 18px; border-radius: 999px; background: #0F766E; color: #FFFFFF; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none">N</span></sc-if>
+<span style="flex: 1; min-width: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: {{r.deco}}">{{r.title}}</span>
+<span style="font-size: 11px">{{r.len}}</span>
+</div>
+</div>
+</sc-for>
+</div>
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 50%; height: 0; border-top: 2px solid #00003D; pointer-events: none"><span style="position: absolute; left: 8px; top: -11px; font-size: 10px; font-weight: 700; background: #00003D; color: #FFFFFF; border-radius: 999px; padding: 2px 6px">13:45</span></div>
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 0; height: 56px; background: linear-gradient(#FFFFFF, rgba(255,255,255,0)); pointer-events: none"></div>
+<div aria-hidden="true" style="position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: linear-gradient(rgba(255,255,255,0), #FFFFFF); pointer-events: none"></div>
+<sc-if value="{{away}}" hint-placeholder-val="{{false}}">
+<button type="button" onClick="{{toNow}}" style="position: absolute; right: 10px; bottom: 10px; font: 700 12px Inter, sans-serif; color: #FFFFFF; background: #00003D; border: 0; border-radius: 999px; padding: 10px 14px; box-shadow: -2px 2px 0 #F3D053; cursor: pointer">Back to now</button>
+</sc-if>
+</div>
+</section>
+</div>
+<div style="position: absolute; left: 0; bottom: 0">
+<dc-import name="MBar" active="today" hint-size="390px,84px"></dc-import>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  componentDidMount() { this.toNow(); }
+  toNow() { if (this.wheel) { this.wheel.scrollTop = this.nowIdx * 56; this.setState({ away: false }); } }
+  renderVals() {
+    const T = { Work: ['#CED3EE', '#00003D'], Exam: ['#B84A44', '#FFFFFF'], Hobby: ['#FAEDB8', '#00003D'], Dating: ['#EECFD4', '#00003D'], None: ['#E6E7F0', '#00003D'], Busy: ['#E6E7F0', '#3D3D6B'] };
+    const raw = [
+      ['08:30', 'Commute', 'None', '30m', 'done'],
+      ['09:00', 'Standup', 'Work', '15m', 'done'],
+      ['09:30', 'Deep work: incident report', 'Work', '2.5h', 'done'],
+      ['12:30', 'Lunch', 'None', '1h', 'done'],
+      ['13:30', 'Client call: rack audit', 'Work', '1.5h', 'doing'],
+      ['15:30', 'Change review', 'Work', '1.5h', 'todo'],
+      ['18:00', 'Gym', 'Hobby', '1h', 'todo'],
+      ['19:30', 'Busy', 'Busy', '1.5h', 'theirs'],
+      ['20:00', 'Date night', 'Dating', '1.5h', 'todo']
+    ];
+    this.nowIdx = 4;
+    const rows = raw.map(([t, title, type, len, st], i) => {
+      const [bg, fg] = T[type];
+      const theirs = st === 'theirs', done = st === 'done', doing = st === 'doing';
+      const d = Math.abs(i - this.nowIdx);
+      return { t, title, len, mine: !theirs, theirs, fg: theirs ? '#00003D' : fg, bgSolid: bg,
+        bg: theirs ? 'repeating-linear-gradient(135deg, ' + bg + ' 0 5px, #FFFFFF 5px 8px)' : bg,
+        border: theirs ? 'dashed' : 'solid', edge: theirs || doing ? '#00003D' : bg,
+        deco: done ? 'line-through' : 'none', sq: done ? '✓' : (doing ? '▶' : ''), sqBg: done ? fg : 'transparent',
+        scale: d === 0 ? 1 : (d === 1 ? 0.96 : 0.92), timeFg: d === 0 ? '#00003D' : '#3D3D6B', timeW: d === 0 ? 700 : 500 };
+    });
+    return {
+      rows, away: !!this.state.away,
+      wheelRef: (el) => { this.wheel = el; },
+      onScroll: (e) => { const away = Math.abs(e.currentTarget.scrollTop - this.nowIdx * 56) > 40; if (away !== !!this.state.away) this.setState({ away }); },
+      toNow: () => this.toNow(),
+      todo: [
+        { title: 'Quarterly ops report', due: true },
+        { title: 'Renew road tax', due: false },
+        { title: 'Reply to landlord', due: false }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Account and admin pages</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+.panel{background:#FFFFFF;border:1.5px solid #00003D;border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+.ph{background:#CED3EE;border-bottom:1.5px solid #00003D;padding:10px 16px;font-weight:700;font-size:15px;display:flex;justify-content:space-between}
+.ph span{font-size:12px;font-weight:600;color:#3D3D6B}
+.pb{flex:1;padding:16px 18px;display:flex;flex-direction:column;gap:10px;font-size:14px}
+.btn{font:600 13px Inter,system-ui,sans-serif;color:#00003D;background:#FFFFFF;border:1.5px solid #00003D;border-radius:8px;padding:6px 12px;cursor:pointer}
+.lab{display:block;font-size:13px;font-weight:600;margin-bottom:4px}
+.in{width:100%;box-sizing:border-box;font:14px Inter,sans-serif;color:#00003D;border:1.5px solid #6B6B8F;border-radius:8px;padding:7px 10px}
+.row{display:flex;align-items:center;gap:10px;min-height:40px;border-bottom:1px solid #E3E4F0}
+.m a{display:flex;align-items:center;min-height:40px;padding:0 12px;border-radius:8px;text-decoration:none;color:#00003D;font-size:14px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 940px; box-sizing: border-box; padding: 40px; font-family: Inter, system-ui, sans-serif; color: #00003D; background: #F3F2FA; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 32px">
+
+<section class="panel"><div class="ph">Account menu <span>avatar click</span></div>
+<div class="pb" style="align-items: flex-end">
+<span style="width: 40px; height: 40px; border-radius: 999px; background: #00003D; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700">J</span>
+<nav class="m" role="menu" aria-label="Account menu" style="width: 220px; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 12px; box-shadow: -4px 4px 0 #F3D053; padding: 6px">
+<div style="padding: 6px 12px 8px; font-size: 13px; color: #3D3D6B; border-bottom: 1px solid #E3E4F0; margin-bottom: 4px"><b style="color: #00003D">Jeremy</b> · jeremy</div>
+<a href="#" role="menuitem">Account</a><a href="#" role="menuitem">Devices</a><a href="Settings.dc.html" role="menuitem">Preferences</a><a href="SettingsTypes.dc.html" role="menuitem">Item types</a><a href="SettingsSharing.dc.html" role="menuitem">Sharing</a>
+<a href="#" role="menuitem" style="color: #A83A35; border-top: 1px solid #E3E4F0; border-radius: 0 0 8px 8px">Sign out</a>
+</nav>
+</div></section>
+
+<section class="panel"><div class="ph">Settings › Account</div>
+<div class="pb">
+<div><label class="lab" for="dn">Display name</label><input class="in" id="dn" value="Jeremy"></div>
+<div><span class="lab">Badge colour (what others see)</span><div role="radiogroup" aria-label="Badge colour" style="display: flex; gap: 8px; flex-wrap: wrap"><sc-for list="{{badges}}" as="b" hint-placeholder-count="4"><button type="button" role="radio" aria-checked="{{b.sel}}" aria-label="{{b.n}}" style="width: 30px; height: 30px; border-radius: 999px; border: 0; background: {{b.c}}; outline: {{b.ring}}; outline-offset: 2px"></button></sc-for></div></div>
+<div style="border-top: 1px solid #E3E4F0; padding-top: 10px; font-weight: 700">Change password</div>
+<input class="in" type="password" aria-label="Current password" placeholder="Current password">
+<input class="in" type="password" aria-label="New password" placeholder="New password (10+ characters)">
+<div style="display: flex; justify-content: space-between; align-items: center"><span style="font-size: 12px; color: #3D3D6B">Signs out your other devices.</span><button class="btn" type="button">Change</button></div>
+</div></section>
+
+<section class="panel"><div class="ph">Settings › Devices</div>
+<div class="pb">
+<sc-for list="{{devices}}" as="d" hint-placeholder-count="3">
+<div class="row"><span style="flex: 1"><b>{{d.n}}</b><span style="display: block; font-size: 12px; color: #3D3D6B">Signed in {{d.s}} · last seen {{d.l}} · {{d.r}}</span></span><sc-if value="{{d.cur}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; font-weight: 700">This device</span></sc-if><sc-if value="{{d.other}}" hint-placeholder-val="{{true}}"><button class="btn" type="button">Sign out</button></sc-if></div>
+</sc-for>
+<button class="btn" type="button" style="align-self: flex-start">Sign out everywhere else</button>
+</div></section>
+
+<section class="panel"><div class="ph">Settings › Users <span>admin</span></div>
+<div class="pb">
+<div style="font-weight: 700">New accounts</div>
+<label><input type="radio" name="su" style="accent-color: #00003D"> Open — anyone with the link can make an account</label>
+<label><input type="radio" name="su" checked="{{true}}" style="accent-color: #00003D"> Invite only — sign-up asks for a code you make below</label>
+<div style="display: flex; align-items: center; gap: 8px"><b style="flex: 1">Invite codes</b><button class="btn" type="button">Make invite code</button></div>
+<div style="font-size: 13px; color: #3D3D6B">No unused codes.</div>
+<div style="font-weight: 700">Accounts</div>
+<div class="row"><span style="flex: 1">jeremy <span style="font-size: 12px; color: #3D3D6B">admin</span></span></div>
+<div class="row"><span style="flex: 1">neina</span><button class="btn" type="button">Reset password</button></div>
+</div></section>
+
+<section class="panel"><div class="ph">Settings › Import from Notion <span>admin</span></div>
+<div class="pb">
+<div><label class="lab" for="iu">Import into</label><select id="iu" class="in"><option>jeremy</option></select></div>
+<table style="border-collapse: collapse; font-size: 13px; width: 100%"><tr style="color: #3D3D6B"><th style="text-align: left; padding: 4px 0">Table</th><th style="text-align: right">Rows in seed</th><th style="text-align: right">Present</th></tr>
+<sc-for list="{{imp}}" as="r" hint-placeholder-count="4"><tr><td style="padding: 4px 0; border-top: 1px solid #E3E4F0">{{r.t}}</td><td style="text-align: right; border-top: 1px solid #E3E4F0">{{r.a}}</td><td style="text-align: right; border-top: 1px solid #E3E4F0">{{r.b}}</td></tr></sc-for></table>
+<div style="font-size: 12px; color: #3D3D6B">New rows only. Your app edits are kept.</div>
+<button class="btn" type="button" style="align-self: flex-start; background: #00003D; color: #FFFFFF">Run import</button>
+</div></section>
+
+<section class="panel"><div class="ph">Trash <span>from header ⋯ / Pages / Keep</span></div>
+<div class="pb">
+<sc-for list="{{trash}}" as="t" hint-placeholder-count="4">
+<div class="row"><span style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #00003D; background: {{t.c}}"></span><span style="flex: 1">{{t.n}}<span style="display: block; font-size: 12px; color: #3D3D6B">{{t.m}}</span></span><button class="btn" type="button">Restore</button></div>
+</sc-for>
+<div style="font-size: 12px; color: #3D3D6B">Kept 30 days, then gone for good.</div>
+</div></section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const b = (n, c, sel) => ({ n, c, sel: sel ? 'true' : 'false', ring: sel ? '2px solid #00003D' : 'none' });
+    const d = (n, s, l, r, cur) => ({ n, s, l, r, cur, other: !cur });
+    return {
+      badges: [b('Ink', '#1C1917', true), b('Teal', '#0F766E', false), b('Violet', '#6D28D9', false), b('Amber', '#B45309', false), b('Blue', '#1D4ED8', false), b('Crimson', '#BE123C', false), b('Olive', '#4D7C0F', false), b('Cyan', '#0E7490', false)],
+      devices: [d('Chrome on Windows', '1 Nov', 'now', 'remembered', true), d('Safari on iPhone', '3 Nov', '2 h ago', 'remembered', false), d('Firefox on Ubuntu', '10 Nov', 'yesterday', 'this session only', false)],
+      imp: [{ t: 'Items', a: 391, b: 391 }, { t: 'Lists', a: 5, b: 5 }, { t: 'Places', a: 130, b: 130 }, { t: 'Ideas', a: 63, b: 63 }],
+      trash: [{ n: 'Gym', m: 'Block · deleted today 13:10', c: '#FAEDB8' }, { n: 'Team lunch', m: 'Item · deleted yesterday', c: '#D3EECE' }, { n: 'Old rack notes', m: 'Note · deleted 3 Nov', c: '#FFFFFF' }]
+    };
+  }
+}
+</script>
+</body>
+</html>

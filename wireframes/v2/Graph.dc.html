@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Knowledge graph</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+a{color:#00003D}a:hover{color:#3D3D6B}
+.btn{font:600 13px Inter,system-ui,sans-serif;color:#00003D;background:#FFFFFF;border:1.5px solid #00003D;border-radius:8px;padding:6px 12px;cursor:pointer}
+.ib{width:34px;height:34px;font:600 16px Inter,sans-serif;color:#00003D;background:#FFFFFF;border:1.5px solid #00003D;border-radius:8px;cursor:pointer}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #00003D; min-height: 940px; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(60% 60% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<dc-import name="Header" active="pages" hint-size="100%,72px"></dc-import>
+<main style="display: flex; flex-wrap: wrap; gap: 24px; padding: 8px 32px 40px 38px; max-width: 1440px; margin: 0 auto; box-sizing: border-box">
+<dc-import name="PagesTree" current="graph" hint-size="240px,440px"></dc-import>
+
+<section aria-label="Graph" style="flex: 999 1 700px; min-width: 0; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px; overflow: hidden">
+<div style="background: #EECFD4; border-bottom: 1.5px solid #00003D; padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+<a href="Pages.dc.html" class="btn" style="text-decoration: none">← Pages</a>
+<h1 style="margin: 0 6px; font-size: 18px; font-weight: 700; flex: 1">Knowledge graph</h1>
+<div role="group" aria-label="Scope" style="display: flex; border: 1.5px solid #00003D; border-radius: 8px; overflow: hidden">
+<button type="button" aria-pressed="true" style="font: 600 13px Inter, sans-serif; padding: 6px 12px; border: 0; background: #00003D; color: #FFFFFF">Whole workspace</button>
+<button type="button" aria-pressed="false" style="font: 600 13px Inter, sans-serif; padding: 6px 12px; border: 0; background: #FFFFFF; color: #00003D">Around FYP</button>
+</div>
+</div>
+<div style="position: relative; height: 720px; background-image: radial-gradient(#E3E4F0 1px, transparent 1px); background-size: 22px 22px">
+<sc-for list="{{edges}}" as="e" hint-placeholder-count="10">
+<div aria-hidden="true" style="position: absolute; height: 0; transform-origin: 0 0; left: {{e.x}}px; top: {{e.y}}px; width: {{e.len}}px; transform: rotate({{e.deg}}deg); border-top: 2px {{e.style}} {{e.color}}"></div>
+</sc-for>
+<sc-for list="{{nodes}}" as="n" hint-placeholder-count="12">
+<a href="Pages.dc.html" style="position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 6px; text-decoration: none; color: #00003D; left: {{n.x}}px; top: {{n.y}}px">
+<span style="border-radius: 999px; border: 2px {{n.bstyle}} #00003D; width: {{n.r}}px; height: {{n.r}}px; background: {{n.bg}}; box-shadow: {{n.shadow}}"></span>
+<span style="font-size: 12.5px; font-weight: {{n.weight}}; font-style: {{n.ital}}; background: rgba(255,255,255,0.9); padding: 1px 6px; border-radius: 4px; white-space: nowrap">{{n.label}}</span>
+</a>
+</sc-for>
+<div style="position: absolute; right: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 6px">
+<button class="ib" type="button" aria-label="Zoom in">+</button>
+<button class="ib" type="button" aria-label="Zoom out">−</button>
+<button class="ib" type="button" aria-label="Fit graph to view">⤢</button>
+</div>
+<div style="position: absolute; left: 14px; bottom: 14px; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 10px; padding: 10px 12px; font-size: 12px; display: flex; flex-direction: column; gap: 6px">
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; border-top: 2px solid #00003D"></span>Parent → child</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 28px; border-top: 2px dashed #3D3D6B"></span>Page link</span>
+<span style="display: flex; align-items: center; gap: 8px; color: #6B6B8F"><span style="width: 28px; border-top: 2px dotted #6B6B8F"></span>DB relation (later)</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 14px; height: 14px; border-radius: 999px; border: 2px dashed #00003D; background: #F3F2FA; margin: 0 7px"></span><em>Archived page</em></span>
+</div>
+</div>
+</section>
+
+<aside style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+<section style="background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px; padding: 16px">
+<div style="font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #3D3D6B">SELECTED</div>
+<h2 style="margin: 4px 0 10px; font-size: 20px">FYP</h2>
+<dl style="margin: 0; font-size: 13px; display: grid; grid-template-columns: 90px 1fr; gap: 6px">
+<dt style="color: #3D3D6B">Parent</dt><dd style="margin: 0">Uni</dd>
+<dt style="color: #3D3D6B">Children</dt><dd style="margin: 0">Chapter 2 plan, Supervisor notes</dd>
+<dt style="color: #3D3D6B">Links to</dt><dd style="margin: 0">Network map</dd>
+<dt style="color: #3D3D6B">Linked from</dt><dd style="margin: 0">Reading log</dd>
+</dl>
+<a href="Pages.dc.html" class="btn" style="display: inline-block; margin-top: 14px; text-decoration: none; background: #00003D; color: #FFFFFF; box-shadow: -2px 2px 0 #F3D053">Open page</a>
+</section>
+<section style="background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px; padding: 16px">
+<div style="font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #3D3D6B; margin-bottom: 8px">SHOW</div>
+<label style="display: flex; gap: 8px; align-items: center; font-size: 14px; margin: 6px 0"><input type="checkbox" checked="{{true}}" style="accent-color: #00003D">Parent → child</label>
+<label style="display: flex; gap: 8px; align-items: center; font-size: 14px; margin: 6px 0"><input type="checkbox" checked="{{true}}" style="accent-color: #00003D">Page links</label>
+<label style="display: flex; gap: 8px; align-items: center; font-size: 14px; margin: 6px 0; color: #6B6B8F"><input type="checkbox" disabled="{{true}}" style="accent-color: #00003D">DB relations (later)</label>
+<label style="display: flex; gap: 8px; align-items: center; font-size: 14px; margin: 6px 0"><input type="checkbox" checked="{{true}}" style="accent-color: #00003D">Archived pages (12)</label>
+<div style="height: 1px; background: #E3E4F0; margin: 12px 0"></div>
+<a href="#" style="font-size: 13px">Show as list instead</a>
+</section>
+</aside>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const N = {
+      uni: [200, 200, 'Uni', 34], fyp: [380, 300, 'FYP', 30], ch2: [330, 470, 'Chapter 2 plan', 20], sup: [520, 450, 'Supervisor notes 2025', 20],
+      tmn: [130, 360, 'TMN4133', 22], home: [640, 170, 'Homelab', 34], net: [700, 330, 'Network map', 22], inv: [820, 150, 'Inventory', 20],
+      work: [820, 520, 'Workouts', 28], read: [560, 600, 'Reading log', 24], wk: [930, 380, 'Split notes', 18]
+    };
+    const edges = [
+      ['uni', 'fyp', 'p'], ['uni', 'tmn', 'p'], ['fyp', 'ch2', 'p'], ['fyp', 'sup', 'p'], ['home', 'net', 'p'], ['home', 'inv', 'p'], ['work', 'wk', 'p'],
+      ['fyp', 'net', 'l'], ['ch2', 'net', 'l'], ['read', 'fyp', 'l'], ['read', 'sup', 'l']
+    ].map(([a, b, k], i) => {
+      const [x1, y1] = N[a], [x2, y2] = N[b];
+      const dx = x2 - x1, dy = y2 - y1;
+      return { id: i, x: x1, y: y1, len: Math.round(Math.sqrt(dx * dx + dy * dy)), deg: Math.round(Math.atan2(dy, dx) * 1800 / Math.PI) / 10,
+        style: k === 'p' ? 'solid' : 'dashed', color: k === 'p' ? '#00003D' : '#3D3D6B' };
+    });
+    const fills = { uni: '#CED3EE', home: '#D3EECE', work: '#FAEDB8', read: '#EECFD4' };
+    const nodes = Object.keys(N).map((k) => {
+      const [x, y, label, r] = N[k];
+      const sel = k === 'fyp';
+      const arch = k === 'tmn' || k === 'sup';
+      return { x, y, label, r, bg: sel ? '#F3D053' : (arch ? '#F3F2FA' : (fills[k] || '#FFFFFF')), shadow: sel ? '0 0 0 6px rgba(243,208,83,0.45)' : 'none', weight: sel ? 700 : 500, bstyle: arch ? 'dashed' : 'solid', ital: arch ? 'italic' : 'normal' };
+    });
+    return { nodes, edges };
+  }
+}
+</script>
+</body>
+</html>

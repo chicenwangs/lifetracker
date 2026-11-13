@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings — Item types</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+a{color:#00003D}a:hover{color:#3D3D6B}
+.card{background:#FFFFFF;border:1.5px solid #00003D;border-radius:14px;padding:20px 22px}
+.btn{font:600 13px Inter,system-ui,sans-serif;color:#00003D;background:#FFFFFF;border:1.5px solid #00003D;border-radius:8px;padding:6px 12px;cursor:pointer}
+.side a{display:block;padding:8px 12px;border-radius:999px;font-size:14px;font-weight:500;text-decoration:none;color:#00003D}
+th{text-align:left;font-size:12px;font-weight:600;color:#3D3D6B;padding:8px 10px;border-bottom:1.5px solid #00003D;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid #E3E4F0;font-size:14px;vertical-align:middle}
+.in{font:14px Inter,sans-serif;color:#00003D;border:1.5px solid #6B6B8F;border-radius:8px;padding:6px 9px;background:#FFFFFF}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #00003D; min-height: 940px; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(60% 60% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<dc-import name="Header" active="settings" hint-size="100%,72px"></dc-import>
+<main style="display: flex; flex-wrap: wrap; gap: 28px; padding: 8px 32px 40px 38px; max-width: 1440px; margin: 0 auto; box-sizing: border-box">
+<nav class="side" aria-label="Settings" style="flex: 0 1 220px">
+<h1 style="font-size: 22px; margin: 4px 12px 12px">Settings</h1>
+<a href="#">Account</a>
+<a href="Settings.dc.html">Preferences</a>
+<a href="SettingsTypes.dc.html" aria-current="page" style="background: #CED3EE; border: 1.5px solid #00003D">Item types</a>
+<a href="#">Header pins</a>
+<a href="#">Notifications</a>
+<a href="#">Devices</a>
+<a href="#">Sharing</a>
+<a href="#">Users <span style="font-size: 11px; color: #3D3D6B">(admin)</span></a>
+<a href="#">Import</a>
+<a href="#">Help + tour</a>
+</nav>
+
+<div style="flex: 999 1 640px; min-width: 0; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+<section class="card" aria-label="Item types" style="flex: 999 1 600px; min-width: 0">
+<div style="display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 14px">
+<div style="flex: 1 1 300px">
+<h2 style="margin: 0 0 4px; font-size: 20px">Item types</h2>
+<p style="margin: 0; font-size: 13px; color: #3D3D6B">Colour + label for calendar items and timeline blocks. Up to 10. Order here = order in the type bar and quick-add menu.<br><b>★ Default</b> = type used when you type no <code>/type</code>. <b>Counts down</b> = badge like <code>5d</code> · <code>Today</code> · <code>2d late</code> on the calendar.</p>
+</div>
+<div style="display: flex; align-items: center; gap: 10px">
+<div aria-label="7 of 10 types used" style="display: flex; gap: 3px"><sc-for list="{{meter}}" as="m" hint-placeholder-count="10"><span style="width: 10px; height: 18px; border-radius: 3px; border: 1px solid #00003D; background: {{m}}"></span></sc-for></div>
+<span style="font-size: 13px; font-weight: 600">7 / 10</span>
+<button class="btn" type="button" style="background: #00003D; color: #FFFFFF; box-shadow: -2px 2px 0 #F3D053">New type</button>
+</div>
+</div>
+<div style="overflow-x: auto">
+<table style="border-collapse: collapse; width: 100%">
+<thead><tr><th style="width: 70px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Order</span></th><th>Colour</th><th>Name</th><th>Quick add</th><th title="Used when you type no /type">★ Default</th><th title="Shows 5d · Today · 2d late">Counts down</th><th>Used by</th><th>Share by default</th><th></th></tr></thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+<tr style="background: {{r.rowBg}}">
+<td style="white-space: nowrap"><span aria-hidden="true" style="color: #6B6B8F; cursor: grab; margin-right: 4px">⋮⋮</span><button type="button" class="btn" aria-label="Move {{r.name}} up" style="padding: 2px 6px">↑</button><button type="button" class="btn" aria-label="Move {{r.name}} down" style="padding: 2px 6px; margin-left: 2px">↓</button></td>
+<td><button type="button" aria-label="Change colour of {{r.name}}" style="width: 32px; height: 32px; border-radius: 8px; border: 1.5px solid #00003D; background: {{r.bg}}; cursor: pointer; color: {{r.fg}}; font: 700 12px Inter, sans-serif">Aa</button></td>
+<td><input class="in" aria-label="Name" value="{{r.name}}" style="width: 150px"><sc-if value="{{r.def}}" hint-placeholder-val="{{false}}"><span style="font-size: 11px; font-weight: 600; color: #3D3D6B; border: 1px solid #6B6B8F; border-radius: 999px; padding: 1px 7px; margin-left: 6px">Default</span></sc-if></td>
+<td><code style="font-size: 13px">{{r.slash}}</code></td>
+<td><input type="radio" name="deftype" aria-label="Make {{r.name}} the quick add default" checked="{{r.isDef}}" style="accent-color: #00003D; width: 16px; height: 16px"></td>
+<td><input type="checkbox" aria-label="{{r.name}} counts down to its date" checked="{{r.cd}}" style="accent-color: #00003D; width: 16px; height: 16px"></td>
+<td style="color: #3D3D6B">{{r.used}}</td>
+<td><input type="checkbox" aria-label="Show {{r.name}} titles in new share codes" checked="{{r.share}}" style="accent-color: #00003D; width: 16px; height: 16px"></td>
+<td style="text-align: right; white-space: nowrap"><sc-if value="{{r.canDel}}" hint-placeholder-val="{{false}}"><button type="button" class="btn" style="color: #A83A35; border-color: #A83A35">Delete</button></sc-if><sc-if value="{{r.lock}}" hint-placeholder-val="{{true}}"><span style="font-size: 12px; color: #3D3D6B" title="Default types can be renamed and recoloured, not deleted">Can’t delete</span></sc-if></td>
+</tr>
+</sc-for>
+<tr><td></td><td colspan="8" style="color: #3D3D6B">“No type” (grey) is always there and doesn’t count toward 10.</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<aside style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+<section role="dialog" aria-label="Delete Health" style="background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px; box-shadow: -4px 4px 0 #F3D053; padding: 16px 18px">
+<h3 style="margin: 0 0 6px; font-size: 17px">Delete “Health”?</h3>
+<p style="margin: 0 0 12px; font-size: 13px; color: #3D3D6B">3 items and 5 timeline blocks use it. Move them to:</p>
+<label for="mv" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Move items to</label>
+<select id="mv" class="in" style="width: 100%; margin-bottom: 14px"><option>No type</option><option>Hobby</option><option>Errand</option></select>
+<div style="display: flex; gap: 8px; justify-content: flex-end"><button type="button" class="btn">Cancel</button><button type="button" class="btn" style="background: #A83A35; color: #FFFFFF; border-color: #A83A35">Delete and move</button></div>
+<div style="font-size: 12px; color: #3D3D6B; margin-top: 10px">Undo for 5 s after.</div>
+</section>
+<section style="background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px; padding: 16px 18px; font-size: 13px">
+<h3 style="margin: 0 0 8px; font-size: 15px">Colour picker</h3>
+<div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px">
+<sc-for list="{{swatches}}" as="s" hint-placeholder-count="12"><button type="button" aria-label="{{s.name}}" style="width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid #00003D; background: {{s.c}}; cursor: pointer"></button></sc-for>
+</div>
+<div style="color: #3D3D6B">Picked colours are checked for text contrast. Partner teal is reserved.</div>
+</section>
+</aside>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const r = (name, bg, fg, slash, used, def, share) => ({ name, bg, fg, slash, used, def, canDel: !def, lock: def, share, isDef: name === 'Event', cd: name === 'Deadline', rowBg: name === 'Health' ? '#FBF4E2' : 'transparent' });
+    const rows = [
+      r('Work', '#CED3EE', '#00003D', '/work', '232 items', true, true),
+      r('Deadline', '#B84A44', '#FFFFFF', '/deadline  (/exam)', '43 items', true, true),
+      r('Event', '#D3EECE', '#00003D', '/event', '78 items', true, true),
+      r('Hobby', '#FAEDB8', '#00003D', '/hobby', '25 items', true, false),
+      r('Date', '#EECFD4', '#00003D', '/date', '13 items', true, true),
+      r('Errand', '#CFE8E6', '#00003D', '/errand', '6 items', false, false),
+      r('Health', '#F7D9C4', '#00003D', '/health', '3 items', false, false)
+    ];
+    const used = rows.map((x) => x.bg);
+    const meter = []; for (let i = 0; i < 10; i++) meter.push(used[i] || '#FFFFFF');
+    return {
+      rows, meter,
+      swatches: [['#CFE8E6','Mint'],['#F7D9C4','Peach'],['#E2D4F0','Lavender'],['#D9E7C4','Lime'],['#F2E2A8','Sand'],['#D4E4F2','Sky'],['#F0D4DE','Rose'],['#E3E0D7','Stone'],['#5B6CC0','Indigo, white text'],['#2F7D5B','Green, white text'],['#8A4FB0','Purple, white text'],['#A0612A','Brown, white text']].map(([c, name]) => ({ c, name }))
+    };
+  }
+}
+</script>
+</body>
+</html>

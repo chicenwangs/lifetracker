@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Week</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: #00003D; background: radial-gradient(80% 40% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), #F3F2FA">
+<div style="height: 760px; overflow: hidden; padding: 16px 16px 0; box-sizing: border-box">
+<header style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px">
+<div style="flex: 1"><div style="font-size: 13px; font-weight: 600; color: #3D3D6B">9 – 15 Nov</div><h1 style="margin: 2px 0 0; font-size: 28px">Week</h1></div>
+<button type="button" aria-label="Previous week" style="width: 44px; height: 44px; border: 1.5px solid #00003D; border-radius: 12px; background: #FFFFFF; color: #00003D; font: 600 18px Inter, sans-serif">‹</button>
+<button type="button" aria-label="Next week" style="width: 44px; height: 44px; border: 1.5px solid #00003D; border-radius: 12px; background: #FFFFFF; color: #00003D; font: 600 18px Inter, sans-serif">›</button>
+</header>
+<div role="tablist" aria-label="Days" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-bottom: 16px">
+<sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+<button type="button" role="tab" aria-selected="{{d.sel}}" aria-label="{{d.aria}}" style="display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 64px; padding: 6px 0; border-radius: 12px; border: 1.5px solid {{d.edge}}; font: 600 11px Inter, sans-serif; cursor: pointer; background: {{d.bg}}; color: {{d.fg}}">{{d.dow}}<span style="font-size: 17px; font-weight: 700">{{d.n}}</span><span aria-hidden="true" style="font-size: 10px; font-weight: 600">{{d.hrs}}</span></button>
+</sc-for>
+</div>
+<div style="display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px">
+<h2 style="margin: 0; font-size: 16px">Friday 13 Nov</h2><span style="font-size: 12px; color: #3D3D6B">5 h planned</span>
+</div>
+<ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{items}}" as="i" hint-placeholder-count="5">
+<li><a href="MItem.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 56px; text-decoration: none; border-radius: 12px; padding: 0 12px; background: {{i.bg}}; color: {{i.fg}}; border: 1.5px {{i.border}} {{i.edge}}">
+<span style="width: 74px; font-size: 12px; font-weight: 600">{{i.time}}</span>
+<sc-if value="{{i.theirs}}" hint-placeholder-val="{{false}}"><span aria-label="Neina's calendar" style="width: 18px; height: 18px; border-radius: 999px; background: #0F766E; color: #FFFFFF; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none">N</span></sc-if>
+<span style="flex: 1; font-weight: 600; font-size: 15px">{{i.title}}</span>
+<span aria-hidden="true">›</span>
+</a></li>
+</sc-for>
+</ol>
+</div>
+<div style="position: absolute; left: 0; bottom: 0">
+<dc-import name="MBar" active="week" hint-size="390px,84px"></dc-import>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const T = { Work: ['#CED3EE', '#00003D'], Exam: ['#B84A44', '#FFFFFF'], Event: ['#D3EECE', '#00003D'], Hobby: ['#FAEDB8', '#00003D'], Dating: ['#EECFD4', '#00003D'], None: ['#E6E7F0', '#00003D'], Busy: ['#E6E7F0', '#3D3D6B'] };
+    const i = (time, title, type, st) => {
+      const [bg, fg] = T[type]; const theirs = st === 'theirs';
+      return { time, title, theirs, fg: theirs ? '#00003D' : fg, bg: theirs ? 'repeating-linear-gradient(135deg, ' + bg + ' 0 5px, #FFFFFF 5px 8px)' : bg,
+        border: theirs ? 'dashed' : 'solid', edge: theirs ? '#00003D' : bg };
+    };
+    const days = [['Mon', 9, '6h'], ['Tue', 10, '7h'], ['Wed', 11, '4h'], ['Thu', 12, '9h'], ['Fri', 13, '5h'], ['Sat', 14, '2h'], ['Sun', 15, '—']]
+      .map(([dow, n, hrs]) => ({ dow, n, hrs, aria: dow + ' ' + n + ', ' + hrs + ' planned', sel: n === 13 ? 'true' : 'false',
+        bg: n === 13 ? '#00003D' : '#FFFFFF', fg: n === 13 ? '#FFFFFF' : '#00003D', edge: n === 12 ? '#00003D' : '#CED3EE' }));
+    return {
+      days,
+      items: [
+        i('09:00–09:15', 'Standup', 'Work'),
+        i('10:00–12:00', 'Server room walk-through', 'Work'),
+        i('all day', 'Change window freeze', 'Exam'),
+        i('14:00–15:30', '1:1 with manager', 'Work'),
+        i('19:00–21:00', 'Dinner', 'Event', 'theirs')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

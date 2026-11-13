@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Workouts</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+.pill{font:600 13px Inter,sans-serif;color:#00003D;border-radius:999px;min-height:36px;padding:0 12px;border:1.5px solid #00003D;background:#FFFFFF;white-space:nowrap;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: #00003D; background: #F3F2FA">
+<header style="display: flex; align-items: center; gap: 2px; padding: 8px 6px">
+<a href="MMore.dc.html" aria-label="Back" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #00003D"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<h1 style="margin: 0; font-size: 22px; flex: 1">Workouts</h1>
+<button type="button" aria-label="Page actions" style="width: 44px; height: 44px; border: 0; background: transparent; color: #00003D; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+</header>
+<div style="padding: 0 16px">
+<div role="tablist" aria-label="Views" style="display: flex; gap: 4px; border-bottom: 1.5px solid #CED3EE; margin-bottom: 10px">
+<button type="button" role="tab" aria-selected="true" style="font: 700 14px Inter, sans-serif; color: #00003D; background: transparent; border: 0; border-bottom: 2.5px solid #00003D; min-height: 44px; padding: 0 10px; margin-bottom: -1.5px">Sessions</button>
+<button type="button" role="tab" aria-selected="false" style="font: 500 14px Inter, sans-serif; color: #3D3D6B; background: transparent; border: 0; min-height: 44px; padding: 0 10px">By day</button>
+<button type="button" role="tab" aria-selected="false" style="font: 500 14px Inter, sans-serif; color: #3D3D6B; background: transparent; border: 0; min-height: 44px; padding: 0 10px">Calendar</button>
+</div>
+<div style="display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px">
+<button type="button" class="pill" style="background: #CED3EE">Bench press ✕</button>
+<button type="button" class="pill" style="background: #CED3EE">Newest first</button>
+<button type="button" class="pill" style="border-style: dashed">+ Filter</button>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="5">
+<li><a href="MPage.dc.html" style="display: block; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 12px; padding: 10px 12px; text-decoration: none; color: #00003D">
+<div style="display: flex; align-items: center; gap: 8px"><span style="font-weight: 700; flex: 1">{{r.date}}</span>
+<span style="font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 8px; background: {{r.effBg}}">{{r.eff}}</span>
+<span style="font-size: 12px; font-weight: 600; color: #3D3D6B">{{r.doneTxt}}</span></div>
+<div style="font-size: 14px; color: #3D3D6B; margin-top: 4px">{{r.kg}} kg · {{r.sets}} × {{r.reps}}</div>
+</a></li>
+</sc-for>
+</ul>
+</div>
+<button type="button" style="position: absolute; right: 16px; bottom: 32px; min-height: 52px; padding: 0 20px; font: 700 15px Inter, sans-serif; color: #FFFFFF; background: #00003D; border: 0; border-radius: 16px; box-shadow: -3px 3px 0 #F3D053; cursor: pointer">+ New session</button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const eff = { light: '#D3EECE', moderate: '#FAEDB8', heavy: '#EECFD4' };
+    const r = (date, kg, sets, reps, e, done) => ({ date, kg, sets, reps, eff: e, effBg: eff[e], done, doneTxt: done ? 'Done' : 'Planned' });
+    return { rows: [ r('Thu 12 Nov', '42.5', 3, 8, 'heavy', false), r('Mon 9 Nov', '40', 3, 8, 'moderate', true), r('Thu 5 Nov', '40', 3, 6, 'heavy', true), r('Mon 2 Nov', '37.5', 3, 8, 'moderate', true), r('Thu 29 Oct', '37.5', 3, 6, 'moderate', true) ] };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Desktop states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+.panel{background:#FFFFFF;border:1.5px solid #00003D;border-radius:14px;display:flex;flex-direction:column;overflow:hidden}
+.ph{background:#CED3EE;border-bottom:1.5px solid #00003D;padding:10px 16px;font-weight:700;font-size:15px}
+.pb{flex:1;position:relative;padding:20px;background:#F8F8FC;display:flex;flex-direction:column;gap:12px}
+.btn{font:600 13px Inter,system-ui,sans-serif;color:#00003D;background:#FFFFFF;border:1.5px solid #00003D;border-radius:8px;padding:7px 12px;cursor:pointer}
+.sk{background:#E3E4F0;border-radius:6px}
+kbd{font:600 11px Inter,sans-serif;border:1px solid #6B6B8F;border-radius:4px;padding:1px 6px;color:#00003D;background:#FFFFFF}
+</style>
+</helmet>
+<div style="width: 1440px; height: 940px; box-sizing: border-box; padding: 40px; font-family: Inter, system-ui, sans-serif; color: #00003D; background: #F3F2FA; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 32px">
+
+<section class="panel">
+<div class="ph">Empty — Keep, first visit</div>
+<div class="pb" style="align-items: center; justify-content: center; text-align: center">
+<svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#00003D" stroke-width="1.5" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"></path><path d="M9 12h6M9 16h4"></path></svg>
+<div style="font-size: 18px; font-weight: 700">No notes yet</div>
+<div style="font-size: 14px; color: #3D3D6B; max-width: 300px">Jot anything: lists, links, photos. Group them later with binders.</div>
+<button class="btn" type="button" style="background: #00003D; color: #FFFFFF; box-shadow: -2px 2px 0 #F3D053">New note</button>
+<div style="font-size: 12px; color: #3D3D6B">Tip: press <kbd>N</kbd> anywhere for quick add</div>
+</div>
+</section>
+
+<section class="panel">
+<div class="ph">Loading — Home</div>
+<div class="pb" aria-busy="true" aria-label="Loading calendar">
+<div style="display: flex; gap: 8px; align-items: center"><div class="sk" style="width: 160px; height: 20px"></div><div style="flex: 1"></div><div class="sk" style="width: 60px; height: 20px"></div></div>
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{sk}}" as="s" hint-placeholder-count="28"><div class="sk" style="height: 44px; background: {{s}}"></div></sc-for>
+</div>
+<div style="font-size: 12px; color: #3D3D6B">Same layout as loaded page. No "empty" message until data arrives.</div>
+</div>
+</section>
+
+<section class="panel">
+<div class="ph">Refresh failed — Home</div>
+<div class="pb">
+<div role="alert" style="display: flex; align-items: center; gap: 10px; background: #FBE3E1; color: #8E2B26; border: 1.5px solid #8E2B26; border-radius: 10px; padding: 10px 12px; font-size: 14px">
+<span style="font-weight: 700" aria-hidden="true">!</span><span style="flex: 1">Couldn’t refresh. Showing what loaded at 13:02.</span><button class="btn" type="button">Retry</button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px">
+<sc-for list="{{cells}}" as="c" hint-placeholder-count="14"><div style="height: 48px; border: 1px solid #E3E4F0; border-radius: 4px; background: #FFFFFF; padding: 4px; box-sizing: border-box"><div style="height: 10px; border-radius: 3px; background: {{c}}"></div></div></sc-for>
+</div>
+<div style="font-size: 12px; color: #3D3D6B">Last good data stays. Never a blank calendar.</div>
+</div>
+</section>
+
+<section class="panel">
+<div class="ph">Upload failed + offline</div>
+<div class="pb">
+<div role="status" style="background: #3D3D6B; color: #FFFFFF; border-radius: 10px; padding: 10px 12px; font-size: 13px">Offline. Changes stay on this device until you reconnect.</div>
+<div style="background: #FFFFFF; border: 1.5px solid #8E2B26; border-radius: 10px; padding: 10px 12px; display: flex; gap: 12px; align-items: center">
+<div role="img" aria-label="File" style="width: 44px; height: 44px; border-radius: 6px; background: #FBE3E1; display: flex; align-items: center; justify-content: center; color: #8E2B26; font-weight: 700">!</div>
+<div style="flex: 1; font-size: 13px"><div style="font-weight: 600">boarding-pass.png</div><div style="color: #8E2B26">Upload failed — no connection. Note is safe.</div></div>
+<button class="btn" type="button">Retry</button><button class="btn" type="button" aria-label="Remove boarding-pass.png">Remove</button>
+</div>
+<div style="background: #FFFFFF; border: 1.5px solid #8E2B26; border-radius: 10px; padding: 10px 12px; font-size: 13px; display: flex; gap: 10px; align-items: center"><span style="flex: 1"><strong>Not saved.</strong> Page edits kept on screen.</span><button class="btn" type="button">Retry save</button></div>
+</div>
+</section>
+
+<section class="panel">
+<div class="ph">Search — Ctrl+K</div>
+<div class="pb">
+<div role="dialog" aria-label="Search" style="background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 12px; box-shadow: -4px 4px 0 #F3D053; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #E3E4F0">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<span style="flex: 1; font-size: 15px">ops<span aria-hidden="true" style="display: inline-block; width: 1.5px; height: 16px; background: #00003D; vertical-align: -3px"></span></span><kbd>Esc</kbd>
+</div>
+<sc-for list="{{results}}" as="g" hint-placeholder-count="3">
+<div style="padding: 6px 8px">
+<div style="font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #3D3D6B; padding: 4px 6px">{{g.label}}</div>
+<sc-for list="{{g.items}}" as="i" hint-placeholder-count="2">
+<div role="option" aria-selected="{{i.sel}}" style="display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; font-size: 14px; background: {{i.bg}}"><span style="flex: 1">{{i.t}}</span><span style="font-size: 12px; color: #3D3D6B">{{i.meta}}</span></div>
+</sc-for>
+</div>
+</sc-for>
+<div style="font-size: 11px; color: #3D3D6B; padding: 8px 14px; border-top: 1px solid #E3E4F0">↑↓ move · Enter open · Tab filter by module · archived hidden (Alt+A to include)</div>
+</div>
+</div>
+</section>
+
+<section class="panel">
+<div class="ph">Keyboard shortcuts — press ?</div>
+<div class="pb">
+<div role="dialog" aria-label="Keyboard shortcuts" style="background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 12px; box-shadow: -4px 4px 0 #F3D053; padding: 12px 14px">
+<table style="width: 100%; border-collapse: collapse; font-size: 13.5px">
+<sc-for list="{{keys}}" as="k" hint-placeholder-count="9">
+<tr><td style="padding: 6px 0; border-bottom: 1px solid #E3E4F0">{{k.d}}</td><td style="padding: 6px 0; border-bottom: 1px solid #E3E4F0; text-align: right"><kbd>{{k.k}}</kbd></td></tr>
+</sc-for>
+</table>
+</div>
+</div>
+</section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const sk = []; for (let i = 0; i < 28; i++) sk.push(i % 3 ? '#E3E4F0' : '#ECECF5');
+    const pal = ['#CED3EE', '#D3EECE', '#FAEDB8', '#EECFD4', '#B84A44', '#E6E7F0', '#CED3EE'];
+    const cells = []; for (let i = 0; i < 14; i++) cells.push(pal[i % 7]);
+    const it = (t, meta, sel) => ({ t, meta, sel: sel ? 'true' : 'false', bg: sel ? '#CED3EE' : 'transparent' });
+    return {
+      sk, cells,
+      results: [
+        { label: 'PAGES', items: [it('Ops runbook', 'Work', true), it('Ops on-call rota', 'Work / Ops runbook')] },
+        { label: 'KEEP', items: [it('Quarterly ops report — outline', 'Note · Uni')] },
+        { label: 'ACTIONS', items: [it('New page "ops"', 'Enter'), it('Add to planner "ops"', 'N')] }
+      ],
+      keys: [
+        { d: 'Quick add', k: 'N' }, { d: 'Search everything', k: 'Ctrl K' }, { d: 'Undo', k: 'Ctrl Z' },
+        { d: 'Duplicate while dragging', k: 'Alt + drag' }, { d: 'Insert block in a page', k: '/' },
+        { d: 'Move focused block 15 min', k: '↑ ↓' }, { d: 'Resize focused block', k: 'Shift ↑ ↓' },
+        { d: 'Open / edit focused item', k: 'Enter' }, { d: 'Close dialog', k: 'Esc' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

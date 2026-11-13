@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>New note</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+.tb{width:44px;height:44px;border:0;border-radius:10px;background:transparent;color:#00003D;display:flex;align-items:center;justify-content:center;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: #00003D; background: #FFFFFF">
+<header style="display: flex; align-items: center; gap: 6px; padding: 12px 10px; border-bottom: 1px solid #E3E4F0">
+<a href="MKeep.dc.html" aria-label="Back to notes" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #00003D; text-decoration: none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<span style="flex: 1; font-size: 13px; color: #3D3D6B">New note · Saved</span>
+<button class="tb" type="button" aria-label="Pin note"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 17v5M9 10.8V4h6v6.8l3 3.2H6z"></path></svg></button>
+<button class="tb" type="button" aria-label="Add reminder"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4"></path></svg></button>
+</header>
+<div style="padding: 16px 20px">
+<div style="font-size: 22px; font-weight: 700; color: #6B6B8F">Title</div>
+<div style="font-size: 17px; margin-top: 12px; line-height: 1.5">Ask Dr. about FYP scope — WireGuard vs Tailscale<span aria-hidden="true" style="display: inline-block; width: 1.5px; height: 20px; background: #00003D; vertical-align: -4px; margin-left: 1px"></span></div>
+</div>
+
+<div style="position: absolute; left: 0; right: 0; bottom: 291px; border-top: 1px solid #E3E4F0; background: #FFFFFF; display: flex; align-items: center; padding: 2px 8px">
+<button class="tb" type="button" aria-label="Make checklist"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg></button>
+<button class="tb" type="button" aria-label="Add photo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg></button>
+<button class="tb" type="button" aria-label="Draw"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16z"></path></svg></button>
+<button class="tb" type="button" aria-label="Label or binder"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"></path></svg></button>
+<button class="tb" type="button" aria-label="Colour"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="8" r="1"></circle></svg></button>
+<div style="flex: 1"></div>
+<a href="MKeep.dc.html" style="font: 700 14px Inter, sans-serif; color: #FFFFFF; background: #00003D; border-radius: 10px; padding: 10px 16px; text-decoration: none">Done</a>
+</div>
+<div role="img" aria-label="Phone keyboard" style="position: absolute; left: 0; right: 0; bottom: 0; height: 291px; background: #D9D8E4; display: flex; align-items: center; justify-content: center; font-size: 13px; color: #3D3D6B">[ system keyboard ]</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

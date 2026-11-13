@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Keep</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+a{color:#00003D}a:hover{color:#3D3D6B}
+.card{background:#FFFFFF;border:1.5px solid #00003D;border-radius:14px}
+.side a{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:999px;font-size:14px;font-weight:500;text-decoration:none;color:#00003D}
+.note{break-inside:avoid;margin:0 0 18px;border:1.5px solid #00003D;border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.45;box-shadow:-3px 3px 0 #F3D053}
+.tag{display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;border:1px solid #6B6B8F;color:#3D3D6B;margin:6px 4px 0 0}
+.ck{display:flex;gap:8px;align-items:flex-start;margin:4px 0}
+.box{width:14px;height:14px;border:1.5px solid #00003D;border-radius:3px;flex:none;margin-top:2px;box-sizing:border-box}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #00003D; min-height: 940px; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(60% 60% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<dc-import name="Header" active="keep" hint-size="100%,72px"></dc-import>
+<main style="display: flex; flex-wrap: wrap; gap: 28px; padding: 8px 32px 40px 38px; max-width: 1440px; margin: 0 auto; box-sizing: border-box">
+
+<nav class="side" aria-label="Keep" style="flex: 0 1 230px; display: flex; flex-direction: column; gap: 2px">
+<a href="Keep.dc.html" style="background: #FFFFFF; border: 1.5px solid #00003D"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"></path></svg>Notes</a>
+<a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4"></path></svg>Reminders</a>
+<div style="font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #3D3D6B; padding: 16px 12px 4px">BINDERS</div>
+<sc-for list="{{binders}}" as="b" hint-placeholder-count="4">
+<a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h12a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3zM8 4v16"></path></svg><span style="flex: 1">{{b.name}}</span><span style="font-size: 12px; color: #3D3D6B">{{b.n}}</span></a>
+</sc-for>
+<a href="#" style="color: #3D3D6B">+ New binder</a>
+<div style="font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #3D3D6B; padding: 16px 12px 4px">LABELS</div>
+<sc-for list="{{labels}}" as="l" hint-placeholder-count="4">
+<a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"></path><circle cx="7.5" cy="8.5" r="1.2"></circle></svg>{{l}}</a>
+</sc-for>
+<a href="#" style="color: #3D3D6B">Edit labels</a>
+<div style="height: 1.5px; background: #CED3EE; margin: 12px"></div>
+<a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 5h18v4H3zM5 9v11h14V9M10 13h4"></path></svg>Archive</a>
+<a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path></svg>Trash</a>
+</nav>
+
+<div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap">
+<label style="flex: 1 1 320px; display: flex; align-items: center; gap: 10px; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 12px; padding: 10px 14px">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search notes</span>
+<input type="search" placeholder="Search notes, checklists, labels" style="border: 0; outline: none; font: 14px Inter, sans-serif; color: #00003D; flex: 1; background: transparent">
+</label>
+<button type="button" style="font: 600 13px Inter, sans-serif; color: #00003D; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 10px; padding: 9px 12px; cursor: pointer">Select</button>
+<div role="group" aria-label="Layout" style="display: flex; border: 1.5px solid #00003D; border-radius: 10px; overflow: hidden; background: #FFFFFF">
+<button type="button" aria-label="Grid" aria-pressed="true" style="padding: 9px 12px; border: 0; background: #00003D; color: #FFFFFF; cursor: pointer">▦</button>
+<button type="button" aria-label="List" aria-pressed="false" style="padding: 9px 12px; border: 0; background: #FFFFFF; color: #00003D; cursor: pointer">☰</button>
+</div>
+</div>
+
+<div class="card" style="max-width: 600px; width: 100%; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 12px; box-sizing: border-box">
+<span style="flex: 1; font-size: 15px; color: #6B6B8F">New note…</span>
+<button type="button" aria-label="New checklist" style="border: 0; background: transparent; color: #00003D; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg></button>
+<button type="button" aria-label="New drawing" style="border: 0; background: transparent; color: #00003D; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 20l4-1 11-11-3-3L5 16zM14 6l3 3"></path></svg></button>
+<button type="button" aria-label="New image note" style="border: 0; background: transparent; color: #00003D; cursor: pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="M21 17l-6-6-9 9"></path></svg></button>
+</div>
+
+<section aria-label="Pinned">
+<h2 style="margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #3D3D6B">PINNED</h2>
+<div style="column-count: 4; column-gap: 18px">
+<article class="note" style="background: #FAEDB8">
+<div style="font-weight: 700; margin-bottom: 4px">Groceries</div>
+<div class="ck"><span class="box"></span>Eggs</div>
+<div class="ck"><span class="box"></span>Milo</div>
+<div class="ck"><span class="box"></span>Bread</div>
+<div style="font-size: 12px; color: #3D3D6B; margin-top: 4px">+ 2 done</div>
+<span class="tag">groceries</span>
+</article>
+<article class="note" style="background: #D3EECE">
+<div style="font-weight: 700; margin-bottom: 4px">Wi-Fi + homelab IPs</div>
+<div>mini PC → .20, NAS → .30. Tunnel name: life-tracker.</div>
+<span class="tag">homelab</span>
+</article>
+</div>
+</section>
+
+<section aria-label="Others">
+<h2 style="margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #3D3D6B">OTHERS</h2>
+<div style="column-count: 4; column-gap: 18px">
+<article class="note" style="background: #FFFFFF">
+<div style="font-weight: 700; margin-bottom: 4px">Pack for Miri trip</div>
+<div class="ck"><span class="box"></span>Charger</div>
+<div class="ck" style="margin-left: 20px"><span class="box"></span>Laptop + phone</div>
+<div class="ck"><span class="box" style="background: #00003D"></span><span style="text-decoration: line-through">Book flight</span></div>
+<div style="font-size: 12px; margin-top: 6px; display: flex; gap: 6px; align-items: center; color: #3D3D6B"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path></svg>Fri 18:00</div>
+</article>
+<article class="note" style="background: #CED3EE">
+<div style="font-weight: 700; margin-bottom: 4px">FYP idea dump</div>
+<div>Compare WireGuard vs Tailscale latency on the homelab. Ask supervisor about scope.</div>
+<span class="tag">fyp</span><span class="tag">ideas</span>
+</article>
+<article class="note" style="background: #FFFFFF; padding: 0; overflow: hidden">
+<div role="img" aria-label="Image placeholder" style="height: 120px; background: repeating-linear-gradient(135deg, #E3E4F0 0 8px, #F3F2FA 8px 16px); display: flex; align-items: center; justify-content: center; font-size: 12px; color: #3D3D6B">[image]</div>
+<div style="padding: 10px 14px">Whiteboard from lecture 8</div>
+</article>
+<article class="note" style="background: #FFFFFF">
+<div style="font-weight: 700; margin-bottom: 6px">Cafe to try</div>
+<div style="border: 1px solid #6B6B8F; border-radius: 8px; padding: 8px; font-size: 12px"><div style="font-weight: 600">[Link title]</div><div style="color: #3D3D6B">example.com</div></div>
+<span class="tag">date ideas</span>
+</article>
+<article class="note" style="background: #EECFD4">
+<div style="font-weight: 700; margin-bottom: 4px">Gift ideas</div>
+<div>Film camera strap, that tote bag she liked.</div>
+</article>
+<article class="note" style="background: #FFFFFF; padding: 0; overflow: hidden">
+<div role="img" aria-label="Drawing" style="height: 90px; display: flex; align-items: center; justify-content: center"><svg width="160" height="60" viewBox="0 0 160 60" fill="none" stroke="#00003D" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 40 Q30 5 50 35 T90 30 T130 20"></path><rect x="100" y="34" width="40" height="18" rx="3"></rect></svg></div>
+<div style="padding: 8px 14px; font-size: 12px; color: #3D3D6B">Rack layout sketch</div>
+</article>
+<article class="note" style="background: #FFFFFF">
+<div style="font-weight: 700; margin-bottom: 4px">Lecture notes PDF</div>
+<div style="display: flex; gap: 8px; align-items: center; border: 1px solid #CED3EE; border-radius: 8px; padding: 6px 8px; font-size: 12px"><span style="font-weight: 700; color: #8E2B26">PDF</span>week8-routing.pdf</div>
+</article>
+</div>
+</section>
+</div>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      binders: [ { name: 'Uni', n: 12 }, { name: 'Homelab', n: 7 }, { name: 'Date ideas', n: 14 }, { name: 'Watchlist', n: 6 } ],
+      labels: ['fyp', 'groceries', 'homelab', 'ideas']
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pages editor</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+a{color:#00003D}a:hover{color:#3D3D6B}
+.btn{font:600 13px Inter,system-ui,sans-serif;color:#00003D;background:#FFFFFF;border:1.5px solid #00003D;border-radius:8px;padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.blk{position:relative;padding:3px 0}
+.h{position:absolute;left:-46px;top:4px;display:flex;gap:2px;color:#8E8BB5}
+.h button{width:20px;height:22px;border:0;background:transparent;color:#6B6B8F;cursor:grab;padding:0}
+</style>
+</helmet>
+<div style="font-family: Inter, system-ui, sans-serif; color: #00003D; min-height: 940px; background: radial-gradient(60% 60% at 0% 0%, #F3A2BD 0%, rgba(243,162,189,0) 70%), radial-gradient(60% 60% at 100% 0%, #F7E7D8 0%, rgba(247,231,216,0) 70%), radial-gradient(60% 60% at 0% 100%, #C9DAE7 0%, rgba(201,218,231,0) 70%), radial-gradient(60% 60% at 100% 100%, #B6B1D9 0%, rgba(182,177,217,0) 70%), #F3F2FA">
+<dc-import name="Header" active="pages" hint-size="100%,72px"></dc-import>
+<main style="display: flex; flex-wrap: wrap; gap: 24px; padding: 8px 32px 40px 38px; max-width: 1440px; margin: 0 auto; box-sizing: border-box">
+
+<dc-import name="PagesTree" current="editor" hint-size="240px,440px"></dc-import>
+
+<article style="flex: 999 1 640px; min-width: 0; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 14px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid #E3E4F0; flex-wrap: wrap">
+<nav aria-label="Breadcrumb" style="font-size: 13px; color: #3D3D6B; flex: 1"><a href="#" style="color: #3D3D6B">Uni</a> / <a href="#" style="color: #3D3D6B">FYP</a> / <span style="color: #00003D">Chapter 2 plan</span></nav>
+<span style="font-size: 12px; color: #3D3D6B">Saved</span>
+<button class="btn" type="button" aria-pressed="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 17v5M9 10.8V4h6v6.8l3 3.2H6z"></path></svg>Pin</button>
+<button class="btn" type="button">Share</button>
+<button class="btn" type="button" aria-label="Page actions">⋯</button>
+</div>
+
+<div style="max-width: 760px; margin: 0 auto; padding: 32px 56px 48px; font-size: 15px; line-height: 1.6">
+<h1 style="font-size: 32px; margin: 0 0 18px; font-weight: 700">Chapter 2 plan</h1>
+
+<div class="blk"><h2 style="margin: 8px 0 4px; font-size: 21px">Literature review scope</h2></div>
+<div class="blk" style="background: #F3F2FA; border-radius: 6px; margin: 0 -8px; padding: 3px 8px">
+<div class="h"><button type="button" aria-label="Add block below">+</button><button type="button" aria-label="Drag or open block menu">⋮⋮</button></div>
+Cover VPN overlay options and how they behave on a homelab behind CGNAT. Link findings back to <a href="#">Homelab / Network map</a>.
+</div>
+<div class="blk"><ul style="margin: 6px 0; padding-left: 22px"><li>WireGuard (manual)</li><li>Tailscale (coordinated)<ul style="padding-left: 20px"><li>DERP relay fallback</li></ul></li><li>Cloudflare Tunnel (HTTP only)</li></ul></div>
+<div class="blk" style="display: flex; flex-direction: column; gap: 4px; margin: 6px 0">
+<label style="display: flex; gap: 10px; align-items: center"><input type="checkbox" checked="{{true}}" style="accent-color: #00003D; width: 16px; height: 16px"><span style="text-decoration: line-through; color: #6B6B8F">Collect 10 papers</span></label>
+<label style="display: flex; gap: 10px; align-items: center"><input type="checkbox" style="accent-color: #00003D; width: 16px; height: 16px">Summary table by Fri</label>
+</div>
+<div class="blk" style="margin: 10px 0"><a href="#" style="display: flex; gap: 10px; align-items: center; border: 1.5px solid #6B6B8F; border-radius: 10px; padding: 10px 12px; text-decoration: none; color: #00003D"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"></path></svg><span style="flex: 1; font-weight: 600">Supervisor meeting notes</span><span style="font-size: 12px; color: #3D3D6B">Page link</span></a></div>
+<div class="blk"><hr style="border: 0; border-top: 1.5px solid #E3E4F0; margin: 14px 0"></div>
+<div class="blk">
+<table style="border-collapse: collapse; width: 100%; font-size: 14px">
+<tr><th style="text-align: left; border: 1px solid #CED3EE; padding: 6px 10px; background: #F3F2FA">Paper</th><th style="text-align: left; border: 1px solid #CED3EE; padding: 6px 10px; background: #F3F2FA">Year</th><th style="text-align: left; border: 1px solid #CED3EE; padding: 6px 10px; background: #F3F2FA">Takeaway</th></tr>
+<tr><td style="border: 1px solid #CED3EE; padding: 6px 10px">[Paper title]</td><td style="border: 1px solid #CED3EE; padding: 6px 10px">[Year]</td><td style="border: 1px solid #CED3EE; padding: 6px 10px">[One line]</td></tr>
+<tr><td style="border: 1px solid #CED3EE; padding: 6px 10px">[Paper title]</td><td style="border: 1px solid #CED3EE; padding: 6px 10px">[Year]</td><td style="border: 1px solid #CED3EE; padding: 6px 10px">[One line]</td></tr>
+</table>
+</div>
+<div class="blk" style="position: relative; margin-top: 12px">
+<div style="color: #00003D">/ta<span style="display: inline-block; width: 1.5px; height: 18px; background: #00003D; vertical-align: -3px"></span></div>
+<div role="listbox" aria-label="Insert block" style="position: absolute; top: 34px; left: 0; width: 300px; background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 12px; box-shadow: -4px 4px 0 #F3D053; padding: 6px; z-index: 2">
+<sc-for list="{{slash}}" as="s" hint-placeholder-count="4">
+<div role="option" aria-selected="{{s.sel}}" style="display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 8px; background: {{s.bg}}">
+<span aria-hidden="true" style="width: 30px; height: 30px; border: 1.5px solid #00003D; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700">{{s.icon}}</span>
+<span><span style="display: block; font-size: 14px; font-weight: 600">{{s.name}}</span><span style="display: block; font-size: 12px; color: #3D3D6B">{{s.hint}}</span></span>
+</div>
+</sc-for>
+<div style="font-size: 11px; color: #3D3D6B; padding: 6px 8px 2px">↑↓ move · Enter insert · Esc cancel</div>
+</div>
+</div>
+<div style="height: 220px"></div>
+</div>
+</article>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const t = (title, depth, open, opts) => ({ title, pad: 8 + depth * 16, chev: open === null ? '' : (open ? '▾' : '▸'), weight: opts && opts.cur ? 700 : 500, bg: opts && opts.cur ? '#CED3EE' : 'transparent', pinned: !!(opts && opts.pin) });
+    return {
+      tree: [
+        t('Uni', 0, true),
+        t('FYP', 1, true, { pin: true }),
+        t('Chapter 2 plan', 2, null, { cur: true }),
+        t('Supervisor meeting notes', 2, null),
+        t('TMN4133', 1, false),
+        t('Homelab', 0, true, { pin: true }),
+        t('Network map', 1, null),
+        t('Inventory', 1, null),
+        t('Workouts', 0, false, { pin: true }),
+        t('Reading log', 0, null)
+      ],
+      slash: [
+        { icon: '⊞', name: 'Table', hint: 'Simple grid inside the page', sel: 'true', bg: '#CED3EE' },
+        { icon: 'DB', name: 'Database — table', hint: 'Records with typed columns', sel: 'false', bg: 'transparent' },
+        { icon: '☐', name: 'To-do', hint: 'Checkbox item', sel: 'false', bg: 'transparent' },
+        { icon: '↗', name: 'Link to page', hint: 'Link another page by name', sel: 'false', bg: 'transparent' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

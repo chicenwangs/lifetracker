@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Month</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: #00003D; background: #F3F2FA">
+<div style="height: 760px; overflow: hidden; padding: 8px 16px 0; box-sizing: border-box">
+<header style="display: flex; align-items: center; gap: 4px; margin: 0 -8px 8px">
+<a href="MMore.dc.html" aria-label="Back to More" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #00003D"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<h1 style="margin: 0; font-size: 20px; flex: 1">November 2026</h1>
+<button type="button" aria-label="Previous month" style="width: 44px; height: 44px; border: 0; background: transparent; color: #00003D; font: 600 20px Inter, sans-serif">‹</button>
+<button type="button" aria-label="Next month" style="width: 44px; height: 44px; border: 0; background: transparent; color: #00003D; font: 600 20px Inter, sans-serif">›</button>
+</header>
+<div style="background: #FFFFFF; border: 1.5px solid #00003D; border-radius: 16px; padding: 10px 8px">
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); text-align: center; font-size: 11px; font-weight: 700; color: #3D3D6B; margin-bottom: 4px">
+<span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+</div>
+<div role="grid" aria-label="November 2026" style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px">
+<sc-for list="{{cells}}" as="c" hint-placeholder-count="42">
+<button type="button" aria-label="{{c.aria}}" style="height: 48px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; cursor: pointer">
+<span style="width: 30px; height: 30px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font: 600 14px Inter, sans-serif; color: {{c.fg}}; background: {{c.bg}}; border: 1.5px solid {{c.ring}}">{{c.n}}</span>
+<span aria-hidden="true" style="display: flex; gap: 2px">
+<sc-for list="{{c.dots}}" as="d" hint-placeholder-count="2"><span style="width: 5px; height: 5px; border-radius: 999px; border: 1px solid #00003D; background: {{d}}"></span></sc-for>
+</span>
+</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; align-items: baseline; justify-content: space-between; margin: 16px 2px 8px">
+<h2 style="margin: 0; font-size: 16px">Tue 18 Nov</h2><a href="MToday.dc.html" style="font-size: 13px; font-weight: 600; color: #00003D">Open day</a>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+<li style="display: flex; align-items: center; gap: 10px; min-height: 52px; border-radius: 12px; padding: 0 12px; background: #B84A44; color: #FFFFFF"><span style="width: 56px; font-size: 12px; font-weight: 600">all day</span><span style="font-weight: 600">Quarterly report due</span></li>
+<li style="display: flex; align-items: center; gap: 10px; min-height: 52px; border-radius: 12px; padding: 0 12px; background: #CED3EE"><span style="width: 56px; font-size: 12px; font-weight: 600">10:00</span><span style="font-weight: 600">Vendor site visit</span></li>
+</ul>
+</div>
+<div style="position: absolute; left: 0; bottom: 0">
+<dc-import name="MBar" active="more" hint-size="390px,84px"></dc-import>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const C = { w: '#CED3EE', x: '#B84A44', e: '#D3EECE', h: '#FAEDB8', d: '#EECFD4' };
+    const ev = { 3: 'wh', 4: 'w', 5: 'w', 7: 'd', 9: 'w', 10: 'wh', 11: 'w', 12: 'whd', 13: 'we', 14: 'e', 16: 'e', 17: 'w', 18: 'xw', 20: 'h', 21: 'e', 24: 'w', 25: 'w', 27: 'x', 30: 'w' };
+    const cells = [];
+    for (let i = 0; i < 42; i++) {
+      let n, faint = false;
+      if (i < 6) { n = 26 + i; faint = true; } else if (i < 36) { n = i - 5; } else { n = i - 35; faint = true; }
+      const codes = faint ? '' : (ev[n] || '');
+      const today = !faint && n === 12, sel = !faint && n === 18;
+      cells.push({ n, dots: codes.split('').filter(Boolean).slice(0, 3).map((k) => C[k]),
+        aria: (faint ? 'Outside month, ' : '') + n + ' Nov, ' + codes.length + ' items' + (today ? ', today' : ''),
+        fg: sel ? '#FFFFFF' : (faint ? '#6B6B8F' : '#00003D'), bg: sel ? '#00003D' : 'transparent', ring: today ? '#00003D' : 'transparent' });
+    }
+    return { cells };
+  }
+}
+</script>
+</body>
+</html>

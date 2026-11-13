@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Page</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+*{scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{width:0;height:0;display:none}
+body{margin:0}
+.tb{width:44px;height:44px;border:0;border-radius:10px;background:transparent;color:#00003D;display:flex;align-items:center;justify-content:center;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: #00003D; background: #FFFFFF">
+<header style="display: flex; align-items: center; gap: 2px; padding: 8px 6px; border-bottom: 1px solid #E3E4F0">
+<a href="MPages.dc.html" aria-label="Back to all pages" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #00003D"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg></a>
+<nav aria-label="Breadcrumb" style="flex: 1; font-size: 13px; color: #3D3D6B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Work / Ops runbook</nav>
+<span style="font-size: 12px; color: #3D3D6B; margin-right: 4px">Saved</span>
+<button class="tb" type="button" aria-label="Page actions: pin, share, move, delete"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"></circle><circle cx="12" cy="12" r="1.8"></circle><circle cx="19" cy="12" r="1.8"></circle></svg></button>
+</header>
+<div style="padding: 16px 20px; font-size: 16px; line-height: 1.55; height: 640px; overflow: hidden; box-sizing: border-box">
+<h1 style="margin: 0 0 12px; font-size: 26px">Ops runbook</h1>
+<h2 style="margin: 0 0 4px; font-size: 18px">PDU alarm</h2>
+<p style="margin: 0 0 8px">Check load per phase first. If above 80%, page the on-call lead before moving any load.</p>
+<div style="display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px">
+<label style="display: flex; gap: 12px; align-items: center; min-height: 40px"><input type="checkbox" checked="{{true}}" style="width: 20px; height: 20px; accent-color: #00003D"><span style="text-decoration: line-through; color: #6B6B8F">Read PDU panel</span></label>
+<label style="display: flex; gap: 12px; align-items: center; min-height: 40px"><input type="checkbox" style="width: 20px; height: 20px; accent-color: #00003D">Log reading in ticket</label>
+</div>
+<a href="MPage.dc.html" style="display: flex; gap: 10px; align-items: center; min-height: 48px; border: 1.5px solid #6B6B8F; border-radius: 12px; padding: 0 12px; text-decoration: none; color: #00003D"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"></path></svg><span style="flex: 1; font-weight: 600">Escalation contacts</span><span aria-hidden="true">›</span></a>
+<div style="margin-top: 18px; border-top: 1.5px solid #E3E4F0; padding-top: 12px">
+<div style="font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #3D3D6B; margin-bottom: 8px">LINKED FROM</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<a href="MPage.dc.html" style="font-size: 13px; font-weight: 600; min-height: 36px; display: inline-flex; align-items: center; border: 1px solid #6B6B8F; border-radius: 999px; padding: 0 12px; text-decoration: none; color: #00003D">1:1 notes</a>
+<a href="MPage.dc.html" style="font-size: 13px; font-weight: 600; min-height: 36px; display: inline-flex; align-items: center; border: 1px solid #6B6B8F; border-radius: 999px; padding: 0 12px; text-decoration: none; color: #00003D">Network map</a>
+</div>
+</div>
+</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; border-top: 1.5px solid #00003D; background: #FFFFFF; display: flex; align-items: center; gap: 4px; padding: 6px 10px 24px">
+<button class="tb" type="button" aria-label="Insert block" style="font: 700 18px Inter, sans-serif">/</button>
+<button class="tb" type="button" aria-label="To-do"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"></rect><path d="M8 12l3 3 5-6"></path></svg></button>
+<button class="tb" type="button" aria-label="Heading" style="font: 700 16px Inter, sans-serif">H</button>
+<button class="tb" type="button" aria-label="Photo or file"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12l-9 9a5 5 0 0 1-7-7l9-9a3.5 3.5 0 0 1 5 5l-9 9a2 2 0 0 1-3-3l8-8"></path></svg></button>
+<button class="tb" type="button" aria-label="Move block up">↑</button>
+<button class="tb" type="button" aria-label="Move block down">↓</button>
+<div style="flex: 1"></div>
+<span style="font-size: 12px; color: #3D3D6B">Tap text to edit</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
