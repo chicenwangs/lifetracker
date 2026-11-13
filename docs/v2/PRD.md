@@ -166,6 +166,9 @@ Nobody guesses these. Block the feature until closed. Rec = suggestion only.
 | D-24 | Type cap = 10 total incl. 5 defaults, or 10 custom on top? | PL-6 | 10 total (as drawn) |
 | UX-1..4 | **CLOSED 2026-11-12:** type label Exam → **Deadline** (data value stays `Exam`); header owns Home/Week (no in-card toggle); week title "Week of 9 Nov"; global search **Ctrl+K pulled into M3** | UX-AUDIT.md | — |
 
+**CLOSED 2026-11-13 (owner: "take all recs", answers = PHASES.md table):**
+D-01 explicit only · D-02 no, target needs own grant · D-03 whole DB · D-04 no · D-05 Yjs spike decides (ADR-008) · D-06 keep both copies · D-08 reject · D-09 items + blocks; never copy reminders, shares, secret flag · D-10 4 · D-11 later · D-12 25 MB; image/pdf/office/zip/txt; orphan grace 7 d · D-13 09:00 local, day before · D-14 show once late, mark missed · D-15 per-kind toggles + `15min`, no quiet hours · D-16 archived yes, trash no · D-17 30 d · D-18 trash 30 d · D-19 warn, keep raw value · D-20 no, page title · D-22 yes, one-time importer in P7 · D-23 push yes; link previews off by default · D-24 10 total incl. 5 defaults.
+
 ## 13. Milestones (single numbering — M0..M8)
 
 | M | Ships | Needs closed |
