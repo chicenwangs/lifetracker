@@ -28,7 +28,8 @@ export interface UndoRef {
 
 const EXPIRES_MS = 12 * 3_600_000;
 const db = () => handle().sqlite;
-const get = (t: Table, id: string) => db().prepare(`SELECT * FROM ${t} WHERE id = ?`).get(id) as Row | undefined;
+const get = (t: Table, id: string) =>
+	db().prepare(`SELECT * FROM ${t} WHERE id = ?`).get(id) as Row | undefined;
 
 /**
  * Run `fn` and journal what it changed. `targets` = rows that exist before (they are captured first);
@@ -96,4 +97,5 @@ export function purgeExpired(now: number = Date.now()): void {
 }
 
 /** on sign-out-everywhere (DESIGN §5) */
-export const clearFor = (userId: string) => db().prepare(`DELETE FROM undo_actions WHERE user_id = ?`).run(userId);
+export const clearFor = (userId: string) =>
+	db().prepare(`DELETE FROM undo_actions WHERE user_id = ?`).run(userId);

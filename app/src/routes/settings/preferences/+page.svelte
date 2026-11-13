@@ -2,7 +2,13 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { patch } from '$lib/client/api';
-	import { saveTheme, setPlanMode, themeState, type PlanMode, type ThemeMode } from '$lib/client/prefs.svelte';
+	import {
+		saveTheme,
+		setPlanMode,
+		themeState,
+		type PlanMode,
+		type ThemeMode,
+	} from '$lib/client/prefs.svelte';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { schedulePreview } from '$lib/theme';
 
@@ -14,7 +20,8 @@
 	const zoneLabel = (z: string) => {
 		const off = new Intl.DateTimeFormat('en', { timeZone: z, timeZoneName: 'longOffset' })
 			.formatToParts(new Date())
-			.find((p) => p.type === 'timeZoneName')?.value.replace('GMT', 'UTC');
+			.find((p) => p.type === 'timeZoneName')
+			?.value.replace('GMT', 'UTC');
 		return `${z.replace(/_/g, ' ')} (${off === 'UTC' ? 'UTC+00:00' : off})`;
 	};
 
@@ -113,8 +120,8 @@
 			>
 		</div>
 		<span class="hint"
-			>{schedulePreview(themeState.light, themeState.dark)}. Used when Theme is Auto. The sun / moon button
-			in the header picks a fixed Light or Dark.</span
+			>{schedulePreview(themeState.light, themeState.dark)}. Used when Theme is Auto. The sun / moon button in
+			the header picks a fixed Light or Dark.</span
 		>
 	</fieldset>
 	<label class="field">
@@ -141,7 +148,10 @@
 			<option value="timeline">Timeline (planner block)</option>
 			<option value="calendar">Calendar (item)</option>
 		</select>
-		<span class="hint">When you don't type /calendar, /both or /planner. Double-clicking a month day still adds to the calendar.</span>
+		<span class="hint"
+			>When you don't type /calendar, /both or /planner. Double-clicking a month day still adds to the
+			calendar.</span
+		>
 	</label>
 	<label class="field">
 		<span class="label">Default block length</span>

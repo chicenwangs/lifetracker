@@ -31,7 +31,9 @@ export function initTheme(u: Pick<App.SafeUser, 'theme' | 'themeMode' | 'themeLi
 } // prettier-ignore
 
 /** save any theme fields; optimistic, rolls back on error */
-export async function saveTheme(p: Partial<{ themeMode: ThemeMode; themeLightStart: string; themeDarkStart: string }>) {
+export async function saveTheme(
+	p: Partial<{ themeMode: ThemeMode; themeLightStart: string; themeDarkStart: string }>,
+) {
 	const prev = { ...themeState };
 	if (p.themeMode) themeState.mode = p.themeMode;
 	if (p.themeLightStart) themeState.light = p.themeLightStart;

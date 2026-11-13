@@ -251,7 +251,10 @@ export function deleteSet(meId: string, id: string): { t: 'items' | 'blocks'; id
 		.from(blocks)
 		.where(and(inArray(blocks.itemId, ids), isNull(blocks.deletedAt)))
 		.all();
-	return [...ids.map((i) => ({ t: 'items' as const, id: i })), ...bl.map((b) => ({ t: 'blocks' as const, id: b.id }))];
+	return [
+		...ids.map((i) => ({ t: 'items' as const, id: i })),
+		...bl.map((b) => ({ t: 'blocks' as const, id: b.id })),
+	];
 }
 
 export function softDelete(meId: string, id: string): { batch: string } {
@@ -266,7 +269,11 @@ export function softDelete(meId: string, id: string): { batch: string } {
 			.all()
 			.map((r) => r.id);
 		const all = [cur.id, ...stepIds];
-		db().update(items).set({ deletedAt: now, deletedBatch: batch, updatedAt: now }).where(inArray(items.id, all)).run();
+		db()
+			.update(items)
+			.set({ deletedAt: now, deletedBatch: batch, updatedAt: now })
+			.where(inArray(items.id, all))
+			.run();
 		db()
 			.update(blocks)
 			.set({ deletedAt: now, deletedBatch: batch, updatedAt: now })

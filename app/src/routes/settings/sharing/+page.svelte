@@ -19,7 +19,8 @@
 	]);
 	const sw = (k: string) => (k === 'Blocks' ? null : colorsFor(k === 'None' ? null : k));
 	/** a partner's custom type I don't have shows as "custom type" */
-	const label = (k: string) => (k === 'Blocks' ? 'Planner blocks' : k === 'None' ? 'No type' : (typeName(k) ?? 'a custom type'));
+	const label = (k: string) =>
+		k === 'Blocks' ? 'Planner blocks' : k === 'None' ? 'No type' : (typeName(k) ?? 'a custom type');
 	const kinds = (v: string[]) => v.map(label).join(', ') || 'nothing';
 	let copied = $state(false);
 </script>

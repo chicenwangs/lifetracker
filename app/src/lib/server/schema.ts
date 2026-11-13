@@ -62,13 +62,17 @@ export const users = sqliteTable(
 			.default('timeline'),
 		blockMin: integer('block_min').notNull().default(60),
 		visibleHours: text('visible_hours').notNull().default('7-24'),
-		hiddenTypes: text('hidden_types', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
+		hiddenTypes: text('hidden_types', { mode: 'json' })
+			.$type<string[]>()
+			.notNull()
+			.default(sql`'[]'`),
 		createdAt: text('created_at').notNull().default(nowZ),
 	},
 	// v2 column CHECKs (theme_mode, tour_state, region, qa_target, block_min, hidden_types) are in drizzle/0003 SQL:
 	// adding them here makes drizzle-kit rebuild `users` and drop the hand-patched COLLATE NOCASE.
 	() => [check('users_role', inList('role', ['admin', 'member']))],
-);export const sessions = sqliteTable(
+);
+export const sessions = sqliteTable(
 	'sessions',
 	{
 		id: text('id').primaryKey(), // sha256hex(token)
@@ -247,7 +251,9 @@ export const itemTypes = sqliteTable(
 	(t) => [
 		uniqueIndex('item_types_owner_key').on(t.ownerId, t.key),
 		uniqueIndex('item_types_owner_slug').on(t.ownerId, sql`slug COLLATE NOCASE`),
-		uniqueIndex('item_types_one_default').on(t.ownerId).where(sql`is_default = 1`),
+		uniqueIndex('item_types_one_default')
+			.on(t.ownerId)
+			.where(sql`is_default = 1`),
 		check('item_types_name_len', sql`length(name) BETWEEN 1 AND 30`),
 		check('item_types_slug', sql`slug GLOB '[a-z0-9]*' AND length(slug) BETWEEN 1 AND 20`),
 	],

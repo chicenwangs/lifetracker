@@ -2,7 +2,10 @@
 import { defaultTypes } from '$lib/itemtypes';
 import type { ItemTypeDTO } from '$lib/types';
 
-export const typesState = $state<{ list: ItemTypeDTO[]; hidden: string[] }>({ list: defaultTypes(), hidden: [] });
+export const typesState = $state<{ list: ItemTypeDTO[]; hidden: string[] }>({
+	list: defaultTypes(),
+	hidden: [],
+});
 
 export function initTypes(list: ItemTypeDTO[], hidden: string[]) {
 	typesState.list = list;

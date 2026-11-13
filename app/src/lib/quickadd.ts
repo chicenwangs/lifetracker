@@ -873,7 +873,9 @@ export function activeOptionToken(text: string): string | null {
 
 export function optionsFor(token: string, ctx: Pick<QAContext, 'types' | 'qaTarget'> = {}): QAOption[] {
 	const q = token.slice(1).toLowerCase();
-	return slashOptions(ctx).filter((o) => o.token.slice(1).startsWith(q) || o.label.toLowerCase().startsWith(q));
+	return slashOptions(ctx).filter(
+		(o) => o.token.slice(1).startsWith(q) || o.label.toLowerCase().startsWith(q),
+	);
 }
 
 /** Grey ghost text after the cursor: rest of an option being typed, else the slots still missing. */

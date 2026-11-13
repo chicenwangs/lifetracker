@@ -45,7 +45,11 @@
 	let opener: HTMLButtonElement | undefined = $state();
 	let logEl: HTMLDivElement | undefined = $state();
 
-	const ctx = $derived({ today: todayLocal(tz), nowMinutes: nowLocalMinutes(tz), ...qaPrefs(page.data.user) });
+	const ctx = $derived({
+		today: todayLocal(tz),
+		nowMinutes: nowLocalMinutes(tz),
+		...qaPrefs(page.data.user),
+	});
 	const parsed = $derived(parseQuickAdd(text, ctx));
 
 	// ---------- live timeline ----------

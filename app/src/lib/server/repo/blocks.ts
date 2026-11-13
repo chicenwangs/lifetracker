@@ -184,7 +184,11 @@ export function softDelete(meId: string, id: string): { batch: string } {
 	mustOwn(meId, id);
 	const batch = newId('del');
 	const now = nowUtcIso();
-	db().update(blocks).set({ deletedAt: now, deletedBatch: batch, updatedAt: now }).where(eq(blocks.id, id)).run();
+	db()
+		.update(blocks)
+		.set({ deletedAt: now, deletedBatch: batch, updatedAt: now })
+		.where(eq(blocks.id, id))
+		.run();
 	return { batch };
 }
 

@@ -74,8 +74,13 @@ export function mustHave(ownerId: string, key: string | null | undefined): void 
 
 const zName = z.string().trim().min(1, 'Name needed').max(30);
 const zColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'bad colour');
-const zSlug = z.string().trim().toLowerCase().regex(/^[a-z0-9]{1,20}$/, 'Quick-add word: 1-20 letters or digits');
+const zSlug = z
+	.string()
+	.trim()
+	.toLowerCase()
+	.regex(/^[a-z0-9]{1,20}$/, 'Quick-add word: 1-20 letters or digits');
 
+export type Create = z.input<typeof createSchema>;
 export const createSchema = z
 	.object({
 		name: zName,
@@ -92,7 +97,8 @@ export const patchSchema = z
 
 function checkSlug(ownerId: string, slug: string, selfId?: string) {
 	if (!slug) bad('Pick a quick-add word (letters or digits).', 'bad_slug');
-	if (RESERVED_SLUGS.includes(slug)) bad(`/${slug} is already a quick-add option. Pick another word.`, 'bad_slug');
+	if (RESERVED_SLUGS.includes(slug))
+		bad(`/${slug} is already a quick-add option. Pick another word.`, 'bad_slug');
 	const clash = list(ownerId).find((t) => t.slug === slug && t.id !== selfId);
 	if (clash) bad(`/${slug} is used by ${clash.name}.`, 'bad_slug');
 }
@@ -137,7 +143,8 @@ export function patch(ownerId: string, id: string, p: z.infer<typeof patchSchema
 	return txImmediate(() => {
 		own(ownerId, id);
 		if (p.slug !== undefined) checkSlug(ownerId, p.slug, id);
-		if (p.isDefault) db().update(itemTypes).set({ isDefault: false }).where(eq(itemTypes.ownerId, ownerId)).run();
+		if (p.isDefault)
+			db().update(itemTypes).set({ isDefault: false }).where(eq(itemTypes.ownerId, ownerId)).run();
 		db()
 			.update(itemTypes)
 			.set({ ...p, ...(p.bg ? { bg: p.bg.toUpperCase(), ink: inkFor(p.bg) } : {}), updatedAt: nowUtcIso() })
@@ -155,7 +162,11 @@ export function remove(ownerId: string, id: string, moveTo: string | null): { mo
 		if (t.isDefault) bad('This is your default type. Star another type first.', 'is_default');
 		if (moveTo === t.key) bad('Pick another type to move them to.');
 		mustHave(ownerId, moveTo);
-		const cals = db().select({ id: calendars.id }).from(calendars).where(eq(calendars.ownerId, ownerId)).all();
+		const cals = db()
+			.select({ id: calendars.id })
+			.from(calendars)
+			.where(eq(calendars.ownerId, ownerId))
+			.all();
 		let moved = 0;
 		for (const tbl of [items, blocks])
 			moved += db()

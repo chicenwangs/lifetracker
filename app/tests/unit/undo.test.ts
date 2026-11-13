@@ -11,7 +11,12 @@ let me: string;
 let user: App.SafeUser;
 beforeEach(() => {
 	freshDb();
-	const row = usersRepo.createWithCalendar({ username: 'jeremy', displayName: 'J', passwordHash: 'x', role: 'admin' });
+	const row = usersRepo.createWithCalendar({
+		username: 'jeremy',
+		displayName: 'J',
+		passwordHash: 'x',
+		role: 'admin',
+	});
 	me = row.id;
 	user = usersRepo.safe(row);
 });
@@ -78,7 +83,12 @@ describe('undo journal', () => {
 
 	it('only my own actions', () => {
 		mk();
-		const other = usersRepo.createWithCalendar({ username: 'neina', displayName: 'N', passwordHash: 'x', role: 'member' }).id;
+		const other = usersRepo.createWithCalendar({
+			username: 'neina',
+			displayName: 'N',
+			passwordHash: 'x',
+			role: 'member',
+		}).id;
 		expect(() => undo(other)).toThrow(/Nothing to undo/);
 	});
 });

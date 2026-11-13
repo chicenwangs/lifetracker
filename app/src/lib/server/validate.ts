@@ -13,7 +13,10 @@ export const zIsoZ = z
 		return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 19) + 'Z' === s;
 	}, 'bad instant');
 /** an item type key (built-in `Work`… or custom `ity_…`); existence is checked against the owner's types in the repo */
-export const zType = z.string().regex(/^[A-Za-z0-9_]{1,40}$/, 'bad type').nullable();
+export const zType = z
+	.string()
+	.regex(/^[A-Za-z0-9_]{1,40}$/, 'bad type')
+	.nullable();
 export const zStatus = z.enum(STATUSES);
 export const zId = (prefix: string) => z.string().regex(new RegExp(`^${prefix}_[0-9a-z]{6,32}$`), 'bad id');
 export const zTitle = z.string().trim().min(1, 'Title needed').max(300);

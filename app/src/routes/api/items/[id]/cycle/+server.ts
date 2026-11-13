@@ -7,6 +7,8 @@ export const POST = api((e) => {
 	const u = me(e);
 	const id = e.params.id ?? '';
 	const cur = items.mustOwn(u.id, id);
-	const r = undoable(u.id, `Status "${cur.title}"`, [{ t: 'items', id }], () => ({ result: items.cycle(u.id, id) }));
+	const r = undoable(u.id, `Status "${cur.title}"`, [{ t: 'items', id }], () => ({
+		result: items.cycle(u.id, id),
+	}));
 	return json({ item: items.withCounts([r.result])[0], undo: r.undo });
 });

@@ -36,16 +36,32 @@ export const TYPE_COLORS: Record<
 };
 
 /** badge colours (DESIGN §5b): 8, never a type colour. [0] = admin default. */
-export const USER_COLORS = ['#1C1917', '#0F766E', '#6D28D9', '#B45309', '#1D4ED8', '#BE123C', '#4D7C0F', '#0E7490'] as const;
+export const USER_COLORS = [
+	'#1C1917',
+	'#0F766E',
+	'#6D28D9',
+	'#B45309',
+	'#1D4ED8',
+	'#BE123C',
+	'#4D7C0F',
+	'#0E7490',
+] as const;
 
 const BUILTIN_BG = new Map<string, string>(BUILTIN_TYPES.map((t) => [t.key, t.bg]));
 
 /** CSS class for a type: built-ins keep t-work… (styles in app.css), anything else t-custom */
 export function typeClass(t: ItemType | null | undefined): string {
 	if (!t) return 't-none';
-	return BUILTIN_BG.has(t) && (typeOf(t)?.bg ?? BUILTIN_BG.get(t)) === BUILTIN_BG.get(t) ? `t-${t.toLowerCase()}` : 't-custom';
+	return BUILTIN_BG.has(t) && (typeOf(t)?.bg ?? BUILTIN_BG.get(t)) === BUILTIN_BG.get(t)
+		? `t-${t.toLowerCase()}`
+		: 't-custom';
 }
-export function colorsFor(t: ItemType | null | undefined): { bg: string; ink: string; line: string; edge: string } {
+export function colorsFor(t: ItemType | null | undefined): {
+	bg: string;
+	ink: string;
+	line: string;
+	edge: string;
+} {
 	if (!t) return TYPE_COLORS.None;
 	const mine = typeOf(t);
 	if (BUILTIN_BG.has(t) && (!mine || mine.bg === BUILTIN_BG.get(t))) return TYPE_COLORS[t as 'Work'];

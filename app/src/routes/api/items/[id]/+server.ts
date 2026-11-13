@@ -10,7 +10,13 @@ export const GET = api((e) => {
 
 /** short undo label for what a patch changed */
 const what = (p: items.ItemPatch) =>
-	p.date !== undefined || p.endDate !== undefined ? 'Move' : p.title !== undefined ? 'Rename' : p.status ? 'Status' : 'Edit';
+	p.date !== undefined || p.endDate !== undefined
+		? 'Move'
+		: p.title !== undefined
+			? 'Rename'
+			: p.status
+				? 'Status'
+				: 'Edit';
 
 export const PATCH = api(async (e) => {
 	const u = me(e);

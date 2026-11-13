@@ -75,6 +75,12 @@ export interface CalendarPayload {
 	blocks: BlockDTO[];
 }
 
+/** returned by every journaled write (DESIGN §11) */
+export interface UndoRef {
+	id: string;
+	label: string;
+}
+
 export interface ApiError {
 	error: { code: string; message: string };
 }

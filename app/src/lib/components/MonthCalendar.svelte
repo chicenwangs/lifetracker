@@ -310,7 +310,9 @@
 	</div>
 	<div class="legend" aria-label="Type colours">
 		{#each typesState.list as t (t.key)}
-			<span class="lg {typeClass(t.key)}" style:--bg={colorsFor(t.key).bg} style:--fg={colorsFor(t.key).ink}>{t.name}</span>
+			<span class="lg {typeClass(t.key)}" style:--bg={colorsFor(t.key).bg} style:--fg={colorsFor(t.key).ink}
+				>{t.name}</span
+			>
 		{/each}
 	</div>
 	<div class="grid" bind:this={el}></div>
