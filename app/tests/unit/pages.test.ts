@@ -1,6 +1,7 @@
 // FEATURES §6 PAGE tests (server side).
 import { beforeEach, describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
+import { handle } from '../../src/lib/server/db';
 import * as usersRepo from '../../src/lib/server/repo/users';
 import * as pages from '../../src/lib/server/repo/pages';
 import * as keep from '../../src/lib/server/repo/keep';
@@ -24,6 +25,18 @@ const doc = (...content: unknown[]) => ({ type: 'doc' as const, content });
 const treeIds = () => pages.tree(me).map((n) => n.id);
 
 describe('Pages', () => {
+	it('recent: last opened first, mine only, no archived, capped', () => {
+		const [a, b, c] = [page('A'), page('B'), page('C')];
+		const at = (id: string, t: string) => handle().sqlite.prepare(`UPDATE pages SET last_opened_at = ? WHERE id = ?`).run(t, id); // prettier-ignore
+		at(a.id, '2026-11-10T00:00:00Z');
+		at(b.id, '2026-11-12T00:00:00Z');
+		at(c.id, '2026-11-11T00:00:00Z');
+		pages.create(other, pages.createSchema.parse({ title: 'Not mine' }));
+		pages.archive(me, c.id);
+		expect(pages.recent(me).map((r) => r.title)).toEqual(['B', 'A']);
+		expect(pages.recent(me, 1).map((r) => r.title)).toEqual(['B']);
+	});
+
 	it('PAGE-001/002: create root + child; empty title stays empty (UI shows Untitled)', () => {
 		const a = page('');
 		const b = page('Child', a.id);

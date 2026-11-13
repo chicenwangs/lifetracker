@@ -284,6 +284,14 @@ h3 {
 	--muted: var(--quiet); /* older components say --muted; same colour */
 }
 
+/* no visible scrollbars anywhere (FEATURES §1.12); wheel, touch and keys still scroll */
+* {
+	scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+	display: none;
+}
+
 /* ---- shared controls ---- */
 .card {
 	background: var(--card);

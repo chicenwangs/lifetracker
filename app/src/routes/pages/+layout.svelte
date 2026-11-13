@@ -40,6 +40,16 @@
 		}
 	}
 	const onIndex = $derived(page.url.pathname === '/pages');
+	// phone All pages (wireframe MPages): search titles + 5 recent
+	let q = $state('');
+	const hits = $derived(
+		q.trim()
+			? nodes.filter((n) => (n.title || 'Untitled').toLowerCase().includes(q.trim().toLowerCase()))
+			: [],
+	);
+	const recent = $derived((data.recent ?? []) as { id: string; title: string; lastOpenedAt: string }[]);
+	const shortDay = (iso: string) =>
+		new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 	const pinned = $derived(new Set(((page.data.pins ?? []) as { id: string }[]).map((p) => p.id)));
 	const tools = [
 		{ href: '/pages/graph', label: 'Knowledge graph' },
@@ -50,6 +60,39 @@
 </script>
 
 <div class="wrap" class:index={onIndex}>
+	{#if onIndex}
+		<section class="phonehead" aria-labelledby="all-h">
+			<h1 id="all-h">All pages</h1>
+			<label class="find"
+				><span class="sr-only">Search pages</span><input
+					type="search"
+					placeholder="Search pages"
+					bind:value={q}
+				/></label
+			>
+			{#if q.trim()}
+				<ul class="hits" aria-label="Matching pages">
+					{#each hits as n (n.id)}<li><a href="/pages/{n.id}">{n.title || 'Untitled'}</a></li>{:else}<li
+							class="hint"
+						>
+							No page title matches. Ctrl+K searches the text too.
+						</li>{/each}
+				</ul>
+			{:else if recent.length}
+				<h2 class="lbl">Recent</h2>
+				<ul class="recent" aria-label="Recent pages">
+					{#each recent as r (r.id)}
+						<li>
+							<a href="/pages/{r.id}"
+								><b>{r.title || 'Untitled'}</b><span class="hint">{shortDay(r.lastOpenedAt)}</span></a
+							>
+						</li>
+					{/each}
+				</ul>
+				<h2 class="lbl">All</h2>
+			{/if}
+		</section>
+	{/if}
 	{#if !hidden}
 		<nav class="tree card" aria-label="Pages">
 			<div class="head">
@@ -290,7 +333,91 @@
 	.main :global(.panel h2) {
 		font-size: 17px;
 	}
+	.phonehead {
+		display: none;
+	}
 	@media (max-width: 699px) {
+		.phonehead {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			width: 100%;
+			min-width: 0;
+		}
+		.phonehead h1 {
+			margin: 4px 0 0;
+			font-size: 20px;
+		}
+		.find {
+			display: block;
+		}
+		.find input {
+			width: 100%;
+			box-sizing: border-box;
+			min-height: 44px;
+			padding: 0 12px;
+			font: inherit;
+			font-size: 15px;
+			border: 1.5px solid var(--border);
+			border-radius: 12px;
+			background: var(--card);
+			color: var(--ink);
+		}
+		.lbl {
+			margin: 6px 0 0;
+			font-size: 11px;
+			font-weight: 700;
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+			color: var(--quiet);
+		}
+		.recent {
+			display: flex;
+			gap: 10px;
+			overflow-x: auto;
+			scroll-snap-type: x mandatory;
+			scroll-padding: 0 12px;
+			margin: 0 -12px;
+			padding: 2px 12px 8px;
+		}
+		.recent li {
+			flex: none;
+			scroll-snap-align: start;
+		}
+		.recent a {
+			width: 132px;
+			min-height: 88px;
+			box-sizing: border-box;
+			display: flex;
+			flex-direction: column;
+			gap: 6px;
+			padding: 10px;
+			border: 1.5px solid var(--card-edge);
+			border-radius: 14px;
+			background: var(--card);
+			box-shadow: var(--shadow-btn);
+			color: var(--ink);
+			text-decoration: none;
+		}
+		.recent .hint {
+			margin-top: auto;
+		}
+		.hits {
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+		}
+		.hits a {
+			display: flex;
+			align-items: center;
+			min-height: 44px;
+			padding: 0 12px;
+			border-radius: 10px;
+			background: var(--card);
+			color: var(--ink);
+			font-weight: 600;
+			text-decoration: none;
+		}
 		.wrap {
 			flex-direction: column;
 			padding: 8px 12px 104px;

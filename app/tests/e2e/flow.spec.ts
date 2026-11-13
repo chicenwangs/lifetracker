@@ -754,6 +754,11 @@ test('v2 P3 Pages: tree, slash menu, internal link survives rename, pin cap, arc
 	await expect(page.locator('nav a.pin')).toHaveCount(3);
 	await page.getByRole('button', { name: 'Pin', exact: true }).click();
 	await expect(page.locator('.toast')).toContainText('pin 3 pages');
+	// reorder pins in Settings › Preferences (FEATURES §2): header follows
+	await page.goto('/settings/preferences');
+	await page.getByRole('button', { name: 'Move P1 down' }).click();
+	await expect(page.locator('nav a.pin').first()).toContainText('P2');
+	await page.goto(parentUrl);
 	// archive parent takes the child; gone from tree; link target page still opens
 	await page.getByRole('button', { name: 'Page menu' }).click();
 	await page.getByRole('menuitem', { name: 'Archive' }).click();
