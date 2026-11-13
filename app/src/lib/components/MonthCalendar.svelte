@@ -1,5 +1,6 @@
 <!-- FR-H2..H7, H13. FullCalendar dayGridMonth (MIT plugins). Feeds local strings from lib/time (no FC tz tricks). -->
 <script lang="ts">
+	import { page } from '$app/state';
 	import TypeBar from './TypeBar.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { Calendar, type EventInput } from '@fullcalendar/core';
@@ -170,7 +171,7 @@
 			plugins: [dayGridPlugin, interactionPlugin],
 			initialView: 'dayGridMonth',
 			initialDate: makeDate(year, month, 1),
-			firstDay: 1,
+			firstDay: page.data.user?.region === 'us' ? 0 : 1,
 			headerToolbar: false,
 			height: 'auto',
 			fixedWeekCount: true,

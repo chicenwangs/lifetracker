@@ -88,7 +88,7 @@
 				});
 			if (minutes !== null) {
 				const s = localToUtc(date, minutes, tz);
-				await post('/api/blocks', { itemId: id, startAt: s, endAt: isoPlus(s, 3_600_000) });
+				await post('/api/blocks', { itemId: id, startAt: s, endAt: isoPlus(s, (data.user?.blockMin ?? 60) * 60_000) });
 			}
 		}).catch(() => {});
 	}

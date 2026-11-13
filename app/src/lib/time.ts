@@ -70,12 +70,16 @@ export function monthOf(date: string): { year: number; month: number } {
 	return { year: y, month: m };
 }
 /** Monday-start 6-week grid around month. to = exclusive. */
-export function monthGridRange(year: number, month: number): { from: string; to: string } {
-	const from = mondayOf(makeDate(year, month, 1));
+/** first day of the week holding `date`: ws 1 = Monday (default), 7 = Sunday (region US) */
+export function weekStartOf(date: string, ws: 1 | 7 = 1): string {
+	return addDays(date, -((weekdayOf(date) - ws + 7) % 7));
+}
+export function monthGridRange(year: number, month: number, ws: 1 | 7 = 1): { from: string; to: string } {
+	const from = weekStartOf(makeDate(year, month, 1), ws);
 	return { from, to: addDays(from, 42) };
 }
-export function weekRange(date: string): { from: string; to: string } {
-	const from = mondayOf(date);
+export function weekRange(date: string, ws: 1 | 7 = 1): { from: string; to: string } {
+	const from = weekStartOf(date, ws);
 	return { from, to: addDays(from, 7) };
 }
 
@@ -178,6 +182,11 @@ export function examCountdown(
 	if (n < 0) return { days: n, short: `${-n}d late`, long: `${-n} day${n === -1 ? '' : 's'} overdue` };
 	if (n === 0) return { days: 0, short: 'Today', long: 'Due today' };
 	return { days: n, short: `${n}d`, long: `${n} day${n === 1 ? '' : 's'} left` };
+}
+
+/** minutes -> clock text in the user's region: 24 h "14:30" (default) or 12 h "2:30pm" */
+export function clock(min: number, h12 = false): string {
+	return h12 ? prettyTime(hhmm(((min % 1440) + 1440) % 1440)) : hhmm(min);
 }
 
 export function prettyDate(date: string): string {

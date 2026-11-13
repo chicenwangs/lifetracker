@@ -18,6 +18,7 @@
 		addDays,
 		fixRange,
 		hhmm,
+		clock,
 		isoPlus,
 		localToUtc,
 		nowLocalMinutes,
@@ -104,6 +105,8 @@
 
 	const pieces = $derived(layoutDay(blocks, date, tz, over));
 
+	const h12 = $derived(page.data.user?.region === 'us');
+	const blockMin = $derived(page.data.user?.blockMin ?? 60);
 	// ---------- visible hours (rolled hours hidden, grid top-justified) ----------
 	const hr = $derived<HourRange>(
 		hoursState.ready ? hoursState : ((page.data.hours as HourRange | undefined) ?? DEFAULT_HOURS),
@@ -148,14 +151,14 @@
 	export function timeAt(x: number, y: number): number | null {
 		const r = scroller.getBoundingClientRect();
 		if (x < r.left || x > r.right || y < r.top || y > r.bottom) return null;
-		return Math.max(S, Math.min(E - 60, snap15(yToMin(y))));
+		return Math.max(S, Math.min(E - blockMin, snap15(yToMin(y))));
 	}
 
 	export async function createLinked(itemId: string, startMin: number) {
 		const s = localToUtc(date, startMin, tz);
 		try {
-			await post('/api/blocks', { itemId, startAt: s, endAt: isoPlus(s, 60 * 60_000) });
-			showToast(`Blocked ${hhmm(startMin)}–${hhmm(startMin + 60)}`);
+			await post('/api/blocks', { itemId, startAt: s, endAt: isoPlus(s, blockMin * 60_000) });
+			showToast(`Blocked ${clock(startMin, h12)}–${clock(startMin + blockMin, h12)}`);
 			onchanged();
 		} catch (e) {
 			showError(e);
@@ -348,8 +351,8 @@
 	}
 
 	const fmt = (p: Piece) => {
-		const s = p.clippedStart ? '…' : hhmm(p.top);
-		const en = p.clippedEnd ? '…' : hhmm(p.bottom);
+		const s = p.clippedStart ? '…' : clock(p.top, h12);
+		const en = p.clippedEnd ? '…' : clock(p.bottom, h12);
 		return `${s} – ${en}`;
 	};
 </script>
@@ -411,7 +414,7 @@
 		>
 			{#each hourList as h (h)}
 				<div class="hr" style:top="{(h * 60 - S) * PX_MIN}px">
-					<span>{String(h).padStart(2, '0')}:00</span>
+					<span>{h12 ? clock(h * 60, true) : `${String(h).padStart(2, '0')}:00`}</span>
 				</div>
 			{/each}
 

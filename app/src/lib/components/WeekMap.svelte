@@ -2,6 +2,7 @@
      Cell shade = hours blocked on the planner that day. Red dot = all-day items with no time blocked yet.
      Click a week row to jump to it. -->
 <script lang="ts">
+	import { page } from '$app/state';
 	import type { HeatDay } from '$lib/types';
 
 	let {
@@ -34,7 +35,7 @@
 		'November',
 		'December',
 	];
-	const DOW = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+	const DOW = page.data.user?.region === 'us' ? ['S', 'M', 'T', 'W', 'T', 'F', 'S'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 	const rows = $derived.by(() => {
 		const out: HeatDay[][] = [];

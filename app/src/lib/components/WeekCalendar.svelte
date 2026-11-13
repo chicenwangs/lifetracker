@@ -25,6 +25,7 @@
 	} from '$lib/time';
 	import type { BlockDTO, ItemDTO, Status } from '$lib/types';
 
+	const us = page.data.user?.region === 'us';
 	let {
 		from,
 		tz,
@@ -235,7 +236,7 @@
 			plugins: [timeGridPlugin, interactionPlugin],
 			initialView: 'timeGridWeek',
 			initialDate: from,
-			firstDay: 1,
+			firstDay: us ? 0 : 1,
 			headerToolbar: false,
 			height: 'auto',
 			contentHeight: 'auto',
@@ -250,7 +251,7 @@
 			// every other hour gets a darker band so a drag's length can be read at a glance
 			slotLaneClassNames: (a) => (hourBand(a.time) ? ['lt-band'] : []),
 			slotLabelClassNames: (a) => (hourBand(a.time) ? ['lt-band'] : []),
-			slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+			slotLabelFormat: us ? { hour: 'numeric', meridiem: 'short' } : { hour: '2-digit', minute: '2-digit', hour12: false },
 			nowIndicator: true,
 			dayHeaderFormat: { weekday: 'short', day: 'numeric' },
 			editable: true,
@@ -378,7 +379,7 @@
 				itemSelector: '[data-lt-item]',
 				eventData: (e) => ({
 					title: (e as HTMLElement).dataset.title ?? '',
-					duration: '01:00',
+					duration: { minutes: page.data.user?.blockMin ?? 60 },
 					create: false,
 				}),
 			});
@@ -391,7 +392,7 @@
 		await onmoveblock(
 			id,
 			localToUtc(s.date, s.minutes ?? 0, tz),
-			localToUtc(e.date, e.minutes ?? (s.minutes ?? 0) + 60, tz),
+			localToUtc(e.date, e.minutes ?? (s.minutes ?? 0) + (page.data.user?.blockMin ?? 60), tz),
 		);
 	}
 
