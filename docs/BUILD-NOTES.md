@@ -3,6 +3,16 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## v2 P4 — Databases (2026-11-13)
+
+- Migration 0006: `page_databases`, `database_properties`, `database_records`, `database_values`, `database_views` (rows, not JSON; ADR-004).
+- A database lives on a page: `/` → Database inserts one inline, ▤ in the Pages tree makes one on its own page. New = Title property + one table view.
+- 8 property types (title, text, number, date, checkbox, select, multi-select, url), checked on the server with readable errors (`kg: Number: type digits…`). Select values store option ids.
+- Table view: inline cell edit, add/rename/reorder/hide properties, select options, New record, Open as page, delete (confirm; its page goes to Trash). Saved views (add, rename, delete; at least one stays), one sort, filters with AND/OR. Operator list per type in `lib/dbvalues.ts`. Filters/sort run in app code over the database (cap 5,000 records, pages of 100).
+- Records open as pages: made on first open, same page after, under the database's page, hidden from the sidebar tree. Title syncs both ways.
+- D-19: a type change that leaves values not fitting needs a confirm; those values are kept as they were and shown ⚠ until edited. Deleting a property with values needs a confirm. The title property can't be deleted or retyped.
+- Not built (EXT, cut line): board, calendar, list, gallery views; relations, formulas.
+
 ## v2 P3 — Pages + Ctrl+K (2026-11-13)
 
 - **Pages** at `/pages` (header link): left tree on every Pages screen (collapsible; phone = All pages), create root/child, rename (title), Move to… (rejects self/descendant), Move up/down, Copy link, Pin to header (≤ 3, D-20 title only, PUT full list), Archive (page + subpages, one undo; pins removed; stays in links/graph; "Archived · Restore" bar), Archive view (search, sort, Was in, Restore → old parent or root) + 90-day suggestions (unticked, Select all, never automatic), Trash (D-18, 30 d, confirm first).

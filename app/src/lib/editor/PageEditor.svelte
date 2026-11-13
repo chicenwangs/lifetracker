@@ -7,9 +7,9 @@
 	import { TableKit } from '@tiptap/extension-table';
 	import { TaskItem, TaskList } from '@tiptap/extension-list';
 	import Image from '@tiptap/extension-image';
-	import { patch, get } from '$lib/client/api';
+	import { patch, get, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
-	import { BlockKeys, PageLink, Slash, blockOps, type SlashItem } from './extensions.svelte';
+	import { BlockKeys, DatabaseBlock, PageLink, Slash, blockOps, type SlashItem } from './extensions.svelte';
 	import type { PageDTO } from '$lib/types';
 
 	let {
@@ -48,6 +48,7 @@
 		{ title: 'Table', run: (e, r) => e.chain().focus().deleteRange(r).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
 		{ title: 'Quote', run: (e, r) => e.chain().focus().deleteRange(r).toggleBlockquote().run() },
 		{ title: 'Code', run: (e, r) => e.chain().focus().deleteRange(r).toggleCodeBlock().run() },
+		{ title: 'Database', hint: 'table of records', run: (e, r) => { e.chain().focus().deleteRange(r).run(); void addDatabase(); } },
 		{ title: 'Link to page', hint: 'internal', run: (e, r) => { e.chain().focus().deleteRange(r).run(); picker = { q: '', hits: [], at: e.state.selection.from }; void findPages(''); } },
 		{ title: 'Image', hint: 'upload', run: (e, r) => { e.chain().focus().deleteRange(r).run(); pickFile('image'); } },
 		{ title: 'File', hint: 'upload', run: (e, r) => { e.chain().focus().deleteRange(r).run(); pickFile('file'); } },
@@ -55,6 +56,18 @@
 	const items = (q: string) =>
 		ITEMS.filter((i) => i.title.toLowerCase().includes(q.toLowerCase())).slice(0, 14);
 
+	async function addDatabase() {
+		try {
+			const r = await post<{ database: { id: string } }>('/api/databases', { pageId: page.id });
+			editor
+				?.chain()
+				.focus()
+				.insertContent({ type: 'database', attrs: { databaseId: r.database.id } })
+				.run();
+		} catch (e) {
+			showError(e);
+		}
+	}
 	async function findPages(q: string) {
 		try {
 			const r = await get<{ hits: { id: string; title: string; archived: number }[] }>(
@@ -157,6 +170,7 @@
 				TaskItem.configure({ nested: true }),
 				Image.configure({ inline: false }),
 				PageLink.configure({ titles: page.links }),
+				DatabaseBlock,
 				BlockKeys,
 				Slash.configure({ items }),
 			],

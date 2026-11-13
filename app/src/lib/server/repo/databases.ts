@@ -328,3 +328,13 @@ export function rename(ownerId: string, id: string, title: string): void {
 		.prepare(`UPDATE page_databases SET title = ?, updated_at = ?, revision = revision + 1 WHERE id = ?`)
 		.run(title, now(), id);
 }
+
+/** one record with its database's properties (record page shows them above the editor) */
+export function getRecord(ownerId: string, recordId: string): { props: DbProp[]; row: DbRow } {
+	const r = recordOf(ownerId, recordId);
+	const ps = props(r.database_id);
+	const values: Record<string, unknown> = {};
+	for (const v of db().prepare(`SELECT property_id, value_json FROM database_values WHERE record_id = ?`).all(recordId) as { property_id: string; value_json: string }[]) values[v.property_id] = JSON.parse(v.value_json); // prettier-ignore
+	const invalid = ps.filter((p) => values[p.id] !== undefined && !checkValue(p.type, values[p.id], p.config).ok).map((p) => p.id); // prettier-ignore
+	return { props: ps, row: { id: r.id, pageId: r.page_id, values, ...(invalid.length ? { invalid } : {}) } };
+}

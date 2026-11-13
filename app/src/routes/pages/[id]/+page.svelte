@@ -5,6 +5,7 @@
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { undoLast } from '$lib/client/undo.svelte';
 	import PageEditor from '$lib/editor/PageEditor.svelte';
+	import DbCell from '$lib/database/DbCell.svelte';
 	import type { PageDTO, PageNode, UndoRef } from '$lib/types';
 
 	let { data } = $props();
@@ -23,6 +24,18 @@
 		title = pg.title;
 		saveState = 'idle';
 	});
+
+	const rec = $derived(data.record);
+	async function setValue(propId: string, v: unknown): Promise<string | null> {
+		if (!rec) return null;
+		try {
+			await patch(`/api/database-records/${rec.recordId}`, { values: { [propId]: v } });
+			await invalidateAll();
+			return null;
+		} catch (e) {
+			return e instanceof Error ? e.message : 'Not saved';
+		}
+	}
 
 	let tt: ReturnType<typeof setTimeout> | null = null;
 	function onTitle() {
@@ -219,6 +232,25 @@
 			<button class="btn sm" type="button" onclick={() => (moving = false)}>Cancel</button>
 		</div>
 	{/if}
+	{#if rec}
+		<div class="rec">
+			<a href="/pages/{rec.dbPageId}">← Back to {rec.dbTitle || 'database'}</a>
+			<dl>
+				{#each rec.props.filter((p) => p.type !== 'title') as p (p.id)}
+					<dt>{p.name}</dt>
+					<dd>
+						<DbCell
+							prop={p}
+							value={rec.row.values[p.id] ?? null}
+							invalid={rec.row.invalid?.includes(p.id)}
+							label={p.name}
+							onsave={(v) => setValue(p.id, v)}
+						/>
+					</dd>
+				{/each}
+			</dl>
+		</div>
+	{/if}
 	{#key pg.id}
 		<PageEditor bind:this={editor} page={pg} onstate={(s) => (saveState = s)} />
 	{/key}
@@ -229,6 +261,25 @@
 />
 
 <style>
+	.rec {
+		margin: 8px 0 12px;
+		padding-bottom: 12px;
+		border-bottom: 1px solid var(--rule);
+		font-size: 13.5px;
+	}
+	.rec dl {
+		display: grid;
+		grid-template-columns: minmax(90px, 160px) 1fr;
+		gap: 4px 12px;
+		margin: 8px 0 0;
+		align-items: center;
+	}
+	.rec dt {
+		color: var(--muted);
+	}
+	.rec dd {
+		margin: 0;
+	}
 	.arch {
 		display: flex;
 		gap: 12px;

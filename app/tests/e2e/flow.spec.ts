@@ -770,6 +770,61 @@ test('v2 P3 Pages: tree, slash menu, internal link survives rename, pin cap, arc
 	await expect(page.getByRole('tree', { name: 'Page tree' })).toContainText('Gym');
 });
 
+test('v2 P4 Databases: new database, number property rejects text, records, sort, record opens as page', async () => {
+	await page.goto('/pages');
+	await page.getByRole('button', { name: 'New database' }).click();
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	const db = page.locator('section.dbv').first();
+	await expect(db).toBeVisible();
+	// add a number property
+	await db.getByRole('button', { name: 'Add property' }).first().click();
+	await db.getByLabel('Property name').fill('kg');
+	await db.getByRole('button', { name: '# Number' }).click();
+	await expect(db.getByLabel('Column kg')).toBeVisible();
+	// two records
+	for (const [n, w] of [
+		['Bench', '60'],
+		['Row', '80'],
+	] as const) {
+		await db.getByRole('button', { name: 'New record', exact: true }).click();
+		const name = db.getByLabel('Name of Untitled').last();
+		await name.fill(n);
+		await name.press('Enter');
+		const kg = db.getByLabel(`kg of ${n}`);
+		await kg.fill(w);
+		await kg.press('Enter');
+	}
+	// PAGE-012: text in a number cell is refused with a readable message
+	await db.getByLabel('kg of Row').fill('heavy');
+	await db.getByLabel('kg of Row').press('Enter');
+	await expect(page.locator('.toast, [role=alert]').first()).toContainText(/Number/);
+	await db.getByLabel('kg of Row').fill('80');
+	await db.getByLabel('kg of Row').press('Enter');
+	// PAGE-014: sort by kg desc -> Row first, and it sticks after reload
+	await db.getByRole('button', { name: '+ Sort' }).click();
+	await db.getByLabel('Sort column').selectOption({ label: 'kg' });
+	await db.getByLabel('Sort direction').selectOption('desc');
+	await db.getByRole('button', { name: 'Sort', exact: true }).click();
+	await expect(
+		db
+			.locator('tbody tr')
+			.first()
+			.getByLabel(/^Name of/),
+	).toHaveValue('Row');
+	await page.reload();
+	const db2 = page.locator('section.dbv').first();
+	await expect(
+		db2
+			.locator('tbody tr')
+			.first()
+			.getByLabel(/^Name of/),
+	).toHaveValue('Row');
+	// PAGE-015: record opens as a page with the same title
+	await db2.getByRole('button', { name: 'Open Bench as page' }).click();
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	await expect(page.getByLabel('Page title')).toHaveValue('Bench');
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)
