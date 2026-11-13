@@ -62,5 +62,5 @@ Close now in one go so phases don't stall. Owner ticks or overrides; Claude Code
 ## Status
 | P | State | Date | PR |
 |---|---|---|---|
-| P0 | docs + wireframes copied (planning chat) · rest TODO | 2026-11-13 | — |
+| P0 | **DONE** · branch `v2` + CI on it · snapshot tool + migration test · baseline in P1-NOTES · spikes S-1..S-4 · ADR-001..007 (`docs/adr/`). Go: Tiptap, sigma, upload design, web-push. Carried forward (see `docs/adr/README.md`): push on Chrome/Android/iOS + from homelab → P6 · uploads in the real read-only container → P1 · graph 5k/20k is 29 fps → P5 · block ids → P3. Not done: Kept parity sheet (DESIGN §8), needs owner. | 2026-11-13 | #5 |
 | P1–P10 | TODO | | |
