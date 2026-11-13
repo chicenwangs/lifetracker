@@ -3,6 +3,17 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## v2 P9 — Release prep, no deploy (2026-11-14)
+
+- Feature freeze. Full regression: unit 340, e2e 25 (v1 flows + every v2 phase + axe sweep), lint, types.
+- Migration rehearsal log:
+  - `tests/unit/rehearsal.test.ts` (runs in CI): builds a real v1.1.0 DB from migrations 0000–0002, fills users (light + dark theme), calendars, items (timed, multi-day, private, trashed), linked blocks, a grant, a share code, a session, dormant lists/ideas → runs every migration like boot → integrity ok, FK check empty, **every v1 column of every v1 row byte-identical**, themes kept as fixed Light/Dark, tour off, 5 built-in types per user → a page, a note, the D-22 importer work on it → `backup()` of the upgraded DB restores identical.
+  - Anonymised dev DB (2 users, 398 items, already at migration 0005): `migrate-snapshot.test.ts` clean through 0008. `anonymise-db.mjs` now keeps v2 enum columns (CHECKs broke the scrub).
+  - **Not done: a copy of the live backup** (owner chose to skip). Owner backs up before pulling.
+- Backup drill: SQLite online backup → restore → integrity + equal rows (in the rehearsal test). `backup.sh`/`restore.sh` incl. uploads not run here (no Docker on the dev PC) — SERVICE-HANDOFF §8 has it as an acceptance check.
+- Docs: SERVICE-HANDOFF §5 v1.1.0 → v2.0.0 steps + rollback, §8 v2 checks, §9 limits · RELEASE-NOTES.md · README + HANDOFF status.
+- Owner click-through of every board vs app: for the owner after deploy (not possible from here).
+
 ## v2 P8 — Phone rest, PWA, offline, tour, help, a11y (2026-11-14)
 
 - Phone (< 700 px): Week = read-first agenda (`PhoneWeek`, 7 day cards, tap day → Today, tap item → item); Month = `/month` compact 6×7 grid with type-colour dots, tap day → Today. More lists Month, Week, Pages, Shared with me, Keep archive, Trash, Settings, Help. Settings + Login already fit 360 px (checked).

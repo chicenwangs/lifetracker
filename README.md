@@ -18,11 +18,11 @@ Start here (Claude: read all before coding):
 | `data/` | Personal data (Notion raw + seed + app.db). **Gitignored. Never push.** |
 | `scripts/transform_notion.py` | raw → seed. |
 | `wireframes/` | Design canvas copies. |
-| `app/` | SvelteKit app: calendar, planner, quick add, sharing. Places/Lists/People/Ideas/Workouts removed (separate services later). |
+| `app/` | SvelteKit app: calendar, planner, quick add, Keep, Pages (+ databases, graph), reminders, sharing, phone/PWA. Old Places/Lists/People/Ideas/Workouts data → Keep via Settings › Account. |
 | `.env.example` | dev → `app/.env`. |
 | `deploy/` | prod bundle: `compose.yaml` (pulls released image), `.env.example`, `backup.sh`, `restore.sh`. |
 | `.github/workflows/` | `ci.yml` (lint, check, unit, e2e, image build) · `release.yml` (tag `vX.Y.Z` → GHCR image + GitHub Release). |
 
-Status 2026-11-08: core built (auth + open sign-up, home month + planner, week, item, quick add, import, settings, calendar sharing by code). Goals and Courses removed. 237 unit + 14 e2e pass. Next: homelab (Stage B) → Cloudflare Tunnel (C) → invite users → test core loop + sharing.
+Status 2026-11-14: **v2.0.0 ready** (branch `v2` → `main`, tag `v2.0.0`). Live = v1.1.0 until the owner upgrades (`docs/SERVICE-HANDOFF.md` §5). v2 adds Keep, Pages + databases + graph, reminders + push, page/note sharing, phone screens + PWA. What changed: `docs/v2/RELEASE-NOTES.md`. Plan + phase log: `docs/v2/PHASES.md`. 340 unit + 25 e2e pass.
 
 Repo private.

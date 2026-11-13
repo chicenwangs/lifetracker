@@ -1,0 +1,43 @@
+# Life Tracker v2.0.0 — release notes
+
+Caveman doc. From v1.1.0. **Migration release** (0003–0008, forward-only). Back up before you pull.
+
+## New
+- **Item types** you own: rename, recolour, add up to 10 (5 built-in kept, same data). ★ default type, "counts down" flag. Type bar hides types per person.
+- **Preferences**: theme Light / Dark / Auto (by time), timezone, region (week start, 12/24 h), quick-add target, block length. Visible hours follow you to every device.
+- **Undo** (Ctrl+Z / toast) for most changes. **Alt-drag** copies a block. Every drag has a button (Schedule…, Start/End).
+- **Keep**: notes + checklists (nest 4), images, labels, binders, colours, pin, archive, Trash 30 days, search, Select mode.
+- **Pages**: tree, block editor (`/` menu, tables, images, files, to-dos, links to pages), pins in the header (3), archive + "not opened in 90 days", Trash 30 days.
+- **Databases** on pages: 8 property types, table view, sort + filters, saved views, records open as pages.
+- **Graph** of linked pages (with list view).
+- **Ctrl+K** search across Keep, Pages, items + actions.
+- **Reminders**: `/remind 1d 2h` in quick add, on items/notes; in-app always, Web Push when the server has VAPID keys.
+- **Sharing**: share one page or note with a person (view / edit), revoke any time. "Shared with me" page. Calendar sharing by code unchanged.
+- **Phone**: bottom bar, Today (Now card, no-time list, timeline), + Add sheet, Keep, read-first Week + Month, More.
+- **PWA**: install to home screen, offline page, offline badge, Keep edits wait offline and send later (clash = both copies kept).
+- **Welcome tour** for new accounts (existing accounts skip it) + Settings › Help.
+- **Old v1 data** (lists, people, ideas, places, goals, workouts): Settings › Account › "Bring them into Keep" (once, originals kept).
+
+## Changed
+- Existing users keep their theme (as a fixed Light/Dark); no tour for them.
+- Planner blocks are a focusable group (screen readers), active nav pill readable in dark mode, other-month days readable.
+- Request bodies over 1 MB refused (uploads: 25 MB).
+
+## Ops (details in `docs/SERVICE-HANDOFF.md`)
+- **Migration** on first boot: 6 SQL files, seconds on a few-MB DB. Rollback = v1.1.0 image + restore the pre-upgrade backup.
+- New optional env: `UPLOAD_DIR`, `MAX_UPLOAD_BYTES`, `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT`, `JOBS_ENABLED`, `REMINDER_POLL_INTERVAL_MS`. All unset = works, push off.
+- New data: `data/uploads/` (files). `backup.sh` / `restore.sh` now include it.
+- New outbound: HTTPS 443 to browser push services, only with VAPID keys.
+- `/healthz` adds `jobs` and `reminderBacklog`.
+- Still one replica (the reminder runner must not run twice).
+
+## Not in v2.0 (→ v2.1)
+Live co-edit (a clash shows "changed elsewhere", text kept) · Google Keep Takeout import/export · board/calendar/list/gallery database views · 2-hop local graph · reminders on page to-dos · swipe gestures.
+
+## Known limits / not verified
+- Web Push tested on Edge (spike) only; Chrome/Android/iOS and from the homelab through the tunnel = check after deploy.
+- Uploads on the real read-only container: covered by design (temp dir on the data volume), not run in Docker on the dev PC.
+- Migration rehearsed on a built v1.1.0 DB (`tests/unit/rehearsal.test.ts`, in CI) and on an anonymised copy of the dev DB; **not on a copy of the live backup** (owner's call). Take the backup before pulling.
+
+## Tests at release
+Unit 340 · e2e 25 (incl. axe sweep, v1 regression) · lint + types clean · CI green on every phase PR (#5–#14).

@@ -95,6 +95,14 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 
 **Upgrade:** read the release notes → `sudo ./backup.sh` → set `APP_VERSION=X.Y.Z` in `.env` → `docker compose pull app && docker compose up -d app` → watch `docker compose logs -f app` for `[boot] vX.Y.Z` → `curl -s https://planner.jeremyjosh.org/healthz` shows the new version.
 
+**v1.1.0 → v2.0.0 (one time, migration release):**
+1. `sudo ./backup.sh` and copy `data/backups/app-<ts>.db.gz` off the box. This is the rollback point.
+2. Unpack the v2.0.0 `deploy-v2.0.0.tar.gz` over `/opt/life-tracker` (new `backup.sh`/`restore.sh` also back up `data/uploads`). Keep your `.env`.
+3. Optional new env (all can stay unset): `VAPID_*` for push, `UPLOAD_DIR`/`MAX_UPLOAD_BYTES`, `JOBS_ENABLED`, `REMINDER_POLL_INTERVAL_MS`. With VAPID keys: allow outbound 443 to the push services (§1).
+4. `APP_VERSION=2.0.0` → pull + up. First boot runs migrations 0003–0008 (seconds), then `[boot] v2.0.0 db ready … jobs=true push=on|off`.
+5. `/healthz` → `"version":"2.0.0"`, `"jobs":true`. Run §8 incl. the v2 lines.
+6. Rollback: `APP_VERSION=1.1.0` **and** `sudo ./restore.sh <the backup from step 1>`. v1.1.0 cannot read the v2 schema.
+
 **Roll back:** set `APP_VERSION` back → `docker compose up -d app`. If the newer release ran a DB migration (release notes say "migration"), the old version may not read the new schema: restore the backup taken before the upgrade (`sudo ./restore.sh data/backups/app-<ts>.db.gz`). Migrations are forward-only.
 
 **Backup:** `backup.sh` = online SQLite backup + integrity check + gzip, **plus (v2) `uploads-<ts>.tar.gz` of `data/uploads` with the same timestamp**, keeps 14 days in `data/backups/`. Runs as root (`data/` is owned by uid 1000; the script refuses otherwise). Root cron (`sudo crontab -e`): `15 3 * * * /opt/life-tracker/backup.sh >> /var/log/life-tracker-backup.log 2>&1`. Set `LT_OFFSITE=/mnt/nas/life-tracker` (or another host via rsync) so one copy lives off the box.
@@ -145,10 +153,18 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 - [ ] Second account: sign up (or invite), swap share codes in Settings → Sharing, each sees the other's calendar striped with a badge; types not shared show only as "Busy".
 - [ ] `sudo ./backup.sh` run by hand succeeds; restore drill into a scratch folder passes integrity check.
 - [ ] 5 wrong passwords → lockout message with minutes; other users unaffected (real IPs work).
+- [ ] v2: old items, blocks, share-code partners and each person's theme look the same as before the upgrade.
+- [ ] v2: Keep note with an image saves + reopens after reload; `data/uploads/` gets a file, owned by uid 1000.
+- [ ] v2: new page, type, `/` → Table; reload keeps it. Share it with the second account (view); they open it from "Shared with me", can't edit; Remove → their reload = 404.
+- [ ] v2: quick add `test /remind 15min` at a time 16 min ahead → in-app reminder ~1 min later. With VAPID: Settings › Notifications → Turn push on → Send a test arrives on a phone.
+- [ ] v2: phone browser opens on Today; "Add to Home Screen" installs it.
+- [ ] v2: `sudo ./backup.sh` writes both `app-<ts>.db.gz` and `uploads-<ts>.tar.gz`.
 
 ## 9. Known limits
 
 - Single instance, single SQLite file. Backups are the DR plan.
 - No email: password resets are the `reset-password` script.
-- Desktop-first UI; phone works but is not polished.
+- Desktop-first. Phone = Today, Keep, add, read-first Week/Month; plan the week on a PC.
+- v2: no live co-edit (a clash says "changed elsewhere", text kept). Push verified on Edge only before release.
+- v2: offline = Keep edits only (they wait in the browser); everything else needs the server.
 - DB tables `goals`, `courses` and column `items.course_id` are unused leftovers (data kept on purpose).
