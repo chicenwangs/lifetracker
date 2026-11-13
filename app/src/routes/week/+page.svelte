@@ -4,6 +4,7 @@
 <script lang="ts">
 	import { shown } from '$lib/client/itemtypes.svelte';
 	import TypeBar from '$lib/components/TypeBar.svelte';
+	import ScheduleButton from '$lib/components/ScheduleButton.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
 	import WeekCalendar from '$lib/components/WeekCalendar.svelte';
@@ -298,6 +299,7 @@
 							? ` – ${prettyDate(i.endDate).split(' ')[0]}`
 							: ''}</span
 					>
+					<ScheduleButton itemId={i.id} title={i.title} date={i.date ?? data.from} />
 					<button
 						type="button"
 						class="rx"

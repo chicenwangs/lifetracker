@@ -26,6 +26,7 @@
 		prettyDate,
 		snap15,
 		todayLocal,
+		utcToLocal,
 		weekdayOf,
 	} from '$lib/time';
 	import type { BlockDTO } from '$lib/types';
@@ -77,6 +78,15 @@
 	let draft = $state<{ start: number; end: number; naming: boolean; label: string } | null>(null);
 	let menuFor = $state<string | null>(null);
 	let menuLabel = $state('');
+	// Start / End fields in the block menu: move + resize without dragging (WCAG 2.5.7)
+	let menuStart = $state('');
+	let menuEnd = $state('');
+	function openMenu(b: { id: string; label: string; startAt: string; endAt: string }) {
+		menuFor = b.id;
+		menuLabel = b.label;
+		menuStart = utcToLocal(b.startAt, tz).time;
+		menuEnd = utcToLocal(b.endAt, tz).time;
+	}
 
 	// typed day/time in the drag box moves the box live (same day only)
 	let draftParse = $state<QAParse | null>(null);
@@ -264,8 +274,7 @@
 		if (!g.id) return;
 		if (!g.moved) {
 			const b = blocks.find((x) => x.id === g.id);
-			menuFor = g.id;
-			menuLabel = b?.label ?? '';
+			if (b) openMenu(b);
 			return;
 		}
 		const o = over[g.id];
@@ -290,9 +299,20 @@
 	async function renameBlock(id: string) {
 		const l = menuLabel.trim();
 		menuFor = null;
-		if (!l) return;
+		const b = blocks.find((x) => x.id === id);
+		if (!l || !b) return;
+		// start keeps the block's own day; an end at or before the start = next day (overnight)
+		const d0 = utcToLocal(b.startAt, tz).date;
+		const startAt = localToUtc(d0, menuStart, tz);
+		let endAt = localToUtc(d0, menuEnd, tz);
+		if (endAt <= startAt) endAt = localToUtc(addDays(d0, 1), menuEnd, tz);
+		const p: Record<string, string> = {};
+		if (l !== b.label) p.label = l;
+		if (startAt !== b.startAt) p.startAt = startAt;
+		if (endAt !== b.endAt) p.endAt = endAt;
+		if (!Object.keys(p).length) return;
 		try {
-			await apiPatch(`/api/blocks/${id}`, { label: l });
+			await apiPatch(`/api/blocks/${id}`, p);
 			onchanged();
 		} catch (e) {
 			showError(e);
@@ -309,8 +329,7 @@
 	async function onBlockKey(e: KeyboardEvent, p: Piece) {
 		if (!p.b.editable || e.target !== e.currentTarget) return; // keys typed in the menu/rename stay there
 		if (e.key === 'Enter') {
-			menuFor = p.b.id;
-			menuLabel = p.b.label;
+			openMenu(p.b);
 			e.preventDefault();
 			return;
 		}
@@ -533,6 +552,11 @@
 									if (e.key === 'Escape') menuFor = null;
 								}}
 							/>
+							<div class="row times">
+								<label>Start <input type="time" step="900" bind:value={menuStart} /></label>
+								<label>End <input type="time" step="900" bind:value={menuEnd} /></label>
+							</div>
+							<span class="hint">Or focus the block: ↑↓ move 15 min, Shift+↑↓ change the end.</span>
 							<div class="row">
 								<button class="btn sm primary" type="button" onclick={() => renameBlock(p.b.id)}>Save</button>
 								{#if p.b.itemId}
@@ -588,6 +612,13 @@
 </div>
 
 <style>
+	.menu .times {
+		gap: 8px;
+		font-size: 12px;
+	}
+	.menu .times input {
+		width: 92px;
+	}
 	.planner {
 		overflow: hidden;
 		display: flex;

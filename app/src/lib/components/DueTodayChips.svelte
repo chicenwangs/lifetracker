@@ -3,11 +3,12 @@
 	import { colorsFor } from '$lib/colors';
 	import type { ItemDTO } from '$lib/types';
 	import { openItem } from '$lib/client/peek.svelte';
+	import ScheduleButton from './ScheduleButton.svelte';
 	let { items, label = 'Due today' }: { items: ItemDTO[]; label?: string } = $props();
 </script>
 
 <div class="due">
-	<span class="cap">{label.toUpperCase()} · DRAG ONTO GRID</span>
+	<span class="cap">{label.toUpperCase()} · DRAG ONTO GRID OR SCHEDULE…</span>
 	{#each items as i (i.id)}
 		{@const c = colorsFor(i.type)}
 		<a
@@ -16,7 +17,7 @@
 			draggable="true"
 			style:background={c.bg}
 			style:color={c.ink}
-			title="Drag onto the planner to block 60 min"
+			title="Drag onto the planner to block time"
 			onclick={(e) => {
 				e.preventDefault();
 				openItem(i.id);
@@ -26,7 +27,7 @@
 				e.dataTransfer?.setData('text/plain', i.title);
 				if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
 			}}>{i.title}</a
-		>
+		><ScheduleButton itemId={i.id} title={i.title} date={i.date} />
 	{:else}
 		<span class="muted none">Nothing due.</span>
 	{/each}
