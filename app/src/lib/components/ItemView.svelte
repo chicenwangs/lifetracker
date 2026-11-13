@@ -2,6 +2,7 @@
      Title edits in place. Properties edit inline. Right column: Delete · History · Time blocks
      (the real day timeline: this item's blocks in its colour, others muted; drag empty time = linked block). -->
 <script lang="ts">
+	import Reminders from './Reminders.svelte';
 	import { onDestroy, onMount, tick } from 'svelte';
 	import StatusSquare from './StatusSquare.svelte';
 	import Markdown from './Markdown.svelte';
@@ -446,6 +447,10 @@
 				<div class="card box delbox">
 					<button class="btn danger sm" type="button" onclick={del}>Delete item</button>
 					<a href="/trash" class="hint">Trash</a>
+				</div>
+
+				<div class="card box">
+					<Reminders source="planner_item" sourceId={it.id} tz={v.tz} />
 				</div>
 
 				<div class="card box hist">

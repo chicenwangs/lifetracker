@@ -7,6 +7,7 @@ import { migrateDb, openDb, setHandle } from '$lib/server/db';
 import { loadSession } from '$lib/server/auth';
 import { setupOpen } from '$lib/server/setup';
 import { purgeAll } from '$lib/server/purge';
+import * as jobs from '$lib/server/jobs';
 
 export const init: ServerInit = async () => {
 	const e = initEnv(privateEnv); // throws -> boot fails (fail fast)
@@ -15,8 +16,10 @@ export const init: ServerInit = async () => {
 	setHandle(h);
 	purgeAll();
 	setInterval(() => purgeAll(), 3_600_000).unref();
+	jobs.start(); // reminders (DESIGN §13)
 	// adapter-node emits this after SIGTERM/SIGINT once in-flight requests finish: close SQLite cleanly (WAL checkpoint)
 	process.once('sveltekit:shutdown' as NodeJS.Signals, () => {
+		jobs.stop(); // before the DB closes
 		try {
 			h.sqlite.close();
 			console.log('[shutdown] db closed');
@@ -25,7 +28,7 @@ export const init: ServerInit = async () => {
 		}
 	});
 	console.log(
-		`[boot] v${process.env.APP_VERSION ?? 'dev'} db ready, origin=${e.ORIGIN}, secureCookies=${e.secureCookies}, proxyHeader=${e.ADDRESS_HEADER ?? 'none'}`,
+		`[boot] v${process.env.APP_VERSION ?? 'dev'} db ready, origin=${e.ORIGIN}, secureCookies=${e.secureCookies}, proxyHeader=${e.ADDRESS_HEADER ?? 'none'}, jobs=${e.JOBS_ENABLED}, push=${e.VAPID_PUBLIC_KEY ? 'on' : 'off'}`,
 	);
 };
 

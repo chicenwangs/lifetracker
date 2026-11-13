@@ -284,7 +284,7 @@ describe('palette helpers', () => {
 		expect(activeOptionToken('gym')).toBeNull();
 	});
 	it('slash menu filters', () => {
-		expect(optionsFor('/')).toHaveLength(8);
+		expect(optionsFor('/')).toHaveLength(9);
 		expect(optionsFor('/p').map((o) => o.token)).toEqual(['/planner']);
 		expect(optionsFor('/b').map((o) => o.token)).toEqual(['/both']);
 		expect(optionsFor('/da').map((o) => o.token)).toEqual(['/date']);
@@ -433,5 +433,17 @@ describe('dragged slot (planner / week drag box)', () => {
 		expect(withTarget('gym /calendar /hobby', 'both')).toBe('gym /hobby /both ');
 		expect(withTarget('gym /cal', 'planner')).toBe('gym ');
 		expect(withTarget('', 'calendar')).toBe('/calendar ');
+	});
+});
+
+describe('/remind (P6)', () => {
+	it('one or more offsets after /remind, or glued; bad ones are problems; words stay out of the title', () => {
+		expect(p('gym tmr 6pm /remind 2h').reminders).toEqual(['2h']);
+		expect(p('gym tmr 6pm /remind 1d 2h').reminders).toEqual(['1d', '2h']);
+		expect(p('gym tmr 6pm /remind15min').reminders).toEqual(['15min']);
+		expect(p('gym tmr 6pm /remind 1d 2h').title).toBe('gym');
+		expect(p('gym tmr 6pm /remind 5h').problems.join()).toMatch(/needs a time/);
+		expect(p('gym tmr 6pm /remind3h').problems.join()).toMatch(/1w, 3d, 2d, 1d, 2h or 15min/);
+		expect(p('gym tmr 6pm').reminders).toEqual([]);
 	});
 });

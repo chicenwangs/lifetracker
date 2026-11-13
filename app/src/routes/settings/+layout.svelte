@@ -5,6 +5,7 @@
 		{ href: '/settings/account', label: 'Account' },
 		{ href: '/settings/preferences', label: 'Preferences' },
 		{ href: '/settings/types', label: 'Item types' },
+		{ href: '/settings/notifications', label: 'Notifications' },
 		{ href: '/settings/sessions', label: 'Devices' },
 		{ href: '/settings/sharing', label: 'Sharing' },
 	];
