@@ -4,7 +4,9 @@
 import { sql } from 'drizzle-orm';
 import { check, index, integer, real, sqliteTable, text, uniqueIndex, unique } from 'drizzle-orm/sqlite-core';
 
-export const TYPES = ['Work', 'Exam', 'Event', 'Hobby', 'Dating'] as const;
+// v2: item/block `type` = an item_types.key of the calendar owner (validated in the service), NULL = No type.
+// Built-in keys keep the v1 values (Work Exam Event Hobby Dating) so live data and share codes need no rewrite.
+export const BUILTIN_TYPES = ['Work', 'Exam', 'Event', 'Hobby', 'Dating'] as const;
 export const STATUSES = ['todo', 'doing', 'done'] as const;
 export const EFFORTS = ['light', 'moderate', 'heavy'] as const;
 export const FACT_CATEGORIES = ['likes', 'info', 'hates', 'wants', 'bucket_list', 'misc'] as const;
@@ -43,12 +45,30 @@ export const users = sqliteTable(
 		// NULL = not asked yet (first-use tutorial asks). night = plan before bed, morning = plan on waking
 		planMode: text('plan_mode', { enum: ['night', 'morning', 'off'] }),
 		icsTokenHash: text('ics_token_hash'),
+		// v2 prefs (DESIGN §5). `theme` above = last fixed choice, kept for rollback; theme_mode is read.
+		themeMode: text('theme_mode', { enum: ['light', 'dark', 'auto'] })
+			.notNull()
+			.default('auto'),
+		themeLightStart: text('theme_light_start').notNull().default('07:00'),
+		themeDarkStart: text('theme_dark_start').notNull().default('17:00'),
+		tourState: text('tour_state', { enum: ['new', 'skipped', 'done'] })
+			.notNull()
+			.default('new'),
+		region: text('region', { enum: ['my', 'us'] })
+			.notNull()
+			.default('my'),
+		qaTarget: text('qa_target', { enum: ['timeline', 'calendar'] })
+			.notNull()
+			.default('timeline'),
+		blockMin: integer('block_min').notNull().default(60),
+		visibleHours: text('visible_hours').notNull().default('7-24'),
+		hiddenTypes: text('hidden_types', { mode: 'json' }).$type<string[]>().notNull().default(sql`'[]'`),
 		createdAt: text('created_at').notNull().default(nowZ),
 	},
+	// v2 column CHECKs (theme_mode, tour_state, region, qa_target, block_min, hidden_types) are in drizzle/0003 SQL:
+	// adding them here makes drizzle-kit rebuild `users` and drop the hand-patched COLLATE NOCASE.
 	() => [check('users_role', inList('role', ['admin', 'member']))],
-);
-
-export const sessions = sqliteTable(
+);export const sessions = sqliteTable(
 	'sessions',
 	{
 		id: text('id').primaryKey(), // sha256hex(token)
@@ -136,7 +156,7 @@ export const items = sqliteTable(
 			.notNull()
 			.references(() => calendars.id, { onDelete: 'cascade' }),
 		title: text('title').notNull(),
-		type: text('type', { enum: TYPES }), // NULL = None
+		type: text('type'), // item_types.key; NULL = None
 		status: text('status', { enum: STATUSES }).notNull().default('todo'),
 		date: text('date'), // local YYYY-MM-DD; NULL = Unscheduled
 		time: text('time'), // local HH:MM; NULL = all-day
@@ -162,7 +182,6 @@ export const items = sqliteTable(
 		index('items_parent').on(t.parentId),
 		index('items_course').on(t.courseId),
 		check('items_title_len', sql`length(title) BETWEEN 1 AND 300`),
-		check('items_type', nullOrIn('type', TYPES)),
 		check('items_status', inList('status', STATUSES)),
 		check('items_date_fmt', sql`date IS NULL OR date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'`),
 		check('items_time_fmt', sql`time IS NULL OR time GLOB '[0-2][0-9]:[0-5][0-9]'`),
@@ -181,7 +200,7 @@ export const blocks = sqliteTable(
 			.references(() => calendars.id, { onDelete: 'cascade' }),
 		itemId: text('item_id').references(() => items.id, { onDelete: 'set null' }),
 		label: text('label').notNull(),
-		type: text('type', { enum: TYPES }),
+		type: text('type'), // item_types.key; NULL = None
 		startAt: text('start_at').notNull(),
 		endAt: text('end_at').notNull(),
 		status: text('status', { enum: STATUSES }).notNull().default('todo'),
@@ -196,12 +215,106 @@ export const blocks = sqliteTable(
 	(t) => [
 		index('blocks_cal_start').on(t.calendarId, t.startAt),
 		index('blocks_item').on(t.itemId),
-		check('blocks_type', nullOrIn('type', TYPES)),
 		check('blocks_status', inList('status', STATUSES)),
 		check('blocks_start_z', sql`start_at LIKE '%Z'`),
 		check('blocks_end_z', sql`end_at LIKE '%Z'`),
 		check('blocks_range', sql`end_at > start_at`),
 		check('blocks_exdates_json', nullOrJson('exdates')),
+	],
+);
+
+// ---------- v2: item types (FEATURES §3b) ----------
+export const itemTypes = sqliteTable(
+	'item_types',
+	{
+		id: text('id').primaryKey(),
+		ownerId: text('owner_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		key: text('key').notNull(), // value stored in items.type / blocks.type / share kinds
+		name: text('name').notNull(),
+		bg: text('bg').notNull(),
+		ink: text('ink').notNull(),
+		slug: text('slug').notNull(), // quick add "/slug"
+		position: integer('position').notNull(),
+		builtin: integer('builtin', { mode: 'boolean' }).notNull().default(false),
+		shareDefault: integer('share_default', { mode: 'boolean' }).notNull().default(false),
+		countsDown: integer('counts_down', { mode: 'boolean' }).notNull().default(false),
+		isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+		createdAt: text('created_at').notNull(),
+		updatedAt: text('updated_at').notNull(),
+	},
+	(t) => [
+		uniqueIndex('item_types_owner_key').on(t.ownerId, t.key),
+		uniqueIndex('item_types_owner_slug').on(t.ownerId, sql`slug COLLATE NOCASE`),
+		uniqueIndex('item_types_one_default').on(t.ownerId).where(sql`is_default = 1`),
+		check('item_types_name_len', sql`length(name) BETWEEN 1 AND 30`),
+		check('item_types_slug', sql`slug GLOB '[a-z0-9]*' AND length(slug) BETWEEN 1 AND 20`),
+	],
+);
+
+// ---------- v2: attachments (DESIGN §12, ADR-005) ----------
+export const attachments = sqliteTable(
+	'attachments',
+	{
+		id: text('id').primaryKey(),
+		ownerId: text('owner_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		storageKey: text('storage_key').notNull().unique(),
+		originalName: text('original_name').notNull(),
+		mimeType: text('mime_type').notNull(),
+		byteSize: integer('byte_size').notNull(),
+		sha256: text('sha256'),
+		status: text('status', { enum: ['uploading', 'ready', 'failed'] }).notNull(),
+		createdAt: text('created_at').notNull(),
+		deletedAt: text('deleted_at'),
+	},
+	(t) => [
+		index('attachments_owner').on(t.ownerId),
+		check('attachments_status', inList('status', ['uploading', 'ready', 'failed'])),
+	],
+);
+
+export const attachmentRefs = sqliteTable(
+	'attachment_refs',
+	{
+		id: text('id').primaryKey(),
+		attachmentId: text('attachment_id')
+			.notNull()
+			.references(() => attachments.id, { onDelete: 'cascade' }),
+		ownerId: text('owner_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		sourceType: text('source_type').notNull(),
+		sourceId: text('source_id').notNull(),
+		createdAt: text('created_at').notNull(),
+	},
+	(t) => [
+		uniqueIndex('attachment_refs_unique').on(t.attachmentId, t.sourceType, t.sourceId),
+		index('attachment_refs_source').on(t.sourceType, t.sourceId),
+	],
+);
+
+// ---------- v2: undo journal (DESIGN §11) ----------
+export const undoActions = sqliteTable(
+	'undo_actions',
+	{
+		id: text('id').primaryKey(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => users.id, { onDelete: 'cascade' }),
+		label: text('label').notNull(),
+		// [{table, id, before: row|null, after: updated_at|null}] — rows as stored, restored as a whole
+		rows: text('rows', { mode: 'json' }).notNull().$type<unknown[]>(),
+		createdAt: text('created_at').notNull(),
+		expiresAt: text('expires_at').notNull(),
+		undoneAt: text('undone_at'),
+	},
+	(t) => [
+		index('undo_user').on(t.userId, t.createdAt),
+		index('undo_expires').on(t.expiresAt),
+		check('undo_rows_json', jsonValid('rows')),
 	],
 );
 

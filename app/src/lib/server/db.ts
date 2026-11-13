@@ -32,7 +32,16 @@ export function openDb(path: string): Handle {
 
 /** Forward-only. Folder = ./drizzle relative to process cwd (app/ in dev, /app in Docker). */
 export function migrateDb(h: Handle, folder = resolve(process.cwd(), 'drizzle')): void {
-	migrate(h.db, { migrationsFolder: folder });
+	// Table rebuilds (DROP + RENAME) must run with FKs off, or dropping `items` fires ON DELETE SET NULL on
+	// blocks.item_id. The pragma is ignored inside a transaction, and drizzle wraps migrations in one, so set it here.
+	h.sqlite.pragma('foreign_keys = OFF');
+	try {
+		migrate(h.db, { migrationsFolder: folder });
+		const bad = h.sqlite.pragma('foreign_key_check') as unknown[];
+		if (bad.length) throw new Error(`migration left ${bad.length} foreign key violations`);
+	} finally {
+		h.sqlite.pragma('foreign_keys = ON');
+	}
 }
 
 export function healthy(h: Handle): boolean {

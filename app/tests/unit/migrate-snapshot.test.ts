@@ -20,10 +20,16 @@ it.skipIf(!existsSync(SNAP))('migrations keep every v1 row and leave a sound DB'
 		const count = (t: string) =>
 			(h.sqlite.prepare(`SELECT count(*) AS c FROM ${t}`).get() as { c: number }).c;
 		const before = V1_TABLES.map(count);
+		const linkedBefore = (h.sqlite.prepare('SELECT count(*) AS c FROM blocks WHERE item_id IS NOT NULL').get() as { c: number }).c;
 		migrateDb(h);
 		expect(h.sqlite.pragma('integrity_check', { simple: true })).toBe('ok');
 		expect(h.sqlite.pragma('foreign_key_check')).toEqual([]);
 		expect(V1_TABLES.map(count)).toEqual(before);
+		// v2: block -> item links survive the items table rebuild; every user got the 5 built-in types
+		const linked = h.sqlite.prepare('SELECT count(*) AS c FROM blocks WHERE item_id IS NOT NULL').get() as { c: number };
+		expect(linked.c).toBe(linkedBefore);
+		const types = h.sqlite.prepare('SELECT count(*) AS c FROM item_types').get() as { c: number };
+		expect(types.c).toBe(count('users') * 5);
 	} finally {
 		h.sqlite.close();
 		rmSync(dir, { recursive: true, force: true });
