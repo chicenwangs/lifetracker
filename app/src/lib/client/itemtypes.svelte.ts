@@ -27,3 +27,13 @@ export function qaPrefs(u: App.SafeUser | null | undefined) {
 		region: u?.region ?? ('my' as const),
 	};
 }
+
+/** per-user hidden-type filter (type bar): drops my own rows of hidden types. Server still sends everything. */
+export function shown<T extends { type: string | null; theirs?: boolean; itemType?: string | null }>(
+	rows: T[],
+): T[] {
+	if (!typesState.hidden.length) return rows;
+	return rows.filter(
+		(r) => r.theirs || !typesState.hidden.includes(('itemType' in r ? r.itemType : null) ?? r.type ?? 'None'),
+	);
+}

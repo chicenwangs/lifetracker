@@ -12,7 +12,7 @@
 //   Missing ctx fields = v1.1.0 behaviour.
 import { addDays, hhmm, isDate, makeDate, weekdayOf } from './time';
 import type { ItemType, ItemTypeDTO } from './types';
-import { defaultTypes, slugMap } from './itemtypes';
+import { defaultTypes, LEGACY_SLUGS, slugMap } from './itemtypes';
 
 export interface QAContext {
 	today: string; // local YYYY-MM-DD
@@ -846,6 +846,8 @@ export interface QAOption {
 	hint: string;
 	type?: ItemType;
 	target?: QATarget;
+	/** old words that still pick this option (/exam -> Deadline) */
+	aliases?: string[];
 }
 /** the "/" menu: the user's types (default marked), then destinations (default marked) */
 export function slashOptions(ctx: Pick<QAContext, 'types' | 'qaTarget'> = {}): QAOption[] {
@@ -857,6 +859,7 @@ export function slashOptions(ctx: Pick<QAContext, 'types' | 'qaTarget'> = {}): Q
 			label: t.name,
 			hint: t.isDefault ? 'default' : 'type',
 			type: t.key,
+			aliases: Object.keys(LEGACY_SLUGS).filter((w) => LEGACY_SLUGS[w] === t.key && w !== t.slug),
 		})),
 		{ group: 'Goes to', token: '/planner', label: 'Planner', hint: cal ? 'time block' : 'default · time block', target: 'planner' },
 		{ group: 'Goes to', token: '/calendar', label: 'Calendar', hint: cal ? 'default · item' : 'big event only', target: 'calendar' },
@@ -874,7 +877,10 @@ export function activeOptionToken(text: string): string | null {
 export function optionsFor(token: string, ctx: Pick<QAContext, 'types' | 'qaTarget'> = {}): QAOption[] {
 	const q = token.slice(1).toLowerCase();
 	return slashOptions(ctx).filter(
-		(o) => o.token.slice(1).startsWith(q) || o.label.toLowerCase().startsWith(q),
+		(o) =>
+			o.token.slice(1).startsWith(q) ||
+			o.label.toLowerCase().startsWith(q) ||
+			!!o.aliases?.some((a) => a.startsWith(q)),
 	);
 }
 

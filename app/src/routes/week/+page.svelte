@@ -2,6 +2,8 @@
      Right column (top to bottom): month heatmap with this week highlighted · Not scheduled (all-day items with
      no block; drag onto the grid to block time, drag a block here to unschedule it) · stats. -->
 <script lang="ts">
+	import { shown } from '$lib/client/itemtypes.svelte';
+	import TypeBar from '$lib/components/TypeBar.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount, untrack } from 'svelte';
 	import WeekCalendar from '$lib/components/WeekCalendar.svelte';
@@ -229,13 +231,14 @@
 				<span class="on">Week</span>
 			</div>
 		</div>
+		<div class="types"><TypeBar /></div>
 		{#if side}
 			<WeekCalendar
 				bind:this={weekCal}
 				from={data.from}
 				{tz}
-				items={data.cal.items}
-				blocks={data.cal.blocks}
+				items={shown(data.cal.items)}
+				blocks={shown(data.cal.blocks)}
 				dragSource={side}
 				oncycleitem={(id) => wrap(() => post(`/api/items/${id}/cycle`)).catch(() => {})}
 				oncycleblock={(id) => wrap(() => post(`/api/blocks/${id}/cycle`)).catch(() => {})}
@@ -351,6 +354,10 @@
 {/if}
 
 <style>
+	.types {
+		padding: 8px 20px;
+		border-bottom: 1px solid var(--rule);
+	}
 	.slotpop {
 		position: fixed;
 		z-index: 60;

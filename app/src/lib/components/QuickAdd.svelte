@@ -9,7 +9,7 @@
 <script lang="ts">
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
-	import { qaPrefs } from '$lib/client/itemtypes.svelte';
+	import { qaPrefs, typeName } from '$lib/client/itemtypes.svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
 	import CommandInput from './CommandInput.svelte';
@@ -294,10 +294,10 @@
 					{#if parsed.typeSet}
 						{@const c = tc(parsed.type)}
 						<div class="s" style:background={c.bg} style:color={c.ink} style:border-color={c.bg}>
-							<span class="k">Type</span><span class="v">{parsed.type}</span>
+							<span class="k">Type</span><span class="v">{typeName(parsed.type)}</span>
 						</div>
 					{:else}
-						<div class="s d"><span class="k">Type</span><span class="v">Event · default</span></div>
+						<div class="s d"><span class="k">Type</span><span class="v">{typeName(parsed.type)} · default</span></div>
 					{/if}
 					<div class="s" class:d={!parsed.title}>
 						<span class="k">Title</span><span class="v">{parsed.title || 'your words'}</span>

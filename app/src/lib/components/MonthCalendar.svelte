@@ -1,5 +1,6 @@
 <!-- FR-H2..H7, H13. FullCalendar dayGridMonth (MIT plugins). Feeds local strings from lib/time (no FC tz tricks). -->
 <script lang="ts">
+	import TypeBar from './TypeBar.svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { Calendar, type EventInput } from '@fullcalendar/core';
 	import dayGridPlugin from '@fullcalendar/daygrid';
@@ -13,7 +14,7 @@
 		prettyDate,
 		prettyTime,
 	} from '$lib/time';
-	import { typeOf, typesState } from '$lib/client/itemtypes.svelte';
+	import { typeOf } from '$lib/client/itemtypes.svelte';
 	import { colorsFor, typeClass } from '$lib/colors';
 	import { badge, entryColors, theirClasses } from '$lib/client/partner';
 	import OverlapToggle from './OverlapToggle.svelte';
@@ -308,13 +309,8 @@
 			<a href="/week">Week</a>
 		</div>
 	</div>
-	<div class="legend" aria-label="Type colours">
-		{#each typesState.list as t (t.key)}
-			<span class="lg {typeClass(t.key)}" style:--bg={colorsFor(t.key).bg} style:--fg={colorsFor(t.key).ink}
-				>{t.name}</span
-			>
-		{/each}
-	</div>
+	<div class="legend"><TypeBar /></div>
+
 	<div class="grid" bind:this={el}></div>
 	<div class="foot">
 		Square: empty = not started · ▶ = in progress · ✓ = done · drag an item to another day to move it · drag
@@ -408,17 +404,6 @@
 		gap: 6px;
 		flex-wrap: wrap;
 		border-bottom: 1px solid var(--rule);
-	}
-	.lg {
-		height: 22px;
-		padding: 0 8px;
-		border-radius: 5px;
-		background: var(--bg);
-		color: var(--fg);
-		font-size: 11px;
-		font-weight: 600;
-		display: flex;
-		align-items: center;
 	}
 	.foot {
 		padding: 10px 20px;

@@ -1,5 +1,6 @@
 <!-- HOME (FR-H1): month calendar 2/3 | planner 1/3 (due chips + planner). < ~1000px stacks. -->
 <script lang="ts">
+	import { shown } from '$lib/client/itemtypes.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount, untrack } from 'svelte';
@@ -21,12 +22,14 @@
 	// optimistic status overrides until refetch lands
 	let statusOver = $state<Record<string, Status>>({});
 	const monthItems = $derived(
-		data.month_.items.map((i: ItemDTO) =>
+		shown(data.month_.items).map((i: ItemDTO) =>
 			statusOver[i.id] ? { ...i, status: statusOver[i.id] as Status } : i,
 		),
 	);
 	const plannerBlocks = $derived(
-		data.planner.blocks.map((b) => (statusOver[b.id] ? { ...b, status: statusOver[b.id] as Status } : b)),
+		shown(data.planner.blocks).map((b) =>
+			statusOver[b.id] ? { ...b, status: statusOver[b.id] as Status } : b,
+		),
 	);
 
 	// serialise: a refresh asked for while one is in flight runs again after it (a load that started

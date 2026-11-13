@@ -85,7 +85,7 @@ test('month shows colour chips; square cycles + persists', async () => {
 	await page.goto('/');
 	const chip = page.locator('.lt-chip', { hasText: 'DS Quiz' });
 	await expect(chip).toBeVisible();
-	await expect(chip).toHaveCSS('background-color', 'rgb(198, 83, 77)'); // Exam bg #C6534D (same in both themes)
+	await expect(chip).toHaveCSS('background-color', 'rgb(184, 74, 68)'); // Deadline (Exam) bg #B84A44, 5.1:1 with white (v2)
 	await chip.locator('.lt-sq').click();
 	await expect(chip.locator('.lt-sq')).toHaveAttribute('aria-label', /In progress/);
 	await page.reload();
@@ -160,7 +160,7 @@ test('drag "DS Quiz" chip to planner -> linked red block', async () => {
 		.dragTo(grid, { targetPosition: { x: 150, y: (16 - 7) * 48 + 5 } });
 	const b = page.locator('.blk[aria-label^="DS Quiz,"]');
 	await expect(b).toHaveAttribute('aria-label', /16:00 – 17:00/);
-	await expect(b).toHaveCSS('background-color', 'rgb(198, 83, 77)');
+	await expect(b).toHaveCSS('background-color', 'rgb(184, 74, 68)');
 });
 
 test('quick add palette: planner by default, /calendar big events, /both', async () => {
@@ -170,9 +170,9 @@ test('quick add palette: planner by default, /calendar big events, /both', async
 	await expect(dlg).toBeVisible();
 	// slash menu
 	await page.keyboard.type('ds quiz fri 2pm /ex');
-	await expect(dlg.getByRole('listbox')).toContainText('/exam');
+	await expect(dlg.getByRole('listbox')).toContainText('/deadline'); // v2: Exam shows as Deadline, /ex still finds it
 	await page.keyboard.press('Tab');
-	await expect(page.locator('#qa-slots')).toContainText('Exam');
+	await expect(page.locator('#qa-slots')).toContainText('Deadline');
 	// # is plain title text now (no course menu)
 	await page.keyboard.type('#ds');
 	await expect(dlg.getByRole('listbox')).toHaveCount(0);
@@ -383,7 +383,7 @@ test('item opens as centre peek: blur, rename in place, notes, linked block, hov
 	await page.mouse.up();
 	const b = dlg.locator('.blk[aria-label^="DS Quiz 2, 10:00 – 11:00"]');
 	await expect(b).toBeVisible();
-	await expect(b).toHaveCSS('background-color', 'rgb(198, 83, 77)');
+	await expect(b).toHaveCSS('background-color', 'rgb(184, 74, 68)');
 	// Esc closes, home planner shows the same linked block
 	await page.keyboard.press('Escape');
 	await expect(dlg).toBeHidden();
@@ -411,7 +411,7 @@ test('open sign-up + swap share codes: partner calendar read-only, hidden types 
 	await page.getByRole('button', { name: 'Make a code' }).click();
 	const jCode = (await page.getByLabel('Your share code').textContent())!.trim();
 	expect(jCode).toMatch(/^LT-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$/);
-	await expect(page.getByText(/Shows Event, Dating, Planner blocks · until/)).toBeVisible();
+	await expect(page.getByText(/Shows Event, Date, Planner blocks · until/)).toBeVisible();
 
 	// Neina makes her own account (no invite code while sign-up is open)
 	const n = await (await browser.newContext()).newPage();
