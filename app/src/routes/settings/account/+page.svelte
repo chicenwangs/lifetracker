@@ -86,6 +86,28 @@
 	</div>
 </form>
 
+{#if data.v1 || form?.v1Ok !== undefined}
+	<form class="card panel" method="post" action="?/importV1" use:enhance>
+		<h2>Old v1 data</h2>
+		{#if form?.v1Ok !== undefined}
+			<p class="ok-note">Done: {form.v1Ok} notes in Keep, labelled "From v1".</p>
+		{:else if data.v1}
+			<p class="muted">
+				v1 kept some things with no screen in v2:
+				{Object.entries(data.v1)
+					.filter(([, n]) => n > 0)
+					.map(([k, n]) => `${n} ${k}`)
+					.join(', ')}. Bring them into Keep as notes, labelled "From v1"? Once only. The originals stay as
+				they are.
+			</p>
+			<div class="row">
+				<button class="btn primary" type="submit">Bring them into Keep</button>
+				{#if form?.v1Msg}<span class="alert">{form.v1Msg}</span>{/if}
+			</div>
+		{/if}
+	</form>
+{/if}
+
 <style>
 	fieldset {
 		border: 0;

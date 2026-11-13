@@ -6,6 +6,7 @@
 	import { undoLast } from '$lib/client/undo.svelte';
 	import PageEditor from '$lib/editor/PageEditor.svelte';
 	import DbCell from '$lib/database/DbCell.svelte';
+	import ShareDialog from '$lib/components/ShareDialog.svelte';
 	import type { PageDTO, PageNode, UndoRef } from '$lib/types';
 
 	let { data } = $props();
@@ -16,6 +17,8 @@
 	let editor: PageEditor | undefined = $state();
 	let menu = $state(false);
 	let moving = $state(false);
+	let sharing = $state(false);
+	const mine = $derived(pg.access === 'owner');
 	// new page opened: take its title; a reload of the same page keeps what is being typed
 	let shownId = '';
 	$effect.pre(() => {
@@ -150,7 +153,7 @@
 
 <svelte:head><title>{pg.title || 'Untitled'} · Pages · Life Tracker</title></svelte:head>
 
-{#if pg.archived}
+{#if pg.archived && mine}
 	<div class="arch" role="status">
 		Archived · it's out of the sidebar and search, links and the graph still work. <button
 			class="btn sm"
@@ -171,6 +174,7 @@
 			placeholder="Untitled"
 			aria-label="Page title"
 			maxlength="300"
+			readonly={pg.access === 'view'}
 			bind:value={title}
 			oninput={onTitle}
 		/>
@@ -195,14 +199,19 @@
 			>
 			{#if menu}
 				<div class="menu card" role="menu">
-					{#if !pg.archived}<button role="menuitem" type="button" onclick={pin}
+					{#if mine}<button role="menuitem" type="button" onclick={() => ((sharing = true), (menu = false))}
+							>Share…</button
+						>{/if}
+					{#if mine && !pg.archived}<button role="menuitem" type="button" onclick={pin}
 							>{pg.pinned ? 'Unpin from header' : 'Pin to header'}</button
 						>{/if}
-					<button role="menuitem" type="button" onclick={() => ((moving = true), (menu = false))}
-						>Move to…</button
-					>
-					<button role="menuitem" type="button" onclick={() => reorder(-1)}>Move up</button>
-					<button role="menuitem" type="button" onclick={() => reorder(1)}>Move down</button>
+					{#if mine}
+						<button role="menuitem" type="button" onclick={() => ((moving = true), (menu = false))}
+							>Move to…</button
+						>
+						<button role="menuitem" type="button" onclick={() => reorder(-1)}>Move up</button>
+						<button role="menuitem" type="button" onclick={() => reorder(1)}>Move down</button>
+					{/if}
 					<button
 						role="menuitem"
 						type="button"
@@ -212,12 +221,18 @@
 							showToast('Link copied')
 						)}>Copy link</button
 					>
-					{#if !pg.archived}<button role="menuitem" type="button" onclick={archive}>Archive</button>{/if}
-					<button role="menuitem" type="button" class="danger" onclick={trash}>Delete…</button>
+					{#if mine}
+						{#if !pg.archived}<button role="menuitem" type="button" onclick={archive}>Archive</button>{/if}
+						<button role="menuitem" type="button" class="danger" onclick={trash}>Delete…</button>
+					{/if}
 				</div>
 			{/if}
 		</div>
 	</div>
+	{#if !mine}<p class="shared" role="status">
+			Shared with you · {pg.access === 'edit' ? 'you can edit' : 'view only'}
+		</p>{/if}
+	{#if sharing}<ShareDialog kind="page" id={pg.id} name={pg.title} onclose={() => (sharing = false)} />{/if}
 	{#if moving}
 		<div class="moveto">
 			<label
@@ -261,6 +276,11 @@
 />
 
 <style>
+	.shared {
+		margin: 0 0 6px;
+		font-size: 12px;
+		color: var(--muted);
+	}
 	.rec {
 		margin: 8px 0 12px;
 		padding-bottom: 12px;

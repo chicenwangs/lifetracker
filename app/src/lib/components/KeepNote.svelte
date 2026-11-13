@@ -2,6 +2,7 @@
      A new note is only created once it has content; an empty one is simply dropped on close. -->
 <script lang="ts">
 	import Reminders from './Reminders.svelte';
+	import ShareDialog from './ShareDialog.svelte';
 	import { page } from '$app/state';
 	import { tick } from 'svelte';
 	import { patch, post } from '$lib/client/api';
@@ -15,6 +16,7 @@
 		colors,
 		onclose,
 		onchanged,
+		shared,
 	}: {
 		/** null = new note */
 		note: NoteDTO | null;
@@ -23,7 +25,10 @@
 		colors: readonly string[];
 		onclose: () => void;
 		onchanged: () => void;
+		/** someone else's note shared with me: edit = text + checklist only; view = read only */
+		shared?: 'view' | 'edit';
 	} = $props();
+	let sharing = $state(false);
 
 	// svelte-ignore state_referenced_locally
 	const start = note;
@@ -46,7 +51,7 @@
 
 	const hasContent = () =>
 		!!(title.trim() || body.trim() || items.some((i) => i.text.trim()) || images.length);
-	const payload = () => ({
+	const payload = () => shared ? { type, title, body, items: items.map(({ id, text, checked, parentId }) => ({ id, text, checked, parentId })) } : ({
 		type,
 		title,
 		body,
@@ -56,7 +61,7 @@
 		labels: noteLabels,
 		binders: noteBinders,
 		images: images.map((i) => i.id),
-	});
+	}); // prettier-ignore
 
 	function changed() {
 		dirty = true;
@@ -295,87 +300,95 @@
 	style:--note-bg={color ?? 'var(--card)'}
 	class:tinted={!!color}
 >
-	<!-- svelte-ignore a11y_autofocus -->
-	<input
-		class="title"
-		placeholder="Title"
-		bind:value={title}
-		oninput={changed}
-		maxlength="300"
-		autofocus={!start}
-	/>
-	{#if type === 'text'}
-		<textarea class="body" placeholder="Note" bind:value={body} oninput={changed} maxlength="20000" rows="6"
-		></textarea>
-	{:else}
-		<ul class="items" aria-label="Checklist">
-			{#each items as it, i (it.id)}
-				{#if !hiddenBy(i)}
-					<li style:padding-left="{(depthOf(i) - 1) * 22}px" class:done={it.checked}>
-						{#if hasKids(it.id)}
-							<button
-								class="mini"
-								type="button"
-								aria-label="{it.open === false ? 'Expand' : 'Collapse'} {it.text}"
-								aria-expanded={it.open !== false}
-								onclick={() => (it.open = it.open === false)}>{it.open === false ? '▸' : '▾'}</button
-							>
-						{:else}<span class="mini sp"></span>{/if}
-						<input
-							type="checkbox"
-							bind:checked={it.checked}
-							onchange={changed}
-							aria-label="Done: {it.text || 'item'}"
-						/>
-						<input
-							id="ci-{i}"
-							class="it"
-							bind:value={it.text}
-							oninput={changed}
-							maxlength="1000"
-							placeholder="List item"
-							onkeydown={(e) => {
-								if (e.key === 'Enter') {
-									e.preventDefault();
-									addItem(i);
-								} else if (e.key === 'Tab') {
-									e.preventDefault();
-									indent(i, e.shiftKey ? -1 : 1);
-								} else if (e.key === 'Backspace' && !it.text && items.length > 1) {
-									e.preventDefault();
-									removeItem(i);
-								}
-							}}
-						/>
-						<span class="ops">
-							<button
-								class="mini"
-								type="button"
-								aria-label="Move {it.text} up"
-								onclick={() => moveItem(i, -1)}>↑</button
-							>
-							<button
-								class="mini"
-								type="button"
-								aria-label="Move {it.text} down"
-								onclick={() => moveItem(i, 1)}>↓</button
-							>
-							<button class="mini" type="button" aria-label="Indent {it.text}" onclick={() => indent(i, 1)}
-								>→</button
-							>
-							<button class="mini" type="button" aria-label="Outdent {it.text}" onclick={() => indent(i, -1)}
-								>←</button
-							>
-							<button class="mini" type="button" aria-label="Delete {it.text}" onclick={() => removeItem(i)}
-								>×</button
-							>
-						</span>
-					</li>
-				{/if}
-			{/each}
-		</ul>
-		<button class="btn sm ghost" type="button" onclick={() => addItem()}>+ List item</button>
-	{/if}
+	{#if shared}<p class="hint">
+			Shared with you · {shared === 'edit' ? 'you can edit the text' : 'view only'}
+		</p>{/if}
+	<fieldset class="plain" disabled={shared === 'view'}>
+		<!-- svelte-ignore a11y_autofocus -->
+		<input
+			class="title"
+			placeholder="Title"
+			bind:value={title}
+			oninput={changed}
+			maxlength="300"
+			autofocus={!start}
+		/>
+		{#if type === 'text'}
+			<textarea class="body" placeholder="Note" bind:value={body} oninput={changed} maxlength="20000" rows="6"
+			></textarea>
+		{:else}
+			<ul class="items" aria-label="Checklist">
+				{#each items as it, i (it.id)}
+					{#if !hiddenBy(i)}
+						<li style:padding-left="{(depthOf(i) - 1) * 22}px" class:done={it.checked}>
+							{#if hasKids(it.id)}
+								<button
+									class="mini"
+									type="button"
+									aria-label="{it.open === false ? 'Expand' : 'Collapse'} {it.text}"
+									aria-expanded={it.open !== false}
+									onclick={() => (it.open = it.open === false)}>{it.open === false ? '▸' : '▾'}</button
+								>
+							{:else}<span class="mini sp"></span>{/if}
+							<input
+								type="checkbox"
+								bind:checked={it.checked}
+								onchange={changed}
+								aria-label="Done: {it.text || 'item'}"
+							/>
+							<input
+								id="ci-{i}"
+								class="it"
+								bind:value={it.text}
+								oninput={changed}
+								maxlength="1000"
+								placeholder="List item"
+								onkeydown={(e) => {
+									if (e.key === 'Enter') {
+										e.preventDefault();
+										addItem(i);
+									} else if (e.key === 'Tab') {
+										e.preventDefault();
+										indent(i, e.shiftKey ? -1 : 1);
+									} else if (e.key === 'Backspace' && !it.text && items.length > 1) {
+										e.preventDefault();
+										removeItem(i);
+									}
+								}}
+							/>
+							<span class="ops">
+								<button
+									class="mini"
+									type="button"
+									aria-label="Move {it.text} up"
+									onclick={() => moveItem(i, -1)}>↑</button
+								>
+								<button
+									class="mini"
+									type="button"
+									aria-label="Move {it.text} down"
+									onclick={() => moveItem(i, 1)}>↓</button
+								>
+								<button class="mini" type="button" aria-label="Indent {it.text}" onclick={() => indent(i, 1)}
+									>→</button
+								>
+								<button
+									class="mini"
+									type="button"
+									aria-label="Outdent {it.text}"
+									onclick={() => indent(i, -1)}>←</button
+								>
+								<button class="mini" type="button" aria-label="Delete {it.text}" onclick={() => removeItem(i)}
+									>×</button
+								>
+							</span>
+						</li>
+					{/if}
+				{/each}
+			</ul>
+			<button class="btn sm ghost" type="button" onclick={() => addItem()}>+ List item</button>
+		{/if}
+	</fieldset>
 
 	{#if images.length || uploading}
 		<div class="imgs">
@@ -383,100 +396,106 @@
 				<figure>
 					<a href={im.url} target="_blank" rel="noopener"><img src={im.url} alt={im.name} loading="lazy" /></a
 					>
-					<button
-						class="mini"
-						type="button"
-						aria-label="Remove {im.name}"
-						onclick={() => ((images = images.filter((x) => x.id !== im.id)), changed())}>×</button
-					>
+					{#if !shared}<button
+							class="mini"
+							type="button"
+							aria-label="Remove {im.name}"
+							onclick={() => ((images = images.filter((x) => x.id !== im.id)), changed())}>×</button
+						>{/if}
 				</figure>
 			{/each}
 			{#if uploading}<span class="hint">Uploading {uploading}…</span>{/if}
 		</div>
 	{/if}
 
-	<div class="chips" aria-label="Labels">
-		{#each labels as l (l.id)}
-			<button
-				type="button"
-				class="chip"
-				aria-pressed={noteLabels.includes(l.id)}
-				onclick={() => ((noteLabels = toggle(noteLabels, l.id)), changed())}>#{l.name}</button
-			>
-		{/each}
-		<input
-			class="newl"
-			placeholder="+ label"
-			bind:value={newLabel}
-			maxlength="60"
-			onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), addLabel())}
-			aria-label="New label"
-		/>
-	</div>
-	{#if binders.length}
-		<div class="chips" aria-label="Binders">
-			{#each binders as b (b.id)}
+	{#if !shared}
+		<div class="chips" aria-label="Labels">
+			{#each labels as l (l.id)}
 				<button
 					type="button"
-					class="chip bd"
-					aria-pressed={noteBinders.includes(b.id)}
-					onclick={() => ((noteBinders = toggle(noteBinders, b.id)), changed())}>▣ {b.name}</button
+					class="chip"
+					aria-pressed={noteLabels.includes(l.id)}
+					onclick={() => ((noteLabels = toggle(noteLabels, l.id)), changed())}>#{l.name}</button
 				>
 			{/each}
+			<input
+				class="newl"
+				placeholder="+ label"
+				bind:value={newLabel}
+				maxlength="60"
+				onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), addLabel())}
+				aria-label="New label"
+			/>
 		</div>
+		{#if binders.length}
+			<div class="chips" aria-label="Binders">
+				{#each binders as b (b.id)}
+					<button
+						type="button"
+						class="chip bd"
+						aria-pressed={noteBinders.includes(b.id)}
+						onclick={() => ((noteBinders = toggle(noteBinders, b.id)), changed())}>▣ {b.name}</button
+					>
+				{/each}
+			</div>
+		{/if}
 	{/if}
-
 	<div class="bar">
-		<div class="colors" role="radiogroup" aria-label="Colour">
-			<button
-				type="button"
-				role="radio"
-				class="sw"
-				aria-checked={color === null}
-				aria-label="No colour"
-				style:background="var(--card)"
-				onclick={() => ((color = null), changed())}
-			></button>
-			{#each colors as c (c)}
+		{#if !shared}
+			<div class="colors" role="radiogroup" aria-label="Colour">
 				<button
 					type="button"
 					role="radio"
 					class="sw"
-					aria-checked={color === c}
-					aria-label="Colour {c}"
-					style:background={c}
-					onclick={() => ((color = c), changed())}
+					aria-checked={color === null}
+					aria-label="No colour"
+					style:background="var(--card)"
+					onclick={() => ((color = null), changed())}
 				></button>
-			{/each}
-		</div>
-		<button
-			class="mini wide"
-			type="button"
-			aria-pressed={pinned}
-			onclick={() => ((pinned = !pinned), changed())}>{pinned ? 'Pinned' : 'Pin'}</button
-		>
-		<button class="mini wide" type="button" onclick={toChecklist}
-			>{type === 'checklist' ? 'Plain text' : 'Checklist'}</button
-		>
-		<label class="mini wide file"
-			>Image<input
-				type="file"
-				accept="image/png,image/jpeg,image/gif,image/webp"
-				multiple
-				onchange={(e) => addImages(e.currentTarget.files)}
-			/></label
-		>
-		{#if start}
-			<button class="mini wide" type="button" onclick={duplicate}>Duplicate</button>
+				{#each colors as c (c)}
+					<button
+						type="button"
+						role="radio"
+						class="sw"
+						aria-checked={color === c}
+						aria-label="Colour {c}"
+						style:background={c}
+						onclick={() => ((color = c), changed())}
+					></button>
+				{/each}
+			</div>
 			<button
 				class="mini wide"
 				type="button"
-				onclick={() => act({ archived: !start.archived }, start.archived ? 'Unarchived' : 'Note archived')}
-				>{start.archived ? 'Unarchive' : 'Archive'}</button
+				aria-pressed={pinned}
+				onclick={() => ((pinned = !pinned), changed())}>{pinned ? 'Pinned' : 'Pin'}</button
 			>
-			<button class="mini wide" type="button" onclick={() => act({ trashed: true }, 'Moved to Trash')}
-				>Delete</button
+		{/if}
+		{#if shared !== 'view'}<button class="mini wide" type="button" onclick={toChecklist}
+				>{type === 'checklist' ? 'Plain text' : 'Checklist'}</button
+			>{/if}
+		{#if !shared}
+			<label class="mini wide file"
+				>Image<input
+					type="file"
+					accept="image/png,image/jpeg,image/gif,image/webp"
+					multiple
+					onchange={(e) => addImages(e.currentTarget.files)}
+				/></label
 			>
+			{#if start}
+				<button class="mini wide" type="button" onclick={() => (sharing = true)}>Share…</button>
+				<button class="mini wide" type="button" onclick={duplicate}>Duplicate</button>
+				<button
+					class="mini wide"
+					type="button"
+					onclick={() => act({ archived: !start.archived }, start.archived ? 'Unarchived' : 'Note archived')}
+					>{start.archived ? 'Unarchive' : 'Archive'}</button
+				>
+				<button class="mini wide" type="button" onclick={() => act({ trashed: true }, 'Moved to Trash')}
+					>Delete</button
+				>
+			{/if}
 		{/if}
 		<span class="state" role="status">
 			{#if saveState === 'saving'}Saving…{:else if saveState === 'saved'}Saved{:else if saveState === 'failed'}<button
@@ -487,7 +506,8 @@
 		</span>
 		<button class="btn sm" type="button" onclick={close} title="Esc">Close</button>
 	</div>
-	{#if id}<Reminders
+	{#if sharing && id}<ShareDialog kind="note" {id} name={title} onclose={() => (sharing = false)} />{/if}
+	{#if id && !shared}<Reminders
 			source="keep_note"
 			sourceId={id}
 			tz={page.data.user?.timezone ?? 'Asia/Kuala_Lumpur'}
@@ -505,6 +525,13 @@
 />
 
 <style>
+	.plain {
+		border: 0;
+		padding: 0;
+		margin: 0;
+		min-width: 0;
+		display: contents;
+	}
 	.scrim {
 		position: fixed;
 		inset: 0;

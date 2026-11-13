@@ -6,6 +6,8 @@ import { handle, txImmediate } from '../db';
 import { newId } from '../crypto';
 import { ApiFail, bad, notFound } from '../http';
 import * as fts from '../search';
+import * as attachments from '../attachments';
+import { accessOf } from './shares';
 import { nowUtcIso } from '$lib/time';
 import type { PageDTO, PageNode } from '$lib/types';
 
@@ -45,16 +47,19 @@ function subtree(ownerId: string, id: string): string[] {
 }
 
 // ---------- read ----------
-export function get(ownerId: string, id: string, opened = true): PageDTO {
+/** viewer = who is looking (default: the owner). A shared viewer only sees crumbs + link titles they could open. */
+export function get(ownerId: string, id: string, opened = true, viewer = ownerId): PageDTO {
 	const r = own(ownerId, id);
-	if (opened) db().prepare(`UPDATE pages SET last_opened_at = ? WHERE id = ?`).run(nowUtcIso(), id);
+	const sees = (p: string) => viewer === ownerId || !!accessOf('page', viewer, p);
+	if (opened && viewer === ownerId)
+		db().prepare(`UPDATE pages SET last_opened_at = ? WHERE id = ?`).run(nowUtcIso(), id);
 	const blocks = db().prepare(`SELECT content_json FROM page_blocks WHERE page_id = ? ORDER BY position`).all(id) as { content_json: string }[]; // prettier-ignore
 	const doc = { type: 'doc' as const, content: blocks.map((b) => JSON.parse(b.content_json) as unknown) };
 	// breadcrumbs: parents up to the root
 	const crumbs: { id: string; title: string }[] = [];
 	for (let p = r.parent_page_id, n = 0; p && n < 50; n++) {
 		const pr = row(ownerId, p);
-		if (!pr || pr.deleted_at) break;
+		if (!pr || pr.deleted_at || !sees(pr.id)) break;
 		crumbs.unshift({ id: pr.id, title: pr.title });
 		p = pr.parent_page_id;
 	}
@@ -63,7 +68,7 @@ export function get(ownerId: string, id: string, opened = true): PageDTO {
 	const links: PageDTO['links'] = {};
 	for (const t of targets) {
 		const tr = row(ownerId, t);
-		links[t] = tr && !tr.deleted_at ? { title: tr.title, archived: !!tr.archived_at } : null;
+		links[t] = tr && !tr.deleted_at && sees(t) ? { title: tr.title, archived: !!tr.archived_at } : null;
 	}
 	return {
 		id: r.id,
@@ -77,7 +82,8 @@ export function get(ownerId: string, id: string, opened = true): PageDTO {
 		doc,
 		crumbs,
 		links,
-		pinned: !!db().prepare(`SELECT 1 FROM page_shortcuts WHERE user_id = ? AND page_id = ?`).get(ownerId, id),
+		pinned: !!db().prepare(`SELECT 1 FROM page_shortcuts WHERE user_id = ? AND page_id = ?`).get(viewer, id),
+		access: accessOf('page', viewer, id) ?? 'view',
 	};
 }
 
@@ -201,7 +207,13 @@ export function create(ownerId: string, p: z.infer<typeof createSchema>): PageDT
 	});
 }
 
-export function update(ownerId: string, id: string, p: z.infer<typeof patchSchema>): PageDTO {
+/** actor = who saves (owner, or someone with an edit share) */
+export function update(
+	ownerId: string,
+	id: string,
+	p: z.infer<typeof patchSchema>,
+	actor = ownerId,
+): PageDTO {
 	if (p.doc) {
 		if (JSON.stringify(p.doc).length > MAX_DOC_BYTES)
 			bad('This page is too big to save (1 MB max). Split it.', 'too_large');
@@ -223,17 +235,20 @@ export function update(ownerId: string, id: string, p: z.infer<typeof patchSchem
 			const link = db().prepare(`INSERT OR IGNORE INTO page_links (id, source_page_id, target_page_id, source_block_id, created_at) VALUES (?, ?, ?, ?, ?)`); // prettier-ignore
 			(p.doc.content as { type: string }[]).forEach((node, i) => {
 				const bid = newId('pbl');
-				ins.run(bid, id, node.type, i, JSON.stringify(node), now, now, ownerId);
+				ins.run(bid, id, node.type, i, JSON.stringify(node), now, now, actor);
 				// projection: only links to my own live pages (never reveals or stores anyone else's ids)
 				for (const t of linksIn(node))
 					if (t !== id && row(ownerId, t) && !row(ownerId, t)?.deleted_at)
 						link.run(newId('plk'), id, t, bid, now);
 			});
+			// files in the doc are referenced by the page: kept from GC, readable by whoever can read the page
+			const atts = new Set(JSON.stringify(p.doc).match(/att_[0-9a-z]{16}/g) ?? []);
+			attachments.syncRefs('page_block', id, ownerId, [...atts], [ownerId, actor]);
 		}
 		const set: string[] = ['updated_at = @now', 'updated_by = @me', 'revision = revision + 1'];
 		if (p.title !== undefined) set.push('title = @title');
 		if (p.icon !== undefined) set.push('icon = @icon');
-		db().prepare(`UPDATE pages SET ${set.join(', ')} WHERE id = @id`).run({ now, me: ownerId, title: p.title ?? null, icon: p.icon ?? null, id }); // prettier-ignore
+		db().prepare(`UPDATE pages SET ${set.join(', ')} WHERE id = @id`).run({ now, me: actor, title: p.title ?? null, icon: p.icon ?? null, id }); // prettier-ignore
 		reindex(ownerId, id);
 		return get(ownerId, id, false);
 	});
@@ -347,7 +362,10 @@ export function purgeTrash(now: number = Date.now()): void {
 	const ids = db()
 		.prepare(`SELECT id FROM pages WHERE deleted_at IS NOT NULL AND deleted_at < ?`)
 		.all(cut) as { id: string }[];
-	for (const r of ids) fts.unindex('page', r.id);
+	for (const r of ids) {
+		fts.unindex('page', r.id);
+		attachments.dropRefs('page_block', r.id);
+	}
 	db().prepare(`DELETE FROM pages WHERE deleted_at IS NOT NULL AND deleted_at < ?`).run(cut);
 }
 

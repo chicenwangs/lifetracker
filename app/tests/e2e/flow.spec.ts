@@ -873,6 +873,49 @@ test('v2 P6 Reminders: /remind in quick add, editor on the item, in-app reminder
 	await expect(page.getByRole('button', { name: 'Turn push on for this device' })).toBeDisabled();
 });
 
+test('v2 P7 Sharing: share a page view-only, they read it but cannot edit, revoke = gone next request', async ({
+	browser,
+}) => {
+	const p = (await api('POST', '/api/pages', { parentId: null, title: 'Trip plan' })).j as {
+		page: { id: string };
+	};
+	const id = p.page.id;
+	await api('PATCH', `/api/pages/${id}`, { doc: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Day 1: Penang' }] }] } }); // prettier-ignore
+	await page.goto(`/pages/${id}`);
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Share…' }).click();
+	const dlg = page.getByRole('dialog', { name: /Share/ });
+	await dlg.getByLabel('Username').fill('neina');
+	await dlg.getByRole('button', { name: 'Share', exact: true }).click();
+	await expect(dlg.getByText('@neina')).toBeVisible();
+	await dlg.getByRole('button', { name: 'Done' }).click();
+
+	const n = await (await browser.newContext()).newPage();
+	await n.goto('/login');
+	await n.fill('#u', 'neina');
+	await n.fill('#p', PW + ' 2');
+	await n.click('button[type=submit]');
+	await n.waitForURL((u) => u.pathname === '/');
+	await n.goto('/shared');
+	await n.getByRole('link', { name: /Trip plan/ }).click();
+	await expect(n.getByText('Shared with you · view only')).toBeVisible();
+	await expect(n.locator('.pm')).toContainText('Day 1: Penang');
+	await expect(n.locator('.pm')).toHaveAttribute('contenteditable', 'false');
+	await expect(n.getByLabel('Page title')).toHaveAttribute('readonly', '');
+	const w = await n.evaluate(async (u) => (await fetch(u, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'hacked' }) })).status, `/api/pages/${id}`); // prettier-ignore
+	expect(w).toBe(403);
+
+	// revoke: her very next request is denied, and the 404 says nothing about the page
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Share…' }).click();
+	await dlg.getByRole('button', { name: 'Remove' }).click();
+	await expect(dlg.getByText('Private. Only you can open it.')).toBeVisible();
+	const r = await n.goto(`/pages/${id}`);
+	expect(r?.status()).toBe(404);
+	await expect(n.locator('body')).not.toContainText('Trip plan');
+	await n.context().close();
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)

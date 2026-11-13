@@ -176,6 +176,7 @@
 				</div>
 			{:else}<span class="hint">Add labels inside a note.</span>{/each}
 		</div>
+		<a href="/shared">Shared with me</a>
 		<a href="/keep?scope=archive" class:on={data.scope === 'archive'}>Archive</a>
 		<a href="/keep?scope=trash" class:on={data.scope === 'trash'}>Trash</a>
 	</nav>
