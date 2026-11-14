@@ -16,7 +16,7 @@
     <string name="wname_quick">Quick add</string>
     <string name="wdesc_quick">One tap to plan something or jot a note.</string>
     <string name="wname_todo">To do today</string>
-    <string name="wdesc_todo">Today's things without a time. Tick them off right here.</string>
+    <string name="wdesc_todo">Things for today without a time. Tick them off right here.</string>
     <string name="wname_countdown">Countdowns</string>
     <string name="wdesc_countdown">Days left until exams and other counted-down items.</string>
     <string name="wname_week">Week ahead</string>

@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { afterNavigate, goto, invalidateAll, pushState, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
+	import { onMount } from 'svelte';
 	import { del, patch, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import KeepNote from '$lib/components/KeepNote.svelte';
@@ -54,14 +55,16 @@
 			history.back(); // the effect below clears `open`
 		else open = null;
 	}
-	$effect(() => {
-		const st = page.state.keepNote; // read first: the effect must track it even while nothing is open
-		if (pushed && !st) {
+	// Back closes it. popstate, not page.state: saving refreshes the page data, which drops page.state
+	onMount(() => {
+		const pop = () => {
+			if (!pushed) return;
 			pushed = false;
 			open = null;
-		}
-	});
-	// ?note=… (search, reminders, widget) and ?new (Ctrl+K, widget +): drop the param, then open like a tap.
+		};
+		addEventListener('popstate', pop);
+		return () => removeEventListener('popstate', pop);
+	});	// ?note=… (search, reminders, widget) and ?new (Ctrl+K, widget +): drop the param, then open like a tap.
 	afterNavigate(() => {
 		const id = page.url.searchParams.get('note');
 		const isNew = page.url.searchParams.has('new');
