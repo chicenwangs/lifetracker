@@ -50,7 +50,8 @@
 		pushed = true;
 	}
 	function hide() {
-		if (pushed) history.back(); // the effect below clears `open`
+		if (pushed)
+			history.back(); // the effect below clears `open`
 		else open = null;
 	}
 	$effect(() => {
@@ -73,7 +74,6 @@
 			replaceState(u, {});
 			show(n ?? 'new');
 		}); // first load: afterNavigate runs before the router is ready for shallow routing
-
 	});
 	const refresh = () => invalidateAll();
 

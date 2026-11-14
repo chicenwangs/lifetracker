@@ -104,4 +104,5 @@
 			transform: translate(-2px, 2px) scale(0.92);
 			box-shadow: 0 0 0 var(--accent);
 		}
+	}
 </style>
