@@ -9,7 +9,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.RemoteViews;
 
@@ -79,7 +78,7 @@ public class WidgetShotsTest {
         return String.format(Locale.ROOT, "%02d:%02d", m / 60, m % 60);
     }
 
-    private void shot(String name, RemoteViews rv, int wDp, int hDp) throws Exception {
+    private void shot(String name, RemoteViews rv, int widgetId, int wDp, int hDp) throws Exception {
         float d = c.getResources().getDisplayMetrics().density;
         int w = Math.round(wDp * d), h = Math.round(hDp * d);
         FrameLayout host = new FrameLayout(c);
@@ -87,18 +86,18 @@ public class WidgetShotsTest {
         host.addView(v, new FrameLayout.LayoutParams(w, h));
         host.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
         host.layout(0, 0, w, h);
-        // Robolectric doesn't fill a ListView from its adapter on draw: draw the rows ourselves, under the header
+        // a test runner has no launcher to fill widget lists: draw the rows the widget built, in place of the list
         ListView list = v.findViewById(R.id.list);
+        java.util.List<RemoteViews> built = Widgets.lastRows.get(widgetId);
         if (list != null) {
-            ListAdapter a = list.getAdapter();
-            rows.append(name).append('=').append(a == null ? "no adapter" : String.valueOf(a.getCount())).append(' ');
-            if (a != null && a.getCount() > 0) {
+            rows.append(name).append('=').append(built == null ? 0 : built.size()).append(' ');
+            if (built != null && !built.isEmpty()) {
                 LinearLayout col = new LinearLayout(c);
                 col.setOrientation(LinearLayout.VERTICAL);
-                for (int i = 0; i < a.getCount(); i++) col.addView(a.getView(i, null, col));
+                for (RemoteViews r : built) col.addView(r.apply(c, col));
                 ViewGroup parent = (ViewGroup) list.getParent();
-                parent.addView(col, parent.indexOfChild(list) + 1, new FrameLayout.LayoutParams(list.getWidth(), list.getHeight()));
-                list.setVisibility(View.INVISIBLE);
+                parent.addView(col, parent.indexOfChild(list) + 1, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+                list.setVisibility(View.GONE);
                 View empty = v.findViewById(R.id.empty);
                 if (empty != null) empty.setVisibility(View.GONE);
                 host.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
@@ -120,13 +119,13 @@ public class WidgetShotsTest {
         for (String mode : new String[] {"light", "dark"}) {
             JSONObject j = sample(mode);
             Theme t = Theme.of(c, j);
-            shot("timeline-" + mode, Widgets.timeline(c, 1, j, t), 360, 300);
-            shot("keep-" + mode, Widgets.keep(c, 2, j, t), 280, 340);
-            shot("now-" + mode, Widgets.nowNext(c, j, t), 360, 110);
-            shot("quick-" + mode, Widgets.quick(c, t), 280, 100);
-            shot("todo-" + mode, Widgets.todo(c, 3, j, t), 280, 220);
-            shot("countdown-" + mode, Widgets.countdown(c, 4, j, t), 280, 220);
-            shot("week-" + mode, Widgets.week(c, 5, j, t), 360, 340);
+            shot("timeline-" + mode, Widgets.timeline(c, 1, j, t), 1, 360, 300);
+            shot("keep-" + mode, Widgets.keep(c, 2, j, t), 2, 280, 340);
+            shot("now-" + mode, Widgets.nowNext(c, j, t), -1, 360, 110);
+            shot("quick-" + mode, Widgets.quick(c, t), -1, 280, 100);
+            shot("todo-" + mode, Widgets.todo(c, 3, j, t), 3, 280, 220);
+            shot("countdown-" + mode, Widgets.countdown(c, 4, j, t), 4, 280, 220);
+            shot("week-" + mode, Widgets.week(c, 5, j, t), 5, 360, 340);
         }
         // every list widget must actually hold its rows (a widget that draws empty is the bug we fear most)
         String r = rows.toString();
@@ -135,7 +134,7 @@ public class WidgetShotsTest {
         // never synced: every widget says so instead of crashing
         JSONObject empty = new JSONObject();
         Theme t = Theme.of(c, empty);
-        shot("timeline-empty", Widgets.timeline(c, 6, empty, t), 360, 200);
-        shot("now-empty", Widgets.nowNext(c, empty, t), 360, 110);
+        shot("timeline-empty", Widgets.timeline(c, 6, empty, t), 6, 360, 200);
+        shot("now-empty", Widgets.nowNext(c, empty, t), -1, 360, 110);
     }
 }

@@ -27,6 +27,7 @@ android {
     testOptions {
         unitTests {
             includeAndroidResources = true
+            all { testLogging { exceptionFormat = 'full' } } // show assert messages in CI logs
         }
     }
     // release key comes from CI secrets (release.yml); never in the repo

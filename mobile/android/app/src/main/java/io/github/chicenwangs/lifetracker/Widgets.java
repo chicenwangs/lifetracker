@@ -124,7 +124,11 @@ final class Widgets {
         v.setInt(id, "setPaintFlags", Paint.ANTI_ALIAS_FLAG | (on ? Paint.STRIKE_THRU_TEXT_FLAG : 0));
     }
 
-    private static void list(Context c, RemoteViews v, int widgetId, RemoteViewsCompat.RemoteCollectionItems.Builder b) {
+    /** rows handed to each list widget, by widget id (WidgetShotsTest draws them: a test runner has no launcher to fill lists) */
+    static final java.util.Map<Integer, java.util.List<RemoteViews>> lastRows = new java.util.HashMap<>();
+
+    private static void list(Context c, RemoteViews v, int widgetId, RemoteViewsCompat.RemoteCollectionItems.Builder b, java.util.List<RemoteViews> rows) {
+        lastRows.put(widgetId, rows);
         RemoteViewsCompat.setRemoteAdapter(c, v, widgetId, R.id.list, b.setHasStableIds(true).setViewTypeCount(1).build());
     }
 
@@ -134,6 +138,7 @@ final class Widgets {
         int now = nowMin(), at = -1, left = 0;
         String nowText = "";
         RemoteViewsCompat.RemoteCollectionItems.Builder b = new RemoteViewsCompat.RemoteCollectionItems.Builder();
+        java.util.List<RemoteViews> all = new java.util.ArrayList<>();
         for (int i = 0; rows != null && i < rows.length(); i++) {
             JSONObject r = rows.optJSONObject(i);
             if (r == null) continue;
@@ -160,12 +165,13 @@ final class Widgets {
             v.setOnClickFillInIntent(R.id.box, WidgetAction.open(item ? "/item/" + r.optString("id") : "/today"));
             v.setOnClickFillInIntent(R.id.chk, WidgetAction.tick(r.optString("kind"), r.optString("id"), r.optString("status")));
             b.addItem(r.optString("id").hashCode(), v);
+            all.add(v);
         }
         String msg = status(c, j);
         if (msg.isEmpty()) msg = rows != null && rows.length() > 0 ? "Done for today." : "Nothing planned. Tap + to add.";
         String sub = j.optString("label", "") + (nowText.isEmpty() ? "" : " · " + nowText);
         RemoteViews v = frame(c, t, "Today", sub, left > 0 ? left + " left" : "", "/today", "/today?add", msg, 10);
-        list(c, v, widgetId, b);
+        list(c, v, widgetId, b, all);
         if (at > 0) v.setScrollPosition(R.id.list, at);
         return v;
     }
@@ -179,6 +185,7 @@ final class Widgets {
         JSONArray notes = j.optJSONArray("notes");
         int n = notes == null ? 0 : notes.length();
         RemoteViewsCompat.RemoteCollectionItems.Builder b = new RemoteViewsCompat.RemoteCollectionItems.Builder();
+        java.util.List<RemoteViews> all = new java.util.ArrayList<>();
         for (int i = 0; i < n; i++) {
             JSONObject note = notes.optJSONObject(i);
             String color = note.optString("color");
@@ -198,11 +205,12 @@ final class Widgets {
             v.setViewVisibility(R.id.text, text.isEmpty() ? View.GONE : View.VISIBLE);
             v.setOnClickFillInIntent(R.id.row, WidgetAction.open("/keep?note=" + note.optString("id")));
             b.addItem(note.optString("id").hashCode(), v);
+            all.add(v);
         }
         String msg = status(c, j);
         if (msg.isEmpty()) msg = "No notes yet. Tap + to write one.";
         RemoteViews v = frame(c, t, "Keep", n > 0 ? "Recent notes · pinned first" : "", "", "/keep", "/keep?new", msg, 20);
-        list(c, v, widgetId, b);
+        list(c, v, widgetId, b, all);
         return v;
     }
 
@@ -264,6 +272,7 @@ final class Widgets {
         JSONArray todos = isToday(j) ? j.optJSONArray("todos") : null;
         int left = 0;
         RemoteViewsCompat.RemoteCollectionItems.Builder b = new RemoteViewsCompat.RemoteCollectionItems.Builder();
+        java.util.List<RemoteViews> all = new java.util.ArrayList<>();
         for (int i = 0; todos != null && i < todos.length(); i++) {
             JSONObject r = todos.optJSONObject(i);
             boolean done = "done".equals(r.optString("status"));
@@ -277,11 +286,12 @@ final class Widgets {
             v.setOnClickFillInIntent(R.id.row, WidgetAction.open("/item/" + r.optString("id")));
             v.setOnClickFillInIntent(R.id.chk, WidgetAction.tick("item", r.optString("id"), r.optString("status")));
             b.addItem(r.optString("id").hashCode(), v);
+            all.add(v);
         }
         String msg = status(c, j);
         if (msg.isEmpty()) msg = "Nothing without a time today.";
         RemoteViews v = frame(c, t, "To do today", "No time set", left > 0 ? left + " left" : "", "/today", "/today?add", msg, 50);
-        list(c, v, widgetId, b);
+        list(c, v, widgetId, b, all);
         return v;
     }
 
@@ -289,6 +299,7 @@ final class Widgets {
     static RemoteViews countdown(Context c, int widgetId, JSONObject j, Theme t) {
         JSONArray cds = j.optJSONArray("countdowns");
         RemoteViewsCompat.RemoteCollectionItems.Builder b = new RemoteViewsCompat.RemoteCollectionItems.Builder();
+        java.util.List<RemoteViews> all = new java.util.ArrayList<>();
         for (int i = 0; cds != null && i < cds.length(); i++) {
             JSONObject r = cds.optJSONObject(i);
             RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.item_count);
@@ -302,11 +313,12 @@ final class Widgets {
             v.setTextColor(R.id.text, days <= 3 ? t.ink : t.quiet);
             v.setOnClickFillInIntent(R.id.row, WidgetAction.open("/item/" + r.optString("id")));
             b.addItem(r.optString("id").hashCode(), v);
+            all.add(v);
         }
         String msg = status(c, j);
         if (msg.isEmpty()) msg = "No countdowns in the next 60 days.";
         RemoteViews v = frame(c, t, "Countdowns", "Days left", "", "/", null, msg, 60);
-        list(c, v, widgetId, b);
+        list(c, v, widgetId, b, all);
         return v;
     }
 
@@ -314,6 +326,7 @@ final class Widgets {
     static RemoteViews week(Context c, int widgetId, JSONObject j, Theme t) {
         JSONArray days = isToday(j) ? j.optJSONArray("days") : null;
         RemoteViewsCompat.RemoteCollectionItems.Builder b = new RemoteViewsCompat.RemoteCollectionItems.Builder();
+        java.util.List<RemoteViews> all = new java.util.ArrayList<>();
         for (int i = 0; days != null && i < days.length(); i++) {
             JSONObject d = days.optJSONObject(i);
             int n = d.optInt("count");
@@ -335,11 +348,12 @@ final class Widgets {
             v.setTextColor(R.id.text, t.quiet);
             v.setOnClickFillInIntent(R.id.row, WidgetAction.open("/today?d=" + d.optString("date")));
             b.addItem(d.optString("date").hashCode(), v);
+            all.add(v);
         }
         String msg = status(c, j);
         if (msg.isEmpty()) msg = "Open Life Tracker to load your week.";
         RemoteViews v = frame(c, t, "Week ahead", j.optString("label", ""), "", "/week", "/today?add", msg, 70);
-        list(c, v, widgetId, b);
+        list(c, v, widgetId, b, all);
         return v;
     }
 
