@@ -95,14 +95,16 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 
 **Upgrade:** read the release notes → `sudo ./backup.sh` → set `APP_VERSION=X.Y.Z` in `.env` → `docker compose pull app && docker compose up -d app` → watch `docker compose logs -f app` for `[boot] vX.Y.Z` → `curl -s https://planner.jeremyjosh.org/healthz` shows the new version.
 
+**v2.0.1 → v2.0.2:** fixes only, **no migration**. Normal upgrade line with `APP_VERSION=2.0.2`. Rollback = `APP_VERSION=2.0.1` + `up -d`. Deploy bundle unchanged except `.env.example` version. Push: phones that had it on re-register by themselves on next app open.
+
 **v2.0.0 → v2.0.1:** fixes only, **no migration**. Normal upgrade line above with `APP_VERSION=2.0.1`. Rollback = `APP_VERSION=2.0.0` + `up -d` (no restore needed). Deploy bundle unchanged except `.env.example` version.
 
-**v1.1.0 → v2 (one time, migration release; go straight to the newest 2.0.x, e.g. 2.0.1):**
+**v1.1.0 → v2 (one time, migration release; go straight to the newest 2.0.x, e.g. 2.0.2):**
 1. `sudo ./backup.sh` and copy `data/backups/app-<ts>.db.gz` off the box. This is the rollback point.
-2. Unpack `deploy-v2.0.1.tar.gz` (or the newest 2.0.x) over `/opt/life-tracker` (new `backup.sh`/`restore.sh` also back up `data/uploads`). Keep your `.env`.
+2. Unpack `deploy-v2.0.2.tar.gz` (or the newest 2.0.x) over `/opt/life-tracker` (new `backup.sh`/`restore.sh` also back up `data/uploads`). Keep your `.env`.
 3. Optional new env (all can stay unset): `VAPID_*` for push, `UPLOAD_DIR`/`MAX_UPLOAD_BYTES`, `JOBS_ENABLED`, `REMINDER_POLL_INTERVAL_MS`. With VAPID keys: allow outbound 443 to the push services (§1).
-4. `APP_VERSION=2.0.1` → pull + up. First boot runs migrations 0003–0008 (seconds), then `[boot] v2.0.1 db ready … jobs=true push=on|off`.
-5. `/healthz` → `"version":"2.0.1"`, `"jobs":true`. Run §8 incl. the v2 lines.
+4. `APP_VERSION=2.0.2` → pull + up. First boot runs migrations 0003–0008 (seconds), then `[boot] v2.0.2 db ready … jobs=true push=on|off`.
+5. `/healthz` → `"version":"2.0.2"`, `"jobs":true`. Run §8 incl. the v2 lines.
 6. Rollback: `APP_VERSION=1.1.0` **and** `sudo ./restore.sh <the backup from step 1>`. v1.1.0 cannot read the v2 schema.
 
 **Roll back:** set `APP_VERSION` back → `docker compose up -d app`. If the newer release ran a DB migration (release notes say "migration"), the old version may not read the new schema: restore the backup taken before the upgrade (`sudo ./restore.sh data/backups/app-<ts>.db.gz`). Migrations are forward-only.
@@ -160,6 +162,7 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 - [ ] v2: new page, type, `/` → Table; reload keeps it. Share it with the second account (view); they open it from "Shared with me", can't edit; Remove → their reload = 404.
 - [ ] v2: quick add `test /remind 15min` at a time 16 min ahead → in-app reminder ~1 min later. With VAPID: Settings › Notifications → Turn push on → Send a test arrives on a phone.
 - [ ] v2: phone browser opens on Today; "Add to Home Screen" installs it.
+- [ ] v2.0.2: phone (Chrome) → Settings › Notifications → Send a test pops up with the screen off. Fail → `docker compose logs app | grep push` (403 = keys, 410 = device expired).
 - [ ] v2.0.1: Pages page shows the bar (Pin · Share · ⋯); Settings › Preferences › Header pins ↑ ↓ changes the header order.
 - [ ] v2: `sudo ./backup.sh` writes both `app-<ts>.db.gz` and `uploads-<ts>.tar.gz`.
 

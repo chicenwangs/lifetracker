@@ -4,6 +4,7 @@ Caveman doc. State as of 2026-11-08. Repo `github.com/chicenwangs/lifetracker` (
 
 ## State
 
+- **2026-11-14: v2.0.2 released** (phone + push fixes, no migration).
 - **2026-11-14: v2.0.1 released** (v2.0.0 + UI fixes, no migration). Full context for a new chat: `v2/CHAT-HANDOFF.md`.
 - **2026-11-14: v2.0.0 built** (phases P0–P9 on branch `v2`, PRs #5–#14). What it does: `BUILD-NOTES.md` v2 sections. Release notes: `v2/RELEASE-NOTES.md`. Upgrade + rollback: `SERVICE-HANDOFF.md` §5. Tests 340 unit + 25 e2e. Lines below = v1 history.
 

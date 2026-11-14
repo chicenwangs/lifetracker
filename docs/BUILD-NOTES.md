@@ -3,7 +3,7 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
-## Push + audit pass (2026-11-14, owner: no Chrome push on Android)
+## Push + audit pass (2026-11-14, owner: no Chrome push on Android) — released in v2.0.2
 
 - Push sent at `urgency: high` (was normal: FCM holds it while an Android phone sleeps).
 - `sw.js`: `renotify: true` (same route = silent swap before), PNG icon (Android can't draw SVG).

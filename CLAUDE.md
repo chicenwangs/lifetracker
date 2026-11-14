@@ -4,7 +4,7 @@ Caveman rules for Claude Code in this repo.
 
 ## Now
 - Live = **v1.1.0** (planner.jeremyjosh.org, homelab Docker + Cloudflare Tunnel). Do not deploy.
-- **v2.0.1** released (tag + GHCR image + GitHub Release), not deployed. Owner deploys (`docs/SERVICE-HANDOFF.md` §5). v2 phases all DONE (`docs/v2/PHASES.md`).
+- **v2.0.2** released (tag + GHCR image + GitHub Release), not deployed. Owner deploys (`docs/SERVICE-HANDOFF.md` §5). v2 phases all DONE (`docs/v2/PHASES.md`).
 - Next work = v2.1 backlog (`docs/v2/CHAT-HANDOFF.md`). Branch from `main`, PR into `main`; keep `v2` = `main`.
 
 ## Docs

@@ -1,5 +1,18 @@
 # Life Tracker v2 — release notes
 
+## v2.0.2 (2026-11-14) — phone + push fixes, no migration
+From v2.0.x: just pull the new image. From v1.1.0: go straight to 2.0.2 (same steps as 2.0.0, SERVICE-HANDOFF §5).
+- **Push on Android Chrome:** sent as high priority (sleeping phones held it before) · repeat reminders alert again · PNG icon · the app re-sends this device's push link on every open (server lost it, or VAPID keys changed) · Send a test says why it failed · sign out turns push off on that device.
+- **Phone header:** one row (logo · Search · theme · avatar), scrolls away · account menu opens on top.
+- **Bottom bar:** real icons (More had none).
+- **Today:** timeline starts at the top (first row / now) · current block no longer a white panel · past blocks stay readable.
+- **Keep:** title + New note, full-width search, one swipe row of chips, 2 columns · **Shared with me** = shared notes as normal cards ("from X · view only").
+- **Pages › Shared with me:** inside Pages with the page tree (old `/shared` forwards there).
+- **Settings on phone:** sections = swipe chips, scrolls to the end, wide tables scroll in their card.
+- **More:** Pinned pages · Browse · App, like the wireframe.
+- Reminder links: block opens your local day (was the UTC day) · archived note opens in Keep archive.
+- 404 / error page = card + Go home.
+
 ## v2.0.1 (2026-11-14) — fixes, no migration
 From v2.0.0: just pull the new image. From v1.1.0: go straight to 2.0.1 (same steps as 2.0.0, SERVICE-HANDOFF §5).
 - **Pages look like the wireframes:** page list with New page button, pin icons, tools list · page bar = path · save state · Pin · Share · ⋯ · text in a centred column (database pages full width) · tidy editor spacing, to-do boxes in line, calmer `/` menu.
