@@ -1,0 +1,12 @@
+{
+	"appId": "io.github.chicenwangs.lifetracker",
+	"appName": "Life Tracker",
+	"webDir": "www",
+	"server": {
+		"url": "https://planner.jeremyjosh.org",
+		"errorPath": "offline.html"
+	},
+	"android": {
+		"allowMixedContent": false
+	}
+}

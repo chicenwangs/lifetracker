@@ -3,6 +3,18 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## Android app (2026-11-14, owner: "port it all to mobile", widgets for Keep + timeline, in-app updates)
+
+- `mobile/` = Capacitor 8.6 Android shell: loads the server URL (pages always fresh), native extras only. `mobile/README.md` has the how.
+- Server: `GET /api/native` (`lib/server/native.ts`) = today's rows (Today's rules: owner tz, timed items 60 min, hidden types out, type colour), 8 notes, `reminders.upcoming` (next 48 h, kinds that are on). Unit test `native.test.ts`.
+- Native: `SyncWorker` (15 min + on leaving the app) → widgets + exact alarms per reminder (no Firebase; web push can't work in a WebView). Boot / app update resets alarms.
+- Widgets: Timeline (now on, 6 rows, `+` → `/today?add` opens quick add) · Keep (notes, `+` → `/keep?new`). Signed out / never synced = says so.
+- In-app update: newest GitHub Release APK; same signing key required by Android. Settings › Help shows version + Check for updates (only inside the app, `lib/client/native.ts`). Notifications page explains alarms inside the app.
+- CI: `ci.yml` `apk` = debug build on every PR; `release.yml` `apk` = signed release APK on the release. Key made on the dev PC (`~/.lifetracker-android/`), secrets set by the owner (auto mode blocked `gh secret set`).
+- minSdk 26 (java.time). Icons + splash from `app/static/icon-*.png`.
+- Also: Today past rows lost the time dimming too (axe); e2e reminder test used "today 3 pm" → 2 days out (failed after 3 pm).
+- Not checked: any real phone or emulator (no Android SDK here). CI compile only.
+
 ## Push + audit pass (2026-11-14, owner: no Chrome push on Android) — released in v2.0.2
 
 - Push sent at `urgency: high` (was normal: FCM holds it while an Android phone sleeps).

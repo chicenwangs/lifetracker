@@ -1,4 +1,5 @@
-# Release: push a tag vX.Y.Z -> run CI -> build + push image to GHCR -> GitHub Release with deploy files.
+# Release: push a tag vX.Y.Z -> run CI -> build + push image to GHCR -> GitHub Release with deploy files
+# -> signed Android app life-tracker-X.Y.Z.apk on the same release (the app's in-app updater looks there).
 #   git tag v1.0.0 && git push origin v1.0.0
 # Image: ghcr.io/chicenwangs/lifetracker:1.0.0 (also :1.0, :sha-<short>). Never :latest in prod compose.
 name: release
@@ -59,3 +60,41 @@ jobs:
             --title "$GITHUB_REF_NAME" \
             --generate-notes \
             "deploy-${GITHUB_REF_NAME}.tar.gz" docs/SERVICE-HANDOFF.md
+
+  apk:
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: write   # attach the APK to the release
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Signed APK on the release
+        env:
+          KEY_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          LT_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$KEY_B64" ]; then echo "::warning::No ANDROID_KEYSTORE_B64 secret: this release has no APK"; exit 0; fi
+          v="${GITHUB_REF_NAME#v}"
+          [ "$(node -p "require('../app/package.json').version")" = "$v" ] || { echo "::error::tag $v != app/package.json version"; exit 1; }
+          export LT_KEYSTORE="$RUNNER_TEMP/release.p12"
+          echo "$KEY_B64" | base64 -d > "$LT_KEYSTORE"
+          npm ci
+          npx cap sync android
+          chmod +x android/gradlew
+          (cd android && ./gradlew --no-daemon assembleRelease)
+          cp android/app/build/outputs/apk/release/app-release.apk "life-tracker-$v.apk"
+          gh release upload "$GITHUB_REF_NAME" "life-tracker-$v.apk"

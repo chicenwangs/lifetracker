@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Life Tracker</string>
+    <string name="title_activity_main">Life Tracker</string>
+    <string name="package_name">io.github.chicenwangs.lifetracker</string>
+    <string name="custom_url_scheme">io.github.chicenwangs.lifetracker</string>
+    <!-- keep in step with server.url in capacitor.config.json -->
+    <string name="server_url" translatable="false">https://planner.jeremyjosh.org</string>
+    <string name="widget_timeline">Today timeline</string>
+    <string name="widget_keep">Keep notes</string>
+</resources>

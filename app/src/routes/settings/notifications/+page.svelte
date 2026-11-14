@@ -6,6 +6,7 @@
 	import { get, patch, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { dropPush, syncPush } from '$lib/client/push';
+	import { isApp } from '$lib/client/native';
 
 	let { data } = $props();
 	const u = $derived(data.user as App.SafeUser);
@@ -21,7 +22,11 @@
 		const reg = supported() ? await navigator.serviceWorker.getRegistration('/') : undefined;
 		subscribed = !!(await reg?.pushManager.getSubscription());
 	}
-	onMount(() => void refresh().catch(showError));
+	let app = $state(false);
+	onMount(() => {
+		app = isApp();
+		if (!app) void refresh().catch(showError);
+	});
 
 	async function turnOn() {
 		if (!server?.publicKey) return;
@@ -81,38 +86,51 @@
 		open. Push also pops them up on this device when the app is closed. Nothing is asked of your browser until you
 		press the button.
 	</p>
-	<dl class="state">
-		<dt>Server can send push</dt>
-		<dd>
-			{server ? (server.available ? 'Yes' : 'No (the admin has not set it up; reminders stay in-app)') : '…'}
-		</dd>
-		<dt>This browser</dt>
-		<dd>{PERM[perm]}</dd>
-		<dt>This device</dt>
-		<dd>
-			{subscribed ? 'Push on' : 'Push off'}{server?.devices
-				? ` · ${server.devices} device${server.devices === 1 ? '' : 's'} on your account`
-				: ''}
-		</dd>
-	</dl>
-	<div class="row">
-		{#if subscribed}
-			<button class="btn" type="button" disabled={busy} onclick={turnOff}>Turn push off on this device</button
-			>
-			<button class="btn" type="button" onclick={test}>Send a test</button>
-		{:else}
-			<button
-				class="btn primary"
-				type="button"
-				disabled={busy || !server?.available || perm === 'unsupported' || perm === 'denied'}
-				onclick={turnOn}>Turn push on for this device</button
-			>
-		{/if}
-	</div>
-	<p class="hint">
-		"Sent" means a push service took it. Phones and browsers can still hold or drop it. On iPhone, push works
-		only after "Add to Home Screen".
-	</p>
+	{#if app}
+		<p>
+			In the Android app, reminders come as phone notifications. The app fetches the next two days of
+			reminders every 15 minutes and sets an alarm for each, so they ring on time even when the app is closed.
+		</p>
+		<p class="hint">Turn them off per kind below, or in Android's settings for Life Tracker.</p>
+	{:else}
+		<dl class="state">
+			<dt>Server can send push</dt>
+			<dd>
+				{server
+					? server.available
+						? 'Yes'
+						: 'No (the admin has not set it up; reminders stay in-app)'
+					: '…'}
+			</dd>
+			<dt>This browser</dt>
+			<dd>{PERM[perm]}</dd>
+			<dt>This device</dt>
+			<dd>
+				{subscribed ? 'Push on' : 'Push off'}{server?.devices
+					? ` · ${server.devices} device${server.devices === 1 ? '' : 's'} on your account`
+					: ''}
+			</dd>
+		</dl>
+		<div class="row">
+			{#if subscribed}
+				<button class="btn" type="button" disabled={busy} onclick={turnOff}
+					>Turn push off on this device</button
+				>
+				<button class="btn" type="button" onclick={test}>Send a test</button>
+			{:else}
+				<button
+					class="btn primary"
+					type="button"
+					disabled={busy || !server?.available || perm === 'unsupported' || perm === 'denied'}
+					onclick={turnOn}>Turn push on for this device</button
+				>
+			{/if}
+		</div>
+		<p class="hint">
+			"Sent" means a push service took it. Phones and browsers can still hold or drop it. On iPhone, push
+			works only after "Add to Home Screen".
+		</p>
+	{/if}
 </section>
 
 <section class="card panel">

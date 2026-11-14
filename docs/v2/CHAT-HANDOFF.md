@@ -84,13 +84,14 @@ Nightly backup (root cron): `15 3 * * * /opt/life-tracker/backup.sh >> /var/log/
 1. Work on a branch off `main` → PR into `main` → CI green → merge (`git merge --no-ff`, message "Merge pull request #N from chicenwangs/<branch>") → push `main`, then `git push origin main:v2` (keep `v2` = `main`).
 2. Bump: `cd app && npm version X.Y.Z --no-git-tag-version`; `deploy/.env.example` `APP_VERSION=X.Y.Z`; add a section on top of `docs/v2/RELEASE-NOTES.md` (say "migration" or "no migration"); SERVICE-HANDOFF §5 upgrade note; README status; PHASES row.
 3. Commit `release: vX.Y.Z`, push `main` (+ `main:v2`), then `git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z`.
-4. `release.yml` runs CI → GHCR image → GitHub Release with the deploy bundle. Red pipeline = no image. Check: `curl -s "https://api.github.com/repos/chicenwangs/lifetracker/actions/runs?event=push&per_page=5"`.
+4. `release.yml` runs CI → GHCR image → GitHub Release with the deploy bundle → signed `life-tracker-X.Y.Z.apk` (needs repo secrets `ANDROID_KEYSTORE_B64` + `ANDROID_KEYSTORE_PASSWORD`; key on the dev PC in `~/.lifetracker-android/`, see `mobile/README.md`). Red pipeline = no image. Check: `curl -s "https://api.github.com/repos/chicenwangs/lifetracker/actions/runs?event=push&per_page=5"`.
 5. A flaky test after the tag: fix on `main`, re-run the failed jobs on GitHub; don't move a pushed tag.
 SemVer: PATCH = fixes, MINOR = features, MAJOR = breaking. Never `latest` in prod compose.
 
 ## 5. Open items
 - **Owner call (don't guess):** Home due row says "Due today"; FEATURES §1.13 + wireframe Main say "No time set today", but the list also holds timed items (v1 FR-H12). Rename + show only untimed items, or keep v1?
 - Not verified: Web Push on Chrome/Android/iPhone and through the tunnel (Edge only) · uploads in the real read-only container · migration on a copy of the live backup (owner skipped; CI rehearsal `tests/unit/rehearsal.test.ts` covers a built v1.1.0 DB) · backup.sh / restore.sh in Docker.
+- Android app (`mobile/`, v2.0.3): built in CI only (no Android SDK on the dev PC); not tried on a real phone yet.
 - v2.1 backlog: live co-edit (ADR-008) · Keep Google Takeout import/export · DB board/calendar/list/gallery views · 2-hop local graph · reminders on page to-dos · swipe gestures · offline queue → IndexedDB · Pages block drag handles + multi-select · Keep grid/list toggle · graph archived nodes dashed (now grey + "· archived") · `npm run dev` graph worker blocked by CSP (`blob:`; prod fine).
 
 ## 6. Docs map (truth order)

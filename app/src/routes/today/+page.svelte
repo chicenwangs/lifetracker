@@ -1,7 +1,7 @@
 <!-- Phone Today (FEATURES §10, MOB-001..006): date header with day step + swipe, Now card, "No time set today",
      timeline top-aligned on now (owner 2026-11-14). Glance + capture; planning stays on the PC. Works on desktop too. -->
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll, replaceState } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
 	import { post } from '$lib/client/api';
 	import { calendarBus } from '$lib/client/bus.svelte';
@@ -21,6 +21,11 @@
 	const h12 = $derived(data.user?.region === 'us');
 	let now = $state(Date.now());
 	onMount(() => {
+		// Android widget "+" opens /today?add
+		if (new URLSearchParams(location.search).has('add')) {
+			openAdd('');
+			replaceState(location.pathname, {});
+		}
 		const t = setInterval(() => (now = Date.now()), 30_000);
 		return () => clearInterval(t);
 	});
@@ -347,10 +352,7 @@
 		gap: 10px;
 		transition: opacity 0.2s;
 	}
-	/* past: grey the colour, keep the text contrast (opacity made titles unreadable, axe 2.3:1) */
-	.ent.past .tm {
-		opacity: 0.55;
-	}
+	/* past: grey the colour, keep the text contrast (opacity failed axe on titles and times) */
 	.ent.past .box {
 		filter: grayscale(0.8);
 	}
