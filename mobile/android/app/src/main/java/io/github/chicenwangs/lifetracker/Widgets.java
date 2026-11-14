@@ -197,7 +197,7 @@ final class Widgets {
             v.setInt(R.id.edge, "setColorFilter", tinted ? 0x5500003D : (t.dark ? 0xFF3A3970 : 0x5500003D));
             v.setTextViewText(R.id.title, title);
             v.setTextColor(R.id.title, ink);
-            v.setViewVisibility(R.id.title, title.isEmpty() ? View.INVISIBLE : View.VISIBLE);
+            v.setViewVisibility(R.id.title, title.isEmpty() ? View.GONE : View.VISIBLE);
             v.setViewVisibility(R.id.pin, note.optBoolean("pinned") ? View.VISIBLE : View.GONE);
             v.setInt(R.id.pin, "setColorFilter", quiet);
             v.setTextViewText(R.id.text, text);
