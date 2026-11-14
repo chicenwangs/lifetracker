@@ -1,5 +1,5 @@
 <!-- Phone Today (FEATURES §10, MOB-001..006): date header with day step + swipe, Now card, "No time set today",
-     timeline wheel centred on now. Glance + capture; planning stays on the PC. Works on desktop too. -->
+     timeline top-aligned on now (owner 2026-11-14). Glance + capture; planning stays on the PC. Works on desktop too. -->
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
@@ -77,13 +77,14 @@
 	// ---------- wheel ----------
 	let wheel: HTMLDivElement | undefined = $state();
 	let away = $state(false);
+	/** how far the "now" row sits below the top of the wheel (px) */
+	const nowOffset = (w: HTMLElement, el: HTMLElement) =>
+		el.getBoundingClientRect().top - w.getBoundingClientRect().top;
+	// top-aligned: the "now" row (or the first row) starts at the very top, earlier rows scroll up
 	function toNow(smooth = true) {
 		const el = wheel?.querySelector<HTMLElement>('[data-now]');
 		if (!wheel || !el) return;
-		wheel.scrollTo({
-			top: el.offsetTop - wheel.clientHeight / 2 + el.clientHeight / 2,
-			behavior: smooth ? 'smooth' : 'instant',
-		});
+		wheel.scrollTo({ top: wheel.scrollTop + nowOffset(wheel, el), behavior: smooth ? 'smooth' : 'instant' });
 	}
 	$effect(() => {
 		void entries;
@@ -92,8 +93,7 @@
 	function onScroll() {
 		const el = wheel?.querySelector<HTMLElement>('[data-now]');
 		if (!wheel || !el) return (away = false);
-		const mid = wheel.scrollTop + wheel.clientHeight / 2;
-		away = Math.abs(el.offsetTop + el.clientHeight / 2 - mid) > wheel.clientHeight / 2;
+		away = Math.abs(nowOffset(wheel, el)) > wheel.clientHeight / 2;
 	}
 	/** row nearest "now" (or the first upcoming); on other days the first row */
 	const nowKey = $derived(isToday ? (current ?? next ?? entries.at(-1))?.key : entries[0]?.key);
@@ -121,14 +121,15 @@
 	}}
 >
 	<header class="day">
-		<button class="nav" type="button" aria-label="Previous day" onclick={() => step(-1)}>‹</button>
+		<!-- wireframe MToday: date line over the title, day arrows on the right -->
 		<h1>
-			{isToday ? 'Today' : prettyDate(data.day).split(' ').slice(0, 3).join(' ')}<span class="sub"
-				>{prettyDate(data.day)}</span
-			>
+			<span class="sub">{prettyDate(data.day)}</span>{isToday
+				? 'Today'
+				: prettyDate(data.day).split(' ').slice(0, 3).join(' ')}
 		</h1>
-		<button class="nav" type="button" aria-label="Next day" onclick={() => step(1)}>›</button>
 		{#if !isToday}<a class="btn sm" href="/today">Today</a>{/if}
+		<button class="nav" type="button" aria-label="Previous day" onclick={() => step(-1)}>‹</button>
+		<button class="nav" type="button" aria-label="Next day" onclick={() => step(1)}>›</button>
 	</header>
 
 	{#if isToday}
@@ -180,7 +181,7 @@
 					<div
 						class="ent"
 						class:past
-						class:cur={current?.key === e.key}
+						class:live={current?.key === e.key}
 						class:theirs={(e.block ?? e.item)?.theirs}
 						data-now={e.key === nowKey ? '' : undefined}
 						style:--bg={c.bg}
@@ -232,7 +233,7 @@
 	.today {
 		max-width: 560px;
 		margin: 0 auto;
-		padding: 8px 12px 104px;
+		padding: 8px 12px 24px;
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
@@ -245,14 +246,14 @@
 	.day h1 {
 		flex: 1;
 		margin: 0;
-		font-size: 22px;
+		font-size: 28px;
 		display: flex;
 		flex-direction: column;
 	}
 	.sub {
-		font-size: 12px;
-		font-weight: 400;
-		color: var(--muted);
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--quiet);
 	}
 	.nav {
 		width: 40px;
@@ -338,18 +339,22 @@
 		display: flex;
 		flex-direction: column;
 		gap: 8px;
-		padding: 40% 0;
+		padding: 0 0 8px;
 	}
 	.ent {
-		scroll-snap-align: center;
+		scroll-snap-align: start;
 		display: flex;
 		gap: 10px;
 		transition: opacity 0.2s;
 	}
-	.ent.past {
+	/* past: grey the colour, keep the text contrast (opacity made titles unreadable, axe 2.3:1) */
+	.ent.past .tm {
 		opacity: 0.55;
 	}
-	.ent.cur .box {
+	.ent.past .box {
+		filter: grayscale(0.8);
+	}
+	.ent.live .box {
 		outline: 2px solid var(--accent);
 	}
 	.tm {

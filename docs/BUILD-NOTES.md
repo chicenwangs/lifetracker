@@ -3,6 +3,30 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## Push + audit pass (2026-11-14, owner: no Chrome push on Android)
+
+- Push sent at `urgency: high` (was normal: FCM holds it while an Android phone sleeps).
+- `sw.js`: `renotify: true` (same route = silent swap before), PNG icon (Android can't draw SVG).
+- App load re-sends this device's subscription (`lib/client/push.ts` `resyncPush`). Fixes: server dropped the row (410, restore), VAPID keys changed (old sub dropped, new one made).
+- Send a test: says why nothing went (device expired / keys rejected / service error).
+- `VAPID_SUBJECT=mailto:` (bare, as in `.env.example`) = unset.
+- Sign out drops this device's push first (max 2 s): a signed-out phone showed private titles.
+- Reminder links: block → owner's local day (was UTC day); archived note → Keep archive.
+- More = wireframe MMore: Pinned pages · Browse · App, value + › per row.
+- Today past rows: grey colour, not opacity (axe: 2.3:1 text).
+- e2e: two races fixed (goto before delete landed), axe test 180 s.
+- Not checked: real FCM delivery (dev PC has no push service). Owner: Send a test on the phone after deploy; if it fails, `docker compose logs app | grep push` shows the code.
+
+## Phone pass (2026-11-14, after v2.0.1, owner's phone screenshots)
+- Header: one row on phone (mark left · Search · theme · avatar right), not sticky, no `?`/Ctrl+K hint.
+- Bottom bar: wireframe MBar icons (clock, calendar, note, ☰ More — the old More dots never drew), round caps, pill behind the icon only.
+- Today: timeline top-aligned — the "now" row (or the first, e.g. 07:00) starts at the very top, no blank space above. Fixed a class clash (`.cur`) that drew the current row as a white panel. Header like MToday: date line over "Today", ‹ › on the right.
+- Keep (MKeep): title + New note, full-width search, one swipe row of chips (Notes · binders · labels · Shared with me · Archive · Trash), 2-column notes. Phone cards keep ↑ ↓ only; Pin / Archive / Delete are in the note. Trash keeps Restore / Delete forever.
+- **Shared with me** split: pages → `/pages/shared` inside the Pages layout (tree + list like Archive, search, Can edit / View only chip); notes → `/keep?scope=shared` as normal Keep cards ("from X · view only", no reorder/pin/archive). Old `/shared` = 308 to `/pages/shared`.
+- Settings: section links = swipe chip row on phone; wide tables (types, devices, users) scroll inside their card.
+- Every phone page gets room for the bottom bar (`body` padding in `app.css`), so the last card scrolls into view (Settings › "When do you plan your day?" was stuck under the bar).
+- `+error.svelte`: 404/500 show a card with "Go home", not the bare default page.
+
 ## v2.0.1 — Pages look to wireframe + audit fixes (2026-11-14, PR #15)
 - Tree (`wireframes/v2/PagesTree`): New page button + ▤ New database + «, 32 px rows, pin icon on header-pinned pages, tools as a list (Knowledge graph, Shared with me, Archive, Trash). Current row = `--pill-card`.
 - Page (`Pages`): top bar = crumbs (… / current) · save state · **Pin** (pressed when pinned) · **Share** · ⋯ (Move, Copy link, Archive, Delete). Body = 760 px column, 32 px title. Database pages get the full width (`Database`).

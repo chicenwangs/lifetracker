@@ -4,11 +4,16 @@
 	import { openAdd } from '$lib/client/mobile.svelte';
 
 	const TABS = [
-		{ href: '/today', label: 'Today', icon: 'M4 6h16M4 12h10M4 18h7' },
-		{ href: '/week', label: 'Week', icon: 'M4 5h16v15H4zM4 10h16M9 5v15' },
+		// icons = wireframe MBar
+		{ href: '/today', label: 'Today', icon: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 7.5V12l3 2' },
+		{
+			href: '/week',
+			label: 'Week',
+			icon: 'M5 4.5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2zM3 9.5h18M9 9.5v11M15 9.5v11',
+		},
 		null,
-		{ href: '/keep', label: 'Keep', icon: 'M6 3h12v18l-6-4-6 4z' },
-		{ href: '/more', label: 'More', icon: 'M5 12h.01M12 12h.01M19 12h.01' },
+		{ href: '/keep', label: 'Keep', icon: 'M5 3h10l4 4v14H5zM9 12h6M9 16h4' },
+		{ href: '/more', label: 'More', icon: 'M4 7h16M4 12h16M4 17h16' },
 	];
 	const on = (href: string) => page.url.pathname.startsWith(href);
 </script>
@@ -24,6 +29,8 @@
 					fill="none"
 					stroke="currentColor"
 					stroke-width="2"
+					stroke-linecap="round"
+					stroke-linejoin="round"
 					aria-hidden="true"><path d={t.icon} /></svg
 				>
 				<span>{t.label}</span>
@@ -60,15 +67,21 @@
 			font-size: 11px;
 			color: var(--ink);
 			text-decoration: none;
-			padding: 4px 0;
-			border-radius: 999px;
+			padding: 2px 0;
 			min-height: 44px;
 			justify-content: center;
 		}
+		a svg {
+			box-sizing: content-box;
+			padding: 5px 17px;
+			border-radius: 999px;
+		}
 		a.on {
-			background: var(--pill);
+			font-weight: 700;
+		}
+		a.on svg {
+			background: var(--pill-card);
 			color: var(--pill-ink);
-			font-weight: 600;
 		}
 		.add {
 			justify-self: center;

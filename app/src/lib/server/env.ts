@@ -55,7 +55,7 @@ const schema = z.object({
 	VAPID_SUBJECT: z
 		.string()
 		.optional()
-		.transform((v) => v || undefined),
+		.transform((v) => (v && v !== 'mailto:' ? v : undefined)), // .env.example ships a bare 'mailto:'
 	/** in-process job runner (reminders). Default on. */
 	JOBS_ENABLED: z.enum(['true', 'false']).default('true'),
 	REMINDER_POLL_INTERVAL_MS: z.coerce.number().int().min(1000).max(3_600_000).default(30_000),

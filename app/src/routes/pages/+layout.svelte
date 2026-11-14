@@ -53,7 +53,7 @@
 	const pinned = $derived(new Set(((page.data.pins ?? []) as { id: string }[]).map((p) => p.id)));
 	const tools = [
 		{ href: '/pages/graph', label: 'Knowledge graph' },
-		{ href: '/shared', label: 'Shared with me' },
+		{ href: '/pages/shared', label: 'Shared with me' },
 		{ href: '/pages/archive', label: 'Archive' },
 		{ href: '/pages/trash', label: 'Trash' },
 	];
@@ -420,7 +420,7 @@
 		}
 		.wrap {
 			flex-direction: column;
-			padding: 8px 12px 104px;
+			padding: 8px 12px 24px;
 		}
 		.tree {
 			position: static;

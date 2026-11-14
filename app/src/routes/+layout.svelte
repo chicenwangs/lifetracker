@@ -18,6 +18,7 @@
 	import { patch } from '$lib/client/api';
 	import { flushQueue, queued, wipe } from '$lib/client/offline';
 	import { showToast } from '$lib/client/toast.svelte';
+	import { dropPush, resyncPush } from '$lib/client/push';
 	let { data, children } = $props();
 	// svelte-ignore state_referenced_locally
 	if (browser) initHours(data.hours);
@@ -39,11 +40,21 @@
 	}
 	onMount(() => {
 		navigator.serviceWorker?.register('/sw.js', { scope: '/' }).catch(() => {});
+		if (data.user && navigator.serviceWorker) void resyncPush().catch(() => {});
 		online = navigator.onLine;
 		if (online) void back();
 		const off = () => (online = false);
 		const on = () => void back();
-		const out = (e: SubmitEvent) => (e.target as HTMLFormElement).action?.endsWith('/logout') && wipe();
+		const out = (e: SubmitEvent) => {
+			const f = e.target as HTMLFormElement;
+			if (!f.action?.endsWith('/logout') || f.dataset.out) return;
+			wipe();
+			// a signed-out phone must not keep showing private reminder titles: drop its push first (max 2 s)
+			e.preventDefault();
+			f.dataset.out = '1';
+			const late = new Promise((r) => setTimeout(r, 2000));
+			void Promise.race([dropPush().catch(() => {}), late]).then(() => f.requestSubmit());
+		};
 		addEventListener('offline', off);
 		addEventListener('online', on);
 		addEventListener('submit', out, true);

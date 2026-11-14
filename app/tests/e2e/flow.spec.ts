@@ -646,6 +646,7 @@ test('v2 P2 Keep: note, checklist nesting, label + binder filters, pin/archive/t
 	await expect(page.getByRole('heading', { name: 'Pinned' })).toHaveCount(0);
 	await page.goto('/keep?scope=archive');
 	await page.locator('article.note', { hasText: 'Trip' }).getByRole('button', { name: 'Unarchive' }).click();
+	await expect(page.locator('article.note', { hasText: 'Trip' })).toHaveCount(0);
 	await page.goto('/keep');
 	await expect(page.locator('article.note', { hasText: 'Trip' })).toBeVisible();
 	// KEEP-012/013: trash -> delete forever needs a confirm
@@ -653,6 +654,7 @@ test('v2 P2 Keep: note, checklist nesting, label + binder filters, pin/archive/t
 		.locator('article.note', { hasText: 'Groceries' })
 		.getByRole('button', { name: 'Delete' })
 		.click();
+	await expect(page.locator('article.note', { hasText: 'Groceries' })).toHaveCount(0); // delete landed
 	await page.goto('/keep?scope=trash');
 	page.once('dialog', (d) => d.accept());
 	await page.getByRole('button', { name: 'Delete forever' }).click();
@@ -894,6 +896,9 @@ test('v2 P7 Sharing: share a page view-only, they read it but cannot edit, revok
 	};
 	const id = p.page.id;
 	await api('PATCH', `/api/pages/${id}`, { doc: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Day 1: Penang' }] }] } }); // prettier-ignore
+	// a note too: it shows in her Keep › Shared with me (v2.0.2)
+	const note = (await api('POST', '/api/keep/notes', { title: 'Packing list', body: 'passport' })).j as { note: { id: string } }; // prettier-ignore
+	expect((await api('POST', `/api/shares/note/${note.note.id}`, { username: 'neina', permission: 'view' })).s).toBe(200); // prettier-ignore
 	await page.goto(`/pages/${id}`);
 	await page.locator('.pagev .bar').getByRole('button', { name: 'Share', exact: true }).click();
 	const dlg = page.getByRole('dialog', { name: /Share/ });
@@ -908,7 +913,10 @@ test('v2 P7 Sharing: share a page view-only, they read it but cannot edit, revok
 	await n.fill('#p', PW + ' 2');
 	await n.click('button[type=submit]');
 	await n.waitForURL((u) => u.pathname === '/');
-	await n.goto('/shared');
+	await n.goto('/keep?scope=shared');
+	await expect(n.locator('article.note', { hasText: 'Packing list' })).toContainText('view only');
+	await n.goto('/shared'); // old URL -> Pages › Shared with me
+	await expect(n).toHaveURL(/\/pages\/shared$/);
 	await n.getByRole('link', { name: /Trip plan/ }).click();
 	await expect(n.getByText('Shared with you · view only')).toBeVisible();
 	await expect(n.locator('.pm')).toContainText('Day 1: Penang');
@@ -954,7 +962,7 @@ test('v2 P8: phone Week/Month/More, PWA manifest, offline badge + Keep queue, He
 	await noSideScroll();
 	await ph.locator('.cell.today').click();
 	await expect(ph).toHaveURL(/\/today\?d=/);
-	for (const p of ['/settings/preferences', '/settings/help', '/pages', '/shared']) {
+	for (const p of ['/settings/preferences', '/settings/help', '/pages', '/pages/shared']) {
 		await ph.goto(p);
 		await noSideScroll();
 	}
@@ -1009,6 +1017,7 @@ test('v2 P8: phone Week/Month/More, PWA manifest, offline badge + Keep queue, He
 test('v2 P8 a11y: axe finds no serious or critical issues on the main screens (light + dark, PC + phone)', async ({
 	browser,
 }) => {
+	test.setTimeout(180_000); // 44 page loads + axe runs; 60 s was right at the edge
 	const bad: string[] = [];
 	for (const [w, h] of [
 		[1280, 800],
@@ -1019,7 +1028,7 @@ test('v2 P8 a11y: axe finds no serious or critical issues on the main screens (l
 			const p = await ctx.newPage();
 			await p.goto('/');
 			await p.evaluate((s) => document.documentElement.setAttribute('data-theme', s), scheme);
-			for (const url of ['/?desktop=1', '/today', '/week', '/month', '/keep', '/pages', '/shared', '/settings/preferences', '/settings/help', '/more']) {
+			for (const url of ['/?desktop=1', '/today', '/week', '/month', '/keep', '/pages', '/pages/shared', '/keep?scope=shared', '/settings/preferences', '/settings/help', '/more']) {
 				await p.goto(url);
 				await p.evaluate((s) => document.documentElement.setAttribute('data-theme', s), scheme);
 				await p.waitForTimeout(700); // let theme transitions finish
