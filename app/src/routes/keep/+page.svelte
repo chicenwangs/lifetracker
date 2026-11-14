@@ -64,7 +64,7 @@
 		};
 		addEventListener('popstate', pop);
 		return () => removeEventListener('popstate', pop);
-	});	// ?note=… (search, reminders, widget) and ?new (Ctrl+K, widget +): drop the param, then open like a tap.
+	}); // ?note=… (search, reminders, widget) and ?new (Ctrl+K, widget +): drop the param, then open like a tap.
 	afterNavigate(() => {
 		const id = page.url.searchParams.get('note');
 		const isNew = page.url.searchParams.has('new');
