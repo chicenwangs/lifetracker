@@ -439,7 +439,7 @@
 			min-height: 52px;
 			flex-wrap: nowrap;
 			gap: 8px;
-			position: static;
+			position: relative; /* not static: keeps z-index 20, else the account menu opens under the page */
 		}
 		.hdr::before {
 			display: none;
