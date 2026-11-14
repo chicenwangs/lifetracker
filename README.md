@@ -23,6 +23,6 @@ Start here (Claude: read all before coding):
 | `deploy/` | prod bundle: `compose.yaml` (pulls released image), `.env.example`, `backup.sh`, `restore.sh`. |
 | `.github/workflows/` | `ci.yml` (lint, check, unit, e2e, image build) · `release.yml` (tag `vX.Y.Z` → GHCR image + GitHub Release). |
 
-Status 2026-11-14: **v2.0.2 released** (tag `v2.0.2`; phone pass + Android push fixes on top of v2.0.1). Live = v1.1.0 until the owner upgrades (`docs/SERVICE-HANDOFF.md` §5). v2 adds Keep, Pages + databases + graph, reminders + push, page/note sharing, phone screens + PWA. What changed: `docs/v2/RELEASE-NOTES.md`. Plan + phase log: `docs/v2/PHASES.md`. 341 unit + 25 e2e pass.
+Status 2026-11-14: **v2.0.3 released** (tag `v2.0.3`; Android app with widgets, reminder alarms, in-app update — `mobile/README.md`). Live = v1.1.0 until the owner upgrades (`docs/SERVICE-HANDOFF.md` §5). v2 adds Keep, Pages + databases + graph, reminders + push, page/note sharing, phone screens + PWA. What changed: `docs/v2/RELEASE-NOTES.md`. Plan + phase log: `docs/v2/PHASES.md`. 341 unit + 25 e2e pass.
 
 Repo private.

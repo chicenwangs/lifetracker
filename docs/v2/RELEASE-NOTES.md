@@ -1,5 +1,13 @@
 # Life Tracker v2 — release notes
 
+## v2.0.3 (2026-11-14) — Android app, no migration
+From v2.0.x: just pull the new image. The app needs this server (it reads the new `/api/native`).
+- **Android app:** `life-tracker-2.0.3.apk` on this release. The site in an app, plus:
+  - **Widgets:** Today timeline (from now on, `+` = quick add) and Keep notes (`+` = new note).
+  - **Reminders ring on the phone** as alarms, app closed or not (no Chrome push needed).
+  - **Updates itself:** asks when a newer version is out; Settings › Help › Check for updates.
+- Today: past rows no longer fade their time label (hard to read).
+
 ## v2.0.2 (2026-11-14) — phone + push fixes, no migration
 From v2.0.x: just pull the new image. From v1.1.0: go straight to 2.0.2 (same steps as 2.0.0, SERVICE-HANDOFF §5).
 - **Push on Android Chrome:** sent as high priority (sleeping phones held it before) · repeat reminders alert again · PNG icon · the app re-sends this device's push link on every open (server lost it, or VAPID keys changed) · Send a test says why it failed · sign out turns push off on that device.
