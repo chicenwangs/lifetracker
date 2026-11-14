@@ -1,6 +1,6 @@
 <!-- Keep (FEATURES §5): side nav (notes, binders, labels, archive, trash) · search · New note · Pinned · notes · Select mode. -->
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { afterNavigate, goto, invalidateAll, pushState, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { del, patch, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
@@ -42,10 +42,38 @@
 
 	// ---------- open note ----------
 	let open = $state<NoteDTO | 'new' | null>(null);
+	// an open note = one history entry: Back / edge swipe closes it and stays on Keep (owner 2026-11-14)
+	let pushed = false;
+	function show(n: NoteDTO | 'new') {
+		open = n;
+		if (!pushed) pushState('', { keepNote: n === 'new' ? 'new' : n.id });
+		pushed = true;
+	}
+	function hide() {
+		if (pushed) history.back(); // the effect below clears `open`
+		else open = null;
+	}
 	$effect(() => {
+		const st = page.state.keepNote; // read first: the effect must track it even while nothing is open
+		if (pushed && !st) {
+			pushed = false;
+			open = null;
+		}
+	});
+	// ?note=… (search, reminders, widget) and ?new (Ctrl+K, widget +): drop the param, then open like a tap.
+	afterNavigate(() => {
 		const id = page.url.searchParams.get('note');
-		if (id) open = notes.find((n) => n.id === id) ?? open;
-		if (page.url.searchParams.has('new')) open = 'new'; // Ctrl+K "New note"
+		const isNew = page.url.searchParams.has('new');
+		const n = id ? notes.find((x) => x.id === id) : undefined;
+		if (!n && !isNew) return;
+		const u = new URL(page.url);
+		u.searchParams.delete('note');
+		u.searchParams.delete('new');
+		setTimeout(() => {
+			replaceState(u, {});
+			show(n ?? 'new');
+		}); // first load: afterNavigate runs before the router is ready for shallow routing
+
 	});
 	const refresh = () => invalidateAll();
 
@@ -154,7 +182,7 @@
 				bind:value={q}
 				oninput={search}
 			/>{/if}
-		{#if data.scope === 'active'}<button class="btn primary" type="button" onclick={() => (open = 'new')}
+		{#if data.scope === 'active'}<button class="btn primary" type="button" onclick={() => show('new')}
 				>New note</button
 			>{/if}
 		{#if data.scope !== 'shared'}<button
@@ -261,7 +289,7 @@
 				{:else if data.scope === 'shared'}No notes shared with you yet. When someone shares one, it shows
 					here.
 				{:else if data.binder}This binder is empty. Open a note and tick "▣ {binderName}" to add it.
-				{:else}No notes yet. <button class="btn sm primary" type="button" onclick={() => (open = 'new')}
+				{:else}No notes yet. <button class="btn sm primary" type="button" onclick={() => show('new')}
 						>Create one</button
 					>{/if}
 			</div>
@@ -287,7 +315,7 @@
 				<button
 					type="button"
 					class="open"
-					onclick={() => (data.scope === 'trash' ? null : (open = n))}
+					onclick={() => (data.scope === 'trash' ? null : show(n))}
 					disabled={data.scope === 'trash'}
 					aria-label="Open note {n.title || n.body.slice(0, 40)}"
 				>
@@ -385,10 +413,7 @@
 			binders={data.binders}
 			colors={data.colors}
 			shared={open !== 'new' ? data.shared[open.id]?.permission : undefined}
-			onclose={() => {
-				open = null;
-				if (page.url.searchParams.has('note')) go({});
-			}}
+			onclose={hide}
 			onchanged={refresh}
 		/>
 	{/key}
@@ -527,6 +552,12 @@
 	}
 	.open:disabled {
 		cursor: default;
+	}
+	.note {
+		transition: transform var(--t-fast) var(--ease);
+	}
+	.note:has(.open:active:not(:disabled)) {
+		transform: scale(0.98); /* press feedback before the editor opens */
 	}
 	.open img {
 		width: 100%;

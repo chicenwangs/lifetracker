@@ -6,6 +6,19 @@
     <string name="custom_url_scheme">io.github.chicenwangs.lifetracker</string>
     <!-- keep in step with server.url in capacitor.config.json -->
     <string name="server_url" translatable="false">https://planner.jeremyjosh.org</string>
-    <string name="widget_timeline">Today timeline</string>
-    <string name="widget_keep">Keep notes</string>
+    <!-- widgets: picker name + what it is for -->
+    <string name="wname_timeline">Today timeline</string>
+    <string name="wdesc_timeline">Your day, scrolled to now. Tick things off, + adds a plan.</string>
+    <string name="wname_keep">Keep notes</string>
+    <string name="wdesc_keep">Scroll your recent notes, tap one to open it, + for a new note.</string>
+    <string name="wname_now">Now and next</string>
+    <string name="wdesc_now">What is on, how long is left, and what comes after.</string>
+    <string name="wname_quick">Quick add</string>
+    <string name="wdesc_quick">One tap to plan something or jot a note.</string>
+    <string name="wname_todo">To do today</string>
+    <string name="wdesc_todo">Today's things without a time. Tick them off right here.</string>
+    <string name="wname_countdown">Countdowns</string>
+    <string name="wdesc_countdown">Days left until exams and other counted-down items.</string>
+    <string name="wname_week">Week ahead</string>
+    <string name="wdesc_week">The next seven days at a glance. Tap a day to open it.</string>
 </resources>

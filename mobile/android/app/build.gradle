@@ -23,6 +23,12 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    // WidgetShotsTest draws the widgets with Robolectric: needs the app's resources
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
     // release key comes from CI secrets (release.yml); never in the repo
     signingConfigs {
         release {
@@ -56,8 +62,11 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation "androidx.work:work-runtime:2.10.0"
+    implementation "androidx.core:core-remoteviews:1.1.0" // scrolling widget lists on every Android version
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
+    testImplementation "org.robolectric:robolectric:4.14.1"
+    testImplementation "androidx.test:core:1.6.1"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')

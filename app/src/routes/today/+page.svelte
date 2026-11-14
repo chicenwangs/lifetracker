@@ -1,7 +1,7 @@
 <!-- Phone Today (FEATURES §10, MOB-001..006): date header with day step + swipe, Now card, "No time set today",
      timeline top-aligned on now (owner 2026-11-14). Glance + capture; planning stays on the PC. Works on desktop too. -->
 <script lang="ts">
-	import { goto, invalidateAll, replaceState } from '$app/navigation';
+	import { afterNavigate, goto, invalidateAll, replaceState } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
 	import { post } from '$lib/client/api';
 	import { calendarBus } from '$lib/client/bus.svelte';
@@ -20,12 +20,13 @@
 	const tz = $derived(data.user?.timezone ?? 'Asia/Kuala_Lumpur');
 	const h12 = $derived(data.user?.region === 'us');
 	let now = $state(Date.now());
+	// Android widget "+" opens /today?add
+	afterNavigate(() => {
+		if (!new URLSearchParams(location.search).has('add')) return;
+		openAdd('');
+		setTimeout(() => replaceState(location.pathname, {})); // router not ready yet on first load
+	});
 	onMount(() => {
-		// Android widget "+" opens /today?add
-		if (new URLSearchParams(location.search).has('add')) {
-			openAdd('');
-			replaceState(location.pathname, {});
-		}
 		const t = setInterval(() => (now = Date.now()), 30_000);
 		return () => clearInterval(t);
 	});
@@ -81,7 +82,6 @@
 
 	// ---------- wheel ----------
 	let wheel: HTMLDivElement | undefined = $state();
-	let away = $state(false);
 	/** how far the "now" row sits below the top of the wheel (px) */
 	const nowOffset = (w: HTMLElement, el: HTMLElement) =>
 		el.getBoundingClientRect().top - w.getBoundingClientRect().top;
@@ -95,11 +95,6 @@
 		void entries;
 		void tick().then(() => toNow(false));
 	});
-	function onScroll() {
-		const el = wheel?.querySelector<HTMLElement>('[data-now]');
-		if (!wheel || !el) return (away = false);
-		away = Math.abs(nowOffset(wheel, el)) > wheel.clientHeight / 2;
-	}
 	/** row nearest "now" (or the first upcoming); on other days the first row */
 	const nowKey = $derived(isToday ? (current ?? next ?? entries.at(-1))?.key : entries[0]?.key);
 
@@ -179,7 +174,7 @@
 
 	<section class="card tl" aria-label="Timeline">
 		{#if entries.length}
-			<div class="wheel" bind:this={wheel} onscroll={onScroll}>
+			<div class="wheel" bind:this={wheel}>
 				{#each entries as e (e.key)}
 					{@const c = e.block ? entryColors(e.block) : colorsFor(e.item?.type)}
 					{@const past = isToday && e.end <= nowMin}
@@ -191,6 +186,7 @@
 						data-now={e.key === nowKey ? '' : undefined}
 						style:--bg={c.bg}
 						style:--fg={c.ink}
+						style:--sq-on={c.bg}
 					>
 						<span class="tm">{fmt(e.start)}<br /><span class="hint">{fmt(e.end)}</span></span>
 						<div class="box">
@@ -222,9 +218,6 @@
 					</div>
 				{/each}
 			</div>
-			{#if away && isToday}<button class="back btn sm" type="button" onclick={() => toNow()}
-					>Back to now</button
-				>{/if}
 		{:else}
 			<div class="empty">
 				<p>Nothing planned.</p>
@@ -261,14 +254,20 @@
 		color: var(--quiet);
 	}
 	.nav {
-		width: 40px;
-		height: 40px;
+		width: 44px;
+		height: 44px;
 		border-radius: 50%;
 		border: 1.5px solid var(--border);
 		background: var(--card);
 		color: var(--ink);
-		font-size: 20px;
+		font-size: 22px;
+		font-weight: 700;
 		cursor: pointer;
+		box-shadow: -3px 3px 0 var(--accent); /* same raised look as the header buttons: easy to spot */
+	}
+	.nav:active {
+		translate: -2px 2px;
+		box-shadow: 0 0 0 var(--accent);
 	}
 	.now,
 	.list,
@@ -330,8 +329,8 @@
 		width: 40px;
 		height: 40px;
 		border-radius: 50%;
-		border: 1px solid var(--rule);
-		background: transparent;
+		border: 1.5px solid var(--border);
+		background: var(--card);
 		cursor: pointer;
 	}
 	.tl {
@@ -350,14 +349,21 @@
 		scroll-snap-align: start;
 		display: flex;
 		gap: 10px;
-		transition: opacity 0.2s;
+		padding: 4px 6px;
+		border-radius: 14px;
+		transition: background-color var(--t) var(--ease);
 	}
 	/* past: grey the colour, keep the text contrast (opacity failed axe on titles and times) */
 	.ent.past .box {
 		filter: grayscale(0.8);
 	}
-	.ent.live .box {
-		outline: 2px solid var(--accent);
+	/* now: the whole row gets a band (owner 2026-11-14: the outline was too faint) */
+	.ent.live {
+		background: var(--now-band);
+	}
+	.ent.live .tm {
+		color: var(--ink);
+		font-weight: 700;
 	}
 	.tm {
 		width: 56px;
@@ -388,12 +394,6 @@
 		font-size: 11px;
 		display: grid;
 		place-items: center;
-	}
-	.back {
-		position: absolute;
-		bottom: 14px;
-		left: 50%;
-		translate: -50% 0;
 	}
 	.empty {
 		text-align: center;

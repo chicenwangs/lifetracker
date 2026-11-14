@@ -38,6 +38,8 @@ declare global {
 		}
 		interface PageState {
 			peekId?: string;
+			/** Keep: an open note has its own history entry, so Back (or the Android edge swipe) closes it */
+			keepNote?: string;
 		}
 		interface Error {
 			code: string;

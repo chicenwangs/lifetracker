@@ -35,19 +35,57 @@
             </intent-filter>
         </receiver>
 
-        <receiver android:name=".Widgets$Timeline" android:exported="true" android:label="@string/widget_timeline">
+        <receiver android:name=".Widgets$Timeline" android:exported="true" android:label="@string/wname_timeline">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_timeline_info" />
         </receiver>
-
-        <receiver android:name=".Widgets$Keep" android:exported="true" android:label="@string/widget_keep">
+        <receiver android:name=".Widgets$Keep" android:exported="true" android:label="@string/wname_keep">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_keep_info" />
         </receiver>
+        <receiver android:name=".Widgets$NowNext" android:exported="true" android:label="@string/wname_now">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_now_info" />
+        </receiver>
+        <receiver android:name=".Widgets$Quick" android:exported="true" android:label="@string/wname_quick">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_info" />
+        </receiver>
+        <receiver android:name=".Widgets$Todo" android:exported="true" android:label="@string/wname_todo">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_todo_info" />
+        </receiver>
+        <receiver android:name=".Widgets$Countdown" android:exported="true" android:label="@string/wname_countdown">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_countdown_info" />
+        </receiver>
+        <receiver android:name=".Widgets$Week" android:exported="true" android:label="@string/wname_week">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_week_info" />
+        </receiver>
+
+        <!-- widget list taps (open / tick): invisible, closes at once -->
+        <activity
+            android:name=".WidgetAction"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -64,6 +102,7 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" /><!-- navigator.vibrate on tick -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- reminders ring on time: auto-granted for reminder/calendar apps on Android 13+, the other one before -->
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />

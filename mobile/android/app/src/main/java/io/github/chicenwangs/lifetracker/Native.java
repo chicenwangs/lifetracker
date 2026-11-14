@@ -46,6 +46,35 @@ final class Native {
         }
     }
 
+    /** PATCH a JSON body as the signed-in user (widget ticks). Origin = the server, as its write check wants. */
+    static boolean patch(Context c, String path, JSONObject body) {
+        HttpURLConnection h = null;
+        try {
+            String url = base(c) + path;
+            h = (HttpURLConnection) new URL(url).openConnection();
+            h.setRequestMethod("PATCH");
+            h.setConnectTimeout(10_000);
+            h.setReadTimeout(20_000);
+            h.setDoOutput(true);
+            h.setRequestProperty("Content-Type", "application/json");
+            h.setRequestProperty("Origin", base(c));
+            String ck = CookieManager.getInstance().getCookie(url);
+            if (ck != null) h.setRequestProperty("Cookie", ck);
+            try (java.io.OutputStream out = h.getOutputStream()) {
+                out.write(body.toString().getBytes(StandardCharsets.UTF_8));
+            }
+            return h.getResponseCode() == 200;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            if (h != null) h.disconnect();
+        }
+    }
+
+    static void saveCache(Context c, JSONObject j) {
+        c.getSharedPreferences(PREFS, 0).edit().putString("sync", j.toString()).apply();
+    }
+
     static byte[] readAll(InputStream in) throws java.io.IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] buf = new byte[16384];

@@ -95,6 +95,13 @@
 			font-size: 28px;
 			box-shadow: var(--shadow-btn);
 			cursor: pointer;
+			transition:
+				transform var(--t-fast) var(--ease),
+				box-shadow var(--t-fast) var(--ease);
 		}
-	}
+		/* press: squash into the shadow (anticipation), spring back on release */
+		.add:active {
+			transform: translate(-2px, 2px) scale(0.92);
+			box-shadow: 0 0 0 var(--accent);
+		}
 </style>

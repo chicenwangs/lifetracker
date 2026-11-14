@@ -85,6 +85,7 @@
 	--ink-hover: #1a1a5c;
 	--hover: #f3f2fa;
 	--band: rgb(0 0 61 / 0.035); /* week hour bands */
+	--now-band: #ececf0; /* Today: the row happening now (light grey) */
 	--today-line: #00003d;
 	--faint: #6b6b8f;
 	--field: #ffffff;
@@ -166,6 +167,7 @@
 	--ink-hover: #ffffff;
 	--hover: #201f48;
 	--band: rgb(255 255 255 / 0.025);
+	--now-band: #2c2b5e; /* one step lighter than the card */
 	--today-line: #f3f1fa;
 	--faint: #8e8bb5;
 	--field: #17163a;
@@ -177,6 +179,7 @@
 
 * {
 	box-sizing: border-box;
+	-webkit-tap-highlight-color: transparent; /* no blue browser flash on tap; :active styles give the feedback */
 }
 body {
 	margin: 0;
@@ -455,9 +458,13 @@ table.plain th {
 		transform: translateY(10px);
 	}
 }
+/* done: squash on the press, overshoot, settle (squash and stretch + exaggerated feedback) */
 @keyframes lt-done {
-	40% {
-		transform: scale(1.2);
+	30% {
+		transform: scale(0.82);
+	}
+	65% {
+		transform: scale(1.18);
 	}
 }
 @keyframes lt-ping {
@@ -543,6 +550,13 @@ main .card:nth-child(n + 4) {
 	width: 24px;
 	height: 24px;
 	translate: -50% -50%;
+}
+/* touch: fingers are bigger than cursors (Fitts): status squares get a 40×40 hit area on phones */
+@media (pointer: coarse) {
+	.lt-sq::after {
+		width: 40px;
+		height: 40px;
+	}
 }
 /* touch has no hover: show the delete button instead of hiding it (FEATURES §3 X fix) */
 @media (hover: none) {
