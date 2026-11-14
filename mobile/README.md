@@ -20,7 +20,7 @@ Caveman doc. Capacitor 8 shell. The app = the server's own pages (`server.url` i
 - Server URL is in two places: `capacitor.config.json` and `res/values/strings.xml` (`server_url`). Change both.
 
 ## Build + release
-- CI (`ci.yml` job `apk`): debug build on every PR = proves it compiles.
+- CI (`ci.yml` job `apk`): unsigned release build on every PR = compiles + release lint.
 - Release (`release.yml` job `apk`): tag `vX.Y.Z` → signed `life-tracker-X.Y.Z.apk` attached to the GitHub Release.
 - Signing key: `C:\Users\<you>\.lifetracker-android\release.p12` + `password.txt` on the dev PC. **Back it up** (password manager). Lose it = no more updates over the installed app (uninstall + reinstall).
 - Repo secrets (once): `ANDROID_KEYSTORE_B64` (base64 of `release.p12`), `ANDROID_KEYSTORE_PASSWORD`. Missing = release still ships, just without an APK (warning in the run).
