@@ -119,6 +119,8 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 
 **Logs:** `docker compose logs --since 1h app`. Interesting lines: `[boot]`, `[shutdown]`, `[error]`. Failed logins are rate-limited in-app (not logged per attempt).
 
+**Android app (v2.0.3+):** `life-tracker-X.Y.Z.apk` on each GitHub Release (signed in CI, `mobile/README.md`). Nothing to run on the server: the app loads the site and calls `GET /api/native` (signed-in user's widget rows, notes, next 48 h of reminders) every 15 min. The phone, not the server, asks `api.github.com` for updates. Server outbound calls unchanged.
+
 **Monitoring (suggested):** uptime check on `https://planner.jeremyjosh.org/healthz` expecting 200 + `"ok":true` (Uptime Kuma), disk usage of `/opt/life-tracker/data`, container restart count, backup job success line in `backup.log`.
 
 ## 6. Security notes
@@ -165,6 +167,8 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 - [ ] v2.0.2: phone (Chrome) → Settings › Notifications → Send a test pops up with the screen off. Fail → `docker compose logs app | grep push` (403 = keys, 410 = device expired).
 - [ ] v2.0.1: Pages page shows the bar (Pin · Share · ⋯); Settings › Preferences › Header pins ↑ ↓ changes the header order.
 - [ ] v2: `sudo ./backup.sh` writes both `app-<ts>.db.gz` and `uploads-<ts>.tar.gz`.
+
+- [ ] v2.0.3+: Android app installs from the release, signs in, Today + Keep widgets fill within a minute, a `/remind 15min` reminder rings on the phone.
 
 ## 9. Known limits
 

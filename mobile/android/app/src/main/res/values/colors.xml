@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- app dark theme (app.css) -->
+    <color name="colorPrimary">#1A1446</color>
+    <color name="colorPrimaryDark">#1A1446</color>
+    <color name="colorAccent">#F3D053</color>
+    <color name="lt_card">#17163A</color>
+    <color name="lt_edge">#3A3970</color>
+    <color name="lt_ink">#F3F1FA</color>
+    <color name="lt_quiet">#B7B5D6</color>
+    <color name="lt_accent">#F3D053</color>
+</resources>

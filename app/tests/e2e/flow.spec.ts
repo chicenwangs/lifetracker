@@ -864,7 +864,7 @@ test('v2 P5 Graph: shows my pages, archived toggle, list fallback, node select o
 
 test('v2 P6 Reminders: /remind in quick add, editor on the item, in-app reminder fires, push state honest', async () => {
 	const d = await today();
-	const tmr = plusDay(d, 1);
+	const tmr = plusDay(d, 2); // 2 days out: "1d before" must still be ahead at any time of day
 	const r = await api('POST', '/api/quickadd', { text: `dentist ${tmr} 3pm /calendar /remind 1d 2h` });
 	expect(r.s).toBe(201);
 	const id = (r.j as { item: { id: string } }).item.id;

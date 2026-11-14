@@ -1,4 +1,5 @@
-# CI: every push to main or v2 and every PR. Lint, type check, unit, e2e, and a Docker build (not pushed).
+# CI: every push to main or v2 and every PR. Lint, type check, unit, e2e, a Docker build (not pushed) and
+# the Android app (debug build: proves the native code compiles; release.yml makes the signed one).
 name: ci
 on:
   push:
@@ -53,3 +54,24 @@ jobs:
             REVISION=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npx cap sync android
+      - run: chmod +x android/gradlew && cd android && ./gradlew --no-daemon assembleDebug

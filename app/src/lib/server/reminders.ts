@@ -143,6 +143,18 @@ export function recalc(ownerId: string, type: Source, sourceId: string, now = Da
 	}
 }
 
+/** Android app: scheduled reminders due in the next `ms`, for local alarms. Kinds the owner turned off are left out. */
+export function upcoming(ownerId: string, now = Date.now(), ms = 48 * 3_600_000) {
+	const rows = db().prepare(`SELECT * FROM reminders WHERE owner_id = ? AND status = 'scheduled' AND due_at > ? AND due_at <= ? ORDER BY due_at LIMIT 50`).all(ownerId, nowUtcIso(now), nowUtcIso(now + ms)) as Row[]; // prettier-ignore
+	const on = db().prepare(`SELECT notify_planner AS planner, notify_keep AS keep, notify_pages AS pages FROM users WHERE id = ?`).get(ownerId) as Record<SourceInfo['kind'], number>; // prettier-ignore
+	return rows.flatMap((r) => {
+		const i = sourceInfo(ownerId, r.source_type, r.source_id);
+		return i?.live && on[i.kind]
+			? [{ id: r.id, title: i.title, route: i.route, dueAt: r.due_at as string }]
+			: [];
+	});
+}
+
 /** in-app channel: sent/missed reminders not shown yet */
 export function inbox(ownerId: string) {
 	const rows = db().prepare(`SELECT * FROM reminders WHERE owner_id = ? AND status IN ('sent','missed') AND seen_at IS NULL ORDER BY sent_at LIMIT 20`).all(ownerId) as Row[]; // prettier-ignore
