@@ -3,6 +3,20 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## Push + audit pass (2026-11-14, owner: no Chrome push on Android)
+
+- Push sent at `urgency: high` (was normal: FCM holds it while an Android phone sleeps).
+- `sw.js`: `renotify: true` (same route = silent swap before), PNG icon (Android can't draw SVG).
+- App load re-sends this device's subscription (`lib/client/push.ts` `resyncPush`). Fixes: server dropped the row (410, restore), VAPID keys changed (old sub dropped, new one made).
+- Send a test: says why nothing went (device expired / keys rejected / service error).
+- `VAPID_SUBJECT=mailto:` (bare, as in `.env.example`) = unset.
+- Sign out drops this device's push first (max 2 s): a signed-out phone showed private titles.
+- Reminder links: block → owner's local day (was UTC day); archived note → Keep archive.
+- More = wireframe MMore: Pinned pages · Browse · App, value + › per row.
+- Today past rows: grey colour, not opacity (axe: 2.3:1 text).
+- e2e: two races fixed (goto before delete landed), axe test 180 s.
+- Not checked: real FCM delivery (dev PC has no push service). Owner: Send a test on the phone after deploy; if it fails, `docker compose logs app | grep push` shows the code.
+
 ## Phone pass (2026-11-14, after v2.0.1, owner's phone screenshots)
 - Header: one row on phone (mark left · Search · theme · avatar right), not sticky, no `?`/Ctrl+K hint.
 - Bottom bar: wireframe MBar icons (clock, calendar, note, ☰ More — the old More dots never drew), round caps, pill behind the icon only.

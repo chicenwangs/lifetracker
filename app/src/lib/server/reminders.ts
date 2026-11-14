@@ -5,7 +5,7 @@ import { handle } from './db';
 import { newId } from './crypto';
 import { bad, notFound } from './http';
 import { itemRef, offsetMs, parseOffset, type Unit } from '$lib/remind';
-import { isoPlus, nowUtcIso } from '$lib/time';
+import { isoPlus, nowUtcIso, utcToLocal } from '$lib/time';
 import type { ReminderDTO } from '$lib/types';
 
 export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record';
@@ -44,19 +44,19 @@ export function sourceInfo(ownerId: string, type: Source, id: string): SourceInf
 				title: r.label,
 				ref: r.start_at,
 				live: !r.deleted_at,
-				route: `/?d=${r.start_at.slice(0, 10)}`,
+				route: `/?d=${utcToLocal(r.start_at, tz).date}`, // owner's day, not the UTC one
 				kind: 'planner',
 			}
 		);
 	}
 	if (type === 'keep_note') {
-		const r = db().prepare(`SELECT title, body, deleted_at FROM keep_notes WHERE id = ? AND owner_id = ?`).get(id, ownerId) as { title: string; body: string; deleted_at: string | null } | undefined; // prettier-ignore
+		const r = db().prepare(`SELECT title, body, deleted_at, archived_at FROM keep_notes WHERE id = ? AND owner_id = ?`).get(id, ownerId) as { title: string; body: string; deleted_at: string | null; archived_at: string | null } | undefined; // prettier-ignore
 		return (
 			r && {
 				title: r.title || r.body.slice(0, 60) || 'Note',
 				ref: null,
 				live: !r.deleted_at,
-				route: `/keep?note=${id}`,
+				route: `/keep?${r.archived_at ? 'scope=archive&' : ''}note=${id}`, // D-16: archived notes remind too
 				kind: 'keep',
 			}
 		);

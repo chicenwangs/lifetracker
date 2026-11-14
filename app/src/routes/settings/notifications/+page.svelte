@@ -3,8 +3,9 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { apiFetch, get, patch, post } from '$lib/client/api';
+	import { get, patch, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
+	import { dropPush, syncPush } from '$lib/client/push';
 
 	let { data } = $props();
 	const u = $derived(data.user as App.SafeUser);
@@ -22,23 +23,14 @@
 	}
 	onMount(() => void refresh().catch(showError));
 
-	const key = (b64: string) => {
-		const s = atob(b64.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((b64.length + 3) % 4));
-		return Uint8Array.from(s, (c) => c.charCodeAt(0));
-	};
 	async function turnOn() {
 		if (!server?.publicKey) return;
 		busy = true;
 		try {
-			const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-			await navigator.serviceWorker.ready;
+			await navigator.serviceWorker.register('/sw.js', { scope: '/' });
 			perm = await Notification.requestPermission(); // only ever on this click
 			if (perm !== 'granted') return showToast('Notifications are blocked in this browser. Reminders still show inside the app.'); // prettier-ignore
-			const sub = await reg.pushManager.subscribe({
-				userVisibleOnly: true,
-				applicationServerKey: key(server.publicKey),
-			});
-			await post('/api/push', sub.toJSON());
+			await syncPush(server.publicKey);
 			showToast('Push is on for this device');
 		} catch (e) {
 			showError(e);
@@ -50,12 +42,7 @@
 	async function turnOff() {
 		busy = true;
 		try {
-			const reg = await navigator.serviceWorker.getRegistration('/');
-			const sub = await reg?.pushManager.getSubscription();
-			if (sub) {
-				await apiFetch('DELETE', '/api/push', { endpoint: sub.endpoint }); // server row first: it stops sending at once
-				await sub.unsubscribe();
-			}
+			await dropPush();
 			showToast('Push is off for this device');
 		} catch (e) {
 			showError(e);
@@ -66,8 +53,9 @@
 	}
 	async function test() {
 		try {
-			const r = await post<{ sent: number; failed: number }>('/api/push/test');
-			showToast(r.sent ? `Sent to ${r.sent} device${r.sent === 1 ? '' : 's'}. It should pop up in a moment.` : 'Nothing sent: no device accepted it.'); // prettier-ignore
+			const r = await post<{ sent: number; failed: number; error?: string }>('/api/push/test');
+			showToast(r.sent ? `Sent to ${r.sent} device${r.sent === 1 ? '' : 's'}. It should pop up in a moment.` : `Nothing sent: no device accepted it${r.error ? ` (${r.error})` : ''}. Turn push off and on again on this device.`); // prettier-ignore
+			await refresh();
 		} catch (e) {
 			showError(e);
 		}

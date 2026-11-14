@@ -46,7 +46,8 @@ self.addEventListener('push', (e) => {
 			body: p.body,
 			data: { route: p.route },
 			tag: p.route,
-			icon: '/favicon.svg',
+			renotify: true, // same page again = alert again (else Android swaps it in silently)
+			icon: '/icon-192.png', // Android can't draw SVG notification icons
 		}),
 	);
 });

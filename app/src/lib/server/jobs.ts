@@ -46,12 +46,13 @@ export const subscriptionCount = (userId: string) =>
 export async function pushTo(
 	userId: string,
 	payload: { title: string; body?: string; route: string },
-): Promise<{ sent: number; failed: number }> {
+): Promise<{ sent: number; failed: number; error?: string }> {
 	if (!pushEnabled()) return { sent: 0, failed: 0 };
 	const e = env();
 	const subs = db().prepare(`SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ? AND revoked_at IS NULL`).all(userId) as { id: string; endpoint: string; p256dh: string; auth: string }[]; // prettier-ignore
 	let sent = 0;
 	let failed = 0;
+	let error: string | undefined;
 	for (const s of subs) {
 		try {
 			await webpush.sendNotification(
@@ -60,6 +61,7 @@ export async function pushTo(
 				{
 					vapidDetails: { subject: e.VAPID_SUBJECT ?? 'mailto:admin@localhost.invalid', publicKey: e.VAPID_PUBLIC_KEY as string, privateKey: e.VAPID_PRIVATE_KEY as string }, // prettier-ignore
 					TTL: 3600,
+					urgency: 'high', // FCM 'normal' waits for a sleeping Android phone to wake: reminders came late or not at all
 				},
 			);
 			db().prepare(`UPDATE push_subscriptions SET last_success_at = ? WHERE id = ?`).run(nowUtcIso(), s.id);
@@ -69,11 +71,12 @@ export async function pushTo(
 			if (code === 404 || code === 410)
 				db().prepare(`UPDATE push_subscriptions SET revoked_at = ? WHERE id = ?`).run(nowUtcIso(), s.id);
 			failed++;
+			error = code === 404 || code === 410 ? 'device expired' : code === 401 || code === 403 ? 'push keys rejected' : 'push service error'; // prettier-ignore
 			// never log the endpoint or keys (secrets)
 			console.error(`[job] push failed: ${code ?? (err as Error).message?.slice(0, 80)}`);
 		}
 	}
-	return { sent, failed };
+	return { sent, failed, error };
 }
 
 // ---------- reminders tick ----------

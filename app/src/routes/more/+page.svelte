@@ -1,32 +1,45 @@
-<!-- Phone "More" (FEATURES §10): everything not in the bottom bar. Week/Month are read-first on a phone. -->
+<!-- Phone "More" (FEATURES §10, wireframe MMore): everything not in the bottom bar. Pinned pages · Browse · App. -->
 <script lang="ts">
 	let { data } = $props();
-	const LINKS = [
-		{ href: '/month', label: 'Month', hint: 'Compact month; tap a day for its Today' },
-		{ href: '/week', label: 'Week', hint: 'Read-first on a phone' },
-		{ href: '/pages', label: 'Pages', hint: 'All pages, then open one to read or edit' },
-		{ href: '/pages/shared', label: 'Shared with me', hint: 'Pages others shared with you (notes: Keep)' },
-		{ href: '/keep?scope=archive', label: 'Keep archive', hint: '' },
-		{ href: '/trash', label: 'Planner trash', hint: 'Deleted items and blocks, 30 days' },
-		{
-			href: '/settings/preferences',
-			label: 'Settings',
-			hint: 'Theme, timezone, planner defaults, types, sharing',
-		},
-		{ href: '/settings/help', label: 'Help', hint: 'Guides and the welcome tour' },
+	// svelte-ignore state_referenced_locally
+	const month = new Date().toLocaleString('en', { month: 'long', timeZone: data.user?.timezone });
+	const BROWSE = [
+		{ href: '/pages', label: 'All pages', value: '' },
+		{ href: '/pages/shared', label: 'Shared with me', value: '' },
+		{ href: '/week', label: 'Week', value: '' },
+		{ href: '/month', label: 'Month', value: month },
+		{ href: '/keep?scope=archive', label: 'Keep archive', value: '' },
+		{ href: '/trash', label: 'Trash', value: '30 days' },
+	];
+	const APP = [
+		{ href: '/settings/preferences', label: 'Settings', value: '' },
+		{ href: '/settings/help', label: 'Help + tour', value: '' },
 	];
 </script>
 
 <svelte:head><title>More · Life Tracker</title></svelte:head>
 
+{#snippet rows(list: { href: string; label: string; value: string }[])}
+	<div class="list card">
+		{#each list as l (l.href)}
+			<a href={l.href}>{l.label}<span class="s">{l.value} ›</span></a>
+		{/each}
+	</div>
+{/snippet}
+
 <main class="more">
 	<h1>More</h1>
-	<nav class="card" aria-label="More">
-		{#each LINKS as l (l.href)}
-			<a href={l.href}
-				><b>{l.label}</b>{#if l.hint}<span class="hint">{l.hint}</span>{/if}</a
-			>
-		{/each}
+	<nav aria-label="More">
+		{#if data.pins?.length}
+			<p class="lbl">PINNED PAGES</p>
+			{@render rows(
+				data.pins.map((p) => ({ href: `/pages/${p.id}`, label: p.title || 'Untitled', value: '' })),
+			)}
+		{/if}
+		<p class="lbl">BROWSE</p>
+		{@render rows(BROWSE)}
+		<p class="lbl">APP</p>
+		{@render rows(APP)}
 	</nav>
 	<p class="hint">Signed in as {data.user?.displayName} (@{data.user?.username})</p>
 	<form method="post" action="/logout"><button class="btn" type="submit">Sign out</button></form>
@@ -41,21 +54,40 @@
 		flex-direction: column;
 		gap: 12px;
 	}
-	nav {
+	.lbl {
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		color: var(--quiet);
+		margin: 16px 4px 8px;
+	}
+	.lbl:first-child {
+		margin-top: 0;
+	}
+	.list {
 		display: flex;
 		flex-direction: column;
+		padding: 0;
+		overflow: hidden;
 	}
 	a {
 		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		padding: 14px 16px;
-		min-height: 48px;
+		align-items: center;
+		gap: 12px;
+		padding: 0 14px;
+		min-height: 52px;
 		color: var(--ink);
+		font-size: 15px;
+		font-weight: 500;
 		text-decoration: none;
 		border-bottom: 1px solid var(--rule);
 	}
 	a:last-child {
 		border-bottom: 0;
+	}
+	.s {
+		margin-left: auto;
+		font-size: 13px;
+		color: var(--quiet);
 	}
 </style>

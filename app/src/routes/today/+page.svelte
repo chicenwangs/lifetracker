@@ -347,8 +347,12 @@
 		gap: 10px;
 		transition: opacity 0.2s;
 	}
-	.ent.past {
+	/* past: grey the colour, keep the text contrast (opacity made titles unreadable, axe 2.3:1) */
+	.ent.past .tm {
 		opacity: 0.55;
+	}
+	.ent.past .box {
+		filter: grayscale(0.8);
 	}
 	.ent.live .box {
 		outline: 2px solid var(--accent);
