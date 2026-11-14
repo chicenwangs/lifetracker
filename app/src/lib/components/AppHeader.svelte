@@ -433,9 +433,25 @@
 		.right > :global(.opener) {
 			display: none;
 		}
+		/* phone: one row (mark left, search · theme · avatar right), scrolls away with the page */
 		.hdr {
 			padding: 8px 12px;
 			min-height: 52px;
+			flex-wrap: nowrap;
+			gap: 8px;
+			position: static;
+		}
+		.hdr::before {
+			display: none;
+		}
+		.right {
+			flex: 1 1 auto;
+			min-width: 0;
+			gap: 8px;
+		}
+		.search kbd,
+		.right > [aria-label='Keyboard shortcuts'] {
+			display: none; /* no keyboard on a phone */
 		}
 	}
 </style>

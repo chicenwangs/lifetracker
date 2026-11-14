@@ -409,7 +409,7 @@
 	}
 	.phone {
 		display: none;
-		padding: 8px 12px 104px;
+		padding: 8px 12px 24px;
 	}
 	.pbar {
 		display: flex;

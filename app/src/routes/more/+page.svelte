@@ -5,7 +5,7 @@
 		{ href: '/month', label: 'Month', hint: 'Compact month; tap a day for its Today' },
 		{ href: '/week', label: 'Week', hint: 'Read-first on a phone' },
 		{ href: '/pages', label: 'Pages', hint: 'All pages, then open one to read or edit' },
-		{ href: '/shared', label: 'Shared with me', hint: 'Pages and notes others shared with you' },
+		{ href: '/pages/shared', label: 'Shared with me', hint: 'Pages others shared with you (notes: Keep)' },
 		{ href: '/keep?scope=archive', label: 'Keep archive', hint: '' },
 		{ href: '/trash', label: 'Planner trash', hint: 'Deleted items and blocks, 30 days' },
 		{
@@ -36,7 +36,7 @@
 	.more {
 		max-width: 560px;
 		margin: 0 auto;
-		padding: 8px 12px 104px;
+		padding: 8px 12px 24px;
 		display: flex;
 		flex-direction: column;
 		gap: 12px;

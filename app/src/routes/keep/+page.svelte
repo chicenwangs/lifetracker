@@ -14,7 +14,13 @@
 	const labelName = (id: string) => data.labels.find((l) => l.id === id)?.name ?? '';
 	const binderName = $derived(data.binders.find((b) => b.id === data.binder)?.name ?? '');
 	const title = $derived(
-		data.scope === 'archive' ? 'Archive' : data.scope === 'trash' ? 'Trash' : binderName || 'Notes',
+		data.scope === 'archive'
+			? 'Archive'
+			: data.scope === 'trash'
+				? 'Trash'
+				: data.scope === 'shared'
+					? 'Shared with me'
+					: binderName || 'Notes',
 	);
 
 	// ---------- url state ----------
@@ -138,6 +144,26 @@
 <svelte:head><title>{title} · Keep · Life Tracker</title></svelte:head>
 
 <main class="keep">
+	<div class="top">
+		<h1>{title}</h1>
+		{#if data.scope !== 'shared'}<input
+				class="search"
+				type="search"
+				placeholder="Search notes and checklists"
+				aria-label="Search notes"
+				bind:value={q}
+				oninput={search}
+			/>{/if}
+		{#if data.scope === 'active'}<button class="btn primary" type="button" onclick={() => (open = 'new')}
+				>New note</button
+			>{/if}
+		{#if data.scope !== 'shared'}<button
+				class="btn sm"
+				type="button"
+				aria-pressed={selecting}
+				onclick={() => ((selecting = !selecting), (picked = []))}>{selecting ? 'Done' : 'Select'}</button
+			>{/if}
+	</div>
 	<nav class="side card" aria-label="Keep">
 		<a href="/keep" class:on={data.scope === 'active' && !data.binder}>Notes</a>
 		<div class="grp">
@@ -176,32 +202,12 @@
 				</div>
 			{:else}<span class="hint">Add labels inside a note.</span>{/each}
 		</div>
-		<a href="/shared">Shared with me</a>
+		<a href="/keep?scope=shared" class:on={data.scope === 'shared'}>Shared with me</a>
 		<a href="/keep?scope=archive" class:on={data.scope === 'archive'}>Archive</a>
 		<a href="/keep?scope=trash" class:on={data.scope === 'trash'}>Trash</a>
 	</nav>
 
 	<section class="main">
-		<div class="top">
-			<h1>{title}</h1>
-			<input
-				class="search"
-				type="search"
-				placeholder="Search notes and checklists"
-				aria-label="Search notes"
-				bind:value={q}
-				oninput={search}
-			/>
-			{#if data.scope === 'active'}<button class="btn primary" type="button" onclick={() => (open = 'new')}
-					>New note</button
-				>{/if}
-			<button
-				class="btn sm"
-				type="button"
-				aria-pressed={selecting}
-				onclick={() => ((selecting = !selecting), (picked = []))}>{selecting ? 'Done' : 'Select'}</button
-			>
-		</div>
 		{#if data.q || data.labelFilter.length}
 			<p class="filters">
 				{#if data.q}Matching "{data.q}"{/if}
@@ -252,6 +258,8 @@
 					>
 				{:else if data.scope === 'trash'}Trash is empty. Notes here are deleted for good after 30 days.
 				{:else if data.scope === 'archive'}Nothing archived.
+				{:else if data.scope === 'shared'}No notes shared with you yet. When someone shares one, it shows
+					here.
 				{:else if data.binder}This binder is empty. Open a note and tick "▣ {binderName}" to add it.
 				{:else}No notes yet. <button class="btn sm primary" type="button" onclick={() => (open = 'new')}
 						>Create one</button
@@ -298,55 +306,61 @@
 						</ul>
 					{:else}<p>{n.body.slice(0, 400)}</p>{/if}
 				</button>
+				{#if data.shared[n.id]}<p class="hint from">
+						from {data.shared[n.id]?.owner} · {data.shared[n.id]?.permission === 'edit'
+							? 'can edit'
+							: 'view only'}
+					</p>{/if}
 				{#if n.labels.length}<div>
 						{#each n.labels as l (l)}<span class="tag">#{labelName(l)}</span>{/each}
 					</div>{/if}
-				<div class="acts">
-					{#if data.scope === 'trash'}
-						<button
-							class="mini wide"
-							type="button"
-							onclick={() => quick(n, { trashed: false }, 'Restored', { trashed: true })}>Restore</button
-						>
-						<button class="mini wide" type="button" onclick={() => forever(n)}>Delete forever</button>
-					{:else}
-						{#if data.scope === 'active'}
+				{#if data.scope !== 'shared'}<div class="acts" class:trash={data.scope === 'trash'}>
+						{#if data.scope === 'trash'}
 							<button
-								class="mini"
+								class="mini wide"
 								type="button"
-								aria-label="Move {n.title || 'note'} up"
-								onclick={() => move(n, -1)}>↑</button
+								onclick={() => quick(n, { trashed: false }, 'Restored', { trashed: true })}>Restore</button
 							>
+							<button class="mini wide" type="button" onclick={() => forever(n)}>Delete forever</button>
+						{:else}
+							{#if data.scope === 'active'}
+								<button
+									class="mini"
+									type="button"
+									aria-label="Move {n.title || 'note'} up"
+									onclick={() => move(n, -1)}>↑</button
+								>
+								<button
+									class="mini"
+									type="button"
+									aria-label="Move {n.title || 'note'} down"
+									onclick={() => move(n, 1)}>↓</button
+								>
+								<button
+									class="mini wide"
+									type="button"
+									aria-pressed={n.pinned}
+									onclick={() =>
+										quick(n, { pinned: !n.pinned }, n.pinned ? 'Unpinned' : 'Pinned', { pinned: n.pinned })}
+									>{n.pinned ? 'Unpin' : 'Pin'}</button
+								>
+							{/if}
 							<button
-								class="mini"
+								class="mini wide"
 								type="button"
-								aria-label="Move {n.title || 'note'} down"
-								onclick={() => move(n, 1)}>↓</button
+								onclick={() =>
+									quick(n, { archived: !n.archived }, n.archived ? 'Unarchived' : 'Note archived', {
+										archived: n.archived,
+									})}>{n.archived ? 'Unarchive' : 'Archive'}</button
 							>
 							<button
 								class="mini wide"
 								type="button"
-								aria-pressed={n.pinned}
-								onclick={() =>
-									quick(n, { pinned: !n.pinned }, n.pinned ? 'Unpinned' : 'Pinned', { pinned: n.pinned })}
-								>{n.pinned ? 'Unpin' : 'Pin'}</button
+								onclick={() => quick(n, { trashed: true }, 'Moved to Trash', { trashed: false })}
+								>Delete</button
 							>
 						{/if}
-						<button
-							class="mini wide"
-							type="button"
-							onclick={() =>
-								quick(n, { archived: !n.archived }, n.archived ? 'Unarchived' : 'Note archived', {
-									archived: n.archived,
-								})}>{n.archived ? 'Unarchive' : 'Archive'}</button
-						>
-						<button
-							class="mini wide"
-							type="button"
-							onclick={() => quick(n, { trashed: true }, 'Moved to Trash', { trashed: false })}>Delete</button
-						>
-					{/if}
-				</div>
+					</div>{/if}
 			</article>
 		{/snippet}
 
@@ -370,6 +384,7 @@
 			labels={data.labels}
 			binders={data.binders}
 			colors={data.colors}
+			shared={open !== 'new' ? data.shared[open.id]?.permission : undefined}
 			onclose={() => {
 				open = null;
 				if (page.url.searchParams.has('note')) go({});
@@ -380,17 +395,23 @@
 {/if}
 
 <style>
+	/* desktop: tree left, title + list right · phone (wireframe MKeep): title, search, chip row, notes */
 	.keep {
-		display: flex;
-		gap: 24px;
+		display: grid;
+		grid-template-columns: 220px minmax(0, 1fr);
+		grid-template-areas: 'side top' 'side main';
+		grid-template-rows: auto 1fr;
+		gap: 12px 24px;
 		padding: 8px 24px 40px;
 		max-width: 1440px;
 		margin: 0 auto;
-		align-items: flex-start;
+		align-items: start;
+	}
+	.top {
+		grid-area: top;
 	}
 	.side {
-		width: 220px;
-		flex: none;
+		grid-area: side;
 		padding: 12px;
 		display: flex;
 		flex-direction: column;
@@ -440,7 +461,7 @@
 		color: var(--muted);
 	}
 	.main {
-		flex: 1;
+		grid-area: main;
 		min-width: 0;
 	}
 	.top {
@@ -584,22 +605,77 @@
 	}
 	@media (max-width: 699px) {
 		.keep {
-			flex-direction: column;
-			padding: 8px 12px 96px;
+			grid-template-columns: minmax(0, 1fr);
+			grid-template-areas: 'top' 'side' 'main';
+			grid-template-rows: auto;
+			gap: 10px;
+			padding: 4px 16px 24px;
 		}
+		.top h1 {
+			flex: 1;
+			font-size: 28px;
+		}
+		.top .search {
+			order: 3;
+			flex: 1 1 100%;
+			min-height: 44px;
+		}
+		/* one swipe row of chips: Notes · binders · labels · Shared · Archive · Trash */
 		.side {
 			position: static;
-			width: 100%;
+			width: auto;
 			flex-direction: row;
-			flex-wrap: wrap;
+			flex-wrap: nowrap;
+			align-items: center;
+			gap: 6px;
 			overflow-x: auto;
+			margin: 0 -16px;
+			padding: 2px 16px 4px;
+			background: none;
+			border: 0;
+			box-shadow: none;
+			border-radius: 0;
 		}
 		.grp {
 			flex-direction: row;
-			flex-wrap: wrap;
+			flex-wrap: nowrap;
+			gap: 6px;
 			margin: 0;
 		}
-		.grp .label {
+		.grp .label,
+		.grp .hint {
+			display: none;
+		}
+		.side a,
+		.lab,
+		.mini.wide {
+			flex: none;
+			white-space: nowrap;
+			min-height: 36px;
+			padding: 0 14px;
+			border: 1.5px solid var(--border);
+			border-radius: 999px;
+			background: var(--card);
+			font-size: 13px;
+			font-weight: 600;
+			overflow-wrap: normal;
+		}
+		.side a.on,
+		.lab[aria-pressed='true'] {
+			background: var(--pill-card);
+		}
+		.row {
+			flex: none;
+		}
+		.grid {
+			columns: 2;
+			column-gap: 10px;
+		}
+		.note {
+			margin-bottom: 10px;
+		}
+		/* phone: Pin / Archive / Delete live inside the note; the card keeps ↑ ↓ only */
+		.acts:not(.trash) .wide {
 			display: none;
 		}
 	}

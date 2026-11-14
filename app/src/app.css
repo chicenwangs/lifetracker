@@ -292,6 +292,13 @@ h3 {
 	display: none;
 }
 
+/* phone: room under every page for the fixed bottom bar (MobileBar), so the last card can scroll into view */
+@media (max-width: 699px) {
+	body {
+		padding-bottom: calc(84px + env(safe-area-inset-bottom));
+	}
+}
+
 /* ---- shared controls ---- */
 .card {
 	background: var(--card);
