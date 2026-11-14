@@ -29,6 +29,7 @@
 	onclick={(e) => {
 		e.preventDefault();
 		e.stopPropagation();
+		navigator.vibrate?.(8); // tiny tap on phones that allow it (app + Android Chrome); ignored elsewhere
 		oncycle();
 	}}
 	onpointerdown={(e) => e.stopPropagation()}
@@ -73,8 +74,12 @@
 		height: max(24px, 100%);
 		translate: -50% -50%;
 	}
+	/* fill = the ink; only the tick takes the "on" colour. Setting color on the button itself made
+	   currentColor (the default ink) turn into the on-colour too: fill, border and tick all vanished. */
 	.sq.done {
 		background: var(--ink);
+	}
+	.sq.done svg {
 		color: var(--sq-on, var(--on-ink));
 	}
 	.sq:disabled {
@@ -88,6 +93,22 @@
 		transform: scale(1.12);
 	}
 	.sq.done {
-		animation: lt-done 260ms var(--ease);
+		animation: lt-done 300ms var(--ease);
+	}
+	/* follow-through: the tick draws itself just after the box fills */
+	.sq.done path {
+		stroke-dasharray: 10;
+		animation: tick 220ms 90ms var(--ease) both;
+	}
+	@keyframes tick {
+		from {
+			stroke-dashoffset: 10;
+		}
+	}
+	@media (pointer: coarse) {
+		.sq::after {
+			width: max(40px, 100%);
+			height: max(40px, 100%);
+		}
 	}
 </style>

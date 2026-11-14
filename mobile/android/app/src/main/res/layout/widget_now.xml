@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Now and Next: what is on, how long is left, what comes after -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <ImageView android:id="@+id/bg" android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no" android:scaleType="fitXY" android:src="@drawable/wcard_light" />
+    <LinearLayout android:id="@+id/content" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/wripple" android:gravity="center_vertical" android:orientation="horizontal" android:paddingStart="22dp" android:paddingTop="10dp" android:paddingEnd="16dp" android:paddingBottom="16dp">
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_weight="3" android:orientation="vertical">
+            <TextView android:id="@+id/nowLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:letterSpacing="0.08" android:text="NOW" android:textSize="11sp" android:textStyle="bold" />
+            <TextView android:id="@+id/nowTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:text="Life Tracker" android:textSize="17sp" android:textStyle="bold" />
+            <TextView android:id="@+id/nowTime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:maxLines="1" android:textSize="12sp" />
+            <ProgressBar android:id="@+id/prog" style="@android:style/Widget.ProgressBar.Horizontal" android:layout_width="match_parent" android:layout_height="6dp" android:layout_marginTop="6dp" android:max="100" android:progressDrawable="@drawable/wprogress" />
+        </LinearLayout>
+        <LinearLayout android:id="@+id/nextBox" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_gravity="top" android:layout_marginStart="14dp" android:layout_weight="2" android:orientation="vertical">
+            <TextView android:id="@+id/nextLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:letterSpacing="0.08" android:text="NEXT" android:textSize="11sp" android:textStyle="bold" />
+            <TextView android:id="@+id/nextTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:ellipsize="end" android:maxLines="1" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/nextTime" android:layout_width="wrap_content" android:layout_height="wrap_content" android:maxLines="1" android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

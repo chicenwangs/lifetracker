@@ -74,4 +74,11 @@ jobs:
           java-version: 21
       - run: npm ci
       - run: npx cap sync android
-      - run: chmod +x android/gradlew && cd android && ./gradlew --no-daemon assembleRelease
+      - run: chmod +x android/gradlew && cd android && ./gradlew --no-daemon assembleRelease testDebugUnitTest
+      # every widget drawn light + dark (WidgetShotsTest): download the artifact to look at them
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: widget-shots
+          path: mobile/android/app/build/widget-shots/
+          if-no-files-found: ignore
