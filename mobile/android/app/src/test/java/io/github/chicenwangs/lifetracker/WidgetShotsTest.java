@@ -6,7 +6,11 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.ListAdapter;
+import android.widget.ListView;
 import android.widget.RemoteViews;
 
 import androidx.test.core.app.ApplicationProvider;
@@ -33,6 +37,7 @@ import java.util.Locale;
 @Config(sdk = 35, qualifiers = "w411dp-h891dp-xxhdpi")
 public class WidgetShotsTest {
     private final Context c = ApplicationProvider.getApplicationContext();
+    private final StringBuilder rows = new StringBuilder();
 
     private static JSONObject sample(String theme) throws Exception {
         Calendar n = Calendar.getInstance();
@@ -82,6 +87,24 @@ public class WidgetShotsTest {
         host.addView(v, new FrameLayout.LayoutParams(w, h));
         host.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
         host.layout(0, 0, w, h);
+        // Robolectric doesn't fill a ListView from its adapter on draw: draw the rows ourselves, under the header
+        ListView list = v.findViewById(R.id.list);
+        if (list != null) {
+            ListAdapter a = list.getAdapter();
+            rows.append(name).append('=').append(a == null ? "no adapter" : String.valueOf(a.getCount())).append(' ');
+            if (a != null && a.getCount() > 0) {
+                LinearLayout col = new LinearLayout(c);
+                col.setOrientation(LinearLayout.VERTICAL);
+                for (int i = 0; i < a.getCount(); i++) col.addView(a.getView(i, null, col));
+                ViewGroup parent = (ViewGroup) list.getParent();
+                parent.addView(col, parent.indexOfChild(list) + 1, new FrameLayout.LayoutParams(list.getWidth(), list.getHeight()));
+                list.setVisibility(View.INVISIBLE);
+                View empty = v.findViewById(R.id.empty);
+                if (empty != null) empty.setVisibility(View.GONE);
+                host.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
+                host.layout(0, 0, w, h);
+            }
+        }
         Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         b.eraseColor(0xFF6A6A80); // a plain wallpaper, so card edges and shadows show
         host.draw(new Canvas(b));
@@ -105,6 +128,10 @@ public class WidgetShotsTest {
             shot("countdown-" + mode, Widgets.countdown(c, 4, j, t), 280, 220);
             shot("week-" + mode, Widgets.week(c, 5, j, t), 360, 340);
         }
+        // every list widget must actually hold its rows (a widget that draws empty is the bug we fear most)
+        String r = rows.toString();
+        for (String k : new String[] {"timeline-light=4", "keep-light=3", "todo-light=2", "countdown-light=2", "week-light=7"})
+            assertTrue("list rows: " + r, r.contains(k + " "));
         // never synced: every widget says so instead of crashing
         JSONObject empty = new JSONObject();
         Theme t = Theme.of(c, empty);
