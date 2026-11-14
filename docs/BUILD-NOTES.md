@@ -3,6 +3,17 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## Widgets v2 + phone UX + motion (2026-11-14, owner tried the app)
+
+- Today: tick was invisible — `StatusSquare` set `color` on itself, so its default ink (`currentColor`) became the on-colour: fill, border and tick all the box colour. Now fill = ink, tick = `--sq-on` (Today passes the box colour). "Back to now" gone. Now row = full-width band (`--now-band`: #ececf0 light, #2c2b5e dark). ‹ › 44 px with the yellow shadow.
+- No blue tap flash (`-webkit-tap-highlight-color`). Keep phone editor: text fills, tools at the bottom.
+- Keep: open note = shallow history entry (`pushState`), closed on `popstate`. Back / Android edge swipe closes the note and stays on Keep (was: Today). `page.state` alone failed: saving runs `invalidateAll`, which dropped it and closed the note. `?note=` / `?new` open via `afterNavigate` + `setTimeout` (kit throws "router not initialized" on first load otherwise).
+- Motion: 20-principle audit `docs/v2/UX-MOTION-AUDIT.md`. Done square squash + overshoot, tick draws itself, `navigator.vibrate(8)` (app + Android Chrome, `VIBRATE` permission), 40 px squares on touch, press feedback on + and note cards.
+- Widgets: 7 now (Today timeline, Keep, Now and next, Quick add, To do today, Countdowns, Week ahead). App look (card + yellow hard shadow, type colours, tick squares, now band, note colours), Light / Dark / Auto from the account (`Theme.java`, same rule as `lib/theme.ts`). Lists scroll (`androidx.core:core-remoteviews` → `RemoteCollectionItems`), + bottom-right. Ticks in Today + To do change on screen at once, then PATCH with `Origin` (`WidgetAction` = invisible activity: broadcasts can't open the app on Android 12+).
+- `/api/native` adds `theme`, row `id/kind/status/bg/ink/endTime`, `todos`, `days` (7), `countdowns` (60 days, "counts down" types).
+- `WidgetShotsTest` (Robolectric, native graphics) draws every widget light + dark → CI artifact `widget-shots`. Found: a tinted outline-only shape fills solid black (needs a clear `<solid>`), `--` inside XML comments, `'` in strings. Robolectric doesn't fill widget lists (no launcher) → the test draws the rows the widget built.
+- Not checked: a real launcher (row taps, scrolling, resize). Same code path as the shots, but only a phone proves it.
+
 ## Android app (2026-11-14, owner: "port it all to mobile", widgets for Keep + timeline, in-app updates)
 
 - `mobile/` = Capacitor 8.6 Android shell: loads the server URL (pages always fresh), native extras only. `mobile/README.md` has the how.

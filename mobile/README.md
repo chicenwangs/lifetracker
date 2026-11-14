@@ -3,7 +3,7 @@
 Caveman doc. Capacitor 8 shell. The app = the server's own pages (`server.url` in `capacitor.config.json`) in a WebView, plus native bits the web can't do.
 
 ## What it adds
-- **Widgets:** Today timeline (from now on, 6 rows, colour bar per type, `+` = quick add) and Keep (8 newest/pinned notes, tap = open note, `+` = new note). Resizable.
+- **Widgets (7):** Today timeline (scrolls to now, tick in place, + quick add) · Keep (scrolling note cards, + new note bottom-right) · Now and next (time left bar) · Quick add (+ Plan / + Note) · To do today (tickable) · Countdowns (days left) · Week ahead (7 days). App look, Light / Dark / Auto from the account. `docs/v2/UX-MOTION-AUDIT.md` has what each is for.
 - **Reminder alarms:** web push needs Chrome; the app sets an exact alarm per reminder instead. No Firebase.
 - **In-app update:** on open (max every 6 h) and in Settings › Help › Check for updates. Downloads `life-tracker-X.Y.Z.apk` from the newest GitHub Release and opens Android's installer. First time Android asks to allow installs from Life Tracker.
 - Back button = page back. Attachment downloads go to Downloads. Offline at start = `www/offline.html`.
@@ -15,8 +15,9 @@ Caveman doc. Capacitor 8 shell. The app = the server's own pages (`server.url` i
 - Version = `app/package.json` (2.0.3 → versionCode 20003). Updater compares the release tag with it.
 
 ## Files
-- `android/app/src/main/java/.../` — `MainActivity` (back, downloads, deep links, permission), `Native` (GET + cache), `SyncWorker`, `Reminders` (+ `Boot`), `Widgets` (`Timeline`, `Keep`), `Updater` + `UpdaterPlugin` (`window.Capacitor.Plugins.Updater`).
-- `android/app/src/main/res/layout/widget_*.xml`, `xml/widget_*_info.xml`.
+- `android/app/src/main/java/.../` — `MainActivity` (back, downloads, deep links, permission), `Native` (GET/PATCH + cache), `SyncWorker`, `Reminders` (+ `Boot`), `Widgets` (7 providers + renderers), `WidgetAction` (list taps: open / tick), `Theme`, `Updater` + `UpdaterPlugin` (`window.Capacitor.Plugins.Updater`).
+- `res/layout/widget_list.xml` (shared frame) + `item_*.xml` (rows), `widget_now.xml`, `widget_quick.xml`, `xml/widget_*_info.xml`, `drawable/w*.xml`.
+- `src/test/.../WidgetShotsTest.java`: draws every widget light + dark → CI artifact `widget-shots` (look at it after widget changes).
 - Server URL is in two places: `capacitor.config.json` and `res/values/strings.xml` (`server_url`). Change both.
 
 ## Build + release
