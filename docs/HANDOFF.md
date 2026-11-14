@@ -4,6 +4,7 @@ Caveman doc. State as of 2026-11-08. Repo `github.com/chicenwangs/lifetracker` (
 
 ## State
 
+- **2026-11-14: v2.0.4 released** (widgets v2, phone fixes, no migration).
 - **2026-11-14: v2.0.3 released** (Android app, no migration).
 - **2026-11-14: v2.0.2 released** (phone + push fixes, no migration).
 - **2026-11-14: v2.0.1 released** (v2.0.0 + UI fixes, no migration). Full context for a new chat: `v2/CHAT-HANDOFF.md`.

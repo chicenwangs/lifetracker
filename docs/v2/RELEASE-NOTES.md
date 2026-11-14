@@ -1,5 +1,12 @@
 # Life Tracker v2 — release notes
 
+## v2.0.4 (2026-11-14) — widgets v2 + phone fixes, no migration
+From v2.0.x: pull the new image. The Android app offers the update by itself.
+- **7 widgets**, all following Light / Dark / Auto and looking like the app: Today timeline (scrolls to now, tick things off), Keep (scroll your notes, + bottom-right), Now and next, Quick add, To do today, Countdowns, Week ahead.
+- **Today:** ticks visible again · current row highlighted across · "Back to now" gone · easier ‹ › buttons.
+- **Keep on phone:** note fills the screen, tools at the bottom · back / edge swipe closes the note and stays in Keep.
+- No blue tap flash · snappier feedback (done pop, tick draws in, small vibration) · bigger touch targets.
+
 ## v2.0.3 (2026-11-14) — Android app, no migration
 From v2.0.x: just pull the new image. The app needs this server (it reads the new `/api/native`).
 - **Android app:** `life-tracker-2.0.3.apk` on this release. The site in an app, plus:

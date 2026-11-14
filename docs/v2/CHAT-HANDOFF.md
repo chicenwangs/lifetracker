@@ -1,4 +1,4 @@
-# Life Tracker — chat handoff (2026-11-14, v2.0.3)
+# Life Tracker — chat handoff (2026-11-14, v2.0.4)
 
 Paste this into a new chat. It is the full context. Caveman style.
 
@@ -10,7 +10,8 @@ Paste this into a new chat. It is the full context. Caveman style.
 - Live today = **v1.1.0** at `https://planner.jeremyjosh.org` (homelab, Docker Compose, Cloudflare Tunnel). **Claude never deploys.** Owner does.
 
 ## 2. Where things stand
-- **v2.0.3 released** 2026-11-14. Tag `v2.0.3` → GitHub Actions → image `ghcr.io/chicenwangs/lifetracker:2.0.3` (+ `:2.0`, `:sha-…`) + GitHub Release with `deploy-v2.0.3.tar.gz`, `SERVICE-HANDOFF.md` and (with the signing secrets) `life-tracker-2.0.3.apk`.
+- **v2.0.4 released** 2026-11-14. Tag `v2.0.4` → GitHub Actions → image `ghcr.io/chicenwangs/lifetracker:2.0.4` (+ `:2.0`, `:sha-…`) + GitHub Release with `deploy-v2.0.4.tar.gz`, `SERVICE-HANDOFF.md` and `life-tracker-2.0.4.apk`.
+  - v2.0.4 = v2.0.3 + PR #19 (7 themed widgets, Today/Keep phone fixes, motion pass `docs/v2/UX-MOTION-AUDIT.md`). **No migration.**
   - v2.0.3 = v2.0.2 + PR #18 Android app (`mobile/`: widgets, reminder alarms, in-app update) + `GET /api/native`. **No migration.**
   - v2.0.2 = v2.0.1 + PR #16 (phone pass, Android push fixes) + PR #17 (phone account menu on top). **No migration.**
   - v2.0.1 = v2.0.0 + PR #15: Pages UI to wireframes, graph fix (giant nodes, dark mode), no visible scrollbars, header pin reorder/unpin in Settings › Preferences, phone All pages (search + recent). **No migration.**
@@ -26,30 +27,30 @@ Full ops contract: `docs/SERVICE-HANDOFF.md` (also attached to every release). T
 ### 3a. First time on a new box (no app there yet)
 ```bash
 sudo mkdir -p /opt/life-tracker && sudo chown $USER /opt/life-tracker && cd /opt/life-tracker
-gh release download v2.0.3 -R chicenwangs/lifetracker -p 'deploy-*.tar.gz'   # or download from the Releases page
-tar -xzf deploy-v2.0.3.tar.gz
-cp .env.example .env && chmod 600 .env && nano .env        # APP_VERSION=2.0.3, ORIGIN, APP_SECRET, SETUP_TOKEN, ADDRESS_HEADER
+gh release download v2.0.4 -R chicenwangs/lifetracker -p 'deploy-*.tar.gz'   # or download from the Releases page
+tar -xzf deploy-v2.0.4.tar.gz
+cp .env.example .env && chmod 600 .env && nano .env        # APP_VERSION=2.0.4, ORIGIN, APP_SECRET, SETUP_TOKEN, ADDRESS_HEADER
 cp tunnel.env.example tunnel.env && chmod 600 tunnel.env   # TUNNEL_TOKEN
 mkdir -p data && sudo chown -R 1000:1000 data && sudo chmod 700 data
 echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin   # PAT with read:packages
 docker compose --profile tunnel up -d
 docker compose ps                                           # app healthy, cloudflared up
-curl -s https://planner.jeremyjosh.org/healthz              # "version":"2.0.3"
+curl -s https://planner.jeremyjosh.org/healthz              # "version":"2.0.4"
 ```
 Then `/setup` with `SETUP_TOKEN` → admin → remove `SETUP_TOKEN` from `.env` → `docker compose up -d`.
 Make secrets: `openssl rand -base64 48` (APP_SECRET). Push keys (optional): `docker compose run --rm app npx web-push generate-vapid-keys` → `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT=mailto:…`.
 
-### 3b. Live box today: v1.1.0 → v2.0.3 (one time, has a migration)
+### 3b. Live box today: v1.1.0 → v2.0.4 (one time, has a migration)
 ```bash
 cd /opt/life-tracker
 sudo ./backup.sh                                   # rollback point: data/backups/app-<ts>.db.gz
 cp data/backups/app-<ts>.db.gz /somewhere/off/the/box/
-gh release download v2.0.3 -R chicenwangs/lifetracker -p 'deploy-*.tar.gz'
-tar -xzf deploy-v2.0.3.tar.gz                      # new compose/backup/restore; keeps your .env and tunnel.env
-nano .env                                          # APP_VERSION=2.0.3 (+ optional VAPID_*, UPLOAD_DIR, MAX_UPLOAD_BYTES)
+gh release download v2.0.4 -R chicenwangs/lifetracker -p 'deploy-*.tar.gz'
+tar -xzf deploy-v2.0.4.tar.gz                      # new compose/backup/restore; keeps your .env and tunnel.env
+nano .env                                          # APP_VERSION=2.0.4 (+ optional VAPID_*, UPLOAD_DIR, MAX_UPLOAD_BYTES)
 docker compose pull app && docker compose up -d app
-docker compose logs -f app                         # wait for: [boot] v2.0.3 db ready … jobs=true push=on|off
-curl -s https://planner.jeremyjosh.org/healthz     # "version":"2.0.3","jobs":true
+docker compose logs -f app                         # wait for: [boot] v2.0.4 db ready … jobs=true push=on|off
+curl -s https://planner.jeremyjosh.org/healthz     # "version":"2.0.4","jobs":true
 ```
 Then run the checklist in SERVICE-HANDOFF §8 (v2 lines included).
 With VAPID keys: allow outbound HTTPS 443 to the push services (SERVICE-HANDOFF §1).
@@ -61,7 +62,7 @@ sudo ./restore.sh data/backups/app-<ts>.db.gz      # the backup taken before the
 docker compose up -d app
 ```
 
-### 3c. Normal update (any later release, e.g. 2.0.2 → 2.0.3)
+### 3c. Normal update (any later release, e.g. 2.0.3 → 2.0.4)
 ```bash
 cd /opt/life-tracker
 sudo ./backup.sh
