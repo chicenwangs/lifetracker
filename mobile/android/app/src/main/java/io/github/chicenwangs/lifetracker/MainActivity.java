@@ -85,7 +85,7 @@ public class MainActivity extends BridgeActivity {
     /** widget / notification taps carry a server path to open */
     private void openPath(Intent i) {
         String p = i == null ? null : i.getStringExtra("path");
-        if (p == null || !p.startsWith("/")) return;
+        if (p == null || !p.startsWith("/") || p.startsWith("//")) return;
         i.removeExtra("path");
         WebView w = getBridge().getWebView();
         w.post(() -> w.loadUrl(Native.base(this) + p));

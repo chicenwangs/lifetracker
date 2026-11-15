@@ -38,7 +38,10 @@ final class Updater {
         JSONArray assets = r.optJSONArray("assets");
         for (int i = 0; assets != null && i < assets.length(); i++) {
             JSONObject x = assets.optJSONObject(i);
-            if (x != null && x.optString("name").endsWith(".apk")) return new String[] {v, x.optString("browser_download_url")};
+            String url = x == null ? "" : x.optString("browser_download_url");
+            // only GitHub's own download host (it redirects to its file CDN)
+            if (x != null && x.optString("name").endsWith(".apk") && url.startsWith("https://github.com/chicenwangs/lifetracker/releases/download/"))
+                return new String[] {v, url};
         }
         return null;
     }

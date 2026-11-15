@@ -16,7 +16,7 @@ beforeEach(() => {
 	other = mk('neina');
 });
 const prop = (dbId: string, name: string, type: Parameters<typeof dbs.addProp>[2]['type'], options?: string[]) =>
-	dbs.addProp(me, dbId, dbs.propCreateSchema.parse({ name, type, config: options ? { options: options.map((l, i) => ({ id: `o${i}`, label: l, color: '#ccc' })) } : {} })); // prettier-ignore
+	dbs.addProp(me, dbId, dbs.propCreateSchema.parse({ name, type, config: options ? { options: options.map((l, i) => ({ id: `o${i}`, label: l, color: 'work' })) } : {} })); // prettier-ignore
 const titles = (d: ReturnType<typeof dbs.get>) => {
 	const t = d.props.find((p) => p.type === 'title')?.id ?? '';
 	return d.rows.map((r) => r.values[t]);

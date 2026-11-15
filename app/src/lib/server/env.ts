@@ -43,6 +43,12 @@ const schema = z.object({
 		.min(1024)
 		.max(1024 * 1024 * 1024)
 		.default(25 * 1024 * 1024),
+	/** per-user total of live uploads. One member must not fill the volume for everyone. */
+	UPLOAD_QUOTA_BYTES: z.coerce
+		.number()
+		.int()
+		.min(1024)
+		.default(2 * 1024 * 1024 * 1024),
 	/** Web Push (D-23 yes). No keys = push off; the app still runs and reminders show in-app. `npx web-push generate-vapid-keys` */
 	VAPID_PUBLIC_KEY: z
 		.string()

@@ -10,6 +10,7 @@ import type { ReminderDTO } from '$lib/types';
 
 export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record';
 const db = () => handle().sqlite;
+export const MAX_OPEN = 500;
 type Row = { id: string; owner_id: string; source_type: Source; source_id: string; rule_kind: 'relative' | 'absolute'; rel_value: number | null; rel_unit: Unit | null; at_time: string | null; due_at: string | null; status: string; attempts: number; sent_at: string | null }; // prettier-ignore
 
 export interface SourceInfo {
@@ -111,6 +112,9 @@ export function add(
 	if (Date.parse(due) <= now) bad('That reminder time has already passed.', 'past');
 	const dup = db().prepare(`SELECT 1 FROM reminders WHERE source_type = ? AND source_id = ? AND due_at = ? AND status IN ('scheduled','processing')`).get(type, sourceId, due); // prettier-ignore
 	if (dup) bad('There is already a reminder at that time.', 'duplicate');
+	// one global queue drains 50 per tick: an owner with thousands due at once would delay everyone else's
+	const open = db().prepare(`SELECT count(*) AS n FROM reminders WHERE owner_id = ? AND status IN ('scheduled','processing')`).get(ownerId) as { n: number }; // prettier-ignore
+	if (open.n >= MAX_OPEN) bad(`You have ${MAX_OPEN} reminders waiting. Remove some first.`, 'too_many');
 	const id = newId('rem');
 	const t = nowUtcIso(now);
 	db()

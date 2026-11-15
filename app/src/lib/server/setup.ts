@@ -58,6 +58,7 @@ export async function runSetup(input: unknown, ip: string): Promise<SetupResult>
 			role: 'admin',
 		});
 		meta.set('setup_done', '1');
+		meta.set('signup_open', '0'); // new installs start invite-only; admin can open it in Settings › Users
 		return u;
 	});
 	if (!created) return { ok: false, status: 404, message: 'Not found' };

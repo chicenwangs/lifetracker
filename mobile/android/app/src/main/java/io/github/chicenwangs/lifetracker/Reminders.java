@@ -86,6 +86,9 @@ public class Reminders extends BroadcastReceiver {
                 .setContentText("Reminder")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                // a locked phone that hides private content shows just "Reminder", not the title
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .setPublicVersion(new NotificationCompat.Builder(c, CHANNEL).setSmallIcon(R.drawable.ic_stat_reminder).setContentTitle("Reminder").build())
                 .setAutoCancel(true)
                 .setContentIntent(Native.open(c, i.getStringExtra("route"), id.hashCode()));
         NotificationManagerCompat.from(c).notify(id.hashCode(), n.build());

@@ -67,6 +67,8 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: write   # attach the APK to the release
+    env:
+      HAS_KEY: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
     defaults:
       run:
         working-directory: mobile
@@ -81,20 +83,31 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - name: Signed APK on the release
+      # secrets only where needed: npm install scripts never see the signing key or the write token
+      - name: No signing key
+        if: env.HAS_KEY != 'true'
+        run: echo "::warning::No ANDROID_KEYSTORE_B64 secret, so this release has no APK"
+      - name: Prepare (no secrets)
+        if: env.HAS_KEY == 'true'
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          [ "$(node -p "require('../app/package.json').version")" = "$v" ] || { echo "::error::tag $v != app/package.json version"; exit 1; }
+          npm ci --ignore-scripts
+          npx cap sync android
+          chmod +x android/gradlew
+      - name: Build signed APK
+        if: env.HAS_KEY == 'true'
         env:
           KEY_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           LT_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -z "$KEY_B64" ]; then echo "::warning::No ANDROID_KEYSTORE_B64 secret: this release has no APK"; exit 0; fi
-          v="${GITHUB_REF_NAME#v}"
-          [ "$(node -p "require('../app/package.json').version")" = "$v" ] || { echo "::error::tag $v != app/package.json version"; exit 1; }
           export LT_KEYSTORE="$RUNNER_TEMP/release.p12"
           echo "$KEY_B64" | base64 -d > "$LT_KEYSTORE"
-          npm ci
-          npx cap sync android
-          chmod +x android/gradlew
-          (cd android && ./gradlew --no-daemon assembleRelease)
-          cp android/app/build/outputs/apk/release/app-release.apk "life-tracker-$v.apk"
-          gh release upload "$GITHUB_REF_NAME" "life-tracker-$v.apk"
+          (cd android && ./gradlew --no-daemon assembleRelease) || { rm -f "$LT_KEYSTORE"; exit 1; }
+          rm -f "$LT_KEYSTORE"
+          cp android/app/build/outputs/apk/release/app-release.apk "life-tracker-${GITHUB_REF_NAME#v}.apk"
+      - name: Attach APK to the release
+        if: env.HAS_KEY == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" "life-tracker-${GITHUB_REF_NAME#v}.apk"

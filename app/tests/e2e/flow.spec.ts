@@ -421,6 +421,12 @@ test('open sign-up + swap share codes: partner calendar read-only, hidden types 
 	expect(jCode).toMatch(/^LT-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$/);
 	await expect(page.getByText(/Shows Event, Date, Planner blocks · until/)).toBeVisible();
 
+	// new installs start invite-only: Jeremy opens sign-up first
+	await page.goto('/settings/users');
+	await page.locator('input[name="open"][value="1"]').check();
+	await page.getByRole('button', { name: 'Save' }).click();
+	await expect(page.getByText('Saved.')).toBeVisible();
+
 	// Neina makes her own account (no invite code while sign-up is open)
 	const n = await (await browser.newContext()).newPage();
 	await n.goto('/signup');

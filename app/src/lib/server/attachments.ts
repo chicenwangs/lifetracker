@@ -83,6 +83,9 @@ export async function save(
 	const max = env().MAX_UPLOAD_BYTES;
 	if (declared !== null && declared > max) throw tooBig();
 	if (!body) throw new ApiFail(400, 'no_body', 'No file sent (missing Content-Type?).');
+	const used = (db().prepare(`SELECT coalesce(sum(byte_size), 0) AS n FROM attachments WHERE owner_id = ? AND status IN ('ready','uploading') AND deleted_at IS NULL`).get(ownerId) as { n: number }).n; // prettier-ignore
+	const quota = env().UPLOAD_QUOTA_BYTES;
+	if (used + (declared ?? 0) > quota) throw new ApiFail(413, 'quota', `Your files use ${Math.round(used / 1048576)} of ${Math.round(quota / 1048576)} MB. Delete some first.`); // prettier-ignore
 
 	const dir = env().uploadDir;
 	await fs.promises.mkdir(join(dir, '.tmp'), { recursive: true });

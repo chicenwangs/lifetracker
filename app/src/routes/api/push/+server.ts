@@ -3,7 +3,14 @@ import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 import { api, body, me } from '$lib/server/http';
 import { env } from '$lib/server/env';
-import { pushEnabled, subscribe, subscriptionCount, unsubscribe } from '$lib/server/jobs';
+import {
+	MAX_DEVICES,
+	pushEnabled,
+	pushHostOk,
+	subscribe,
+	subscriptionCount,
+	unsubscribe,
+} from '$lib/server/jobs';
 
 export const GET = api((e) =>
 	json({
@@ -18,8 +25,10 @@ const sub = z
 export const POST = api(async (e) => {
 	const u = me(e);
 	const s = await body(e, sub);
-	if (!/^https:\/\//.test(s.endpoint)) return json({ error: { code: 'bad_endpoint', message: 'Push endpoint must be https.' } }, { status: 400 }); // prettier-ignore
-	subscribe(u.id, s, e.request.headers.get('user-agent'));
+	if (!pushHostOk(s.endpoint)) return json({ error: { code: 'bad_endpoint', message: 'Push from this browser is not supported.' } }, { status: 400 }); // prettier-ignore
+	const r = subscribe(u.id, s, e.request.headers.get('user-agent'));
+	if (r === 'full') return json({ error: { code: 'too_many_devices', message: `Push is on for ${MAX_DEVICES} devices already. Turn one off first.` } }, { status: 400 }); // prettier-ignore
+	if (r === 'taken') return json({ error: { code: 'endpoint_taken', message: 'This device is set up for another account.' } }, { status: 409 }); // prettier-ignore
 	return json({ ok: true }, { status: 201 });
 });
 export const DELETE = api(async (e) => {

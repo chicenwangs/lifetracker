@@ -184,6 +184,10 @@ describe('safeNext', () => {
 		expect(auth.safeNext('//evil.com')).toBe('/');
 		expect(auth.safeNext('/\\evil.com')).toBe('/');
 		expect(auth.safeNext('https://evil.com')).toBe('/');
+		// dot segments normalise to "//evil.com" after parsing (security audit 2026-11-16)
+		for (const n of ['/.//evil.com', '/..//evil.com', '/%2e//evil.com', '/a/..//evil.com'])
+			expect(auth.safeNext(n), n).toBe('/');
+		expect(auth.safeNext('/a/../week')).toBe('/week');
 		expect(auth.safeNext('')).toBe('/');
 		expect(auth.safeNext(null)).toBe('/');
 	});
@@ -209,9 +213,16 @@ describe('password change', () => {
 });
 
 describe('invites + signup', () => {
-	it('open by default: no code needed, 5 accounts per IP per 15 min, usernames unique', async () => {
+	it('new installs start invite-only; a pre-existing install (no key) stays open', async () => {
 		await setupAdmin();
+		expect(signupOpen()).toBe(false);
+		const { handle } = await import('../../src/lib/server/db');
+		handle().sqlite.prepare(`DELETE FROM app_meta WHERE key = 'signup_open'`).run();
 		expect(signupOpen()).toBe(true);
+	});
+	it('open: no code needed, 5 accounts per IP per 15 min, usernames unique', async () => {
+		await setupAdmin();
+		setSignupOpen(true);
 		const r = await signup({ username: 'neina', displayName: 'Neina', password: PW }, IP);
 		expect(r.ok).toBe(true);
 		expect(await signup({ username: 'neina', displayName: 'N', password: PW }, IP)).toMatchObject({
@@ -269,8 +280,47 @@ describe('races + setup gate (review 2026-11-08)', () => {
 			status: 429,
 		});
 	});
+	it('parallel wrong logins from many IPs stop at the username cap', async () => {
+		await setupAdmin();
+		const n = auth.LOGIN_USER_MAX + 10;
+		const rs = await Promise.all(
+			Array.from(
+				{ length: n },
+				(_, i) =>
+				auth.login({ username: 'jeremy', password: 'nope-nope-1', remember: false }, { ip: `10.0.${i}.1`, userAgent: 'x' }, fakeCookies(), { slowMs: 0 }), // prettier-ignore
+			),
+		);
+		expect(rs.filter((r) => !r.ok && r.status === 400).length).toBeLessThan(auth.LOGIN_USER_MAX);
+	});
+	it('parallel wrong current passwords stop at 5', async () => {
+		const users = await import('../../src/lib/server/repo/users');
+		const admin = users.safe(users.byId(await setupAdmin())!);
+		const rs = await Promise.all(
+			Array.from({ length: 12 }, () => auth.changePassword(admin, 'wrong-wrong', 'new pass phrase 42', fakeCookies(), meta)), // prettier-ignore
+		);
+		expect(rs.filter((r) => !r.ok && r.message === 'Current password is wrong.')).toHaveLength(5);
+	});
+	it('invite-only: a bogus code never says whether the username exists', async () => {
+		await setupAdmin();
+		const r = await signup({ code: 'INV-0000-0000-0000', username: 'jeremy', displayName: 'X', password: PW }, IP); // prettier-ignore
+		expect(r).toMatchObject({ ok: false, message: 'Invite code not valid.' });
+	});
+	it('a disabled user is signed out and cannot log in', async () => {
+		const users = await import('../../src/lib/server/repo/users');
+		await setupAdmin();
+		setSignupOpen(true);
+		const s = await signup({ username: 'neina', displayName: 'N', password: PW }, IP);
+		if (!s.ok) throw new Error(s.message);
+		const c = fakeCookies();
+		expect((await auth.login({ username: 'neina', password: PW, remember: true }, meta, c)).ok).toBe(true);
+		users.disable(s.userId);
+		expect(users.disabledIds()).toEqual([s.userId]);
+		expect(auth.loadSession(c)).toBeNull();
+		expect((await auth.login({ username: 'neina', password: PW, remember: true }, meta, fakeCookies())).ok).toBe(false); // prettier-ignore
+	});
 	it('parallel sign-ups from one IP stop at 5', async () => {
 		await setupAdmin();
+		setSignupOpen(true);
 		const rs = await Promise.all(
 			Array.from({ length: 8 }, (_, i) =>
 				signup({ username: `par${i}`, displayName: 'P', password: PW }, '6.6.6.6'),

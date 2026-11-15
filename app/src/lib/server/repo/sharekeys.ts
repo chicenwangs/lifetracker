@@ -1,6 +1,6 @@
 // Share codes (FR-S2..S7, rev 2026-11-08: view-only). Code `LT-XXXX-XXXX-XXXX` shown ONCE, stored as HMAC.
 // Single use. Redeem -> grant on the code owner's calendar for the redeemer. Mutual = both make + both redeem.
-import { and, desc, eq, gt, isNull } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db, txImmediate } from '../db';
 import { grants, shareKeys } from '../schema';
@@ -26,6 +26,9 @@ export function create(meId: string, input: unknown): { id: string; code: string
 	const ok = new Set([...itemTypes.list(meId).map((t) => t.key), 'None', 'Blocks']);
 	if (p.types.some((t) => !ok.has(t))) bad('unknown type in the share list', 'bad_type');
 	if (listUnused(meId).length >= 20) bad('You have 20 open codes. Cancel some first.');
+	// make-and-cancel loops would grow the table without end
+	const day = db().select({ n: sql<number>`count(*)` }).from(shareKeys).where(and(eq(shareKeys.createdBy, meId), gt(shareKeys.createdAt, isoPlus(nowUtcIso(), -86_400_000)))).get(); // prettier-ignore
+	if ((day?.n ?? 0) >= 50) bad('You made 50 codes today. Try again tomorrow.');
 	const cal = calendarsRepo.defaultFor(meId);
 	const raw = randomBase32(12);
 	const now = nowUtcIso();
@@ -151,4 +154,12 @@ export function redeem(meId: string, input: string): RedeemResult {
 	});
 	if (!r.ok) rl.fail(key, 5);
 	return r;
+}
+
+/** codes past their expiry by 30 days are dead whatever happened to them (used, cancelled, unused) */
+export function purgeExpired(now: number = Date.now()): void {
+	db()
+		.delete(shareKeys)
+		.where(lt(shareKeys.expiresAt, isoPlus(nowUtcIso(now), -30 * 86_400_000)))
+		.run();
 }

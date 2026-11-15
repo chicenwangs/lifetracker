@@ -1,4 +1,4 @@
-<!-- Admin: sign-up mode + accounts. Open = anyone makes their own account (default). -->
+<!-- Admin: sign-up mode + accounts. New installs start invite-only. Disable = can't log in, signed out everywhere. -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { prettyDate, utcToLocal } from '$lib/time';
@@ -60,14 +60,38 @@
 	{/if}
 
 	<h2>Accounts</h2>
+	{#if form?.disabledName}<p class="ok-note" role="status">{form.disabledName} can't log in now.</p>{/if}
+	{#if form?.message}<span class="alert" role="alert">{form.message}</span>{/if}
 	<table class="plain">
-		<thead><tr><th>Name</th><th>Username</th><th>Role</th></tr></thead>
+		<thead
+			><tr><th>Name</th><th>Username</th><th>Role</th><th><span class="sr-only">Actions</span></th></tr
+			></thead
+		>
 		<tbody>
 			{#each data.users as u (u.id)}
 				<tr>
 					<td><span class="dot" style:background={u.color} aria-hidden="true"></span>{u.displayName}</td>
 					<td>@{u.username}</td>
-					<td>{u.role}</td>
+					<td>{data.disabled.includes(u.id) ? 'disabled' : u.role}</td>
+					<td>
+						{#if u.role !== 'admin' && !data.disabled.includes(u.id)}
+							<form
+								method="post"
+								action="?/disable"
+								use:enhance={({ cancel }) => {
+									if (
+										!confirm(
+											`Disable ${u.displayName}? They are signed out and can't log in. Their data stays.`,
+										)
+									)
+										cancel();
+								}}
+							>
+								<input type="hidden" name="id" value={u.id} />
+								<button class="btn sm danger" type="submit">Disable</button>
+							</form>
+						{/if}
+					</td>
 				</tr>
 			{/each}
 		</tbody>

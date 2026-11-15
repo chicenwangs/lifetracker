@@ -7,7 +7,7 @@ Owner: Jeremy (`chicenwangs`). Target: Ubuntu homelab, Docker Compose, public at
 ## 1. What it is
 
 - Web app: personal calendar + day planner. Users sign up, plan their days, and can share a read-only view of their calendar with each other by swapping codes.
-- One container (Node 22, SvelteKit server) + one SQLite file. No other database, no cache, no queue. **v2: one kind of outbound call** — Web Push to the browsers' push services over HTTPS 443 (`*.notify.windows.com`, `fcm.googleapis.com`, `*.push.apple.com`, `updates.push.services.mozilla.com`), only when VAPID keys are set (D-23). Link previews stay off.
+- One container (Node 22, SvelteKit server) + one SQLite file. No other database, no cache, no queue. **v2: one kind of outbound call** — Web Push to the browsers' push services over HTTPS 443 (`*.notify.windows.com`, `fcm.googleapis.com`, `*.push.apple.com`, `updates.push.services.mozilla.com`), only when VAPID keys are set (D-23). The app refuses any other push host (no requests to URLs a user picks). Link previews stay off.
 - Expected load: a handful of users. One replica only (SQLite = one writer). Do not scale horizontally.
 - Second container `cloudflared` publishes it. No inbound ports on the router.
 
@@ -55,11 +55,12 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | `DATABASE_PATH`, `SEED_DIR` | set by compose | `/app/data/app.db`, `/app/data/seed`. Do not change. |
 | `UPLOAD_DIR` | v2, optional | Empty = `/app/data/uploads`. Must be on the data volume (temp files are written inside it, so rename never crosses filesystems). |
 | `MAX_UPLOAD_BYTES` | v2, optional | Default `26214400` (25 MB, D-12). Allowed types: png jpg gif webp pdf zip docx xlsx pptx doc xls ppt txt md csv. |
+| `UPLOAD_QUOTA_BYTES` | optional | Default `2147483648` (2 GB). Total of one person's files. Over it = upload refused with a clear message. |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | v2, optional | Both or neither (boot fails on one). Make once: `docker compose run --rm app npx web-push generate-vapid-keys`. Keep the private one in the password manager. Unset = push off; reminders still show inside the app. Changing them breaks every device's push until it re-subscribes. |
 | `VAPID_SUBJECT` | with VAPID | `mailto:you@example.com` (push services contact this if something is wrong). |
 | `JOBS_ENABLED` | v2, default `true` | In-process reminder runner. One replica only (two would double-send). |
 | `REMINDER_POLL_INTERVAL_MS` | v2, default `30000` | How often due reminders are checked. |
-| `BODY_SIZE_LIMIT` | set by the image | `26M` so uploads reach the app. The app itself refuses any other request body over 1 MB. Don't lower it below `MAX_UPLOAD_BYTES`. |
+| `BODY_SIZE_LIMIT` | set by the image | `26M` so uploads reach the app. The app itself refuses any other request body over 1 MB, and any write with a chunked body (no Content-Length). Don't lower it below `MAX_UPLOAD_BYTES`. |
 
 ## 4. First deploy
 
@@ -89,7 +90,7 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 3. Data, pick one:
    - **Move the existing DB from Jeremy's PC (keeps everything he did in dev):** stop the dev server, on the PC `sqlite3 app.db "PRAGMA wal_checkpoint(TRUNCATE)"`, copy `app.db` to `/opt/life-tracker/data/app.db`, `sudo chown 1000:1000 data/app.db`, `docker compose restart app`. (Do this instead of step 1–2; the copied DB already has the admin.)
    - **Fresh import from Notion:** copy the seed folder (has `_report.json`) to `data/seed/`, `chown -R 1000:1000 data/seed`, then in the app Settings → Import → Run import.
-4. Settings → Users: sign-up is **Open** by default. Switch to **Invite only** once the intended users have accounts.
+4. Settings → Users: new installs start **Invite only**. Make invite codes there, or switch to **Open** while the intended users sign up. (Installs from before 2.0.5 keep the mode they had.)
 
 ## 5. Operations
 
@@ -113,13 +114,15 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 
 **Roll back:** set `APP_VERSION` back → `docker compose up -d app`. If the newer release ran a DB migration (release notes say "migration"), the old version may not read the new schema: restore the backup taken before the upgrade (`sudo ./restore.sh data/backups/app-<ts>.db.gz`). Migrations are forward-only.
 
-**Backup:** `backup.sh` = online SQLite backup + integrity check + gzip, **plus (v2) `uploads-<ts>.tar.gz` of `data/uploads` with the same timestamp**, keeps 14 days in `data/backups/`. Runs as root (`data/` is owned by uid 1000; the script refuses otherwise). Root cron (`sudo crontab -e`): `15 3 * * * /opt/life-tracker/backup.sh >> /var/log/life-tracker-backup.log 2>&1`. Set `LT_OFFSITE=/mnt/nas/life-tracker` (or another host via rsync) so one copy lives off the box.
+**Backup:** `backup.sh` = online SQLite backup + integrity check + gzip, **plus (v2) `uploads-<ts>.tar.gz` of `data/uploads` with the same timestamp**, keeps 14 days in `data/backups/`. Runs as root (`data/` is owned by uid 1000; the script refuses otherwise). Root cron (`sudo crontab -e`): `15 3 * * * /opt/life-tracker/backup.sh >> /var/log/life-tracker-backup.log 2>&1`. Set `LT_OFFSITE=/mnt/nas/life-tracker` (or another host via rsync) so one copy lives off the box. **Encrypt them:** `sudo apt install age`, `age-keygen -o key.txt` on another machine, set `LT_AGE_RECIPIENT=age1…` (the public key) for the cron job. Backups become `*.gz.age`, plain copies are removed. Restore: `sudo LT_AGE_IDENTITY=/path/key.txt ./restore.sh data/backups/app-<ts>.db.gz.age`. Keep `key.txt` off the server; lose it = backups unreadable. Both scripts refuse if anything under `data/` they touch is a symlink; restore extracts only plain files under `uploads/`.
 
 **Restore (drill it monthly):** `sudo ./restore.sh data/backups/app-<ts>.db.gz` → checks integrity, stops app, keeps the current DB as `app.db.pre-restore-<ts>`, swaps (and, v2, swaps `data/uploads` from `uploads-<ts>.tar.gz` if present, old folder kept as `uploads.pre-restore-<ts>`), starts app. Then log in and check recent items.
 
 **Locked-out user / forgot password:** `docker compose exec -it app node scripts/reset-password.mjs <username>` (asks for the new password twice, signs that user out everywhere). Login lockout itself clears after 15 minutes.
 
 **Sign-ups:** Settings → Users → Open / Invite only (admin). Invite-only mode makes 7-day single-use invite codes there.
+
+**Disable a user:** Settings → Users → Disable (members only). They are signed out everywhere and can't log in; their data stays. Undo = `scripts/reset-password.mjs` (sets a new password).
 
 **Logs:** `docker compose logs --since 1h app`. Interesting lines: `[boot]`, `[shutdown]`, `[error]`. Failed logins are rate-limited in-app (not logged per attempt).
 
@@ -132,7 +135,7 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 - Secrets live only in `.env` / `tunnel.env` (chmod 600) and the password manager. Never in git, images, or chat logs.
 - No published port in Stage C. With `ADDRESS_HEADER` set, a request whose header is missing or not a single IP gets 400. A client that reaches the port directly **can** still fake a valid IP in that header and dodge per-IP limits, so the port must stay closed and nothing else should share the compose network.
 - Container: non-root uid 1000, read-only rootfs, all capabilities dropped, `no-new-privileges`.
-- App: argon2id passwords, HttpOnly + Secure + SameSite=Lax `__Host-` session cookie, CSP (`self` only), Origin check on every non-GET, X-Frame-Options DENY, login lockout (5 tries per user+IP, 30 per IP, 50 per username, all per 15 min; IPv6 counted per /64), password change limited to 5 wrong tries, open sign-up capped at 5 per IP and 20 overall per 15 min, 50k items/blocks and 20 open share codes per account, share and invite codes stored as HMAC only, shared calendars filtered server-side (hidden items reach other users only as "Busy" with no title).
+- App: argon2id passwords, HttpOnly + Secure + SameSite=Lax `__Host-` session cookie, CSP (`self` only), Origin check on every non-GET, X-Frame-Options DENY, login lockout (5 tries per user+IP, 30 per IP, 50 per username, all per 15 min; IPv6 counted per /64), password change limited to 5 wrong tries, open sign-up capped at 5 per IP and 20 overall per 15 min, 50k items/blocks, 20 open share codes (50 made per day), 500 waiting reminders, 10 push devices, 2 GB of files per account, push only to browser push services with a 10 s send timeout, share-by-username capped at 10 unknown names per 15 min, HSTS + COOP/CORP same-origin headers, compose memory/CPU/process limits on both containers, share and invite codes stored as HMAC only, shared calendars filtered server-side (hidden items reach other users only as "Busy" with no title).
 - Files: the app makes `app.db` mode 600; `backup.sh`/`restore.sh` use umask 077. Run once after creating it: `sudo chmod 700 data`.
 - A stranger can lock one username for 15 min with 50 wrong tries. Fix for the owner: `reset-password` (§5, clears it) or wait.
 - Accepted for now (from the 2026-11-08 security review): two low SvelteKit advisories fixed only in Kit 3 (enhanced-form redirect to a foreign URL, prerender cache-control XSS; the app has neither foreign redirects nor prerendered pages). `/healthz` shows the version (ops needs it). One `APP_SECRET` keys all HMACs (codes are random 60-bit, no practical clash). GitHub Actions pinned by major tag, not SHA.
