@@ -22,7 +22,8 @@ if (typeof window !== 'undefined')
 		if ((self || top) && refreshing()) setTimeout(() => void invalidateAll());
 	});
 
-function leave() {
+/** call right before a goto() that closes a layer (beforeNavigate can fire too late for the layer's Back) */
+export function leave() {
 	leaving = true;
 	setTimeout(() => (leaving = false), 50);
 }
