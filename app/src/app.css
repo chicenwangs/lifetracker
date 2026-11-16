@@ -528,6 +528,20 @@ main .card:nth-child(n + 4) {
 		gap: 10px;
 	}
 }
+/* peerSwipe (#94 #95): the neighbour day / week / month name peeking in beside the dragged element */
+.lt-peek {
+	position: absolute;
+	top: 24px;
+	left: calc(100% + 24px);
+	white-space: nowrap;
+	font-weight: 700;
+	color: var(--quiet);
+	pointer-events: none;
+}
+.lt-peek.prev {
+	left: auto;
+	right: calc(100% + 24px);
+}
 /* phone: tabs switch with a fade-through instead; cards are just there (#90, G12) */
 @media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 	main .card,

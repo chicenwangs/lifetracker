@@ -25,7 +25,7 @@
 	let acct = $state(false); // phone: account sheet instead of the dropdown (#88)
 
 	// phone top bar (#89): tab screens = mark · search · avatar; deeper screens = Back + title (+ the same 2 actions)
-	const TAB_ROOTS = ['/', '/today', '/week', '/keep', '/pages'];
+	const TAB_ROOTS = ['/', '/today', '/week', '/month', '/keep', '/pages']; // month = the Calendar tab's other view (#95)
 	const path = $derived(page.url.pathname);
 	const scope = $derived(page.url.searchParams.get('scope'));
 	const deep = $derived(!(TAB_ROOTS.includes(path) && !scope));

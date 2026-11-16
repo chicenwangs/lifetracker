@@ -973,7 +973,8 @@ test('v2 P8: phone Week/Month/More, PWA manifest, offline badge + Keep queue, He
 	await expect(ph.locator('.grid .cell')).toHaveCount(42);
 	await noSideScroll();
 	await ph.locator('.cell.today').click();
-	await expect(ph).toHaveURL(/\/today\?d=/);
+	await expect(ph).toHaveURL(/\/month\?m=.*&d=/); // #95: a day's agenda shows below, you stay in Calendar
+	await expect(ph.getByRole('region', { name: /Agenda for/ })).toBeVisible();
 	for (const p of ['/settings/preferences', '/settings/help', '/pages', '/pages/shared']) {
 		await ph.goto(p);
 		await noSideScroll();

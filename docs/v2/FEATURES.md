@@ -176,7 +176,7 @@ Purpose: phone = **glance + capture**. Not for planning the week. Planning = PC.
 - **Keep tab:** opens the note list (search, binder chips, + Note). Fastest new note = + Add → Quick note tab, or + Note on the list.
 - **Undo on phone:** snackbar above the bar ("Note archived · Undo"), 5 s. Swipe left on a note = archive; same action also in the note's menu.
 - **Item tap:** bottom sheet (title, time, status, notes, open full). Edit allowed, kept simple.
-- **Account sheet** (avatar, #88; was the More tab): Settings, Shared with me, Keep archive, Trash, Help + tour, Sign out. Week + Month live in the Calendar tab, pins in Pages. Theme toggle: Settings only on phone. `/more` still loads (old links).
+- **Account sheet** (avatar, #88; was the More tab): Settings, Shared with me, Keep archive, Trash, Help + tour, Sign out. Week + Month live in the Calendar tab (Week | Month switch; a month day shows its agenda below the grid, #95), pins in Pages. Theme toggle: Settings only on phone. `/more` still loads (old links).
 - Moving/resizing blocks on phone: sheet with time pickers + "+15 / −15 min" buttons. No drag needed.
 - Touch: tap/menu alternative for move/resize/reorder; big targets; long-press never the only way; scrolling never triggers destructive drag.
 - PWA: manifest, icons, standalone; works un-installed too.

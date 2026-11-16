@@ -2,6 +2,7 @@
      now (owner 2026-11-14). Hold a row ~0.5 s = delete with Undo. No "To do today" list (owner 2026-11-16).
      Glance + capture; planning stays on the PC. Works on desktop too. -->
 <script lang="ts">
+	import { peerSwipe } from '$lib/client/peerSwipe';
 	import { buzz } from '$lib/client/haptics';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { invalidateAll } from '$lib/client/refresh';
@@ -140,34 +141,6 @@
 	const busy = $derived(new Set(data.week.busy));
 	let picker: HTMLInputElement | undefined = $state();
 	const pick = () => (picker?.showPicker ? picker.showPicker() : picker?.click());
-	// the day follows the finger; the neighbour's date peeks in; past a quarter of the width it steps
-	let dx = $state(0);
-	let axis = $state<'x' | 'y' | null>(null);
-	let sx = 0;
-	let sy = 0;
-	function tstart(e: TouchEvent) {
-		const t = e.touches[0];
-		if (!t || e.touches.length > 1) return;
-		sx = t.clientX;
-		sy = t.clientY;
-		axis = null;
-	}
-	function tmove(e: TouchEvent) {
-		const t = e.touches[0];
-		if (!t) return;
-		const x = t.clientX - sx;
-		const y = t.clientY - sy;
-		if (!axis && Math.hypot(x, y) > 10) axis = Math.abs(x) > 1.5 * Math.abs(y) ? 'x' : 'y';
-		if (axis === 'x') dx = x;
-	}
-	function tend() {
-		if (axis === 'x' && Math.abs(dx) > innerWidth / 4) {
-			const n = dx < 0 ? 1 : -1;
-			dx = -n * innerWidth; // finish the slide, then show the new day in place
-			setTimeout(() => void step(n).then(() => (dx = 0)), 160);
-		} else dx = 0;
-		axis = null;
-	}
 	// swipe the strip = the week before / after (tap path: the date picker on the title)
 	let wx = 0;
 	const wstart = (e: TouchEvent) => (wx = e.touches[0]?.clientX ?? 0);
@@ -224,19 +197,8 @@
 		class="swipe"
 		role="group"
 		aria-label="The day. Swipe sideways for the day before or after"
-		class:dragging={axis === 'x'}
-		style:translate={dx ? `${dx}px 0` : null}
-		ontouchstart={tstart}
-		ontouchmove={tmove}
-		ontouchend={tend}
-		ontouchcancel={tend}
+		use:peerSwipe={{ step, peek: (n) => prettyDate(addDays(data.day, n)) }}
 	>
-		{#if dx}
-			<div class="peek" class:prev={dx > 0} aria-hidden="true">
-				{prettyDate(addDays(data.day, dx > 0 ? -1 : 1))}
-			</div>
-		{/if}
-
 		{#if isToday}
 			<section class="now card" aria-label="Now">
 				{#if current}
@@ -398,29 +360,10 @@
 	.strip .on .wd {
 		color: inherit;
 	}
-	/* the day under the finger (#94, G3): follows it, the neighbour's date peeks in from the side */
 	.swipe {
-		position: relative;
 		display: flex;
 		flex-direction: column;
 		gap: inherit;
-		touch-action: pan-y;
-		transition: translate 160ms var(--ease);
-	}
-	.swipe.dragging {
-		transition: none;
-	}
-	.peek {
-		position: absolute;
-		top: 24px;
-		left: calc(100% + 24px);
-		white-space: nowrap;
-		font-weight: 700;
-		color: var(--quiet);
-	}
-	.peek.prev {
-		left: auto;
-		right: calc(100% + 24px);
 	}
 	.sub {
 		font-size: 13px;
