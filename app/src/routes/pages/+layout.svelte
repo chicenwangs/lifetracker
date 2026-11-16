@@ -76,7 +76,7 @@
 					{#each hits as n (n.id)}<li><a href="/pages/{n.id}">{n.title || 'Untitled'}</a></li>{:else}<li
 							class="hint"
 						>
-							No page title matches. Ctrl+K searches the text too.
+							No page title matches. Search (top bar) looks in the text too.
 						</li>{/each}
 				</ul>
 			{:else if recent.length}

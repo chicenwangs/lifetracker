@@ -178,7 +178,7 @@
 				>{/if}
 		</span>
 		{#if mine && !pg.archived}
-			<button class="btn sm" type="button" aria-pressed={pg.pinned} title="Pin to header" onclick={pin}
+			<button class="btn sm wide" type="button" aria-pressed={pg.pinned} title="Pin to header" onclick={pin}
 				><svg
 					width="14"
 					height="14"
@@ -190,7 +190,7 @@
 				>Pin</button
 			>
 		{/if}
-		{#if mine}<button class="btn sm" type="button" onclick={() => (sharing = true)}>Share</button>{/if}
+		{#if mine}<button class="btn sm wide" type="button" onclick={() => (sharing = true)}>Share</button>{/if}
 		<div class="menu-wrap">
 			<button
 				class="btn sm"
@@ -203,6 +203,16 @@
 			{#if menu}
 				<div use:backCloses={() => (menu = false)} class="menu card" role="menu">
 					{#if mine}
+						<!-- phone (#98): Pin + Share live here, the bar only has room for ⋯ -->
+						{#if !pg.archived}<button role="menuitem" type="button" class="narrow" onclick={pin}
+								>{pg.pinned ? 'Unpin from header' : 'Pin to header'}</button
+							>{/if}
+						<button
+							role="menuitem"
+							type="button"
+							class="narrow"
+							onclick={() => ((sharing = true), (menu = false))}>Share…</button
+						>
 						<button role="menuitem" type="button" onclick={() => ((moving = true), (menu = false))}
 							>Move to…</button
 						>
@@ -382,7 +392,19 @@
 		font-size: 12px;
 		color: var(--quiet);
 	}
+	.menu .narrow {
+		display: none;
+	}
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.bar .wide {
+			display: none;
+		}
+		.menu .narrow {
+			display: block;
+		}
+		.menu button {
+			min-height: 48px;
+		}
 		.crumbs a {
 			display: inline-flex;
 			align-items: center;
