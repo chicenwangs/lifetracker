@@ -58,9 +58,9 @@ test('Back closes the account sheet; a link in it navigates once', async () => {
 
 	await avatar.click();
 	await sheet.getByRole('link', { name: 'Settings' }).click();
-	await expect(page).toHaveURL(/\/settings\/preferences$/);
+	await expect(page).toHaveURL(/\/settings$/);
 	await page.waitForTimeout(300); // a wrong history.back() would land here
-	expect(path()).toBe('/settings/preferences');
+	expect(path()).toBe('/settings');
 	await expect(sheet).toBeHidden();
 	await page.goBack();
 	expect(path()).toBe('/today');

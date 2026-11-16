@@ -33,7 +33,7 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 | 2 interactions | #102 | Native haptics (needs real phone) | PR open | #132 |
 | 3 screens | #98 | Pages list + editor for phone, toolbar above keyboard | PR open | #138 |
 | 3 screens | #99 | Full-screen touch search | PR open | #139 |
-| 3 screens | #100 | Settings as a list of sections | todo | |
+| 3 screens | #100 | Settings as a list of sections | PR open | #140 |
 | 3 screens | #103 | Pull to refresh | todo | |
 | 3 screens | #107 | Keep note editor: icon toolbar + overflow | todo | |
 | 3 screens | #108 | Item opens as a phone sheet | todo | |
