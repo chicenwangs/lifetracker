@@ -8,13 +8,13 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 - Preview: `.claude/launch.json` entry `mobile-dev` (port 5176, that db). Local only, not committed.
 - Phone e2e: `npm run test:e2e:phone` (projects `phone` 412×915, `phone-landscape` 915×412). Tests in `tests/e2e/phone/`.
 - Helpers (`tests/e2e/phone/helpers.ts`): `swipe`, `longPress` (real CDP touch), `expectTargets48` (+ `targets48-allowlist.json`), `noDesktopHints`.
-- Shots: preview running, then `node scripts/phone-shots.mjs [--out test-results/phone-after]`. Baseline = `test-results/phone-baseline/` (gitignored, 2026-11-16).
+- Shots: preview running, then (in `app/`) `node scripts/phone-shots.mjs [--out test-results/phone-after]`. Baseline = `test-results/phone-baseline/` (gitignored, 2026-11-16). Landscape Add sheet = desktop layout until #110, so its shot shows the screen under it.
 - `test.fixme` in `smoke.spec.ts` = checks waiting on an issue. Turn them on when it lands.
 
 ## Status
 | Group | # | Issue | State | PR |
 |---|---|---|---|---|
-| setup | — | Dev setup: seed, phone projects, helpers, shots, this doc | DONE (PR open) | see #106 |
+| setup | — | Dev setup: seed, phone projects, helpers, shots, this doc | DONE (PR open) | #119 |
 | 1 foundation | #92 | One bottom sheet — handle, swipe down, Back, half then full | todo | |
 | 1 foundation | #91 | Android Back closes the top layer + predictive back | todo | |
 | 1 foundation | #88 | Tab bar Today · Calendar · + · Keep · Pages; More → account sheet | todo | |
