@@ -1,6 +1,6 @@
 <!-- Pages Archive (PG-ARCHIVE): search, sort, Restore per row, "Was in"; 90-day suggestions, nothing pre-ticked. -->
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { undoLast } from '$lib/client/undo.svelte';

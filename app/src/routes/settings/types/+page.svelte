@@ -1,6 +1,7 @@
 <!-- Settings › Item types (FEATURES §3b): order, colour, name, quick-add word, use, flags, delete + move. -->
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { backCloses } from '$lib/client/layers';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { del, patch, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { undoLast } from '$lib/client/undo.svelte';
@@ -161,7 +162,13 @@
 {#if deleting}
 	{@const t = deleting}
 	<div class="scrim" role="presentation" onclick={() => (deleting = null)}></div>
-	<div class="dialog card" role="dialog" aria-modal="true" aria-labelledby="del-h">
+	<div
+		use:backCloses={() => (deleting = null)}
+		class="dialog card"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="del-h"
+	>
 		<h2 id="del-h">Delete "{t.name}"?</h2>
 		<p>{t.used ?? 0} items and blocks use it. Move them to:</p>
 		<select bind:value={moveTo} aria-label="Move them to">

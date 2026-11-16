@@ -1,5 +1,6 @@
 <!-- Ctrl+K / Cmd+K (UX-AUDIT #9, UX-4): search pages, notes, planner items + jump to actions. Mine only. -->
 <script lang="ts">
+	import { backCloses } from '$lib/client/layers';
 	import { goto } from '$app/navigation';
 	import { get, post } from '$lib/client/api';
 	import { openItem } from '$lib/client/peek.svelte';
@@ -98,7 +99,13 @@
 
 {#if open}
 	<div class="scrim" role="presentation" onclick={() => (open = false)}></div>
-	<div class="pal card" role="dialog" aria-modal="true" aria-label="Search and go">
+	<div
+		use:backCloses={() => (open = false)}
+		class="pal card"
+		role="dialog"
+		aria-modal="true"
+		aria-label="Search and go"
+	>
 		<input
 			bind:this={input}
 			bind:value={q}

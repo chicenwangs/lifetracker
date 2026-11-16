@@ -1,7 +1,7 @@
 <!-- Phone "+ Add" bottom sheet (FEATURES §10): Plan it (same quick-add grammar + live slots) · Quick note (Keep). -->
 <script lang="ts">
 	import { page } from '$app/state';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { post } from '$lib/client/api';
 	import { calendarChanged } from '$lib/client/bus.svelte';
 	import { qaPrefs } from '$lib/client/itemtypes.svelte';

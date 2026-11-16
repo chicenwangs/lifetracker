@@ -1,7 +1,8 @@
 <!-- HOME (FR-H1): month calendar 2/3 | planner 1/3 (due chips + planner). < ~1000px stacks. -->
 <script lang="ts">
 	import { shown } from '$lib/client/itemtypes.svelte';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { page } from '$app/state';
 	import { onMount, untrack } from 'svelte';
 	import MonthCalendar from '$lib/components/MonthCalendar.svelte';

@@ -22,5 +22,24 @@ export default ts.config(
 	// no paths.base in this app -> resolve() adds nothing
 	{ rules: { 'svelte/no-navigation-without-resolve': 'off' } },
 	{ files: ['tests/**'], rules: { '@typescript-eslint/no-non-null-assertion': 'off' } },
+	// Back closing a layer drops a refresh in flight; the wrapper lets layers.ts redo it (#91)
+	{
+		files: ['src/**'],
+		ignores: ['src/lib/client/refresh.ts'],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						{
+							name: '$app/navigation',
+							importNames: ['invalidateAll'],
+							message: 'Use invalidateAll from $lib/client/refresh.',
+						},
+					],
+				},
+			],
+		},
+	},
 	{ ignores: ['build/', '.svelte-kit/', 'drizzle/', 'node_modules/'] },
 );

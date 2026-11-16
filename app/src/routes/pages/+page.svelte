@@ -1,6 +1,7 @@
 <!-- Pages index. Desktop: pick a page on the left. Phone: the tree above is "All pages". -->
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { post } from '$lib/client/api';
 	import { showError } from '$lib/client/toast.svelte';
 	let { data } = $props();

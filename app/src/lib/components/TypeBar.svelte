@@ -1,6 +1,6 @@
 <!-- Type bar (FEATURES §3b): one chip per type, click = show/hide (saved per user), "+" = new type, n / 10. -->
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { page } from '$app/state';
 	import { patch, post } from '$lib/client/api';
 	import { typesState } from '$lib/client/itemtypes.svelte';

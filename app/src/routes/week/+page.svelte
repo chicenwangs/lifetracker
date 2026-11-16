@@ -2,10 +2,12 @@
      Right column (top to bottom): month heatmap with this week highlighted · Not scheduled (all-day items with
      no block; drag onto the grid to block time, drag a block here to unschedule it) · stats. -->
 <script lang="ts">
+	import { backCloses } from '$lib/client/layers';
 	import { shown } from '$lib/client/itemtypes.svelte';
 	import TypeBar from '$lib/components/TypeBar.svelte';
 	import ScheduleButton from '$lib/components/ScheduleButton.svelte';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { onMount, untrack } from 'svelte';
 	import WeekCalendar from '$lib/components/WeekCalendar.svelte';
 	import PhoneWeek from '$lib/components/PhoneWeek.svelte';
@@ -348,6 +350,7 @@
 {#if slot}
 	<div
 		class="slotpop card"
+		use:backCloses={closeSlot}
 		style:left="{slot.x}px"
 		style:top="{slot.y}px"
 		role="dialog"

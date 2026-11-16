@@ -1,5 +1,6 @@
 <!-- FR-H15. Nav shows only built pages. -->
 <script lang="ts">
+	import { backCloses } from '$lib/client/layers';
 	import { page } from '$app/state';
 	import QuickAdd from './QuickAdd.svelte';
 	import AppIcon from './AppIcon.svelte';
@@ -140,7 +141,11 @@
 			>
 			{#if menu}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class="menu" onkeydown={(e) => e.key === 'Escape' && (menu = false)}>
+				<div
+					use:backCloses={() => (menu = false)}
+					class="menu"
+					onkeydown={(e) => e.key === 'Escape' && (menu = false)}
+				>
 					<div class="who">
 						<b>{user.displayName}</b><span class="muted">@{user.username}</span>
 					</div>
@@ -159,7 +164,13 @@
 <CommandPalette bind:this={cmdk} />
 {#if help}
 	<div class="scrim" role="presentation" onclick={() => (help = false)}></div>
-	<div class="sheet card" role="dialog" aria-modal="true" aria-labelledby="keys-h">
+	<div
+		use:backCloses={() => (help = false)}
+		class="sheet card"
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby="keys-h"
+	>
 		<h2 id="keys-h">Shortcuts</h2>
 		<dl>
 			{#each KEYS as [k, v] (k)}<dt><kbd>{k}</kbd></dt>

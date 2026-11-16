@@ -1,6 +1,7 @@
 <!-- Pages editor (FEATURES §6 PG-EDIT/BLOCKS/SLASH/MOVE/INLINE/TABLE/LINK). Tiptap is not $state: created in
      onMount, destroyed on teardown (ADR-002). Autosave ~600 ms after the last change; failed save keeps the text. -->
 <script lang="ts">
+	import { backCloses } from '$lib/client/layers';
 	import { onMount } from 'svelte';
 	import { Editor, type Content } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
@@ -313,7 +314,13 @@
 
 {#if picker}
 	<div class="scrim" role="presentation" onclick={() => (picker = null)}></div>
-	<div class="picker card" role="dialog" aria-modal="true" aria-label="Link to page">
+	<div
+		use:backCloses={() => (picker = null)}
+		class="picker card"
+		role="dialog"
+		aria-modal="true"
+		aria-label="Link to page"
+	>
 		<!-- svelte-ignore a11y_autofocus -->
 		<input
 			placeholder="Search your pages"

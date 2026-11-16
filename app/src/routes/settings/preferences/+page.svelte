@@ -1,6 +1,6 @@
 <!-- Theme (Light/Dark/Auto + schedule), timezone, planner defaults, plan-ahead. Each control saves on change. -->
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { apiFetch, patch } from '$lib/client/api';
 	import {
 		saveTheme,

@@ -1,5 +1,6 @@
 <!-- FR-H2..H7, H13. FullCalendar dayGridMonth (MIT plugins). Feeds local strings from lib/time (no FC tz tricks). -->
 <script lang="ts">
+	import { backCloses } from '$lib/client/layers';
 	import { dragStarted, dragStopped, duplicate } from '$lib/client/altdrag';
 	import { page } from '$app/state';
 	import TypeBar from './TypeBar.svelte';
@@ -338,6 +339,7 @@
 {#if slot}
 	<div
 		class="slotpop card"
+		use:backCloses={closeDay}
 		style:left="{slot.x}px"
 		style:top="{slot.y}px"
 		role="dialog"

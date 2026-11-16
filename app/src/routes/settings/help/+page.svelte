@@ -1,6 +1,7 @@
 <!-- Settings › Help (FEATURES §11): restart the tour + short guides. Only things that are shipped. -->
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { patch } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { onMount } from 'svelte';

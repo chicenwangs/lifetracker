@@ -1,6 +1,8 @@
 <!-- One page: breadcrumbs, title, ⋯ menu (pin, move, archive, delete, copy link), "Archived · Restore" bar, editor. -->
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { backCloses } from '$lib/client/layers';
+	import { goto } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { del, get, patch, post, apiFetch } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { undoLast } from '$lib/client/undo.svelte';
@@ -206,7 +208,7 @@
 				onclick={() => (menu = !menu)}>⋯</button
 			>
 			{#if menu}
-				<div class="menu card" role="menu">
+				<div use:backCloses={() => (menu = false)} class="menu card" role="menu">
 					{#if mine}
 						<button role="menuitem" type="button" onclick={() => ((moving = true), (menu = false))}
 							>Move to…</button

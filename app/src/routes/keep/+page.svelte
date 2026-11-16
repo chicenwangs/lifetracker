@@ -1,6 +1,7 @@
 <!-- Keep (FEATURES §5): side nav (notes, binders, labels, archive, trash) · search · New note · Pinned · notes · Select mode. -->
 <script lang="ts">
-	import { afterNavigate, goto, invalidateAll, pushState, replaceState } from '$app/navigation';
+	import { afterNavigate, goto, pushState, replaceState } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { del, patch, post } from '$lib/client/api';

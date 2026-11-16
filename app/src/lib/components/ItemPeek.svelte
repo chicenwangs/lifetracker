@@ -8,7 +8,7 @@
 		$props();
 </script>
 
-<BottomSheet label="Item" {origin} intro="grow" {onclose}>
+<BottomSheet label="Item" {origin} intro="grow" back={false} {onclose}>
 	{#key id}<ItemView
 			{id}
 			peek

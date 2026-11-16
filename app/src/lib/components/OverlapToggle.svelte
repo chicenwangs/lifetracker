@@ -1,7 +1,7 @@
 <!-- FR-S10: show calendars shared with me on top of mine. Hidden when nothing is shared with me. -->
 <script lang="ts">
 	import { page } from '$app/state';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { patch } from '$lib/client/api';
 	import { showError } from '$lib/client/toast.svelte';
 

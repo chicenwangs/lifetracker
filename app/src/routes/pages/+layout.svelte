@@ -1,6 +1,7 @@
 <!-- Pages: shared left tree on every Pages screen (UX-AUDIT #8), collapsible. Phone: tree on its own page. -->
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { page } from '$app/state';
 	import { post } from '$lib/client/api';
 	import { showError } from '$lib/client/toast.svelte';

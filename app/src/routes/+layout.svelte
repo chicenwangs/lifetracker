@@ -13,7 +13,9 @@
 	import { onUndoKey } from '$lib/client/undo.svelte';
 	import { watchInbox } from '$lib/client/inbox';
 	import { onMount } from 'svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { beforeNavigate } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
+	import { leavingPage } from '$lib/client/layers';
 	import Tour from '$lib/components/Tour.svelte';
 	import { patch } from '$lib/client/api';
 	import { flushQueue, queued, wipe } from '$lib/client/offline';
@@ -25,6 +27,7 @@
 	// browser only (effects never run in SSR): module state on the server would be shared between users
 	$effect.pre(() => initTypes(data.types, data.user?.hiddenTypes ?? []));
 	onMount(() => (data.user ? watchInbox() : undefined));
+	beforeNavigate(leavingPage); // a link inside a menu or sheet must not be undone by its Back entry (#91)
 
 	// PWA + offline (FEATURES §10, DESIGN §17): shell cache via the service worker, a visible offline badge,
 	// Keep edits made offline sent when back. Sign-out wipes them (they may be private).
