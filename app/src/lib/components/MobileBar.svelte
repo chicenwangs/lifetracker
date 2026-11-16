@@ -44,18 +44,18 @@
 
 	// each tab remembers its last URL (open day / week / filters) and every URL its scroll
 	const lastUrl = $state<Record<string, string>>({});
-	const scrolls = new Map<string, number>();
+	const scrolls: Record<string, number> = {}; // not UI state
 	const key = (u: URL) => u.pathname + u.search;
 	$effect(() => {
 		if (current) lastUrl[current] = key(page.url);
 	});
 	beforeNavigate(({ from }) => {
-		if (from) scrolls.set(key(from.url), scrollY);
+		if (from) scrolls[key(from.url)] = scrollY;
 	});
 	let viaTab = false;
 	afterNavigate(({ to }) => {
 		if (!viaTab || !to) return;
-		scrollTo(0, scrolls.get(key(to.url)) ?? 0);
+		scrollTo(0, scrolls[key(to.url)] ?? 0);
 	});
 	function tap(e: MouseEvent, root: string) {
 		if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
@@ -64,7 +64,7 @@
 			// re-tap the active tab: top of its root screen
 			if (key(page.url) === root) return scrollTo({ top: 0, behavior: 'smooth' });
 			viaTab = true;
-			scrolls.delete(root);
+			scrolls[root] = 0;
 			return goto(root, { noScroll: true });
 		}
 		viaTab = true;
