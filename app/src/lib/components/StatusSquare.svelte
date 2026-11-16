@@ -1,5 +1,6 @@
 <!-- FR-H3. Square: empty = todo, ▶ = doing, filled + ✓ = done. Click / Space / Enter cycles. -->
 <script lang="ts">
+	import { buzz } from '$lib/client/haptics';
 	import type { Status } from '$lib/types';
 	let {
 		status,
@@ -29,7 +30,7 @@
 	onclick={(e) => {
 		e.preventDefault();
 		e.stopPropagation();
-		navigator.vibrate?.(8); // tiny tap on phones that allow it (app + Android Chrome); ignored elsewhere
+		buzz('tick');
 		oncycle();
 	}}
 	onpointerdown={(e) => e.stopPropagation()}

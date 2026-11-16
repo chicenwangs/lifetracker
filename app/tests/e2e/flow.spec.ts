@@ -1141,7 +1141,16 @@ test('owner test pass 2026-11-16: chips, popups, Keep, Pages undo + dark, pins, 
 	await page.goto('/week');
 	const col = (await page.locator(`.fc-timegrid-col[data-date="${d}"]`).boundingBox())!;
 	const lane = async (t: string) => (await page.locator(`.fc-timegrid-slot-lane[data-time="${t}"]`).boundingBox())!; // prettier-ignore
-	const a = await lane('10:00:00');
+	// a free hour today: earlier tests leave blocks whose times depend on when the suite runs
+	let a = await lane('10:00:00');
+	for (const t of ['10:00:00', '08:00:00', '09:00:00', '12:00:00', '15:00:00', '18:00:00', '21:00:00']) {
+		a = await lane(t);
+		const busy = await page.evaluate(
+			([x, y1, y2]) => [y1, y2].some((y) => document.elementFromPoint(x, y)?.closest('.fc-event')),
+			[col.x + col.width / 2, a.y + 3, a.y + a.height * 2 - 3],
+		);
+		if (!busy) break;
+	}
 	await page.mouse.move(col.x + col.width / 2, a.y + 3);
 	await page.mouse.down();
 	await page.mouse.move(col.x + col.width / 2, a.y + a.height * 2 - 3, { steps: 6 });

@@ -30,7 +30,7 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 | 2 interactions | #95 | Calendar tab: Week + Month, swipe periods, day agenda | todo | |
 | 2 interactions | #96 | Hold to pick up; row swipe done / delete + Undo | todo | |
 | 2 interactions | #97 | Keep: hold to drag, hold to select, swipe to archive | todo | |
-| 2 interactions | #102 | Native haptics (needs real phone) | todo | |
+| 2 interactions | #102 | Native haptics (needs real phone) | PR open | #132 |
 | 3 screens | #98 | Pages list + editor for phone, toolbar above keyboard | todo | |
 | 3 screens | #99 | Full-screen touch search | todo | |
 | 3 screens | #100 | Settings as a list of sections | todo | |
