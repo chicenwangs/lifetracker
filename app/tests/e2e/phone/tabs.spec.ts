@@ -19,9 +19,7 @@ test.beforeAll(async ({ browser }, info) => {
 	});
 });
 test.afterAll(() => page.context().close());
-test.beforeEach(() => {
-	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape still gets the desktop layout');
-});
+test.beforeEach(() => {});
 
 test('Calendar reopens on the week you left', async () => {
 	await page.goto('/today');
@@ -37,14 +35,14 @@ test('Calendar reopens on the week you left', async () => {
 
 test('Keep keeps its scroll; re-tap the active tab = top', async () => {
 	await tab('Keep').click();
-	await expect(page.getByText('Scroll note 23')).toBeVisible();
+	await expect(page.getByText('Scroll note 23').first()).toBeVisible();
 	await page.evaluate(() => scrollTo(0, 600));
 	await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(500);
 	await tab('Today').click();
 	await expect(page).toHaveURL(/\/today/);
 	const t0 = Date.now();
 	await tab('Keep').click();
-	await expect(page.getByText('Scroll note 0')).toBeAttached();
+	await expect(page.getByText('Scroll note 0').first()).toBeAttached();
 	console.log(`tab switch to content: ${Date.now() - t0} ms`);
 	await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(500);
 	await tab('Keep').click();

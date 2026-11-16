@@ -33,6 +33,7 @@ async function finger(page: Page) {
 	return { send, done: () => cdp.detach() };
 }
 async function centre(el: Locator) {
+	await el.evaluate((n) => n.scrollIntoView({ block: 'center' })); // a finger can only touch what is on screen (not under the bar)
 	const b = await el.boundingBox();
 	if (!b) throw new Error('element not visible');
 	return { x: b.x + b.width / 2, y: b.y + b.height / 2, w: b.width, h: b.height };

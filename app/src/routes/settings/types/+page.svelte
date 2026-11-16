@@ -249,7 +249,7 @@
 		width: 90px;
 		border-radius: 6px;
 	}
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.color {
 			min-height: 48px;
 		}

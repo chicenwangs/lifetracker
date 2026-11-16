@@ -384,7 +384,7 @@
 		font-size: 13px;
 		min-height: 24px;
 	}
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.sel {
 			display: none;
 		}

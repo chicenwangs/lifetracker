@@ -296,7 +296,7 @@ h3 {
 }
 
 /* phone: room under every page for the fixed bottom bar (MobileBar), so the last card can scroll into view */
-@media (max-width: 699px) {
+@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 	body {
 		padding-bottom: calc(84px + env(safe-area-inset-bottom));
 	}
@@ -504,7 +504,7 @@ main .card:nth-child(n + 4) {
 	animation-delay: 160ms;
 }
 /* phone: 48 dp hit areas (#101, G5). Visuals inside may stay smaller (::after hit-slop, e.g. StatusSquare). */
-@media (max-width: 699px) {
+@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 	.btn,
 	.btn.sm {
 		height: auto;
@@ -529,7 +529,7 @@ main .card:nth-child(n + 4) {
 	}
 }
 /* phone: tabs switch with a fade-through instead; cards are just there (#90, G12) */
-@media (max-width: 699px) {
+@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 	main .card,
 	.box.card {
 		animation: none;

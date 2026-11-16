@@ -14,9 +14,7 @@ test.beforeAll(async ({ browser }, info) => {
 });
 test.afterAll(() => page.context().close());
 
-test.beforeEach(() => {
-	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape still gets the desktop layout');
-});
+test.beforeEach(() => {});
 
 test('four tabs + Add, each one tap away, active tab marked', async () => {
 	await page.goto('/today');

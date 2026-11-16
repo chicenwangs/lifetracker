@@ -124,7 +124,7 @@
 	.mbar {
 		display: none;
 	}
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.mbar {
 			position: fixed;
 			left: 0;

@@ -13,9 +13,7 @@ test.beforeAll(async ({ browser }, info) => {
 	await signIn(page);
 });
 test.afterAll(() => page.context().close());
-test.beforeEach(() => {
-	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape still gets the desktop layout');
-});
+test.beforeEach(() => {});
 
 async function deleteOne(title: string) {
 	await page.evaluate(async (t) => {
@@ -31,7 +29,7 @@ async function deleteOne(title: string) {
 }
 
 test('toast sits above the bar; bar and Undo stay tappable', async () => {
-	const toast = await deleteOne('Toast item one');
+	const toast = await deleteOne(`Toast item one ${test.info().project.name}`);
 	const t = (await toast.boundingBox())!;
 	const b = (await bottomBar(page).boundingBox())!;
 	expect(t.y + t.height).toBeLessThanOrEqual(b.y);
@@ -42,11 +40,13 @@ test('toast sits above the bar; bar and Undo stay tappable', async () => {
 	const u = (await undo.boundingBox())!;
 	expect(Math.min(u.width, u.height)).toBeGreaterThanOrEqual(48);
 	await undo.click();
-	await expect(page.getByRole('group', { name: 'Toast item one, hold to delete' })).toBeVisible();
+	await expect(
+		page.getByRole('group', { name: `Toast item one ${test.info().project.name}, hold to delete` }),
+	).toBeVisible();
 });
 
 test('swipe the toast sideways to dismiss it', async () => {
-	const toast = await deleteOne('Toast item two');
+	const toast = await deleteOne(`Toast item two ${test.info().project.name}`);
 	await swipe(page, toast.locator('span').first(), 'right', 160);
 	await expect(toast).toBeHidden();
 });

@@ -37,7 +37,7 @@
 		align-items: flex-start;
 	}
 	/* phone: the tree above is the screen and has its own New page */
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.has {
 			display: none;
 		}

@@ -113,7 +113,7 @@
 		transition: background-color var(--t) var(--ease);
 	}
 	/* phone: one swipe row of chips above the section (same as Keep), page scrolls under the bottom bar */
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.wrap {
 			padding: 4px 16px 24px;
 			gap: 12px;

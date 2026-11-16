@@ -21,10 +21,16 @@ const openAdd = async () => {
 };
 
 test('Add sheet opens at half, grows to full on the handle, Back closes it', async () => {
-	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape still gets the desktop layout');
 	const sheet = await openAdd();
 	await expect(sheet).toBeVisible();
 	const half = (await sheet.boundingBox())?.height ?? 0;
+	if (test.info().project.name === 'phone-landscape') {
+		// sideways: half of a short screen is too little, the sheet opens tall (#110)
+		expect(half).toBeGreaterThanOrEqual(412 * 0.85);
+		await page.goBack();
+		await expect(sheet).toBeHidden();
+		return;
+	}
 	expect(half).toBeLessThanOrEqual(915 * 0.52);
 
 	await page.getByRole('button', { name: 'Expand sheet' }).click();
@@ -39,7 +45,6 @@ test('Add sheet opens at half, grows to full on the handle, Back closes it', asy
 });
 
 test('swipe down on the handle closes the sheet and keeps the page', async () => {
-	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape still gets the desktop layout');
 	const sheet = await openAdd();
 	const handle = page.getByRole('button', { name: 'Expand sheet' });
 	await swipe(page, handle, 'down', 200);
@@ -48,7 +53,6 @@ test('swipe down on the handle closes the sheet and keeps the page', async () =>
 });
 
 test('Close button and scrim tap close the sheet', async () => {
-	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape still gets the desktop layout');
 	let sheet = await openAdd();
 	await page.getByRole('button', { name: 'Close' }).click();
 	await expect(sheet).toBeHidden();
@@ -59,23 +63,23 @@ test('Close button and scrim tap close the sheet', async () => {
 });
 
 test('item peek uses the same sheet and Back closes it', async () => {
-	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape still gets the desktop layout');
 	await page.goto('/today');
 	const today = await page.evaluate(() => {
 		const d = new Date();
 		return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 	});
+	const title = `Sheet test item ${test.info().project.name}`;
 	await page.evaluate(
-		(date) =>
+		([date, title]) =>
 			fetch('/api/items', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ title: 'Sheet test item', date, time: '23:00' }),
+				body: JSON.stringify({ title, date, time: '23:00' }),
 			}),
-		today,
+		[today, title],
 	);
 	await page.goto('/today');
-	await page.getByRole('button', { name: 'Sheet test item', exact: true }).click();
+	await page.getByRole('button', { name: title, exact: true }).click();
 	const sheet = page.getByRole('dialog', { name: 'Item' });
 	await expect(sheet).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Expand sheet' })).toBeVisible();
@@ -100,7 +104,6 @@ test('widget + (/today?add): Back closes the sheet and stays on Today', async ()
 });
 
 test('closing the Add sheet returns focus to the + button', async () => {
-	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape has no bottom bar yet');
 	await page.goto('/today');
 	const plus = bottomBar(page).getByRole('button', { name: 'Add' });
 	await plus.click();
@@ -108,7 +111,7 @@ test('closing the Add sheet returns focus to the + button', async () => {
 	await expect(plus).toBeFocused();
 });
 
-test('wide screen (landscape until #110): Add sheet still has a visible Close', async () => {
+test('wide screen: Add sheet still has a visible Close', async () => {
 	await page.goto('/today?add');
 	const sheet = page.getByRole('dialog', { name: 'Add' });
 	await expect(sheet).toBeVisible();
@@ -119,7 +122,6 @@ test('wide screen (landscape until #110): Add sheet still has a visible Close', 
 });
 
 test('/ menu in the Add sheet: every option tappable at half and full height (#120 regression)', async () => {
-	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape has no bottom bar yet');
 	const sheet = await openAdd();
 	await page.keyboard.type('gym tmr 6pm /');
 	await expectTappable(sheet.getByRole('option'));
