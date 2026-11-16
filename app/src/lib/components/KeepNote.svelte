@@ -1,6 +1,7 @@
 <!-- Keep note editor (FEATURES §5 K-NOTE, K-CHECK, K-IMG, K-LABEL, K-BINDER, K-PIN). Autosave ~600 ms + on close.
      A new note is only created once it has content; an empty one is simply dropped on close. -->
 <script lang="ts">
+	import { askConfirm } from '$lib/client/dialog.svelte';
 	import Reminders from './Reminders.svelte';
 	import ShareDialog from './ShareDialog.svelte';
 	import { page } from '$app/state';
@@ -110,7 +111,11 @@
 	}
 	async function close() {
 		await flush();
-		if (saveState === 'failed' && !confirm('Saving failed. Close and lose the last changes?')) return;
+		if (
+			saveState === 'failed' &&
+			!(await askConfirm('Saving failed. Close and lose the last changes?', { ok: 'Close', danger: true }))
+		)
+			return;
 		onclose();
 	}
 

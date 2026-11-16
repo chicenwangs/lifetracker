@@ -667,8 +667,8 @@ test('v2 P2 Keep: note, checklist nesting, label + binder filters, pin/archive/t
 		.click();
 	await expect(page.locator('article.note', { hasText: 'Groceries' })).toHaveCount(0); // delete landed
 	await page.goto('/keep?scope=trash');
-	page.once('dialog', (d) => d.accept());
 	await page.getByRole('button', { name: 'Delete forever' }).click();
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click(); // in-app confirm (#109)
 	await expect(page.getByText('Trash is empty.')).toBeVisible();
 });
 

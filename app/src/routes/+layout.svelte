@@ -4,6 +4,7 @@
 	import { closePeek, peek } from '$lib/client/peek.svelte';
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import UndoToast from '$lib/components/UndoToast.svelte';
+	import Dialog from '$lib/components/Dialog.svelte';
 	import MobileBar from '$lib/components/MobileBar.svelte';
 	import MobileAdd from '$lib/components/MobileAdd.svelte';
 	import ItemPeek from '$lib/components/ItemPeek.svelte';
@@ -94,6 +95,7 @@
 	<MobileAdd />
 {/if}
 <UndoToast />
+<Dialog />
 {#if !online}<div class="offline" role="status">
 		Offline · changes aren't saved (Keep notes wait on this device)
 	</div>{/if}

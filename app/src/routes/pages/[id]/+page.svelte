@@ -100,13 +100,6 @@
 	}
 	async function trash() {
 		menu = false;
-		const subs = tree.filter((n) => n.parentId === pg.id).length;
-		if (
-			!confirm(
-				`Move "${pg.title || 'Untitled'}"${subs ? ' and its subpages' : ''} to Trash? You can restore it for 30 days.`,
-			)
-		)
-			return;
 		try {
 			await editor?.flush();
 			const r = await del<{ batch: string }>(`/api/pages/${pg.id}`);
