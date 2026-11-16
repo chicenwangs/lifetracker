@@ -124,7 +124,7 @@ export function get(
 }
 
 // ---------- schema: properties ----------
-export const propCreateSchema = z.object({ name: z.string().trim().min(1).max(100), type: z.enum(PROP_TYPES), config: z.object({ options: z.array(z.object({ id: z.string().max(40), label: z.string().trim().min(1).max(100), color: z.string().max(20) }).strict()).max(100).optional() }).strict().default({}) }).strict(); // prettier-ignore
+export const propCreateSchema = z.object({ name: z.string().trim().min(1).max(100), type: z.enum(PROP_TYPES), config: z.object({ options: z.array(z.object({ id: z.string().max(40), label: z.string().trim().min(1).max(100), color: z.string().regex(/^[a-z0-9-]{1,20}$/, 'bad colour') }).strict()).max(100).optional() }).strict().default({}) }).strict(); // prettier-ignore
 export const propPatchSchema = z.object({ name: z.string().trim().min(1).max(100), type: z.enum(PROP_TYPES), config: propCreateSchema.shape.config, position: z.number(), confirm: z.boolean() }).partial().strict(); // prettier-ignore
 
 export function addProp(ownerId: string, dbId: string, p: z.infer<typeof propCreateSchema>): DbProp {
@@ -232,13 +232,14 @@ export function setValues(
 }
 
 /** the record's page: same identity every time, made on first open (DESIGN §5), under the database's page */
-export function recordPage(ownerId: string, recordId: string): string {
+export function recordPage(ownerId: string, recordId: string, mayCreate: () => unknown = () => {}): string {
 	return txImmediate(() => {
 		const r = recordOf(ownerId, recordId);
 		if (r.page_id) {
 			const live = db().prepare(`SELECT 1 FROM pages WHERE id = ? AND deleted_at IS NULL`).get(r.page_id);
 			if (live) return r.page_id;
 		}
+		mayCreate(); // making the page writes to the owner's account: a viewer may open it, not create it
 		const d = own(ownerId, r.database_id);
 		const title = db().prepare(`SELECT v.value_json FROM database_values v JOIN database_properties p ON p.id = v.property_id WHERE v.record_id = ? AND p.property_type = 'title'`).get(recordId) as { value_json: string } | undefined; // prettier-ignore
 		const pg = pages.create(ownerId, {

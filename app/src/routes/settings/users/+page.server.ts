@@ -1,8 +1,9 @@
-// Admin: who has an account, sign-up mode (open | invite-only), invite codes for invite-only mode.
+// Admin: who has an account, sign-up mode (open | invite-only), invite codes for invite-only mode, disable a member.
 import { fail } from '@sveltejs/kit';
 import { admin } from '$lib/server/http';
 import type { Actions, PageServerLoad } from './$types';
 import * as usersRepo from '$lib/server/repo/users';
+import * as sessionsRepo from '$lib/server/repo/sessions';
 import { createInvite, listInvites, revokeInvite, setSignupOpen, signupOpen } from '$lib/server/invites';
 
 export const load: PageServerLoad = ({ locals }) => {
@@ -10,6 +11,7 @@ export const load: PageServerLoad = ({ locals }) => {
 	const now = new Date().toISOString();
 	return {
 		users: usersRepo.list(),
+		disabled: usersRepo.disabledIds(),
 		open: signupOpen(),
 		invites: listInvites().filter((i) => !i.usedAt && !i.revokedAt && i.expiresAt > now),
 	};
@@ -26,6 +28,16 @@ export const actions: Actions = {
 		const me = admin(locals);
 		const r = createInvite(me.id);
 		return { code: r.code };
+	},
+	disable: async ({ locals, request }) => {
+		const me = admin(locals);
+		const id = String((await request.formData()).get('id') ?? '');
+		const u = usersRepo.byId(id);
+		if (!u) return fail(404, { message: 'User not found.' });
+		if (u.id === me.id || u.role === 'admin') return fail(400, { message: "Admins can't be disabled here." });
+		usersRepo.disable(u.id);
+		sessionsRepo.removeAllFor(u.id); // signed out everywhere at once
+		return { disabledName: u.displayName };
 	},
 	revoke: async ({ locals, request }) => {
 		admin(locals);

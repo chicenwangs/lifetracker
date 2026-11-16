@@ -218,14 +218,17 @@ async function loginOnce(
 		if (st.locked)
 			return { ok: false, status: 429, message: `Too many tries. Try again in ${st.minutesLeft} min.` };
 	}
-	if (rl.check(kUser, now).count >= LOGIN_USER_SLOW) await sleep(opts.slowMs ?? 2000);
+	const slow = rl.check(kUser, now).count >= LOGIN_USER_SLOW;
+	// charge the username-wide limit BEFORE the argon2 await: the queue is per IP, so tries from many IPs
+	// run in parallel and would all pass the check above before any failure was written. Success clears it.
+	const user = rl.fail(kUser, u ? LOGIN_USER_MAX : 0, 15, now);
+	if (slow) await sleep(opts.slowMs ?? 2000);
 
 	const row = u ? usersRepo.byUsername(u) : undefined;
 	const ok = await verifyPassword(row?.passwordHash, input.password);
 	if (!ok || !row) {
 		const pair = rl.fail(kPair, LOGIN_PAIR_MAX, 15, now);
 		const ip = rl.fail(kIp, LOGIN_IP_MAX, 15, now);
-		const user = rl.fail(kUser, u ? LOGIN_USER_MAX : 0, 15, now);
 		if (pair.locked || ip.locked || user.locked)
 			return { ok: false, status: 429, message: 'Too many tries. Try again in 15 min.' };
 		const left = LOGIN_PAIR_MAX - pair.count;
@@ -249,12 +252,15 @@ async function loginOnce(
 }
 
 /** same-origin path only. blocks //evil, /\evil, https://evil */
+const LOCAL_PATH = /^\/(?![/\\])/;
 export function safeNext(next: string | null | undefined): string {
-	if (!next || !/^\/(?![/\\])/.test(next)) return '/';
+	if (!next || !LOCAL_PATH.test(next)) return '/';
 	try {
 		const o = env().ORIGIN;
 		const u = new URL(next, o);
-		return u.origin === new URL(o).origin ? u.pathname + u.search + u.hash : '/';
+		const out = u.pathname + u.search + u.hash;
+		// re-check after parsing: "/.//evil.com" normalises to "//evil.com" (protocol-relative = other site)
+		return u.origin === new URL(o).origin && LOCAL_PATH.test(out) ? out : '/';
 	} catch {
 		return '/';
 	}
@@ -262,6 +268,17 @@ export function safeNext(next: string | null | undefined): string {
 
 // ---------- password change ----------
 export async function changePassword(
+	user: App.SafeUser,
+	current: string,
+	next: string,
+	cookies: Cookies,
+	meta: { ip: string; userAgent: string | null },
+): Promise<{ ok: true } | { ok: false; message: string }> {
+	// one at a time per user: the limit is checked and recorded around the argon2 await
+	return serial(`pw:${user.id}`, () => changePasswordOnce(user, current, next, cookies, meta));
+}
+
+async function changePasswordOnce(
 	user: App.SafeUser,
 	current: string,
 	next: string,

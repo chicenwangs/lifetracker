@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Nightly online backup of the planner DB. Safe while the app runs (SQLite .backup API).
 # Install: sudo apt install sqlite3 ; root cron (sudo crontab -e): 15 3 * * * /opt/life-tracker/backup.sh >> /var/log/life-tracker-backup.log 2>&1
-# Env overrides: LT_DIR (default: this script's folder), LT_KEEP_DAYS (14), LT_OFFSITE (rsync target, optional)
+# Env overrides: LT_DIR (default: this script's folder), LT_KEEP_DAYS (14), LT_OFFSITE (rsync target, optional),
+#   LT_AGE_RECIPIENT (optional age public key: backups are encrypted, plain copies removed. sudo apt install age)
 set -euo pipefail
 umask 077   # backups hold password hashes + all planner data: root-only
 [ "$(id -u)" -eq 0 ] || { echo "run as root (data/ belongs to the container user 1000): sudo $0" >&2; exit 1; }
@@ -10,6 +11,8 @@ KEEP=${LT_KEEP_DAYS:-14}
 DB="$LT_DIR/data/app.db"
 OUT="$LT_DIR/data/backups"
 [ -f "$DB" ] || { echo "no db at $DB" >&2; exit 1; }
+# data/ belongs to the container user: a symlink there would make root write somewhere else
+for p in "$LT_DIR/data" "$OUT"; do [ -L "$p" ] && { echo "refusing: $p is a symlink" >&2; exit 1; }; done
 mkdir -p "$OUT"
 ts=$(date +%F-%H%M)
 f="$OUT/app-$ts.db"
@@ -20,7 +23,12 @@ gzip "$f"
 if [ -d "$LT_DIR/data/uploads" ]; then
   tar -C "$LT_DIR/data" --exclude='uploads/.tmp' -czf "$OUT/uploads-$ts.tar.gz" uploads
 fi
-find "$OUT" \( -name 'app-*.db.gz' -o -name 'uploads-*.tar.gz' \) -mtime +"$KEEP" -delete
+if [ -n "${LT_AGE_RECIPIENT:-}" ]; then
+  for x in "$f.gz" "$OUT/uploads-$ts.tar.gz"; do
+    [ -f "$x" ] && age -r "$LT_AGE_RECIPIENT" -o "$x.age" "$x" && rm -f "$x"
+  done
+fi
+find "$OUT" \( -name 'app-*.db.gz*' -o -name 'uploads-*.tar.gz*' \) -mtime +"$KEEP" -delete
 if [ -n "${LT_OFFSITE:-}" ]; then rsync -a "$OUT/" "$LT_OFFSITE/"
 else echo "WARNING: LT_OFFSITE not set: backups are only on this disk. One disk failure loses everything." >&2; fi
-echo "$(date -Is) backup ok: $f.gz"
+echo "$(date -Is) backup ok: $f.gz${LT_AGE_RECIPIENT:+.age}"

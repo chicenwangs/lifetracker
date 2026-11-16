@@ -55,8 +55,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	// 2b body size: uploads may be large (adapter BODY_SIZE_LIMIT is raised for them), every other route stays small
 	const len = Number(event.request.headers.get('content-length') ?? 0);
-	if (len > 1_048_576 && !(path === '/api/attachments' && event.request.method === 'POST'))
-		return jsonOr(api, 413, 'too_large', 'Request too large');
+	const upload = path === '/api/attachments' && event.request.method === 'POST';
+	if (len > 1_048_576 && !upload) return jsonOr(api, 413, 'too_large', 'Request too large');
+	// a chunked body has no Content-Length, so the check above can't see it: it would reach the 26 MB adapter limit
+	if (
+		!upload &&
+		!event.request.headers.has('content-length') &&
+		event.request.headers.has('transfer-encoding')
+	)
+		return jsonOr(api, 411, 'length_required', 'Length required');
 
 	// 3 session (+ sliding)
 	const s = path === '/healthz' ? null : loadSession(event.cookies);
@@ -83,6 +90,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 	res.headers.set('X-Content-Type-Options', 'nosniff');
 	res.headers.set('X-Frame-Options', 'DENY');
 	res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+	res.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+	res.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
+	if (e.ORIGIN.startsWith('https://')) res.headers.set('Strict-Transport-Security', 'max-age=31536000'); // browsers ignore it over http
 	if (event.locals.user) res.headers.set('Cache-Control', 'private, no-store');
 	return res;
 };

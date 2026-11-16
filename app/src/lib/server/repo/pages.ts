@@ -143,6 +143,7 @@ function check(n: unknown, depth: number): void {
 		if (typeof alt !== 'string' || !alt.trim()) bad('Images need alt text.', 'alt_required');
 	}
 	if (node.type === 'pageLink' && !/^pg_[0-9a-z]+$/.test(String(node.attrs?.pageId ?? ''))) bad('bad page link');
+	if (node.type === 'database' && !/^pdb_[0-9a-z]+$/.test(String(node.attrs?.databaseId ?? ''))) bad('bad database'); // the viewer's browser fetches /api/databases/<id>
 	if (node.type === 'text' && typeof node.text !== 'string') bad('bad text');
 	if (node.marks !== undefined) {
 		if (!Array.isArray(node.marks)) bad('bad marks');
@@ -150,7 +151,14 @@ function check(n: unknown, depth: number): void {
 			const ma = MARKS[m?.type ?? ''];
 			if (!ma) bad(`unknown mark: ${String(m?.type).slice(0, 20)}`);
 			for (const k of Object.keys(m.attrs ?? {})) if (!ma?.includes(k)) bad(`unknown attribute ${k}`);
-			if (m.type === 'link' && !SAFE_HREF.test(String(m.attrs?.href ?? ''))) bad('Links must start with http(s):// or mailto:.', 'bad_link');
+			if (m.type === 'link') {
+				if (!SAFE_HREF.test(String(m.attrs?.href ?? ''))) bad('Links must start with http(s):// or mailto:.', 'bad_link');
+				// stored values beat the editor's defaults: no rel=opener (tabnabbing), no class (a.pl = same-tab nav)
+				const { target, rel, class: cls } = m.attrs ?? {};
+				if ((target ?? null) !== null && target !== '_blank') bad('bad link');
+				if ((rel ?? null) !== null && !/^(noopener|noreferrer|nofollow)( (noopener|noreferrer|nofollow))*$/.test(String(rel))) bad('bad link');
+				if ((cls ?? null) !== null) bad('bad link');
+			}
 		}
 	}
 	if (node.content !== undefined) {
@@ -249,8 +257,15 @@ export function update(
 						link.run(newId('plk'), id, t, bid, now);
 			});
 			// files in the doc are referenced by the page: kept from GC, readable by whoever can read the page
-			const atts = new Set(JSON.stringify(p.doc).match(/att_[0-9a-z]{16}/g) ?? []);
-			attachments.syncRefs('page_block', id, ownerId, [...atts], [ownerId, actor]);
+			let atts = [...new Set(JSON.stringify(p.doc).match(/att_[0-9a-z]{16}/g) ?? [])];
+			if (actor !== ownerId) {
+				// an editor adds their own files and keeps the owner's files this page already had. Never other
+				// owner files: a ref makes the file readable to everyone on the page, the editor included.
+				const had = new Set((db().prepare(`SELECT attachment_id AS a FROM attachment_refs WHERE source_type = 'page_block' AND source_id = ?`).all(id) as { a: string }[]).map((r) => r.a)); // prettier-ignore
+				const ownedBy = db().prepare(`SELECT owner_id AS o FROM attachments WHERE id = ?`);
+				atts = atts.filter((a) => had.has(a) || (ownedBy.get(a) as { o: string } | undefined)?.o === actor);
+			}
+			attachments.syncRefs('page_block', id, ownerId, atts, [ownerId, actor]);
 		}
 		const set: string[] = ['updated_at = @now', 'updated_by = @me', 'revision = revision + 1'];
 		if (p.title !== undefined) set.push('title = @title');

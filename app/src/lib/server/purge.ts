@@ -7,6 +7,7 @@ import * as undo from './undo';
 import * as attachments from './attachments';
 import * as keep from './repo/keep';
 import * as pages from './repo/pages';
+import * as sharekeys from './repo/sharekeys';
 import { nowUtcIso } from '$lib/time';
 
 /** hard delete soft-deleted rows older than 30 days */
@@ -42,5 +43,5 @@ export function purgeAll(now: number = Date.now()): void {
 	keep.purgeTrash(now);
 	pages.purgeTrash(now);
 	attachments.gc(now);
-	// P2: sharekeys.purgeExpired()
+	sharekeys.purgeExpired(now);
 }

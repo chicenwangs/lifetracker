@@ -1,5 +1,11 @@
 # Life Tracker v2 — release notes
 
+## Unreleased (next 2.0.5) — security hardening, no migration
+- Hardening across push, sign-in, shared pages, upload limits, backups and the Android app (issues #22–#59).
+- **New installs start invite-only.** Existing installs keep their sign-up mode.
+- Settings › Users: **Disable** a member.
+- New optional env: `UPLOAD_QUOTA_BYTES` (default 2 GB per person). Backups can be encrypted with `age` (SERVICE-HANDOFF §5).
+
 ## v2.0.4 (2026-11-14) — widgets v2 + phone fixes, no migration
 From v2.0.x: pull the new image. The Android app offers the update by itself.
 - **7 widgets**, all following Light / Dark / Auto and looking like the app: Today timeline (scrolls to now, tick things off), Keep (scroll your notes, + bottom-right), Now and next, Quick add, To do today, Countdowns, Week ahead.

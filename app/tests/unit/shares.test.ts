@@ -202,3 +202,60 @@ describe('D-22 dormant v1 data', () => {
 		expect(pending(viewer)).not.toBeNull(); // per user
 	});
 });
+
+describe('security audit 2026-11-16 (#36)', () => {
+	const img = (src: string) => ({ type: 'image', attrs: { src, alt: 'pic' } });
+	const linked = (attrs: Record<string, unknown>) =>
+		doc({ type: 'paragraph', content: [{ type: 'text', text: 'go', marks: [{ type: 'link', attrs: { href: 'https://x.example', ...attrs } }] }] }); // prettier-ignore
+
+	it("an editor can't pull the owner's other files into a shared page", () => {
+		const p = pages.create(owner, { parentId: null, title: 'Shared' });
+		const onPage = fakeFile(owner);
+		const secret = fakeFile(owner);
+		const mine = fakeFile(editor);
+		pages.update(owner, p.id, { doc: doc(img(`/api/attachments/${onPage}`)) });
+		shares.put('page', owner, p.id, { username: 'eddie', permission: 'edit' });
+		const rev = pages.get(owner, p.id).revision;
+		pages.update(owner, p.id, { revision: rev, doc: doc(img(`/api/attachments/${onPage}`), img(`/api/attachments/${secret}`), img(`/api/attachments/${mine}`)) }, editor); // prettier-ignore
+		expect(() => attachments.readable(editor, onPage)).not.toThrow(); // the page already had it
+		expect(() => attachments.readable(editor, mine)).not.toThrow();
+		denied(() => attachments.readable(editor, secret));
+	});
+
+	it('a viewer can open a record page but not create one', () => {
+		const p = pages.create(owner, { parentId: null, title: 'Gym' });
+		const d = dbs.create(owner, { pageId: p.id, title: 'Log' });
+		const r = dbs.addRecord(owner, d.id);
+		shares.put('page', owner, p.id, { username: 'vee', permission: 'view' });
+		const gate = () => shares.needRecord(viewer, r.id, 'edit');
+		denied(() => dbs.recordPage(owner, r.id, gate), 403);
+		const made = dbs.recordPage(owner, r.id); // owner makes it
+		expect(dbs.recordPage(owner, r.id, gate)).toBe(made); // viewer opens the existing one
+	});
+
+	it('page links: no rel=opener, no class, only _blank; database blocks need a real id', () => {
+		const p = pages.create(owner, { parentId: null, title: 'P' });
+		const up = (d: unknown) => pages.update(owner, p.id, { doc: d as never });
+		up(linked({ target: '_blank', rel: 'noopener noreferrer nofollow', class: null }));
+		expect(() => up(linked({ rel: 'opener' }))).toThrow(/bad link/);
+		expect(() => up(linked({ class: 'pl' }))).toThrow(/bad link/);
+		expect(() => up(linked({ target: '_top' }))).toThrow(/bad link/);
+		expect(() => up(doc({ type: 'database', attrs: { databaseId: '../reminders/inbox?' } }))).toThrow(
+			/bad database/,
+		);
+	});
+
+	it('database option colours are token names only', () => {
+		const ok = { name: 'S', type: 'select', config: { options: [{ id: 'o1', label: 'A', color: 'work' }] } };
+		expect(() => dbs.propCreateSchema.parse(ok)).not.toThrow();
+		const evil = { ...ok, config: { options: [{ id: 'o1', label: 'A', color: 'x);scale:99;a:' }] } };
+		expect(() => dbs.propCreateSchema.parse(evil)).toThrow();
+	});
+
+	it('share-by-username misses are capped', () => {
+		const p = pages.create(owner, { parentId: null, title: 'P' });
+		for (let i = 0; i < 10; i++)
+			expect(() => shares.put('page', owner, p.id, { username: `ghost${i}`, permission: 'view' })).toThrow(/No one/); // prettier-ignore
+		denied(() => shares.put('page', owner, p.id, { username: 'vee', permission: 'view' }), 429);
+	});
+});

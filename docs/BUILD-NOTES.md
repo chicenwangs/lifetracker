@@ -3,6 +3,17 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## Security hardening (2026-11-16, audit of v2.0.4, issues #22–#59)
+
+- Push: only browser push hosts (`pushHostOk`, port 443), 10 s send timeout, 10 devices per user, test send 5 per 15 min, endpoint can't be taken by another account without its keys. Stuck reminders count as a try (crash can't loop). 500 waiting reminders per owner.
+- Sign-in: `safeNext` re-checks the parsed path (`/.//x` → `//x`). Username-wide login limit charged before the argon2 await (parallel IPs). Password change serialised per user. New installs: setup writes `signup_open=0` (old installs keep theirs). Invite code checked before the username. Admin Disable (null hash + all sessions gone).
+- Shared content: link marks only `target=_blank`, `rel` from noopener/noreferrer/nofollow, no `class`. Database block id must be `pdb_…`. Option colours `[a-z0-9-]` (and DbCell falls back). An editor keeps only the owner's files the page already had. Record page creation needs edit. Share-by-username: 10 unknown names per 15 min.
+- Limits: chunked writes without Content-Length → 411. `UPLOAD_QUOTA_BYTES` (2 GB). Share codes: 50 made per day, purged 30 days past expiry. Compose memory/CPU/pids limits; cloudflared read-only, caps dropped, dated tag default.
+- Headers: HSTS (https only), COOP + CORP same-origin.
+- Ops: release APK job — npm runs without the signing key or token. backup/restore refuse symlinks under `data/`; restore extracts only plain files under `uploads/`, not as their owner. Optional `age` encryption (`LT_AGE_RECIPIENT` / `LT_AGE_IDENTITY`).
+- Android: `allowBackup=false`, widget tick only for ids it showed, updater only GitHub release URLs, reminder hides title on a private lock screen, `//` paths refused.
+- Accepted, unchanged: username lockout trade-off, `/healthz` version, Actions by major tag (SERVICE-HANDOFF §6).
+
 ## Widgets v2 + phone UX + motion (2026-11-14, owner tried the app)
 
 - Today: tick was invisible — `StatusSquare` set `color` on itself, so its default ink (`currentColor`) became the on-colour: fill, border and tick all the box colour. Now fill = ink, tick = `--sq-on` (Today passes the box colour). "Back to now" gone. Now row = full-width band (`--now-band`: #ececf0 light, #2c2b5e dark). ‹ › 44 px with the yellow shadow.

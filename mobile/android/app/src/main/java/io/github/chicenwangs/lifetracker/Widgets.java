@@ -362,11 +362,13 @@ final class Widgets {
     static void tick(Context c, String kind, String id, String status) {
         String next = "done".equals(status) ? "todo" : "done";
         JSONObject j = Native.cached(c);
+        boolean known = false;
         for (String key : new String[] {"rows", "todos"}) {
             JSONArray a = j.optJSONArray(key);
             for (int i = 0; a != null && i < a.length(); i++) {
                 JSONObject r = a.optJSONObject(i);
                 if (r != null && id.equals(r.optString("id"))) {
+                    known = true;
                     try {
                         r.put("status", next);
                     } catch (Exception ignored) {
@@ -374,6 +376,8 @@ final class Widgets {
                 }
             }
         }
+        // the launcher fills in the row extras: only tick what this widget actually showed
+        if (!known || !id.matches("[a-z]+_[0-9a-z]+")) return;
         Native.saveCache(c, j);
         updateAll(c);
         // shortcut: plain thread in the app process (it outlives the tap); a lost write is fixed by the next sync

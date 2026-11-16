@@ -7,6 +7,7 @@ import { handle } from '../db';
 import { newId } from '../crypto';
 import { ApiFail, bad, notFound } from '../http';
 import { nowUtcIso } from '$lib/time';
+import * as rl from '../ratelimit';
 
 const db = () => handle().sqlite;
 export type Kind = 'page' | 'note';
@@ -73,8 +74,15 @@ export function list(kind: Kind, userId: string, id: string): ShareDTO[] {
 /** add someone, or change what they can do (one row per person) */
 export function put(kind: Kind, userId: string, id: string, p: z.infer<typeof shareSchema>): ShareDTO[] {
 	need(kind, userId, id, 'owner');
+	// sharing by username tells you whether a name exists: cap the misses so it can't be used to list accounts
+	const miss = `share:miss:${userId}`;
+	const st = rl.check(miss);
+	if (st.locked) throw new ApiFail(429, 'rate_limited', `Too many unknown usernames. Try again in ${st.minutesLeft} min.`); // prettier-ignore
 	const g = db().prepare(`SELECT id FROM users WHERE username = ?`).get(p.username) as { id: string } | undefined; // prettier-ignore
-	if (!g) return bad('No one here has that username.', 'unknown_user');
+	if (!g) {
+		rl.fail(miss, 10);
+		return bad('No one here has that username.', 'unknown_user');
+	}
 	if (g.id === userId) bad("That's you. You already own it.", 'self');
 	const t = T[kind];
 	db()

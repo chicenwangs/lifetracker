@@ -1,4 +1,4 @@
-import { asc, eq, sql } from 'drizzle-orm';
+import { asc, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { calendars, users } from '../schema';
 import { newId } from '../crypto';
@@ -93,6 +93,18 @@ export function createWithCalendar(input: {
 export function setPasswordHash(id: string, hash: string): void {
 	db().update(users).set({ passwordHash: hash }).where(eq(users.id, id)).run();
 }
+
+/** disabled = no password hash: login fails and loadSession drops any session (auth.ts). Undo = scripts/reset-password.mjs */
+export function disable(id: string): void {
+	db().update(users).set({ passwordHash: null }).where(eq(users.id, id)).run();
+}
+export const disabledIds = (): string[] =>
+	db()
+		.select({ id: users.id })
+		.from(users)
+		.where(isNull(users.passwordHash))
+		.all()
+		.map((r) => r.id);
 
 export type Prefs = Partial<
 	Pick<

@@ -29,7 +29,11 @@
 		err = await onsave(v);
 		draft = err && typed !== undefined ? typed : null;
 	}
-	const chip = (c: string) => `background: var(--${c}-bg); color: var(--${c}-ink)`;
+	// colour is a token name; anything else (old rows from before the schema check) falls back, never raw CSS
+	const chip = (c: string) => (
+		(c = /^[a-z0-9-]{1,20}$/.test(c) ? c : 'none'),
+		`background: var(--${c}-bg); color: var(--${c}-ink)`
+	);
 </script>
 
 <div class="cell" class:bad={!!err || invalid}>

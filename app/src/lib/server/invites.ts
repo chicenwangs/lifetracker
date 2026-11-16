@@ -60,7 +60,8 @@ export function revokeInvite(id: string): boolean {
 	);
 }
 
-// Sign-ups: OPEN by default (anyone makes their own account). Admin can switch to invite-only.
+// Sign-ups: new installs start invite-only (setup writes '0'). Installs from before that keep their mode:
+// a missing key still means open, so an existing instance does not change under its users.
 const SIGNUP_KEY = 'signup_open';
 export function signupOpen(): boolean {
 	return meta.get(SIGNUP_KEY) !== '0';
@@ -139,6 +140,13 @@ async function signupOnce(input: unknown, ip: string): Promise<SignupResult> {
 	if (!p.data.code.trim()) return { ok: false, status: 400, message: 'Invite code needed.' };
 	const norm = normaliseCode(p.data.code, 'INV');
 	if (!norm) {
+		rl.fail(key, 10);
+		return { ok: false, status: 400, message: BAD };
+	}
+	// code first: "Username taken." only for someone holding a real code (else it is a free username oracle),
+	// and no argon2 work for a wrong code
+	const live = and(eq(invites.codeHash, hmac(norm)), isNull(invites.usedAt), isNull(invites.revokedAt), gt(invites.expiresAt, nowUtcIso())); // prettier-ignore
+	if (!db().select({ id: invites.id }).from(invites).where(live).get()) {
 		rl.fail(key, 10);
 		return { ok: false, status: 400, message: BAD };
 	}

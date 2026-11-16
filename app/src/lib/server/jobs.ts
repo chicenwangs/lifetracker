@@ -16,16 +16,49 @@ const MAX_ATTEMPTS = 5;
 export const pushEnabled = () => !!env().VAPID_PUBLIC_KEY && !!env().VAPID_PRIVATE_KEY;
 
 // ---------- subscriptions ----------
+export const MAX_DEVICES = 10;
+const SEND_TIMEOUT_MS = 10_000;
+// Browsers' push services. Anything else = the server would POST to a URL a member chose (SSRF).
+const PUSH_HOSTS = [
+	'fcm.googleapis.com',
+	'push.services.mozilla.com',
+	'notify.windows.com',
+	'push.apple.com',
+];
+export function pushHostOk(endpoint: string): boolean {
+	try {
+		const u = new URL(endpoint);
+		const h = u.hostname.toLowerCase();
+		return (
+			u.protocol === 'https:' &&
+			(u.port === '' || u.port === '443') &&
+			!u.username &&
+			!u.password &&
+			PUSH_HOSTS.some((p) => h === p || h.endsWith('.' + p))
+		);
+	} catch {
+		return false;
+	}
+}
+
 const hash = (s: string) => createHash('sha256').update(s).digest('hex');
+/** 'taken' = another account holds this endpoint with other keys; 'full' = MAX_DEVICES reached */
 export function subscribe(
 	userId: string,
 	sub: { endpoint: string; keys: { p256dh: string; auth: string } },
 	ua: string | null,
-) {
+): 'ok' | 'taken' | 'full' {
 	const h = hash(sub.endpoint);
-	db().prepare(`DELETE FROM push_subscriptions WHERE endpoint_hash = ?`).run(h); // same device re-subscribes / switches account
-	db().prepare(`INSERT INTO push_subscriptions (id, user_id, endpoint_hash, endpoint, p256dh, auth, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-		.run(newId('psub'), userId, h, sub.endpoint, sub.keys.p256dh, sub.keys.auth, ua?.slice(0, 300) ?? null, nowUtcIso()); // prettier-ignore
+	return db().transaction(() => {
+		// same device re-subscribes, or the same browser switches account (same auth secret)
+		const old = db().prepare(`SELECT user_id, auth FROM push_subscriptions WHERE endpoint_hash = ?`).get(h) as { user_id: string; auth: string } | undefined; // prettier-ignore
+		if (old && old.user_id !== userId && old.auth !== sub.keys.auth) return 'taken' as const;
+		if (old) db().prepare(`DELETE FROM push_subscriptions WHERE endpoint_hash = ?`).run(h);
+		else if (subscriptionCount(userId) >= MAX_DEVICES) return 'full' as const;
+		db().prepare(`INSERT INTO push_subscriptions (id, user_id, endpoint_hash, endpoint, p256dh, auth, user_agent, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+			.run(newId('psub'), userId, h, sub.endpoint, sub.keys.p256dh, sub.keys.auth, ua?.slice(0, 300) ?? null, nowUtcIso()); // prettier-ignore
+		return 'ok' as const;
+	})();
 }
 /** turning push off deletes our row at once: the push service may keep accepting for a while (ADR-006) */
 export function unsubscribe(userId: string, endpoint: string): boolean {
@@ -54,6 +87,11 @@ export async function pushTo(
 	let failed = 0;
 	let error: string | undefined;
 	for (const s of subs) {
+		if (!pushHostOk(s.endpoint)) {
+			// rows saved before the host allowlist: never send, drop them
+			db().prepare(`UPDATE push_subscriptions SET revoked_at = ? WHERE id = ?`).run(nowUtcIso(), s.id);
+			continue;
+		}
 		try {
 			await webpush.sendNotification(
 				{ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
@@ -61,6 +99,7 @@ export async function pushTo(
 				{
 					vapidDetails: { subject: e.VAPID_SUBJECT ?? 'mailto:admin@localhost.invalid', publicKey: e.VAPID_PUBLIC_KEY as string, privateKey: e.VAPID_PRIVATE_KEY as string }, // prettier-ignore
 					TTL: 3600,
+					timeout: SEND_TIMEOUT_MS, // one slow endpoint must not hold the whole reminder queue
 					urgency: 'high', // FCM 'normal' waits for a sleeping Android phone to wake: reminders came late or not at all
 				},
 			);
@@ -84,9 +123,12 @@ type Claimed = { id: string; owner_id: string; source_type: Source; source_id: s
 
 export async function tick(now = Date.now()): Promise<number> {
 	const t = nowUtcIso(now);
+	// stuck = the process died mid-send. Count it as a try, so a send that kills the process can't loop forever.
 	db()
-		.prepare(`UPDATE reminders SET status = 'scheduled' WHERE status = 'processing' AND claimed_at < ?`)
-		.run(nowUtcIso(now - STUCK_MS));
+		.prepare(
+			`UPDATE reminders SET attempts = attempts + 1, status = CASE WHEN attempts + 1 >= ? THEN 'missed' ELSE 'scheduled' END, last_error = 'stuck' WHERE status = 'processing' AND claimed_at < ?`,
+		) // prettier-ignore
+		.run(MAX_ATTEMPTS, nowUtcIso(now - STUCK_MS));
 	const claimed = db()
 		.transaction(() => db().prepare(`UPDATE reminders SET status = 'processing', claimed_at = ? WHERE id IN (SELECT id FROM reminders WHERE status = 'scheduled' AND due_at <= ? ORDER BY due_at LIMIT 50) RETURNING *`).all(t, t) as Claimed[])(); // prettier-ignore
 	for (const r of claimed) {
