@@ -13,6 +13,7 @@
 	import { invalidateAll } from '$lib/client/refresh';
 	import { onMount, tick } from 'svelte';
 	import { post } from '$lib/client/api';
+	import { enqueueAction, isOffline, pendingPatch } from '$lib/client/offline';
 	import { calendarBus } from '$lib/client/bus.svelte';
 	import { shown } from '$lib/client/itemtypes.svelte';
 	import { openItem } from '$lib/client/peek.svelte';
@@ -83,17 +84,37 @@
 	const left = (m: number) =>
 		m >= 60 ? `${Math.floor(m / 60)} h ${m % 60 ? `${m % 60} min` : ''}` : `${m} min`;
 
-	// ---------- status (optimistic) ----------
+	// ---------- status (optimistic + offline queue #105) ----------
 	let over = $state<Record<string, Status>>({});
+	let qTick = $state(0);
+	onMount(() => {
+		const bump = () => qTick++;
+		addEventListener('lt:queue', bump);
+		return () => removeEventListener('lt:queue', bump);
+	});
+	const statusOf = (kind: 'items' | 'blocks', id: string, cur: Status): Status => {
+		void qTick;
+		return over[id] ?? (pendingPatch(`/api/${kind}/${id}`)?.status as Status | undefined) ?? cur;
+	};
 	async function cycle(kind: 'items' | 'blocks', id: string, cur: Status) {
-		over[id] = cur === 'todo' ? 'doing' : cur === 'doing' ? 'done' : 'todo';
+		const next: Status = cur === 'todo' ? 'doing' : cur === 'doing' ? 'done' : 'todo';
+		over[id] = next;
 		try {
 			await post(`/api/${kind}/${id}/cycle`);
 			await invalidateAll();
-		} catch (e) {
-			showError(e);
-		} finally {
 			over = without(over, id);
+		} catch (e) {
+			if (isOffline(e)) {
+				enqueueAction({
+					key: `/api/${kind}/${id}`,
+					method: 'PATCH',
+					path: `/api/${kind}/${id}`,
+					payload: { status: next },
+				});
+				return;
+			}
+			over = without(over, id);
+			showError(e);
 		}
 	}
 
@@ -275,17 +296,11 @@
 										>{(e.block ?? e.item)?.owner?.initial}</span
 									>
 								{:else if e.block}
-									<StatusSquare
-										status={over[e.key] ?? e.block.status}
-										size={20}
-										oncycle={() => e.block && cycle('blocks', e.key, over[e.key] ?? e.block.status)}
-									/>
+									{@const st = statusOf('blocks', e.key, e.block.status)}
+									<StatusSquare status={st} size={20} oncycle={() => e.block && cycle('blocks', e.key, st)} />
 								{:else if e.item}
-									<StatusSquare
-										status={over[e.key] ?? e.item.status}
-										size={20}
-										oncycle={() => e.item && cycle('items', e.key, over[e.key] ?? e.item.status)}
-									/>
+									{@const st = statusOf('items', e.key, e.item.status)}
+									<StatusSquare status={st} size={20} oncycle={() => e.item && cycle('items', e.key, st)} />
 								{/if}
 								<button
 									class="t"

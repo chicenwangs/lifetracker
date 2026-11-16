@@ -112,6 +112,11 @@ export const noteSchema = z
 		images: zIds,
 		/** optimistic lock: refuse (409) if the note changed since this revision */
 		revision: z.number().int().optional(),
+		/** #105 offline edit timestamp (UTC Z): server wins if its copy changed later */
+		editedAt: z
+			.string()
+			.regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/)
+			.optional(),
 	})
 	.partial()
 	.strict();
@@ -205,7 +210,9 @@ export function create(ownerId: string, p: NoteInput): NoteDTO {
 export function update(ownerId: string, id: string, p: NoteInput): NoteDTO {
 	return txImmediate(() => {
 		const cur = own(ownerId, id);
-		if (p.revision !== undefined && p.revision !== cur.revision)
+		if (p.editedAt !== undefined) {
+			if (cur.updated_at > p.editedAt) return get(ownerId, id);
+		} else if (p.revision !== undefined && p.revision !== cur.revision)
 			throw new ApiFail(409, 'conflict', 'This note changed somewhere else. Reload it to see the latest.');
 		const now = nowUtcIso();
 		const set: Record<string, unknown> = {};
