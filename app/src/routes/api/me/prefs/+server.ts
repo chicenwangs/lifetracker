@@ -34,6 +34,8 @@ const schema = z
 		blockMin: z.union([z.literal(15), z.literal(30), z.literal(45), z.literal(60), z.literal(90)]),
 		visibleHours: z.string().regex(/^\d{1,2}-\d{1,2}$/),
 		hiddenTypes: z.array(z.string().max(40)).max(MAX_TYPES + 1),
+		/** phone gesture hints dismissed (#104); the client sends the whole list */
+		hintsSeen: z.array(z.string().regex(/^[a-z-]{1,20}$/)).max(20),
 		notifyPlanner: z.boolean(),
 		notifyKeep: z.boolean(),
 		notifyPages: z.boolean(),

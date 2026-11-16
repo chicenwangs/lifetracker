@@ -21,7 +21,15 @@ export async function signIn(page: Page) {
 	const skip = page.getByRole('button', { name: 'Skip tour' });
 	await skip.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
 	if (await skip.isVisible().catch(() => false)) await skip.click();
+	await setHints(page, HINTS); // first-use hints (#104) off, except in hints.spec
 }
+
+export const HINTS = ['today', 'calendar', 'month', 'keep'];
+/** which first-use gesture hints count as already seen (#104) */
+export const setHints = (page: Page, seen: string[]) =>
+	page.evaluate(async (hintsSeen) => {
+		await fetch('/api/me/prefs', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hintsSeen }) }); // prettier-ignore
+	}, seen);
 
 export const bottomBar = (page: Page) => page.getByRole('navigation', { name: 'Phone navigation' });
 
@@ -77,7 +85,7 @@ export async function longPress(page: Page, el: Locator, ms = 600) {
 export async function expectTappable(el: Locator) {
 	await expect(el.first()).toBeVisible();
 	for (const one of await el.all()) {
-		await one.scrollIntoViewIfNeeded();
+		await one.evaluate((n) => n.scrollIntoView({ block: 'center' })); // not just 'in view': fixed bars sit on the edges
 		const hit = () =>
 			one.evaluate((n) => {
 				const r = n.getBoundingClientRect();
