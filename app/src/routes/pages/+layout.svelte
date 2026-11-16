@@ -337,7 +337,7 @@
 	.phonehead {
 		display: none;
 	}
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		/* 48 dp rows (#101) */
 		.row a,
 		.foot a {

@@ -16,7 +16,6 @@ test.beforeAll(async ({ browser }, info) => {
 });
 test.afterAll(() => page.context().close());
 test.beforeEach(async () => {
-	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape still gets the desktop layout');
 	await page.setViewportSize({ width: 412, height: 915 });
 });
 

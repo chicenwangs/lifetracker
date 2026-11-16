@@ -640,7 +640,7 @@
 	h2.label {
 		margin: 16px 0 0;
 	}
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.open {
 			min-height: 48px;
 		}

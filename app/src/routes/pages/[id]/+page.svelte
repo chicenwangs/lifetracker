@@ -382,7 +382,7 @@
 		font-size: 12px;
 		color: var(--quiet);
 	}
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.crumbs a {
 			display: inline-flex;
 			align-items: center;

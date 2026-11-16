@@ -510,7 +510,7 @@
 		transform: rotate(-6deg) scale(1.06);
 	}
 	/* phone: the bottom bar has nav + Add (FEATURES §10) */
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		nav,
 		.right > :global(.opener) {
 			display: none;

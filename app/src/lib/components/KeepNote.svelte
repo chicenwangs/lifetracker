@@ -721,7 +721,7 @@
 		}
 	}
 	/* desktop: a big writing area (owner 2026-11-16: was small in the middle) */
-	@media (min-width: 700px) {
+	@media (min-width: 700px) and (not (pointer: coarse)), (min-width: 700px) and (min-height: 501px) {
 		.note {
 			top: 5vh;
 			width: min(960px, 92vw);
@@ -841,7 +841,7 @@
 		right: 4px;
 		background: var(--card);
 	}
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.note {
 			top: 0;
 			left: 0;

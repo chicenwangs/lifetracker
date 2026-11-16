@@ -47,10 +47,6 @@ test('closing in the UI uses up the entry: next Back leaves the page', async () 
 });
 
 test('Back closes the account sheet; a link in it navigates once', async () => {
-	test.fixme(
-		test.info().project.name === 'phone-landscape',
-		'#110: landscape still gets the desktop dropdown',
-	);
 	await page.goto('/today');
 	const avatar = page.getByRole('button', { name: 'Account menu' });
 	await avatar.click();

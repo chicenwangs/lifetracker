@@ -30,7 +30,6 @@ const TABS: [string, () => string][] = [
 ];
 
 test('Add sheet: every / command in quick add can be tapped', async () => {
-	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape has no bottom bar yet');
 	await page.goto('/today');
 	await bottomBar(page).getByRole('button', { name: 'Add' }).click();
 	await page.keyboard.type('gym tmr 6pm /');
@@ -43,17 +42,9 @@ for (const [name, path] of TABS) {
 		const res = await page.goto(path());
 		expect(res?.status()).toBeLessThan(400);
 		await expect(page).not.toHaveURL(/\/login/);
-		test.fixme(
-			test.info().project.name === 'phone-landscape',
-			'#110: landscape phone still gets the desktop layout',
-		);
 		await expect(bottomBar(page)).toBeVisible();
 	});
 	test(`${name}: every control is 48×48 (#101)`, async () => {
-		test.fixme(
-			test.info().project.name === 'phone-landscape',
-			'#110: landscape still gets the desktop layout',
-		);
 		await page.goto(path());
 		await expectTargets48(page);
 	});

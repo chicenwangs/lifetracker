@@ -14,9 +14,7 @@ test.beforeAll(async ({ browser }, info) => {
 	await signIn(page);
 });
 test.afterAll(() => page.context().close());
-test.beforeEach(() => {
-	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape still gets the desktop layout');
-});
+test.beforeEach(() => {});
 
 test('tab screens: no Back, no desktop nav, search + avatar 48 dp', async () => {
 	for (const p of ['/today', '/week', '/keep', '/pages']) {

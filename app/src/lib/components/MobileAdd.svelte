@@ -155,7 +155,7 @@
 		background: var(--card);
 	}
 	/* the shared sheet's Close is phone-only; wide screens (landscape until #110) need this one */
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.wide {
 			display: none;
 		}

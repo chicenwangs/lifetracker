@@ -1,5 +1,6 @@
 <!-- HOME (FR-H1): month calendar 2/3 | planner 1/3 (due chips + planner). < ~1000px stacks. -->
 <script lang="ts">
+	import { isPhone } from '$lib/client/phone';
 	import { shown } from '$lib/client/itemtypes.svelte';
 	import { goto } from '$app/navigation';
 	import { invalidateAll } from '$lib/client/refresh';
@@ -123,7 +124,7 @@
 	onMount(() => {
 		// phone opens on Today (FEATURES §10). ?d / ?m / ?desktop = the user asked for this page.
 		const q = new URL(location.href).searchParams;
-		if (matchMedia('(max-width: 699px)').matches && !q.has('d') && !q.has('m') && !q.has('desktop'))
+		if (isPhone() && !q.has('d') && !q.has('m') && !q.has('desktop'))
 			void goto('/today', { replaceState: true });
 		const t = setInterval(() => document.visibilityState === 'visible' && refresh(), 60_000);
 		const f = () => refresh();

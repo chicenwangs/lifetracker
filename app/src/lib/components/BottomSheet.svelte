@@ -176,7 +176,7 @@
 		display: none;
 	}
 	/* phone: one shared bottom sheet, half then full (G10) */
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.scrim {
 			z-index: 80;
 			padding: 0;
@@ -266,6 +266,12 @@
 			flex-direction: column;
 			gap: 12px;
 			padding: 4px 0 0;
+		}
+	}
+	/* phone sideways (#110): half of a short screen is too little, open tall */
+	@media (pointer: coarse) and (max-height: 500px) {
+		.panel {
+			height: 92dvh;
 		}
 	}
 </style>

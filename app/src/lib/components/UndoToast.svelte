@@ -127,7 +127,7 @@
 		transition: none;
 	}
 	/* phone: a snackbar just above the bottom bar, never on it (#111); full width, 48 dp buttons */
-	@media (max-width: 699px) {
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.wrap {
 			left: 8px;
 			right: 8px;
