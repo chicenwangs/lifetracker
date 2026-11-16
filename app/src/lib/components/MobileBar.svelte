@@ -176,7 +176,9 @@
 			display: grid;
 			grid-template-columns: repeat(5, minmax(0, 1fr));
 			align-items: center;
-			padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
+			/* #114: side insets for landscape notch; bottom for gesture bar */
+			padding: 4px calc(8px + env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom))
+				calc(8px + env(safe-area-inset-left));
 			background: var(--card);
 			border-top: 1.5px solid var(--border);
 			view-transition-name: mbar;

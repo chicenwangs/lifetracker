@@ -304,7 +304,8 @@
 			max-height: none;
 			border-radius: 0;
 			border: 0;
-			padding: calc(8px + env(safe-area-inset-top)) 12px calc(8px + env(safe-area-inset-bottom));
+			padding: calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right))
+				calc(8px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
 		}
 		.close {
 			display: grid;

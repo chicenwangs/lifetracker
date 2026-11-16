@@ -439,7 +439,8 @@
 			top: auto;
 			z-index: 60;
 			margin: 0;
-			padding: 0 4px;
+			padding: 0 calc(4px + env(safe-area-inset-right)) env(safe-area-inset-bottom)
+				calc(4px + env(safe-area-inset-left));
 			border-radius: 0;
 			flex-wrap: nowrap;
 			overflow-x: auto;
