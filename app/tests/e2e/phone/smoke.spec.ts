@@ -1,4 +1,4 @@
-// Phone smoke: each tab loads and shows the bottom bar. 48 dp + wording checks are fixme until their issue lands.
+// Phone smoke: each tab loads, shows the bottom bar, every control is 48 dp (#101). Wording checks wait on #115.
 import { expect, test, type Page } from '@playwright/test';
 import { bottomBar, expectTappable, expectTargets48, noDesktopHints, signIn } from './helpers';
 
@@ -49,7 +49,11 @@ for (const [name, path] of TABS) {
 		);
 		await expect(bottomBar(page)).toBeVisible();
 	});
-	test.fixme(`${name}: every control is 48×48 (#101)`, async () => {
+	test(`${name}: every control is 48×48 (#101)`, async () => {
+		test.fixme(
+			test.info().project.name === 'phone-landscape',
+			'#110: landscape still gets the desktop layout',
+		);
 		await page.goto(path());
 		await expectTargets48(page);
 	});

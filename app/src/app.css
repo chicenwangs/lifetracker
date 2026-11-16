@@ -503,6 +503,31 @@ main .card:nth-child(3) {
 main .card:nth-child(n + 4) {
 	animation-delay: 160ms;
 }
+/* phone: 48 dp hit areas (#101, G5). Visuals inside may stay smaller (::after hit-slop, e.g. StatusSquare). */
+@media (max-width: 699px) {
+	.btn,
+	.btn.sm {
+		height: auto;
+		min-height: 48px;
+		min-width: 48px;
+	}
+	select,
+	textarea,
+	input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], .sr-only, .in) {
+		min-height: 48px;
+	}
+	/* small icon buttons (.mini) are styled in many components; !important only on the hit size */
+	.mini {
+		min-height: 48px !important;
+		min-width: 48px !important;
+	}
+	label:has(> input[type='checkbox'], > input[type='radio']) {
+		min-height: 48px;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+}
 /* phone: tabs switch with a fade-through instead; cards are just there (#90, G12) */
 @media (max-width: 699px) {
 	main .card,
@@ -575,11 +600,11 @@ main .card:nth-child(n + 4) {
 	height: 24px;
 	translate: -50% -50%;
 }
-/* touch: fingers are bigger than cursors (Fitts): status squares get a 40×40 hit area on phones */
+/* touch: fingers are bigger than cursors (Fitts): status squares get a 48×48 hit area on phones (#101) */
 @media (pointer: coarse) {
 	.lt-sq::after {
-		width: 40px;
-		height: 40px;
+		width: 48px;
+		height: 48px;
 	}
 }
 /* touch has no hover: show the delete button instead of hiding it (FEATURES §3 X fix) */

@@ -105,10 +105,11 @@
 			stroke-dashoffset: 10;
 		}
 	}
+	/* touch: 48 dp hit area (#101, G5), drawn box stays small */
 	@media (pointer: coarse) {
 		.sq::after {
-			width: max(40px, 100%);
-			height: max(40px, 100%);
+			width: max(48px, 100%);
+			height: max(48px, 100%);
 		}
 	}
 </style>

@@ -137,7 +137,7 @@
 		.side a {
 			flex: none;
 			white-space: nowrap;
-			min-height: 36px;
+			min-height: 48px;
 			display: flex;
 			align-items: center;
 			padding: 0 14px;

@@ -19,8 +19,8 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 | 1 foundation | #91 | Android Back closes the top layer + predictive back | DONE 2026-11-16 (real-phone check owed) | #123 |
 | 1 foundation | #88 | Tab bar Today · Calendar · + · Keep · Pages; More → account sheet | DONE 2026-11-16 | #124 |
 | 1 foundation | #89 | Top app bar with Back + title on deeper screens | DONE 2026-11-16 | #125 |
-| 1 foundation | #90 | Instant tab switch — keep state, fade-through, no load-in | PR open (cache-first data = #105) | #126 |
-| 1 foundation | #101 | 48 dp targets + thumb zone (empty the allowlist) | todo | |
+| 1 foundation | #90 | Instant tab switch — keep state, fade-through, no load-in | DONE 2026-11-16 (cache-first data = #105) | #126 |
+| 1 foundation | #101 | 48 dp targets + thumb zone (empty the allowlist) | PR open | #127 |
 | 1 foundation | #111 | Undo toast above the bottom bar | todo | |
 | 1 foundation | #109 | In-app dialogs instead of confirm / prompt | todo | |
 | 1 foundation | #118 | Sheets and inputs above the keyboard | todo | |

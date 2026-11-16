@@ -390,6 +390,13 @@
 		color: var(--quiet);
 	}
 	@media (max-width: 699px) {
+		.crumbs a {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			min-height: 48px;
+			min-width: 48px;
+		}
 		.bar {
 			padding: 10px 12px;
 		}

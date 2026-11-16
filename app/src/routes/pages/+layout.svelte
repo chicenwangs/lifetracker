@@ -338,6 +338,11 @@
 		display: none;
 	}
 	@media (max-width: 699px) {
+		/* 48 dp rows (#101) */
+		.row a,
+		.foot a {
+			min-height: 48px;
+		}
 		.phonehead {
 			display: flex;
 			flex-direction: column;
@@ -355,7 +360,7 @@
 		.find input {
 			width: 100%;
 			box-sizing: border-box;
-			min-height: 44px;
+			min-height: 48px;
 			padding: 0 12px;
 			font: inherit;
 			font-size: 15px;

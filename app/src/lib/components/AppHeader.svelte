@@ -575,10 +575,9 @@
 			display: block;
 		}
 		.avatar {
-			width: 44px;
-			height: 44px;
-			border-radius: 22px;
-			margin: 2px;
+			width: 48px;
+			height: 48px;
+			border-radius: 24px;
 		}
 		.mark {
 			display: grid;
