@@ -26,7 +26,7 @@ export async function signIn(page: Page) {
 export const bottomBar = (page: Page) => page.getByRole('navigation', { name: 'Phone navigation' });
 
 /** one CDP session per gesture: a touch started on one session can't be moved from another */
-async function finger(page: Page) {
+export async function finger(page: Page) {
 	const cdp = await page.context().newCDPSession(page);
 	const send = (type: 'touchStart' | 'touchMove' | 'touchEnd', x = 0, y = 0) =>
 		cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
@@ -110,7 +110,7 @@ export async function expectTargets48(page: Page) {
 		for (const el of document.querySelectorAll<HTMLElement>(sel)) {
 			if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
 			const r = el.getBoundingClientRect();
-			if (r.width <= 1 || r.height <= 1) continue; // sr-only
+			if (r.width <= 1 || r.height <= 1 || el.closest('[aria-hidden="true"]')) continue; // sr-only / hidden helpers
 			if (el.tagName === 'A' && getComputedStyle(el).display === 'inline' && el.closest('p')) continue;
 			const own = hit(el);
 			const lab = el.closest('label');
