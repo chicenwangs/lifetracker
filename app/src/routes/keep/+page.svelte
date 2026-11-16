@@ -1,5 +1,6 @@
 <!-- Keep (FEATURES §5): side nav (notes, binders, labels, archive, trash) · search · New note · Pinned · notes · Select mode. -->
 <script lang="ts">
+	import GestureHint from '$lib/components/GestureHint.svelte';
 	import { rowGestures } from '$lib/client/rowGestures';
 	import { isPhone } from '$lib/client/phone';
 	import { askConfirm, askText } from '$lib/client/dialog.svelte';
@@ -279,6 +280,10 @@
 		<a href="/keep?scope=trash" class:on={data.scope === 'trash'}>Trash</a>
 	</nav>
 
+	<GestureHint
+		id="keep"
+		text="Swipe a note sideways to archive it. Hold a note to select it; hold and drag to reorder."
+	/>
 	<section class="main">
 		{#if data.q || data.labelFilter.length}
 			<p class="filters">

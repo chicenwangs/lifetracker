@@ -76,6 +76,11 @@ export const users = sqliteTable(
 			.$type<string[]>()
 			.notNull()
 			.default(sql`'[]'`),
+		/** phone gesture hints already dismissed (#104), e.g. ["today","keep"] */
+		hintsSeen: text('hints_seen', { mode: 'json' })
+			.$type<string[]>()
+			.notNull()
+			.default(sql`'[]'`),
 		// D-15 per-kind reminder toggles. On by default: v1 had no reminders, so nobody gets one they didn't add.
 		notifyPlanner: integer('notify_planner', { mode: 'boolean' }).notNull().default(true),
 		notifyKeep: integer('notify_keep', { mode: 'boolean' }).notNull().default(true),

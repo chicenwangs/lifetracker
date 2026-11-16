@@ -21,6 +21,7 @@ declare global {
 			blockMin: number;
 			visibleHours: string;
 			hiddenTypes: string[];
+			hintsSeen: string[];
 			notifyPlanner: boolean;
 			notifyKeep: boolean;
 			notifyPages: boolean;

@@ -1,6 +1,7 @@
 <!-- Phone Month (Calendar tab, #95): 6 x 7 grid, a dot per thing that day (type colour, max 3 + count). Tap a day =
      select it: its agenda shows below, you stay in Calendar. Swipe the grid for the month before / after. -->
 <script lang="ts">
+	import GestureHint from '$lib/components/GestureHint.svelte';
 	import { shown } from '$lib/client/itemtypes.svelte';
 	import { entryColors } from '$lib/client/partner';
 	import { addDays, prettyDate, utcToLocal, weekStartOf } from '$lib/time';
@@ -63,6 +64,10 @@
 		on="month"
 		week="/week?w={weekStartOf(sel, data.user?.region === 'us' ? 7 : 1)}"
 		month="/month?m={data.ym}"
+	/>
+	<GestureHint
+		id="month"
+		text="Swipe the month sideways for the one before or after. Tap a day to see its plans below."
 	/>
 	<div class="card mc">
 		<div class="bar">

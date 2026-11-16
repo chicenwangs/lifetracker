@@ -2,6 +2,7 @@
      now (owner 2026-11-14). Hold a row ~0.5 s = delete with Undo. No "To do today" list (owner 2026-11-16).
      Glance + capture; planning stays on the PC. Works on desktop too. -->
 <script lang="ts">
+	import GestureHint from '$lib/components/GestureHint.svelte';
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
 	import { askText } from '$lib/client/dialog.svelte';
 	import { deleteRow, moveRow, toggleDone } from '$lib/client/rowOps';
@@ -201,6 +202,10 @@
 		/>
 		{#if !isToday}<a class="btn sm" href="/today">Today</a>{/if}
 	</header>
+	<GestureHint
+		id="today"
+		text="Swipe sideways for other days. Swipe a plan right = done, left = delete; hold to move it. ⋯ does the same by tap."
+	/>
 	<nav class="strip" aria-label="This week" ontouchstart={wstart} ontouchend={wend}>
 		{#each strip as d (d)}
 			<button

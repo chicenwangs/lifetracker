@@ -2,6 +2,7 @@
      Right column (top to bottom): month heatmap with this week highlighted · Not scheduled (all-day items with
      no block; drag onto the grid to block time, drag a block here to unschedule it) · stats. -->
 <script lang="ts">
+	import GestureHint from '$lib/components/GestureHint.svelte';
 	import CalSwitch from '$lib/components/CalSwitch.svelte';
 	import { peerSwipe } from '$lib/client/peerSwipe';
 	import { backCloses } from '$lib/client/layers';
@@ -208,6 +209,10 @@
 <!-- phone (< 700 px): read-first agenda; the grid below is for the PC -->
 <main class="phone" aria-label="Week agenda">
 	<CalSwitch on="week" week="/week?w={data.from}" month="/month?m={data.from.slice(0, 7)}" />
+	<GestureHint
+		id="calendar"
+		text="Swipe sideways for the week before or after. Hold a plan and drag it onto another day; ⋯ moves it by tap."
+	/>
 	<div class="pbar">
 		<a class="btn sm" href="/week?w={addDays(data.from, -7)}" aria-label="Previous week">‹</a>
 		<strong>{weekLabel(data.from)}</strong>
