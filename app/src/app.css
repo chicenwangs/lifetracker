@@ -671,3 +671,11 @@ main .card:nth-child(n + 4) {
 		transition-duration: 0.01ms !important;
 	}
 }
+
+/* phone: no browser pull-to-reload (it would drop unsaved text); PullRefresh.svelte does it in-app (#103) */
+@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+	html,
+	body {
+		overscroll-behavior-y: contain;
+	}
+}

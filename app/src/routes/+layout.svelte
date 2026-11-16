@@ -6,6 +6,7 @@
 	import UndoToast from '$lib/components/UndoToast.svelte';
 	import Dialog from '$lib/components/Dialog.svelte';
 	import MobileBar from '$lib/components/MobileBar.svelte';
+	import PullRefresh from '$lib/components/PullRefresh.svelte';
 	import MobileAdd from '$lib/components/MobileAdd.svelte';
 	import ItemPeek from '$lib/components/ItemPeek.svelte';
 	import { browser } from '$app/environment';
@@ -100,6 +101,7 @@
 {/if}
 {#if data.user}
 	<MobileBar />
+	<PullRefresh />
 	<MobileAdd />
 {/if}
 <UndoToast />

@@ -9,6 +9,7 @@
 	import { post } from '$lib/client/api';
 	import { buzz } from '$lib/client/haptics';
 	import { showError } from '$lib/client/toast.svelte';
+	import { invalidateAll } from '$lib/client/refresh';
 
 	const TABS = [
 		// icons = wireframe MBar
@@ -71,8 +72,12 @@
 		if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
 		e.preventDefault();
 		if (on(root) && current) {
-			// re-tap the active tab: top of its root screen
-			if (key(page.url) === root) return scrollTo({ top: 0, behavior: 'smooth' });
+			// re-tap the active tab: top of its root screen; already at the top = refresh (#103 tap path)
+			if (key(page.url) === root) {
+				if (scrollY > 0) return scrollTo({ top: 0, behavior: 'smooth' });
+				buzz('tick');
+				return invalidateAll();
+			}
 			viaTab = true;
 			scrolls[root] = 0;
 			return goto(root, { noScroll: true });
