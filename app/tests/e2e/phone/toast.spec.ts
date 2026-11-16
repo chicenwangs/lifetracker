@@ -1,6 +1,6 @@
 // Undo toast on phone (#111): sits above the bottom bar, bar stays usable, 48 dp Undo, swipe sideways to dismiss.
 import { expect, test, type Page } from '@playwright/test';
-import { bottomBar, expectTappable, longPress, signIn, swipe } from './helpers';
+import { bottomBar, expectTappable, signIn, swipe } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 let page: Page;
@@ -22,7 +22,7 @@ async function deleteOne(title: string) {
 		await fetch('/api/items', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: t, date, time: '06:00' }) }); // prettier-ignore
 	}, title);
 	await page.goto('/today');
-	await longPress(page, page.getByRole('group', { name: `${title}, hold to delete` }), 700);
+	await swipe(page, page.getByRole('group', { name: title, exact: true }), 'left'); // #96: swipe left = delete
 	const toast = page.locator('.toast');
 	await expect(toast).toContainText(title);
 	return toast;
@@ -41,7 +41,7 @@ test('toast sits above the bar; bar and Undo stay tappable', async () => {
 	expect(Math.min(u.width, u.height)).toBeGreaterThanOrEqual(48);
 	await undo.click();
 	await expect(
-		page.getByRole('group', { name: `Toast item one ${test.info().project.name}, hold to delete` }),
+		page.getByRole('group', { name: `Toast item one ${test.info().project.name}`, exact: true }),
 	).toBeVisible();
 });
 

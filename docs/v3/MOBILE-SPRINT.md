@@ -28,7 +28,7 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 | 2 interactions | #93 | + adds the right thing per tab, grows into the sheet | PR open | #133 |
 | 2 interactions | #94 | Today date strip; days slide with the finger | PR open | #134 |
 | 2 interactions | #95 | Calendar tab: Week + Month, swipe periods, day agenda | PR open | #135 |
-| 2 interactions | #96 | Hold to pick up; row swipe done / delete + Undo | todo | |
+| 2 interactions | #96 | Hold to pick up; row swipe done / delete + Undo | PR open | #136 |
 | 2 interactions | #97 | Keep: hold to drag, hold to select, swipe to archive | todo | |
 | 2 interactions | #102 | Native haptics (needs real phone) | PR open | #132 |
 | 3 screens | #98 | Pages list + editor for phone, toolbar above keyboard | todo | |

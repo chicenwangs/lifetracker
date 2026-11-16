@@ -2,6 +2,10 @@
      now (owner 2026-11-14). Hold a row ~0.5 s = delete with Undo. No "To do today" list (owner 2026-11-16).
      Glance + capture; planning stays on the PC. Works on desktop too. -->
 <script lang="ts">
+	import ActionSheet from '$lib/components/ActionSheet.svelte';
+	import { askText } from '$lib/client/dialog.svelte';
+	import { deleteRow, moveRow, toggleDone } from '$lib/client/rowOps';
+	import { rowGestures } from '$lib/client/rowGestures';
 	import { peerSwipe } from '$lib/client/peerSwipe';
 	import { buzz } from '$lib/client/haptics';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
@@ -18,7 +22,6 @@
 	import { colorsFor } from '$lib/colors';
 	import StatusSquare from '$lib/components/StatusSquare.svelte';
 	import { addDays, clock, nowLocalMinutes, prettyDate, utcToLocal } from '$lib/time';
-	import { removeBlock, removeItem } from '$lib/client/remove';
 	import type { BlockDTO, ItemDTO, Status } from '$lib/types';
 
 	let { data } = $props();
@@ -88,33 +91,49 @@
 		}
 	}
 
-	// ---------- hold to delete (phone, owner 2026-11-16) ----------
-	// ~0.5 s press on a row = delete with the usual Undo toast. Moving the finger (scroll) cancels.
-	let hold: { t: ReturnType<typeof setTimeout>; x: number; y: number } | null = null;
-	let held = false; // swallow the tap that ends a hold
-	function press(e: PointerEvent, en: Entry) {
-		const row = en.block ?? en.item;
-		if (!row || row.theirs || !row.editable) return;
-		held = false;
-		hold = {
-			x: e.clientX,
-			y: e.clientY,
-			t: setTimeout(() => {
-				hold = null;
-				held = true;
-				buzz('pickup');
-				const done = () => invalidateAll();
-				if (en.item) void removeItem(en.item.id, en.label, done);
-				else if (en.block) void removeBlock(en.block.id, en.label, done);
-			}, 500),
+	// ---------- row gestures (#96): swipe right = done, left = delete, hold + drag = move (15 min steps) ----------
+	const refreshDay = () => invalidateAll();
+	const rowOf = (e: Entry) => {
+		const r = e.block ?? e.item;
+		return r && r.editable && !r.theirs ? r : null;
+	};
+	const STEP_PX = 24; // finger travel per 15 minutes
+	let carry = $state<{ key: string; min: number } | null>(null);
+	let acting = $state<Entry | null>(null);
+	function gestures(e: Entry) {
+		const r = rowOf(e);
+		if (!r) return {};
+		const at = (dy: number) => Math.round(dy / STEP_PX) * 15;
+		return {
+			done: () => toggleDone(r, refreshDay),
+			remove: () => deleteRow(r, refreshDay),
+			drag: (dy: number) => {
+				const min = at(dy);
+				if (carry?.min !== min) buzz('tick');
+				carry = { key: e.key, min };
+			},
+			drop: (dy: number) => {
+				carry = null;
+				return moveRow(r, { minutes: at(dy) }, refreshDay);
+			},
 		};
 	}
-	function unpress(e?: PointerEvent) {
-		if (!hold) return;
-		if (e && e.type === 'pointermove' && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) < 10) return;
-		clearTimeout(hold.t);
-		hold = null;
+	async function moveByTime(e: Entry, r: NonNullable<ReturnType<typeof rowOf>>) {
+		if (e.item && !e.block) return openItem(e.item.id); // the item sheet edits day and time
+		const t = await askText('New start time (HH:MM)', { value: fmt(e.start), ok: 'Move' });
+		const m = t && /^(\d{1,2}):(\d{2})$/.exec(t);
+		if (!m) return;
+		return moveRow(r, { minutes: Number(m[1]) * 60 + Number(m[2]) - e.start }, refreshDay);
 	}
+	const actionsFor = (e: Entry) => {
+		const r = rowOf(e);
+		if (!r) return [];
+		return [
+			{ label: r.status === 'done' ? 'Not done' : 'Done', run: () => toggleDone(r, refreshDay) },
+			{ label: 'Move…', run: () => moveByTime(e, r) },
+			{ label: 'Delete', danger: true, run: () => deleteRow(r, refreshDay) },
+		];
+	};
 
 	// ---------- wheel ----------
 	let wheel: HTMLDivElement | undefined = $state();
@@ -232,15 +251,14 @@
 							style:--fg={c.ink}
 							style:--sq-on={c.bg}
 							role="group"
-							aria-label="{e.label}, hold to delete"
-							onpointerdown={(ev) => press(ev, e)}
-							onpointermove={unpress}
-							onpointerup={() => unpress()}
-							onpointercancel={() => unpress()}
-							oncontextmenu={(ev) => (e.block ?? e.item)?.editable && ev.preventDefault()}
-							onclickcapture={(ev) => held && (ev.stopPropagation(), ev.preventDefault(), (held = false))}
+							aria-label={e.label}
+							use:rowGestures={gestures(e)}
 						>
-							<span class="tm">{fmt(e.start)}<br /><span class="hint">{fmt(e.end)}</span></span>
+							<span class="tm"
+								>{fmt(e.start + (carry?.key === e.key ? carry.min : 0))}<br /><span class="hint"
+									>{fmt(e.end + (carry?.key === e.key ? carry.min : 0))}</span
+								></span
+							>
 							<div class="box">
 								{#if (e.block ?? e.item)?.theirs}
 									<span class="who" style:background={(e.block ?? e.item)?.owner?.color}
@@ -266,6 +284,12 @@
 									onclick={() => (e.item ? openItem(e.item.id) : e.block?.itemId && openItem(e.block.itemId))}
 									>{e.label}</button
 								>
+								{#if rowOf(e)}<button
+										class="more"
+										type="button"
+										aria-label="Actions for {e.label}"
+										onclick={() => (acting = e)}>⋯</button
+									>{/if}
 							</div>
 						</div>
 					{/each}
@@ -278,6 +302,9 @@
 			{/if}
 		</section>
 	</div>
+	{#if acting}
+		<ActionSheet title={acting.label} actions={actionsFor(acting)} onclose={() => (acting = null)} />
+	{/if}
 </main>
 
 <style>
@@ -404,6 +431,16 @@
 		cursor: pointer;
 		padding: 0;
 	}
+	.more {
+		flex: none;
+		width: 48px;
+		min-height: 48px;
+		border: 0;
+		background: none;
+		color: inherit;
+		font-size: 20px;
+		cursor: pointer;
+	}
 	.t:disabled {
 		cursor: default;
 	}
@@ -420,7 +457,7 @@
 		padding: 0 0 8px;
 	}
 	.ent {
-		user-select: none; /* long-press deletes; no text selection or callout */
+		user-select: none; /* hold lifts the row (#96); no text selection or callout */
 		-webkit-touch-callout: none;
 		scroll-snap-align: start;
 		display: flex;

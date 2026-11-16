@@ -38,8 +38,9 @@ test('swipe the strip = next / previous week', async () => {
 	await expect.poll(day).toBe('2030-01-15');
 });
 
+// empty days: a horizontal swipe that starts on a row is that row's action (#96), not the day's
 test('the day follows the finger; a short drag snaps back, a long one steps', async () => {
-	await page.goto('/today?d=2030-01-15');
+	await page.goto('/today?d=2030-01-08');
 	const area = page.getByRole('group', { name: /The day/ });
 	const b = (await area.boundingBox())!;
 	const y = b.y + 40;
@@ -47,15 +48,15 @@ test('the day follows the finger; a short drag snaps back, a long one steps', as
 	await f.send('touchStart', 300, y);
 	for (let x = 290; x >= 230; x -= 10) await f.send('touchMove', x, y); // 70 px: under a quarter
 	await expect.poll(() => area.evaluate((el) => getComputedStyle(el).translate)).toMatch(/^-\d/);
-	await expect(page.getByText(/16 Jan 2030/)).toBeVisible(); // the next day peeks in
+	await expect(page.getByText(/9 Jan 2030/)).toBeVisible(); // the next day peeks in
 	await f.send('touchEnd');
 	await f.done();
 	await expect.poll(() => area.evaluate((el) => getComputedStyle(el).translate)).toBe('none');
-	expect(day()).toBe('2030-01-15');
+	expect(day()).toBe('2030-01-08');
 	await swipe(page, area, 'left', 250);
-	await expect.poll(day).toBe('2030-01-16');
+	await expect.poll(day).toBe('2030-01-09');
 	await swipe(page, area, 'right', 250);
-	await expect.poll(day).toBe('2030-01-15');
+	await expect.poll(day).toBe('2030-01-08');
 });
 
 test('title opens a date picker (tap path to any day)', async () => {

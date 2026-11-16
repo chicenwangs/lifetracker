@@ -1215,7 +1215,8 @@ test('owner test pass 2026-11-16: chips, popups, Keep, Pages undo + dark, pins, 
 	await expect(page.locator('table')).toContainText('Storage');
 	await expect(page.locator('td.store').first()).toContainText('of 2.00 GB');
 
-	// phone: no "To do today" card; hold a timeline row = delete with Undo (#74 #75); "/" list opens upward (#80)
+	// phone: no "To do today" card; delete a timeline row with Undo (#74 #75; #96: swipe left or ⋯, not hold);
+	// "/" list opens upward (#80)
 	expect((await api('POST', '/api/blocks', { label: 'hold me', startAt: utc(d, '22:00'), endAt: utc(d, '22:30') })).s).toBe(201); // prettier-ignore
 	const ctx = await browser.newContext({ storageState: await page.context().storageState(), viewport: { width: 390, height: 844 }, timezoneId: 'Asia/Kuala_Lumpur', hasTouch: true }); // prettier-ignore
 	const ph = await ctx.newPage();
@@ -1223,13 +1224,11 @@ test('owner test pass 2026-11-16: chips, popups, Keep, Pages undo + dark, pins, 
 	await expect(ph.locator('main')).not.toContainText('To do today');
 	const held = ph.locator('.ent', { hasText: 'hold me' });
 	await expect(held).toBeVisible();
-	await held.locator('.t').evaluate(async (el) => {
-		const r = el.getBoundingClientRect();
-		const o = { bubbles: true, clientX: r.x + 10, clientY: r.y + 10, pointerId: 1, pointerType: 'touch' };
-		el.dispatchEvent(new PointerEvent('pointerdown', o));
-		await new Promise((f) => setTimeout(f, 700));
-		el.dispatchEvent(new PointerEvent('pointerup', o));
-	});
+	await held.getByRole('button', { name: 'Actions for hold me' }).click();
+	await ph
+		.getByRole('dialog', { name: 'Actions for hold me' })
+		.getByRole('button', { name: 'Delete' })
+		.click();
 	await expect(ph.locator('.toast')).toContainText('Deleted "hold me"');
 	await ph.locator('.toast').getByRole('button', { name: 'Undo' }).click();
 	await expect(held).toBeVisible();
