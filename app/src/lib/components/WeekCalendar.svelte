@@ -122,9 +122,9 @@
 	let drag: Draggable | null = null;
 
 	const ARIA: Record<Status, string> = {
-		todo: 'Not started. Click to start',
-		doing: 'In progress. Click to complete',
-		done: 'Completed. Click to reset',
+		todo: 'Not started. Activate to start',
+		doing: 'In progress. Activate to complete',
+		done: 'Completed. Activate to reset',
 	};
 	const SVG: Record<Status, string> = {
 		todo: '',
