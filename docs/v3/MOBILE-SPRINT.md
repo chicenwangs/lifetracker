@@ -47,7 +47,7 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 | 4 polish       | #113      | Refresh on resume                                                        | DONE 2026-11-17                            | #145 |
 | 4 polish       | #114      | System bars follow theme, screen edges (needs real phone)                | todo                                       |      |
 | 4 polish       | #116      | Text sizes + system font size                                            | DONE 2026-11-17                            | #146 |
-| 4 polish       | #117      | App shortcuts + share target (needs real phone)                          | PR open                                    |      |
+| 4 polish       | #117      | App shortcuts + share target (needs real phone)                          | PR open                                    | #152 |
 
 Mark a row DONE (date + PR) when merged.
 
