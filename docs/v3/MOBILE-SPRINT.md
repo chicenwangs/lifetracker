@@ -7,15 +7,15 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 - `cd app && npm run db:seed:phone` → `data/phone-dev.db` + login in `data/TEST-LOGIN.txt` (both gitignored). Reseed = delete the db first.
 - Preview: `.claude/launch.json` entry `mobile-dev` (port 5176, that db). Local only, not committed.
 - Phone e2e: `npm run test:e2e:phone` (projects `phone` 412×915, `phone-landscape` 915×412). Tests in `tests/e2e/phone/`.
-- Helpers (`tests/e2e/phone/helpers.ts`): `swipe`, `longPress` (real CDP touch), `expectTargets48` (+ `targets48-allowlist.json`), `noDesktopHints`.
+- Helpers (`tests/e2e/phone/helpers.ts`): `swipe`, `longPress` (real CDP touch), `expectTappable` (tap lands; catches clipping), `expectTargets48` (+ `targets48-allowlist.json`), `noDesktopHints`.
 - Shots: preview running, then (in `app/`) `node scripts/phone-shots.mjs [--out test-results/phone-after]`. Baseline = `test-results/phone-baseline/` (gitignored, 2026-11-16); e2e artifacts go to `test-results/run/`, so a test run keeps it. Landscape Add sheet = desktop layout until #110, so its shot shows the screen under it.
 - `test.fixme` in `smoke.spec.ts` = checks waiting on an issue. Turn them on when it lands.
 
 ## Status
 | Group | # | Issue | State | PR |
 |---|---|---|---|---|
-| setup | — | Dev setup: seed, phone projects, helpers, shots, this doc | DONE (PR open) | #119 |
-| 1 foundation | #92 | One bottom sheet — handle, swipe down, Back, half then full | todo | |
+| setup | — | Dev setup: seed, phone projects, helpers, shots, this doc | DONE 2026-11-16 | #119 |
+| 1 foundation | #92 | One bottom sheet — handle, swipe down, Back, half then full | todo (#120 rejected: clipped the / menu) | |
 | 1 foundation | #91 | Android Back closes the top layer + predictive back | todo | |
 | 1 foundation | #88 | Tab bar Today · Calendar · + · Keep · Pages; More → account sheet | todo | |
 | 1 foundation | #89 | Top app bar with Back + title on deeper screens | todo | |
@@ -55,6 +55,7 @@ Mark a row DONE (date + PR) when merged.
 - [ ] phone e2e (`npm run test:e2e:phone`) green; fixme for this issue turned on
 - [ ] phone shots before/after in the PR (`scripts/phone-shots.mjs`)
 - [ ] every gesture has a tap path + a TalkBack action
+- [ ] popups and menus in changed containers pass `expectTappable` (toBeVisible misses clipping)
 - [ ] desktop unchanged (shots or e2e prove it)
 - [ ] Android-only items marked "needs real phone" in the PR
 - [ ] this table row filled
