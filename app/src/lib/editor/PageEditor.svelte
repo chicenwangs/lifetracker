@@ -368,6 +368,13 @@
 		font-size: 12.5px;
 		cursor: pointer;
 	}
+	/* phone: 48 dp (#101); #98 moves this toolbar above the keyboard */
+	@media (max-width: 699px) {
+		.t {
+			min-width: 48px;
+			min-height: 48px;
+		}
+	}
 	.t:hover {
 		background: var(--card);
 	}

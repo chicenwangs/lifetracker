@@ -639,6 +639,9 @@
 		margin: 16px 0 0;
 	}
 	@media (max-width: 699px) {
+		.open {
+			min-height: 48px;
+		}
 		.keep {
 			grid-template-columns: minmax(0, 1fr);
 			grid-template-areas: 'top' 'side' 'main';
@@ -653,7 +656,7 @@
 		.top .search {
 			order: 3;
 			flex: 1 1 100%;
-			min-height: 44px;
+			min-height: 48px;
 		}
 		/* one swipe row of chips: Notes · binders · labels · Shared · Archive · Trash */
 		.side {
@@ -686,7 +689,7 @@
 		.mini.wide {
 			flex: none;
 			white-space: nowrap;
-			min-height: 36px;
+			min-height: 48px;
 			padding: 0 14px;
 			border: 1.5px solid var(--border);
 			border-radius: 999px;

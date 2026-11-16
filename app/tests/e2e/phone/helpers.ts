@@ -87,19 +87,36 @@ export async function expectTappable(el: Locator) {
 	}
 }
 
-/** Fails on any visible control under 48×48 CSS px. Allowlist (targets48-allowlist.json) = known gaps by label;
- * empty it as #101 lands. shortcut: measures the element box, so a ::before hit-slop doesn't count; read it from
- * getComputedStyle if #101 uses pseudo-element hit areas. */
+/** Fails on any visible control whose hit area is under 48×48 CSS px (#101, G5). Hit area = the element box, a
+ * wrapping <label>, or an absolutely placed ::before / ::after hit-slop (visual can stay smaller). Inline links in
+ * running text are exempt (WCAG 2.5.8). Allowlist (targets48-allowlist.json) = known gaps by label. */
 export async function expectTargets48(page: Page) {
 	const small = await page.evaluate(() => {
 		const sel = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=link], [role=tab], [role=checkbox], [role=switch], [role=menuitem], [tabindex]:not([tabindex="-1"])'; // prettier-ignore
+		const hit = (el: Element) => {
+			const r = el.getBoundingClientRect();
+			let w = r.width;
+			let h = r.height;
+			for (const p of ['::before', '::after']) {
+				const cs = getComputedStyle(el, p);
+				if (cs.content === 'none' || cs.position !== 'absolute') continue;
+				w = Math.max(w, parseFloat(cs.width) || 0);
+				h = Math.max(h, parseFloat(cs.height) || 0);
+			}
+			return { w, h };
+		};
 		const out: string[] = [];
 		for (const el of document.querySelectorAll<HTMLElement>(sel)) {
 			if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
 			const r = el.getBoundingClientRect();
-			if (r.width === 0 || r.height === 0 || (r.width >= 48 && r.height >= 48)) continue;
+			if (r.width <= 1 || r.height <= 1) continue; // sr-only
+			if (el.tagName === 'A' && getComputedStyle(el).display === 'inline' && el.closest('p')) continue;
+			const own = hit(el);
+			const lab = el.closest('label');
+			const box = lab ? hit(lab) : own;
+			if (Math.max(own.w, box.w) >= 48 && Math.max(own.h, box.h) >= 48) continue;
 			const label = (el.getAttribute('aria-label') || el.innerText || el.getAttribute('title') || el.getAttribute('name') || el.tagName).trim().slice(0, 40); // prettier-ignore
-			out.push(`${label} (${Math.round(r.width)}×${Math.round(r.height)})`);
+			out.push(`${label} (${Math.round(own.w)}×${Math.round(own.h)})`);
 		}
 		return out;
 	});

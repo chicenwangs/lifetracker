@@ -58,6 +58,11 @@
 </main>
 
 <style>
+	.hint {
+		display: inline-flex;
+		align-items: center;
+		min-height: 48px;
+	}
 	.pm {
 		margin: 8px 12px 104px;
 		padding: 12px;

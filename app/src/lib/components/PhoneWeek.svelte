@@ -77,7 +77,7 @@
 		font-weight: 700;
 		color: var(--ink);
 		text-decoration: none;
-		min-height: 28px;
+		min-height: 48px;
 		display: flex;
 		align-items: center;
 	}
@@ -85,7 +85,7 @@
 		display: flex;
 		gap: 10px;
 		align-items: center;
-		min-height: 36px;
+		min-height: 48px;
 		padding: 0 10px;
 		border-radius: 8px;
 		background: var(--bg);

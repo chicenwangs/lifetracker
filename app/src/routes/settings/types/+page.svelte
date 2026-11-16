@@ -125,20 +125,24 @@
 					>
 					<td class="num">{t.used ?? 0}</td>
 					<td
-						><input
-							type="checkbox"
-							aria-label="{t.name} counts down"
-							checked={t.countsDown}
-							onchange={(e) => save(t, { countsDown: e.currentTarget.checked })}
-						/></td
+						><label class="cb"
+							><input
+								type="checkbox"
+								aria-label="{t.name} counts down"
+								checked={t.countsDown}
+								onchange={(e) => save(t, { countsDown: e.currentTarget.checked })}
+							/></label
+						></td
 					>
 					<td
-						><input
-							type="checkbox"
-							aria-label="Share {t.name} by default"
-							checked={t.shareDefault}
-							onchange={(e) => save(t, { shareDefault: e.currentTarget.checked })}
-						/></td
+						><label class="cb"
+							><input
+								type="checkbox"
+								aria-label="Share {t.name} by default"
+								checked={t.shareDefault}
+								onchange={(e) => save(t, { shareDefault: e.currentTarget.checked })}
+							/></label
+						></td
 					>
 					<td>
 						{#if t.builtin}<span class="hint">built-in</span>{:else}
@@ -232,10 +236,23 @@
 		min-height: 24px;
 		cursor: pointer;
 	}
+	/* phone: the label is the 48 dp tap area (#101) */
+	.cb {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 48px;
+		min-height: 48px;
+	}
 	.color {
 		min-height: 24px;
 		width: 90px;
 		border-radius: 6px;
+	}
+	@media (max-width: 699px) {
+		.color {
+			min-height: 48px;
+		}
 	}
 	.scrim {
 		position: fixed;

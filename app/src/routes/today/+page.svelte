@@ -273,8 +273,8 @@
 		color: var(--quiet);
 	}
 	.nav {
-		width: 44px;
-		height: 44px;
+		width: 48px;
+		height: 48px;
 		border-radius: 50%;
 		border: 1.5px solid var(--border);
 		background: var(--card);
@@ -311,6 +311,7 @@
 		gap: 2px;
 	}
 	.t {
+		min-height: 48px;
 		flex: 1;
 		text-align: left;
 		background: none;
@@ -319,7 +320,6 @@
 		font: inherit;
 		font-size: 14px;
 		cursor: pointer;
-		min-height: 32px;
 		padding: 0;
 	}
 	.t:disabled {
