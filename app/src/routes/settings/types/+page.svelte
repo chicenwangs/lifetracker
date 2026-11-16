@@ -58,8 +58,8 @@
 <section class="card panel">
 	<h1>Item types</h1>
 	<p class="muted">
-		Colours and names for your items and blocks. ★ = used by quick add when you don't type a /type. "Counts
-		down" shows days left on the month chip and due list.
+		Colours and names for your items and blocks. Quick add with no /type makes it No type. "Counts down" shows
+		days left on the month chip and due list.
 	</p>
 	<div class="meter" role="meter" aria-valuemin="0" aria-valuemax={MAX_TYPES} aria-valuenow={types.length}>
 		<span style:width="{(types.length / MAX_TYPES) * 100}%"></span>
@@ -69,9 +69,9 @@
 	<table>
 		<thead>
 			<tr
-				><th>Order</th><th>Colour</th><th>Name</th><th>Quick add</th><th>Used</th><th>★</th><th
-					>Counts down</th
-				><th>Share by default</th><th></th></tr
+				><th>Order</th><th>Colour</th><th>Name</th><th>Quick add</th><th>Used</th><th>Counts down</th><th
+					>Share by default</th
+				><th></th></tr
 			>
 		</thead>
 		<tbody>
@@ -125,15 +125,6 @@
 					<td class="num">{t.used ?? 0}</td>
 					<td
 						><input
-							type="radio"
-							name="default"
-							aria-label="{t.name} is the default type"
-							checked={t.isDefault}
-							onchange={() => save(t, { isDefault: true })}
-						/></td
-					>
-					<td
-						><input
 							type="checkbox"
 							aria-label="{t.name} counts down"
 							checked={t.countsDown}
@@ -153,8 +144,6 @@
 							<button
 								class="btn sm"
 								type="button"
-								disabled={t.isDefault}
-								title={t.isDefault ? 'Star another type first' : ''}
 								onclick={() => {
 									deleting = t;
 									moveTo = '';

@@ -3,6 +3,19 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
 
+## Owner test pass (2026-11-16, 3-day test list, issues #61–#86)
+
+- Pages: Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z on a page = editor history, also after a toolbar click (toolbar keeps focus; capture key handler beats the app-wide server undo). Column 1100 px, text 17 px on ≥ 1024 px. Title `autocomplete=off`.
+- Header pins: no page icon; faint `|` before each pin.
+- Keep: note dialog 960 px / 90 vh, title 22 px, text 17 px on ≥ 700 px. Inputs `autocomplete=off` (no browser form history). N does nothing while any `aria-modal` dialog is open. Checklist rows: `⋮⋮` handle (mouse + touch): drag up/down = reorder among siblings, sideways ≥ 40 px = indent/outdent. Keys: Alt+↑/↓ move, Tab / Shift+Tab indent, Enter new line. Touch hides ↑↓→← buttons; × on the focused row.
+- Calendar chips (Month, Week, phone week): title wraps to 2 lines (`line-clamp`, FC nowrap undone). Delete ✕ circle filled with the chip colour (`--x-bg`), so it reads in dark. Tick pop plays only on the square just ticked, once (`.lt-sq.on.pop`; re-feeds re-create all squares).
+- Dark: every `--pill` fill pairs with `--pill-ink` (code blocks, page links, link picker, page menu, DB pills + type buttons, Ctrl+K row, phone Add tabs).
+- Quick add: **no /type = No type** everywhere (owner; ★ default removed from Type bar + Settings › Item types, `is_default` column dormant, a starred custom type can be deleted). Shared `QASlots` (Type · Title · Goes to · Day · Time · Remind) under the N palette, the drag/day popups and the phone Add sheet. Drag/day popups = palette look (big input, 460 px). Ghost hint follows the input's sideways scroll. `/` list opens upward when the visual viewport has no room below (phone keyboard).
+- Phone Today: "To do today · no time set" card removed (and the give-a-time sheet). Hold a timeline row ~0.5 s = delete + Undo toast; moving > 10 px cancels; the ending tap is swallowed.
+- Android: "To do today" widget removed (6 widgets). `/api/native` still sends `todos` for older installs.
+- Settings › Users: Storage column = uploaded files per person vs `UPLOAD_QUOTA_BYTES` (`usageByOwner`, same rule as the quota check).
+- Parked: phone tour (#83, next major with a mobile UX audit). Repeating items + Google-Calendar-style reminders (#72, own PR, full scope).
+
 ## Security hardening (2026-11-16, audit of v2.0.4, issues #22–#59)
 
 - Push: only browser push hosts (`pushHostOk`, port 443), 10 s send timeout, 10 devices per user, test send 5 per 15 min, endpoint can't be taken by another account without its keys. Stuck reminders count as a try (crash can't loop). 500 waiting reminders per owner.
@@ -20,7 +33,7 @@ v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v
 - No blue tap flash (`-webkit-tap-highlight-color`). Keep phone editor: text fills, tools at the bottom.
 - Keep: open note = shallow history entry (`pushState`), closed on `popstate`. Back / Android edge swipe closes the note and stays on Keep (was: Today). `page.state` alone failed: saving runs `invalidateAll`, which dropped it and closed the note. `?note=` / `?new` open via `afterNavigate` + `setTimeout` (kit throws "router not initialized" on first load otherwise).
 - Motion: 20-principle audit `docs/v2/UX-MOTION-AUDIT.md`. Done square squash + overshoot, tick draws itself, `navigator.vibrate(8)` (app + Android Chrome, `VIBRATE` permission), 40 px squares on touch, press feedback on + and note cards.
-- Widgets: 7 now (Today timeline, Keep, Now and next, Quick add, To do today, Countdowns, Week ahead). App look (card + yellow hard shadow, type colours, tick squares, now band, note colours), Light / Dark / Auto from the account (`Theme.java`, same rule as `lib/theme.ts`). Lists scroll (`androidx.core:core-remoteviews` → `RemoteCollectionItems`), + bottom-right. Ticks in Today + To do change on screen at once, then PATCH with `Origin` (`WidgetAction` = invisible activity: broadcasts can't open the app on Android 12+).
+- Widgets: 6 now (Today timeline, Keep, Now and next, Quick add, Countdowns, Week ahead; To do today removed 2026-11-16). App look (card + yellow hard shadow, type colours, tick squares, now band, note colours), Light / Dark / Auto from the account (`Theme.java`, same rule as `lib/theme.ts`). Lists scroll (`androidx.core:core-remoteviews` → `RemoteCollectionItems`), + bottom-right. Ticks in Today change on screen at once, then PATCH with `Origin` (`WidgetAction` = invisible activity: broadcasts can't open the app on Android 12+).
 - `/api/native` adds `theme`, row `id/kind/status/bg/ink/endTime`, `todos`, `days` (7), `countdowns` (60 days, "counts down" types).
 - `WidgetShotsTest` (Robolectric, native graphics) draws every widget light + dark → CI artifact `widget-shots`. Found: a tinted outline-only shape fills solid black (needs a clear `<solid>`), `--` inside XML comments, `'` in strings. Robolectric doesn't fill widget lists (no launcher) → the test draws the rows the widget built.
 - Not checked: a real launcher (row taps, scrolling, resize). Same code path as the shots, but only a phone proves it.
@@ -148,13 +161,13 @@ v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v
 - Autosave 600 ms + on close; failed save keeps the text with Retry; `revision` refuses stale writes (409). Undo for Keep = toast Undo (archive, trash, pin); Ctrl+Z journal still covers planner only.
 - Order = REAL `position` (midpoint insert), not DESIGN's text `position_key`: same behaviour, less code. Rebalance not needed at this scale.
 - Not built (EXT/later): drawings, link previews (D-23 off), file (non-image) cards, grid/list toggle, background images (D-11 later), swipe-to-archive (menu action instead).
-- **Phone** (< 700 px): bottom bar Today · Week · + Add · Keep · More. `/` opens `/today` on a phone (`/?desktop=1` = desktop Home). Today: day step + swipe, Now card (current block/timed item + time left, else "Free until"), "To do today · no time set" (square, countdown, clock = give it a time), timeline wheel (snap, centred on now, past dimmed, Back to now). + Add sheet: Plan it (same grammar, batch) / Quick note. Item opens as a bottom sheet. Header hides nav + Add on a phone.
+- **Phone** (< 700 px): bottom bar Today · Week · + Add · Keep · More. `/` opens `/today` on a phone (`/?desktop=1` = desktop Home). Today: day step + swipe, Now card (current block/timed item + time left, else "Free until"), timeline wheel (snap, centred on now, past dimmed, Back to now). + Add sheet: Plan it (same grammar, batch) / Quick note. Item opens as a bottom sheet. Header hides nav + Add on a phone.
 
 ## v2 P1 — foundations (2026-11-13)
 
 - **Item types** (`item_types`, migration 0003). 10 per user incl. 5 built-ins. Built-in keys = the v1 values (`Work Exam Event Hobby Dating`), so `items.type`, `blocks.type` and share codes needed no rewrite. **Differs from DESIGN §5 on purpose:** column stays `type` (not `type_key`), built-in keys stay capitalised. Custom key = the type's id (`ity_…`). Labels: Work, **Deadline** (Exam), Event, Hobby, **Date** (Dating). Deadline colour #B84A44.
-- Type flags, never names: ★ default (quick add), Counts down (countdown badge), Share by default (pre-ticks share codes). Type bar on Month + Week: click = hide/show (per user, `users.hidden_types`, own rows only), + = new type, n / 10. Settings › Item types: ↑↓ order, colour, name, quick-add word, use count, flags, delete + move (one undo).
-- Quick add reads the user's types (custom `/slug`; old `/exam` `/date` `/dating` still work and still find the menu entry), default type, block length, destination (Timeline/Calendar; a dragged range still = planner, a month day still = calendar), region date order (US reads 11/16 first).
+- Type flags, never names: Counts down (countdown badge), Share by default (pre-ticks share codes). Type bar on Month + Week: click = hide/show (per user, `users.hidden_types`, own rows only), + = new type, n / 10. Settings › Item types: ↑↓ order, colour, name, quick-add word, use count, flags, delete + move (one undo).
+- Quick add reads the user's types (custom `/slug`; old `/exam` `/date` `/dating` still work and still find the menu entry), block length (no /type = No type, 2026-11-16), destination (Timeline/Calendar; a dragged range still = planner, a month day still = calendar), region date order (US reads 11/16 first).
 - **Preferences:** theme Light/Dark/Auto + light/dark start (equal starts refused, D-08) + preview; timezone picker; Region (MY/UK: Mon + 24 h + D/M · US: Sun + 12 h + M/D); Quick add goes to; Default block length 15–90. New accounts = Auto (D-07), existing users keep their theme. Header sun/moon = fixed choice; half-circle icon = Auto.
 - Visible hours saved on the user (`users.visible_hours`); cookie = first paint only.
 - 8 badge colours (`USER_COLORS`).

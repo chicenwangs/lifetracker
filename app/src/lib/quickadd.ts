@@ -8,7 +8,7 @@
 // · Days, times and their little words (on, at, by, from) need no prefix. LAST day wins, LAST time wins.
 // · Day words tolerate common typos (tommorow, wensday, febuary …) and punctuation (tomorrow, / fri.).
 // · Planner times snap to 15 min; single time = ctx.blockMin (60); end <= start = crosses midnight.
-// · v2: types, default type, default destination, block length and date order come from ctx (user prefs).
+// · v2: types, default destination, block length and date order come from ctx (user prefs).
 //   Missing ctx fields = v1.1.0 behaviour.
 import { addDays, hhmm, isDate, makeDate, weekdayOf } from './time';
 import type { ItemType, ItemTypeDTO } from './types';
@@ -40,7 +40,8 @@ export type QATarget = 'planner' | 'calendar' | 'both';
 export interface QAParse {
 	ok: boolean; // = problems.length === 0
 	title: string;
-	type: ItemType;
+	/** null = No type (owner 2026-11-16: never a default type) */
+	type: ItemType | null;
 	typeSet: boolean;
 	target: QATarget;
 	targetSet: boolean;
@@ -842,7 +843,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	return {
 		ok: problems.length === 0,
 		title,
-		type: type ?? types.find((t) => t.isDefault)?.key ?? types[0]?.key ?? 'Event',
+		type,
 		typeSet: type !== null,
 		target,
 		targetSet: targets.size > 0,
@@ -881,7 +882,7 @@ export function slashOptions(ctx: Pick<QAContext, 'types' | 'qaTarget'> = {}): Q
 			group: 'Type' as const,
 			token: `/${t.slug}`,
 			label: t.name,
-			hint: t.isDefault ? 'default' : 'type',
+			hint: 'type',
 			type: t.key,
 			aliases: Object.keys(LEGACY_SLUGS).filter((w) => LEGACY_SLUGS[w] === t.key && w !== t.slug),
 		})),

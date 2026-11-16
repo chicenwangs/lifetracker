@@ -134,11 +134,12 @@
 	};
 
 	const SVG_X =
-		'<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="var(--card)" stroke="currentColor" stroke-width="1.4"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-	function xButton(label: string, fn: () => void) {
+		'<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="var(--x-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+	function xButton(label: string, bg: string, fn: () => void) {
 		const x = document.createElement('button');
 		x.type = 'button';
 		x.className = 'lt-x';
+		x.style.setProperty('--x-bg', bg); // circle = chip colour, so the X reads in light and dark
 		x.setAttribute('aria-label', `Delete ${label}`);
 		x.title = 'Delete';
 		x.innerHTML = SVG_X;
@@ -214,10 +215,14 @@
 		return out;
 	}
 
-	function square(status: Status, ink: string, label: string, fn: () => void) {
+	/** the square just ticked: only it plays the pop, once (every re-feed re-creates all squares) */
+	let popId: string | null = null;
+	function square(id: string, status: Status, ink: string, label: string, fn: () => void) {
 		const btn = document.createElement('button');
 		btn.type = 'button';
-		btn.className = 'lt-sq' + (status === 'done' ? ' on' : '');
+		btn.className =
+			'lt-sq' + (status === 'done' ? ' on' : '') + (popId === id && status === 'done' ? ' pop' : '');
+		if (popId === id) popId = null;
 		btn.style.setProperty('--ink', ink);
 		btn.setAttribute('aria-label', `${label}: ${ARIA[status]}`);
 		btn.title = ARIA[status];
@@ -228,6 +233,7 @@
 		btn.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
+			popId = id;
 			fn();
 		});
 		return btn;
@@ -274,17 +280,17 @@
 					const it = p.item;
 					const c = colorsFor(it.type);
 					if (it.theirs && it.owner) wrap.append(badge(it.owner));
-					else wrap.append(square(it.status, c.ink, it.title, () => oncycleitem(it.id)));
+					else wrap.append(square(it.id, it.status, c.ink, it.title, () => oncycleitem(it.id)));
 					const t = document.createElement('span');
 					t.className = 'lt-title';
 					t.textContent = (it.time ? `${prettyTime(it.time)} ` : '') + it.title;
 					t.title = `${typeName(it.type) ?? 'Custom type'} · ${t.textContent}`;
 					wrap.append(t);
-					if (it.editable) wrap.append(xButton(it.title, () => ondelete('item', it.id, it.title)));
+					if (it.editable) wrap.append(xButton(it.title, c.bg, () => ondelete('item', it.id, it.title)));
 				} else if (p.block) {
 					const b = p.block;
 					if (b.theirs && b.owner) wrap.append(badge(b.owner));
-					else wrap.append(square(b.status, p.ink ?? 'var(--ink)', b.label, () => oncycleblock(b.id)));
+					else wrap.append(square(b.id, b.status, p.ink ?? 'var(--ink)', b.label, () => oncycleblock(b.id)));
 					const col = document.createElement('div');
 					col.className = 'lt-col';
 					const s = utcToLocal(b.startAt, tz);
@@ -299,7 +305,8 @@
 					l.title = `${b.busy ? 'Busy' : (typeName(b.itemType ?? b.type) ?? 'Custom type')} · ${b.label}`;
 					col.append(l, tm);
 					wrap.append(col);
-					if (b.editable) wrap.append(xButton(b.label, () => ondelete('block', b.id, b.label)));
+					if (b.editable)
+						wrap.append(xButton(b.label, entryColors(b).bg, () => ondelete('block', b.id, b.label)));
 				}
 				return { domNodes: [wrap] };
 			},
@@ -603,7 +610,7 @@
 		fill: currentColor;
 	}
 	.wk :global(.lt-x:hover path) {
-		stroke: var(--card);
+		stroke: var(--x-bg);
 	}
 	.wk :global(.lt-chip),
 	.wk :global(.lt-blk) {
@@ -642,9 +649,16 @@
 	}
 	.wk :global(.lt-title) {
 		font-weight: 600;
+		min-width: 0;
 		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		/* full name on up to two lines, then … (owner 2026-11-16) */
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		white-space: normal; /* FullCalendar sets nowrap on events */
+		line-clamp: 2;
+		overflow-wrap: anywhere;
+		line-height: 1.3;
 	}
 	.wk :global(.lt-time) {
 		font-size: 11px;

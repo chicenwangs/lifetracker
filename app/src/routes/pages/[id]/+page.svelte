@@ -234,6 +234,7 @@
 	<div class="body">
 		<input
 			class="title"
+			autocomplete="off"
 			placeholder="Untitled"
 			aria-label="Page title"
 			maxlength="300"
@@ -357,8 +358,9 @@
 		background: var(--pill-card);
 		color: var(--pill-ink);
 	}
+	/* wide column on big screens (owner 2026-11-16: was a narrow strip in the middle) */
 	.body {
-		max-width: 760px;
+		max-width: 1100px;
 		margin: 0 auto;
 		padding: 32px 56px 48px;
 	}
@@ -423,6 +425,7 @@
 	}
 	.menu button:hover {
 		background: var(--pill);
+		color: var(--pill-ink);
 	}
 	.menu .danger {
 		color: var(--exam-edge);

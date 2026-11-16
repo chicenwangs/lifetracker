@@ -1,8 +1,10 @@
-<!-- Admin: sign-up mode + accounts. New installs start invite-only. Disable = can't log in, signed out everywhere. -->
+<!-- Admin: sign-up mode + accounts (with storage used: uploaded files vs the per-person quota). New installs start invite-only. Disable = can't log in, signed out everywhere. -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { prettyDate, utcToLocal } from '$lib/time';
 	let { data, form } = $props();
+	const size = (n: number) =>
+		n < 1048576 ? `${Math.round(n / 1024)} KB` : n < 1073741824 ? `${(n / 1048576).toFixed(1)} MB` : `${(n / 1073741824).toFixed(2)} GB`; // prettier-ignore
 	const day = (z: string) => prettyDate(utcToLocal(z, data.user?.timezone ?? 'Asia/Kuala_Lumpur').date);
 </script>
 
@@ -64,15 +66,25 @@
 	{#if form?.message}<span class="alert" role="alert">{form.message}</span>{/if}
 	<table class="plain">
 		<thead
-			><tr><th>Name</th><th>Username</th><th>Role</th><th><span class="sr-only">Actions</span></th></tr
+			><tr
+				><th>Name</th><th>Username</th><th>Role</th><th>Storage</th><th
+					><span class="sr-only">Actions</span></th
+				></tr
 			></thead
 		>
 		<tbody>
 			{#each data.users as u (u.id)}
+				{@const used = data.storage[u.id] ?? 0}
 				<tr>
 					<td><span class="dot" style:background={u.color} aria-hidden="true"></span>{u.displayName}</td>
 					<td>@{u.username}</td>
 					<td>{data.disabled.includes(u.id) ? 'disabled' : u.role}</td>
+					<td class="store" title="Uploaded files and images. Quota per person: {size(data.quota)}">
+						{size(used)} <span class="muted">of {size(data.quota)}</span>
+						<span class="bar" aria-hidden="true"
+							><span style:width="{Math.min(100, (used / data.quota) * 100)}%"></span></span
+						>
+					</td>
 					<td>
 						{#if u.role !== 'admin' && !data.disabled.includes(u.id)}
 							<form
@@ -99,6 +111,23 @@
 </div>
 
 <style>
+	.store {
+		white-space: nowrap;
+		font-size: 13px;
+	}
+	.bar {
+		display: block;
+		height: 4px;
+		margin-top: 4px;
+		border-radius: 2px;
+		background: var(--rule);
+		overflow: hidden;
+	}
+	.bar span {
+		display: block;
+		height: 100%;
+		background: var(--ink);
+	}
 	fieldset {
 		border: 0;
 		padding: 0;

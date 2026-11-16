@@ -23,8 +23,6 @@ export function quickContext(me: App.SafeUser, now: number = Date.now()): QACont
 export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(), slot?: QASlot) {
 	const r = parseQuickAdd(text, { ...quickContext(me, now), slot });
 	if (!r.ok) bad((r.problems[0] ?? 'Could not add that.').replace(/`/g, ''));
-	// timeline drag with no /type = no type (grey); the N palette and month days keep the Event default
-	const type = slot && !slot.day && !r.typeSet ? null : r.type;
 	const made = undoable(me.id, `Add "${r.title}"`, [], () => {
 		let item: ReturnType<typeof items.withCounts>[number] | null = null;
 		let block: ReturnType<typeof blocks.toDTO> | null = null;
@@ -33,7 +31,7 @@ export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(
 				me.id,
 				items.itemCreateSchema.parse({
 					title: r.title,
-					type,
+					type: r.type,
 					date: r.date,
 					time: r.time,
 				}),
@@ -45,7 +43,7 @@ export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(
 				me.id,
 				blocks.blockCreateSchema.parse({
 					label: item ? undefined : r.title.slice(0, 200),
-					type: item ? null : type,
+					type: item ? null : r.type,
 					itemId: item?.id ?? null,
 					startAt: localToUtc(r.date, r.startMinutes, me.timezone),
 					endAt: localToUtc(r.date, r.endMinutes, me.timezone),

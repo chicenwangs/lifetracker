@@ -1,16 +1,16 @@
-<!-- Phone "+ Add" bottom sheet (FEATURES §10): Plan it (same quick-add grammar + preview) · Quick note (Keep).
-     Opened for a "No time set" item it just asks for a time instead. -->
+<!-- Phone "+ Add" bottom sheet (FEATURES §10): Plan it (same quick-add grammar + live slots) · Quick note (Keep). -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
-	import { patch, post } from '$lib/client/api';
+	import { post } from '$lib/client/api';
 	import { calendarChanged } from '$lib/client/bus.svelte';
 	import { qaPrefs } from '$lib/client/itemtypes.svelte';
 	import { addSheet } from '$lib/client/mobile.svelte';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { parseQuickAdd } from '$lib/quickadd';
-	import { nowLocalMinutes, prettyDate, todayLocal } from '$lib/time';
+	import { nowLocalMinutes, todayLocal } from '$lib/time';
 	import CommandInput from './CommandInput.svelte';
+	import QASlots from './QASlots.svelte';
 
 	const tz = $derived(page.data.user?.timezone ?? 'Asia/Kuala_Lumpur');
 	const ctx = $derived({
@@ -22,7 +22,6 @@
 	let busy = $state(false);
 	let problem = $state('');
 	let note = $state('');
-	let time = $state('');
 
 	const close = () => {
 		addSheet.open = false;
@@ -59,91 +58,53 @@
 			busy = false;
 		}
 	}
-	async function giveTime() {
-		if (busy || !addSheet.itemId || !time) return;
-		busy = true;
-		try {
-			await patch(`/api/items/${addSheet.itemId}`, { time });
-			showToast(`"${addSheet.title}" at ${time}`);
-			close();
-			calendarChanged();
-		} catch (e) {
-			showError(e);
-		} finally {
-			busy = false;
-		}
-	}
 </script>
 
 {#if addSheet.open}
 	<div class="scrim" role="presentation" onclick={close}></div>
-	<div
-		class="sheet card"
-		role="dialog"
-		aria-modal="true"
-		aria-label={addSheet.itemId ? 'Give it a time' : 'Add'}
-	>
-		{#if addSheet.itemId}
-			<h2>Give "{addSheet.title}" a time</h2>
-			<!-- svelte-ignore a11y_autofocus -->
-			<label class="field"
-				><span class="label">Time</span><input type="time" step="900" bind:value={time} autofocus /></label
+	<div class="sheet card" role="dialog" aria-modal="true" aria-label="Add">
+		<div class="tabs" role="tablist">
+			<button
+				type="button"
+				role="tab"
+				aria-selected={addSheet.tab === 'plan'}
+				onclick={() => (addSheet.tab = 'plan')}>Plan it</button
 			>
+			<button
+				type="button"
+				role="tab"
+				aria-selected={addSheet.tab === 'note'}
+				onclick={() => (addSheet.tab = 'note')}>Quick note</button
+			>
+		</div>
+		{#if addSheet.tab === 'plan'}
+			<CommandInput
+				bind:value={addSheet.text}
+				{ctx}
+				autofocus
+				label="What and when"
+				onenter={plan}
+				onescape={close}
+				oninput={() => (problem = '')}
+			/>
+			<QASlots {parsed} />
+			{#if problem}<p class="alert" role="alert">{problem}</p>{/if}
 			<div class="row">
-				<button class="btn" type="button" onclick={close}>Cancel</button>
-				<button class="btn primary" type="button" disabled={!time || busy} onclick={giveTime}>Save</button>
+				<button class="btn" type="button" onclick={close}>Close</button>
+				<button class="btn primary" type="button" disabled={busy || !addSheet.text.trim()} onclick={plan}
+					>Add</button
+				>
 			</div>
 		{:else}
-			<div class="tabs" role="tablist">
-				<button
-					type="button"
-					role="tab"
-					aria-selected={addSheet.tab === 'plan'}
-					onclick={() => (addSheet.tab = 'plan')}>Plan it</button
-				>
-				<button
-					type="button"
-					role="tab"
-					aria-selected={addSheet.tab === 'note'}
-					onclick={() => (addSheet.tab = 'note')}>Quick note</button
+			<!-- svelte-ignore a11y_autofocus -->
+			<textarea bind:value={note} rows="5" placeholder="Note" aria-label="Note" maxlength="20000" autofocus
+			></textarea>
+			<div class="row">
+				<button class="btn" type="button" onclick={close}>Close</button>
+				<button class="btn primary" type="button" disabled={busy || !note.trim()} onclick={saveNote}
+					>Save note</button
 				>
 			</div>
-			{#if addSheet.tab === 'plan'}
-				<CommandInput
-					bind:value={addSheet.text}
-					{ctx}
-					size="sm"
-					autofocus
-					label="What and when"
-					onenter={plan}
-					onescape={close}
-					oninput={() => (problem = '')}
-				/>
-				{#if addSheet.text && parsed.title}
-					<p class="pv">
-						<b>{parsed.title}</b> · {prettyDate(parsed.date).split(' ').slice(0, 3).join(' ')}
-						{#if parsed.time}· {parsed.time}{#if parsed.endTime}–{parsed.endTime}{/if}{/if}
-						· {parsed.target === 'planner' ? 'Planner' : parsed.target === 'calendar' ? 'Calendar' : 'Both'}
-					</p>
-				{/if}
-				{#if problem}<p class="alert" role="alert">{problem}</p>{/if}
-				<div class="row">
-					<button class="btn" type="button" onclick={close}>Close</button>
-					<button class="btn primary" type="button" disabled={busy || !addSheet.text.trim()} onclick={plan}
-						>Add</button
-					>
-				</div>
-			{:else}
-				<!-- svelte-ignore a11y_autofocus -->
-				<textarea bind:value={note} rows="5" placeholder="Note" aria-label="Note" maxlength="20000" autofocus
-				></textarea>
-				<div class="row">
-					<button class="btn" type="button" onclick={close}>Close</button>
-					<button class="btn primary" type="button" disabled={busy || !note.trim()} onclick={saveNote}
-						>Save note</button
-					>
-				</div>
-			{/if}
 		{/if}
 	</div>
 {/if}
@@ -186,6 +147,7 @@
 	}
 	.tabs button[aria-selected='true'] {
 		background: var(--pill);
+		color: var(--pill-ink);
 		font-weight: 600;
 	}
 	textarea {
@@ -201,12 +163,13 @@
 		gap: 8px;
 		justify-content: flex-end;
 	}
-	.pv {
-		margin: 0;
-		font-size: 13px;
+	.sheet :global(.iw.lg) {
+		border: 1.5px solid var(--border);
+		border-radius: 10px;
+		background: var(--card);
 	}
-	h2 {
-		margin: 0;
-		font-size: 16px;
+	.sheet :global(.slots) {
+		padding: 0;
+		border: 0;
 	}
 </style>

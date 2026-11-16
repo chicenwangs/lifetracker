@@ -48,7 +48,7 @@ Tests: 0 pins → Home Week Keep Pages only · 1–3 pins after Pages · 4th fai
 - **+ popover:** Name, colour (curated swatches, partner teal blocked), live chip preview, quick-add slug auto from name (`/sideproject`, editable), contrast check shown, "n slots left", Add type. Link "Manage all types in Settings". At 10: + disabled, tooltip says delete one first.
 - **Settings › Item types:** table with reorder (drag + ↑↓), colour button, inline name, slug, usage count, "share titles by default" checkbox (pre-fills new share codes), Delete. Usage meter 7/10. Defaults: rename/recolour/reorder only. "No type" fixed, not counted.
 - **Delete custom type:** dialog shows how many items + blocks use it, pick a type to move them to (default No type), "Delete and move", undo 5 s.
-- **Type flags:** ★ Default (radio, exactly one; quick add uses it when no `/type`; drag-created blocks still start as No type) · Counts down (checkbox; countdown badge on month chips, due list, phone Today). New-type popover has the Counts down box too.
+- **Type flags:** Counts down (checkbox; countdown badge on month chips, due list, phone Today). New-type popover has the Counts down box too.
 - **Quick add:** each type's slug works in N palette, phone Add chips, and `/` menu. Old aliases kept (`/exam` → Deadline). Slug can't clash with `calendar cal both planner plan timeline block remind` or another type.
 - **Sharing:** share-code type list shows all types incl. custom; new types default to hidden-as-Busy unless "share by default".
 - Tests: add 10th ok, 11th blocked · rename keeps items · delete moves items + undo restores · slug clash rejected · hidden type disappears from month/week/planner only for that user · partner sees custom type as Busy unless code shows it.
@@ -168,11 +168,11 @@ Purpose: phone = **glance + capture**. Not for planning the week. Planning = PC.
 - **Today (default route on phone):**
   - Header: date, ‹ › day step, "Today" jump. Swipe left/right = day step.
   - **Now card:** current block (title, type colour, time left) or "Free until HH:MM".
-  - **To do today · no time set:** calendar items dated today with no time and not done (e.g. "Renew road tax"). Hard deadlines show a red "Due HH:MM" pill. Tap square = cycle status. Clock button = give it a time (opens Add prefilled).
+  - No "To do today" list (removed, owner 2026-11-16). Hold a timeline row ~0.5 s = delete with Undo.
   - **Timeline wheel:** fixed-height scroll area, snap per block, opens centred on now; scroll up = earlier, down = later. Rows shrink slightly away from centre. "Back to now" chip when scrolled away. No "Show past" link.
   - Partner overlap: shown only if overlap on; striped + badge, read-only.
   - Empty: "Nothing planned. + Add something" button.
-- **+ Add:** opens N quick add as full-width bottom sheet. Same grammar + live preview (compact). Keyboard up on open. Batch add stays.
+- **+ Add:** opens N quick add as full-width bottom sheet. Same grammar + the N palette's live slots (Type · Title · Goes to · Day · Time · Remind); `/` list opens upward above the keyboard. Keyboard up on open. Batch add stays.
 - **Keep tab:** opens the note list (search, binder chips, + Note). Fastest new note = + Add → Quick note tab, or + Note on the list.
 - **Undo on phone:** snackbar above the bar ("Note archived · Undo"), 5 s. Swipe left on a note = archive; same action also in the note's menu.
 - **Item tap:** bottom sheet (title, time, status, notes, open full). Edit allowed, kept simple.

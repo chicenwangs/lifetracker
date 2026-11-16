@@ -48,6 +48,8 @@
 	let menuIdx = $state(0);
 	let menuHidden = $state(false);
 	let menuLeft = $state(0);
+	let menuUp = $state(false);
+	let ghostEl: HTMLDivElement | undefined = $state();
 	const uid = `qm-${Math.random().toString(36).slice(2, 8)}`;
 
 	const parsed = $derived(parseQuickAdd(value, ctx));
@@ -79,7 +81,13 @@
 		const w = c.measureText(value.slice(0, value.length - optTok.length)).width;
 		const left = parseFloat(cs.paddingLeft) + w - input.scrollLeft;
 		menuLeft = Math.max(0, Math.min(left, input.clientWidth - 250));
+		// phone keyboard: open upward when the room below (visual viewport) is short and there is more above
+		const r = input.getBoundingClientRect();
+		const below = (window.visualViewport?.height ?? innerHeight) - r.bottom;
+		menuUp = below < 320 && r.top > below;
 	}
+	/** ghost layer follows the input when long text scrolls it sideways (else the hint drifts over the text) */
+	const syncGhost = () => ghostEl && input && (ghostEl.scrollLeft = input.scrollLeft);
 	$effect(() => {
 		void optTok;
 		void value;
@@ -129,7 +137,7 @@
 </script>
 
 <div class="iw {size}">
-	<div class="ghost" aria-hidden="true">
+	<div class="ghost" aria-hidden="true" bind:this={ghostEl}>
 		{#if placeholder && !value}{placeholder}{:else}<span class="typed">{value}</span>{ghost}{/if}
 	</div>
 	<input
@@ -146,14 +154,17 @@
 		oninput={() => {
 			menuHidden = false;
 			oninput?.();
+			requestAnimationFrame(syncGhost);
 		}}
+		onselect={syncGhost}
+		onkeyup={syncGhost}
 		onkeydown={onKey}
-		onscroll={placeMenu}
+		onscroll={() => (placeMenu(), syncGhost())}
 		onblur={() => onblur?.()}
 		onpointerdown={(e) => e.stopPropagation()}
 	/>
 	{#if menuOpen}
-		<div class="menu" id={uid} role="listbox" style:left="{menuLeft}px">
+		<div class="menu" class:up={menuUp} id={uid} role="listbox" style:left="{menuLeft}px">
 			{#each options as o, i (o.token)}
 				{#if i === 0 || options[i - 1]?.group !== o.group}<div class="mg">{o.group}</div>{/if}
 				<div
@@ -327,5 +338,10 @@
 	.menu {
 		animation: lt-pop 160ms var(--ease) both;
 		transform-origin: top left;
+	}
+	.menu.up {
+		top: auto;
+		bottom: calc(100% + 2px);
+		transform-origin: bottom left;
 	}
 </style>

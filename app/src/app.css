@@ -529,7 +529,7 @@ main .card:nth-child(n + 4) {
 .lt-sq:hover {
 	transform: scale(1.12);
 }
-.lt-sq.on {
+.lt-sq.on.pop {
 	animation: lt-done 260ms var(--ease);
 }
 

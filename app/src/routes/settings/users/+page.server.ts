@@ -1,10 +1,12 @@
-// Admin: who has an account, sign-up mode (open | invite-only), invite codes for invite-only mode, disable a member.
+// Admin: who has an account, storage each uses (files vs UPLOAD_QUOTA_BYTES), sign-up mode (open | invite-only), invite codes for invite-only mode, disable a member.
 import { fail } from '@sveltejs/kit';
 import { admin } from '$lib/server/http';
 import type { Actions, PageServerLoad } from './$types';
 import * as usersRepo from '$lib/server/repo/users';
 import * as sessionsRepo from '$lib/server/repo/sessions';
 import { createInvite, listInvites, revokeInvite, setSignupOpen, signupOpen } from '$lib/server/invites';
+import { usageByOwner } from '$lib/server/attachments';
+import { env } from '$lib/server/env';
 
 export const load: PageServerLoad = ({ locals }) => {
 	admin(locals);
@@ -12,6 +14,8 @@ export const load: PageServerLoad = ({ locals }) => {
 	return {
 		users: usersRepo.list(),
 		disabled: usersRepo.disabledIds(),
+		storage: usageByOwner(),
+		quota: env().UPLOAD_QUOTA_BYTES,
 		open: signupOpen(),
 		invites: listInvites().filter((i) => !i.usedAt && !i.revokedAt && i.expiresAt > now),
 	};

@@ -101,8 +101,8 @@
 
 	function createBlock(date: string, start: number, end: number, at: { x: number; y: number }) {
 		live = null;
-		const W = 340;
-		const H = 150;
+		const W = 460;
+		const H = 300;
 		slot = {
 			key: ++slotSeq,
 			date,
@@ -383,13 +383,21 @@
 	.slotpop {
 		position: fixed;
 		z-index: 60;
-		width: 340px;
+		width: min(460px, calc(100vw - 24px));
 		padding: 10px;
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
-		border: 1.5px dashed var(--ink);
-		box-shadow: var(--shadow-card);
+		background: var(--raised);
+		border: 1.5px solid var(--card-edge);
+		box-shadow: -8px 8px 0 var(--accent);
+	}
+	/* the popup is the palette frame; the box inside drops its own */
+	.slotpop :global(.sc) {
+		background: none;
+		border: 0;
+		box-shadow: none;
+		min-width: 0;
 	}
 	.sp-h {
 		display: flex;

@@ -5,6 +5,15 @@
 - **New installs start invite-only.** Existing installs keep their sign-up mode.
 - Settings › Users: **Disable** a member.
 - New optional env: `UPLOAD_QUOTA_BYTES` (default 2 GB per person). Backups can be encrypted with `age` (SERVICE-HANDOFF §5).
+- **Owner test fixes** (issues #61–#86):
+  - Pages: Ctrl+Z works after toolbar clicks · wider page, bigger text · readable code blocks/links in dark.
+  - Header: pinned pages without the icon, faint `|` between.
+  - Keep: big note editor on PC · no browser form history · N no longer opens over a note · checklist rows drag to reorder, drag sideways to indent (phone: no button rows).
+  - Calendar: names on two lines · delete ✕ visible in dark · ticking pops only that box.
+  - Quick add: no /type = **No type** (no more Event default; ★ removed) · drag popups and phone Add look and work like N, with live slots incl. reminders · `/` list opens above the phone keyboard.
+  - Phone Today: "To do today" card gone · hold a timeline item to delete (Undo).
+  - Android: "To do today" widget removed (6 widgets).
+  - Settings › Users: storage each person uses.
 
 ## v2.0.4 (2026-11-14) — widgets v2 + phone fixes, no migration
 From v2.0.x: pull the new image. The Android app offers the update by itself.

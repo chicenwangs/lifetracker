@@ -55,21 +55,14 @@
 				aria-current={n.match(page.url.pathname) ? 'page' : undefined}>{n.label}</a
 			>
 		{/each}
+		<!-- pinned pages: no icon, a faint | before each (owner 2026-11-16) -->
 		{#each page.data.pins ?? [] as p (p.id)}
+			<span class="sep" aria-hidden="true">|</span>
 			<a
 				href="/pages/{p.id}"
 				class="pin"
 				class:on={page.url.pathname === `/pages/${p.id}`}
-				title="Pinned page"
-				><svg
-					width="12"
-					height="12"
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					aria-hidden="true"><path d="M6 3h9l3 3v15H6z" /></svg
-				>{p.title || 'Untitled'}</a
+				title="Pinned page">{p.title || 'Untitled'}</a
 			>
 		{/each}
 	</nav>
@@ -185,10 +178,13 @@
 />
 
 <style>
+	nav .sep {
+		color: var(--quiet);
+		opacity: 0.35;
+		user-select: none;
+	}
 	nav a.pin {
-		display: inline-flex;
-		align-items: center;
-		gap: 4px;
+		display: inline-block;
 		max-width: 160px;
 		overflow: hidden;
 		text-overflow: ellipsis;

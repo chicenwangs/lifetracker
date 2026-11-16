@@ -186,6 +186,43 @@
 		);
 		changed();
 	}
+	async function moveFocus(i: number, dir: -1 | 1) {
+		const id = items[i]?.id;
+		moveItem(i, dir);
+		await tick();
+		const at = items.findIndex((x) => x.id === id);
+		(document.getElementById(`ci-${at}`) as HTMLInputElement | null)?.focus();
+	}
+
+	// ---------- drag a row by its handle (mouse + touch, Keep-style) ----------
+	// up/down = reorder among its siblings, sideways ≥ 40 px = indent / outdent. Keys: Alt+↑/↓, Tab/Shift+Tab.
+	let drag = $state<{ id: string; x0: number; y0: number } | null>(null);
+	function grab(e: PointerEvent, i: number) {
+		const id = items[i]?.id;
+		if (!id) return;
+		e.preventDefault();
+		(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+		drag = { id, x0: e.clientX, y0: e.clientY };
+	}
+	function dragMove(e: PointerEvent) {
+		if (!drag) return;
+		const i = items.findIndex((x) => x.id === drag?.id);
+		const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+		const over = el?.closest<HTMLElement>('li[data-i]');
+		const j = over ? Number(over.dataset.i) : i;
+		if (i < 0 || j === i) return;
+		moveItem(i, j < i ? -1 : 1);
+		drag.y0 = e.clientY; // a swap resets the vertical part, so a sideways flick after it still indents
+	}
+	function drop(e: PointerEvent) {
+		if (!drag) return;
+		const i = items.findIndex((x) => x.id === drag?.id);
+		const dx = e.clientX - drag.x0;
+		if (i >= 0 && Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(e.clientY - drag.y0))
+			indent(i, dx > 0 ? 1 : -1);
+		drag = null;
+	}
+
 	function removeItem(i: number) {
 		const [a, b] = subtree(i);
 		items.splice(a, b - a);
@@ -315,6 +352,7 @@
 		<!-- svelte-ignore a11y_autofocus -->
 		<input
 			class="title"
+			autocomplete="off"
 			placeholder="Title"
 			bind:value={title}
 			oninput={changed}
@@ -328,7 +366,21 @@
 			<ul class="items" aria-label="Checklist">
 				{#each items as it, i (it.id)}
 					{#if !hiddenBy(i)}
-						<li style:padding-left="{(depthOf(i) - 1) * 22}px" class:done={it.checked}>
+						<li
+							data-i={i}
+							style:padding-left="{(depthOf(i) - 1) * 22}px"
+							class:done={it.checked}
+							class:dragging={drag?.id === it.id}
+						>
+							<span
+								class="grip"
+								role="presentation"
+								title="Drag to move · sideways to indent"
+								onpointerdown={(e) => grab(e, i)}
+								onpointermove={dragMove}
+								onpointerup={drop}
+								onpointercancel={() => (drag = null)}>⋮⋮</span
+							>
 							{#if hasKids(it.id)}
 								<button
 									class="mini"
@@ -347,12 +399,16 @@
 							<input
 								id="ci-{i}"
 								class="it"
+								autocomplete="off"
 								bind:value={it.text}
 								oninput={changed}
 								maxlength="1000"
 								placeholder="List item"
 								onkeydown={(e) => {
-									if (e.key === 'Enter') {
+									if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+										e.preventDefault();
+										void moveFocus(i, e.key === 'ArrowUp' ? -1 : 1);
+									} else if (e.key === 'Enter') {
 										e.preventDefault();
 										addItem(i);
 									} else if (e.key === 'Tab') {
@@ -366,22 +422,25 @@
 							/>
 							<span class="ops">
 								<button
-									class="mini"
+									class="mini mv"
 									type="button"
-									aria-label="Move {it.text} up"
+									aria-label="Move {it.text} up (Alt+↑)"
 									onclick={() => moveItem(i, -1)}>↑</button
 								>
 								<button
-									class="mini"
+									class="mini mv"
 									type="button"
-									aria-label="Move {it.text} down"
+									aria-label="Move {it.text} down (Alt+↓)"
 									onclick={() => moveItem(i, 1)}>↓</button
 								>
-								<button class="mini" type="button" aria-label="Indent {it.text}" onclick={() => indent(i, 1)}
-									>→</button
+								<button
+									class="mini mv"
+									type="button"
+									aria-label="Indent {it.text}"
+									onclick={() => indent(i, 1)}>→</button
 								>
 								<button
-									class="mini"
+									class="mini mv"
 									type="button"
 									aria-label="Outdent {it.text}"
 									onclick={() => indent(i, -1)}>←</button
@@ -428,6 +487,7 @@
 			{/each}
 			<input
 				class="newl"
+				autocomplete="off"
 				placeholder="+ label"
 				bind:value={newLabel}
 				maxlength="60"
@@ -616,9 +676,60 @@
 	li:focus-within .ops {
 		opacity: 1;
 	}
+	.grip {
+		flex: none;
+		width: 24px;
+		min-height: 28px;
+		display: grid;
+		place-items: center;
+		font-size: 12px;
+		letter-spacing: -3px;
+		opacity: 0.35;
+		cursor: grab;
+		touch-action: none; /* the finger drags the row, not the page */
+		user-select: none;
+	}
+	li:hover .grip,
+	li.dragging .grip {
+		opacity: 0.8;
+	}
+	li.dragging {
+		background: color-mix(in srgb, currentColor 8%, transparent);
+		border-radius: 6px;
+	}
+	/* touch: rows are just text (Keep-style); drag the handle to move/indent, × on the row being edited */
 	@media (hover: none) {
-		.ops {
+		.ops .mv {
+			display: none;
+		}
+		li:focus-within .ops {
 			opacity: 1;
+		}
+		.grip {
+			opacity: 0.6;
+			min-height: 40px;
+		}
+		.it {
+			font-size: 16px;
+		}
+	}
+	/* desktop: a big writing area (owner 2026-11-16: was small in the middle) */
+	@media (min-width: 700px) {
+		.note {
+			top: 5vh;
+			width: min(960px, 92vw);
+			max-height: 90vh;
+			padding: 24px 28px;
+		}
+		.title {
+			font-size: 22px;
+		}
+		.body {
+			min-height: 45vh;
+			font-size: 17px;
+		}
+		.it {
+			font-size: 16px;
 		}
 	}
 	.mini {

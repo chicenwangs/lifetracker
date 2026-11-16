@@ -1,8 +1,7 @@
-// Phone Today (FEATURES §10): the day's blocks + timed items for the Now card and the timeline wheel,
-// plus "No time set" = own top-level items dated (or spanning) the day, no time, not done.
+// Phone Today (FEATURES §10): the day's blocks + timed items for the Now card and the timeline wheel.
+// (The "To do today · no time set" list was removed, owner 2026-11-16.)
 import type { PageServerLoad } from './$types';
 import { getCalendar } from '$lib/server/calendar';
-import * as itemsRepo from '$lib/server/repo/items';
 import { addDays, isDate, todayLocal } from '$lib/time';
 
 export const load: PageServerLoad = ({ locals, url }) => {
@@ -14,6 +13,5 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		today,
 		day,
 		cal: getCalendar(me, day, addDays(day, 1)),
-		noTime: itemsRepo.withCounts(itemsRepo.dueOn(me.id, day).filter((i) => !i.time)),
 	};
 };

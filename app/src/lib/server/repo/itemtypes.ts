@@ -159,7 +159,6 @@ export function remove(ownerId: string, id: string, moveTo: string | null): { mo
 	return txImmediate(() => {
 		const t = own(ownerId, id);
 		if (t.builtin) bad('Built-in types can be renamed or recoloured, not deleted.', 'builtin');
-		if (t.isDefault) bad('This is your default type. Star another type first.', 'is_default');
 		if (moveTo === t.key) bad('Pick another type to move them to.');
 		mustHave(ownerId, moveTo);
 		const cals = db()

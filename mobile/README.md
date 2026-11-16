@@ -3,7 +3,7 @@
 Caveman doc. Capacitor 8 shell. The app = the server's own pages (`server.url` in `capacitor.config.json`) in a WebView, plus native bits the web can't do.
 
 ## What it adds
-- **Widgets (7):** Today timeline (scrolls to now, tick in place, + quick add) · Keep (scrolling note cards, + new note bottom-right) · Now and next (time left bar) · Quick add (+ Plan / + Note) · To do today (tickable) · Countdowns (days left) · Week ahead (7 days). App look, Light / Dark / Auto from the account. `docs/v2/UX-MOTION-AUDIT.md` has what each is for.
+- **Widgets (6):** Today timeline (scrolls to now, tick in place, + quick add) · Keep (scrolling note cards, + new note bottom-right) · Now and next (time left bar) · Quick add (+ Plan / + Note) · Countdowns (days left) · Week ahead (7 days). App look, Light / Dark / Auto from the account. `docs/v2/UX-MOTION-AUDIT.md` has what each is for.
 - **Reminder alarms:** web push needs Chrome; the app sets an exact alarm per reminder instead. No Firebase.
 - **In-app update:** on open (max every 6 h) and in Settings › Help › Check for updates. Downloads `life-tracker-X.Y.Z.apk` from the newest GitHub Release and opens Android's installer. First time Android asks to allow installs from Life Tracker.
 - Back button = page back. Attachment downloads go to Downloads. Offline at start = `www/offline.html`.
