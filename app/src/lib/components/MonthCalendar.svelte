@@ -450,7 +450,7 @@
 	}
 	.grid :global(.fc-col-header-cell-cushion) {
 		padding: 0 10px !important;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		font-weight: 600;
 		letter-spacing: 0.06em;
 		color: var(--quiet);
@@ -545,7 +545,7 @@
 	}
 	.grid :global(.lt-dl) {
 		flex: none;
-		font-size: 10px;
+		font-size: max(var(--fs-min), 10px);
 		font-weight: 700;
 		padding: 0 5px;
 		height: 16px;

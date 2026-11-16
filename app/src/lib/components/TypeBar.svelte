@@ -182,7 +182,7 @@
 		background: var(--bg);
 		color: var(--fg);
 		font: inherit;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		font-weight: 600;
 		cursor: pointer;
 	}
@@ -275,7 +275,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--muted);
 	}
 	.who {
@@ -283,13 +283,13 @@
 		height: 16px;
 		border-radius: 50%;
 		color: #fff;
-		font-size: 10px;
+		font-size: max(var(--fs-min), 10px);
 		display: grid;
 		place-items: center;
 	}
 	.count {
 		margin-left: auto;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--muted);
 	}
 </style>

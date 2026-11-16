@@ -174,7 +174,7 @@
 			bottom: 0;
 			z-index: 50;
 			display: grid;
-			grid-template-columns: repeat(5, 1fr);
+			grid-template-columns: repeat(5, minmax(0, 1fr));
 			align-items: center;
 			padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
 			background: var(--card);
@@ -200,6 +200,16 @@
 		}
 		a.on {
 			font-weight: 700;
+		}
+		/* big system text (#116): a label too wide for its fifth of the bar ends in … (name stays whole) */
+		a {
+			min-width: 0;
+		}
+		a span {
+			max-width: 100%;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
 		}
 		a.on svg {
 			background: var(--pill-card);

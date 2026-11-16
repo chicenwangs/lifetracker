@@ -235,7 +235,7 @@
 	}
 	.wd {
 		text-align: center;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--muted);
 	}
 	.cell {
@@ -275,7 +275,7 @@
 		border-radius: 50%;
 	}
 	.dots b {
-		font-size: 9px;
+		font-size: max(var(--fs-min), 9px);
 		font-weight: 600;
 	}
 </style>

@@ -209,7 +209,7 @@
 	}
 	th {
 		text-align: left;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--muted);
 		font-weight: 600;
 		padding: 6px 4px;

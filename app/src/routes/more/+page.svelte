@@ -55,7 +55,7 @@
 		gap: 12px;
 	}
 	.lbl {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		font-weight: 700;
 		letter-spacing: 0.06em;
 		color: var(--quiet);

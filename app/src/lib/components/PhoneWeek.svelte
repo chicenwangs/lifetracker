@@ -200,7 +200,7 @@
 		height: 20px;
 		border-radius: 50%;
 		color: #fff;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		display: grid;
 		place-items: center;
 	}

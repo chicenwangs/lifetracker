@@ -93,7 +93,7 @@
 		min-height: 24px;
 		padding: 0 8px;
 		font: inherit;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		border: 1px solid var(--rule);
 		border-radius: 6px;
 		background: var(--card);

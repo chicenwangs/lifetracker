@@ -299,7 +299,7 @@
 	}
 	.search kbd {
 		font: inherit;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		border: 1px solid var(--rule);
 		border-radius: 4px;
 		padding: 0 4px;

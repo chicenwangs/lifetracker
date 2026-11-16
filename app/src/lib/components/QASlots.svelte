@@ -74,7 +74,7 @@
 	}
 	.k {
 		display: block;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		opacity: 0.8;
 	}
 	.v {

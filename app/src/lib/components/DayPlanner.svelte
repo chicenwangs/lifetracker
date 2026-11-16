@@ -685,7 +685,7 @@
 		display: block;
 		width: 56px;
 		padding: 4px 0 0 14px;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 	}
 	.now {
@@ -796,7 +796,7 @@
 		white-space: nowrap;
 	}
 	.tm {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		white-space: nowrap;
 	}
 	.h {
@@ -835,7 +835,7 @@
 	}
 	.tip {
 		padding: 8px 16px;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 		border-top: 1px solid var(--rule);
 	}

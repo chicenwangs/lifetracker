@@ -100,7 +100,7 @@
 		border-style: dotted;
 	}
 	.tm {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		white-space: nowrap;
 		font-weight: 600;
 	}

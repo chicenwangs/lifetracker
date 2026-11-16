@@ -43,7 +43,7 @@
 		border-bottom: 1px solid var(--rule);
 	}
 	.cap {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		font-weight: 600;
 		letter-spacing: 0.06em;
 		color: var(--quiet);

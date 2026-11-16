@@ -531,7 +531,7 @@
 	}
 	.n {
 		margin-left: auto;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--muted);
 	}
 	.main {
@@ -641,7 +641,7 @@
 	}
 	.tag {
 		display: inline-block;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		padding: 2px 8px;
 		border-radius: 999px;
 		border: 1px solid #6b6b8f;

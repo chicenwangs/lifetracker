@@ -78,6 +78,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
+        // text follows the system font size (Settings › Display › Font size), also when changed while away (#116)
+        getBridge().getWebView().getSettings()
+                .setTextZoom(Math.round(getResources().getConfiguration().fontScale * 100));
         Updater.maybePrompt(this);
     }
 
