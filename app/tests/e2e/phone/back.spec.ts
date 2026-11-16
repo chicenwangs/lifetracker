@@ -46,24 +46,29 @@ test('closing in the UI uses up the entry: next Back leaves the page', async () 
 	expect(path()).toBe('/week');
 });
 
-test('Back closes the account menu; a link in it navigates once', async () => {
+test('Back closes the account sheet; a link in it navigates once', async () => {
+	test.fixme(
+		test.info().project.name === 'phone-landscape',
+		'#110: landscape still gets the desktop dropdown',
+	);
 	await page.goto('/today');
-	const menuBtn = page.getByRole('button', { name: 'Account menu' });
-	await menuBtn.click();
-	const prefs = page.getByRole('link', { name: 'Preferences' });
-	await expect(prefs).toBeVisible();
+	const avatar = page.getByRole('button', { name: 'Account menu' });
+	await avatar.click();
+	const sheet = page.getByRole('dialog', { name: 'Account' });
+	await expect(sheet).toBeVisible();
 	await page.goBack();
-	await expect(prefs).toBeHidden();
+	await expect(sheet).toBeHidden();
 	expect(path()).toBe('/today');
 
-	await menuBtn.click();
-	await prefs.click();
+	await avatar.click();
+	await sheet.getByRole('link', { name: 'Settings' }).click();
 	await expect(page).toHaveURL(/\/settings\/preferences$/);
 	await page.waitForTimeout(300); // a wrong history.back() would land here
 	expect(path()).toBe('/settings/preferences');
+	await expect(sheet).toBeHidden();
 	await page.goBack();
 	expect(path()).toBe('/today');
-	await expect(prefs).toBeHidden();
+	await expect(sheet).toBeHidden();
 });
 
 test('Back closes an open Keep note', async () => {

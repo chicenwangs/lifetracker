@@ -1,21 +1,43 @@
-<!-- Phone bottom bar (FEATURES §10, D-21): Today · Week · + Add · Keep · More. Only under 700 px. -->
+<!-- Phone bottom bar (#88, G1): Today · Calendar · + · Keep · Pages. Only under 700 px. Account lives in the
+     avatar sheet (AccountSheet). A screen outside the tabs (Settings, Trash, an item) keeps the last tab lit. -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { openAdd } from '$lib/client/mobile.svelte';
 
 	const TABS = [
 		// icons = wireframe MBar
-		{ href: '/today', label: 'Today', icon: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 7.5V12l3 2' },
+		{
+			href: '/today',
+			label: 'Today',
+			icon: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17zM12 7.5V12l3 2',
+			match: (p: string) => p.startsWith('/today'),
+		},
 		{
 			href: '/week',
-			label: 'Week',
+			label: 'Calendar',
 			icon: 'M5 4.5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-12a2 2 0 0 1 2-2zM3 9.5h18M9 9.5v11M15 9.5v11',
+			match: (p: string) => p.startsWith('/week') || p.startsWith('/month'),
 		},
 		null,
-		{ href: '/keep', label: 'Keep', icon: 'M5 3h10l4 4v14H5zM9 12h6M9 16h4' },
-		{ href: '/more', label: 'More', icon: 'M4 7h16M4 12h16M4 17h16' },
+		{
+			href: '/keep',
+			label: 'Keep',
+			icon: 'M5 3h10l4 4v14H5zM9 12h6M9 16h4',
+			match: (p: string) => p.startsWith('/keep'),
+		},
+		{
+			href: '/pages',
+			label: 'Pages',
+			icon: 'M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8 8h7M8 12h7M8 16h4',
+			match: (p: string) => p.startsWith('/pages'),
+		},
 	];
-	const on = (href: string) => page.url.pathname.startsWith(href);
+	let last = $state('/today');
+	const current = $derived(TABS.find((t) => t?.match(page.url.pathname))?.href);
+	$effect(() => {
+		if (current) last = current;
+	});
+	const on = (href: string) => (current ?? last) === href;
 </script>
 
 <nav class="mbar" aria-label="Phone navigation">
@@ -26,7 +48,8 @@
 					width="22"
 					height="22"
 					viewBox="0 0 24 24"
-					fill="none"
+					fill={on(t.href) ? 'currentColor' : 'none'}
+					fill-opacity="0.25"
 					stroke="currentColor"
 					stroke-width="2"
 					stroke-linecap="round"
@@ -55,7 +78,7 @@
 			display: grid;
 			grid-template-columns: repeat(5, 1fr);
 			align-items: center;
-			padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+			padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
 			background: var(--card);
 			border-top: 1.5px solid var(--border);
 		}
@@ -64,16 +87,16 @@
 			flex-direction: column;
 			align-items: center;
 			gap: 2px;
-			font-size: 11px;
+			font-size: 12px;
 			color: var(--ink);
 			text-decoration: none;
 			padding: 2px 0;
-			min-height: 44px;
+			min-height: 56px;
 			justify-content: center;
 		}
 		a svg {
 			box-sizing: content-box;
-			padding: 5px 17px;
+			padding: 4px 16px;
 			border-radius: 999px;
 		}
 		a.on {

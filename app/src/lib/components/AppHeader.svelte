@@ -5,6 +5,8 @@
 	import QuickAdd from './QuickAdd.svelte';
 	import AppIcon from './AppIcon.svelte';
 	import CommandPalette from './CommandPalette.svelte';
+	import AccountSheet from './AccountSheet.svelte';
+	import { isPhone } from '$lib/client/phone';
 	import { initTheme, setTheme, themeState } from '$lib/client/prefs.svelte';
 
 	let { user }: { user: App.SafeUser } = $props();
@@ -19,6 +21,7 @@
 		},
 	];
 	let menu = $state(false);
+	let acct = $state(false); // phone: account sheet instead of the dropdown (#88)
 	let help = $state(false);
 	let cmdk: CommandPalette | undefined = $state();
 	const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
@@ -85,7 +88,7 @@
 			onclick={() => (help = !help)}>?</button
 		>
 		<button
-			class="theme"
+			class="theme mode"
 			type="button"
 			aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
 			title={themeTip}
@@ -135,9 +138,10 @@
 				class="avatar"
 				type="button"
 				aria-label="Account menu"
-				aria-expanded={menu}
+				aria-expanded={menu || acct}
 				style:background={user.color}
-				onclick={() => (menu = !menu)}>{user.displayName.slice(0, 1).toUpperCase()}</button
+				onclick={() => (isPhone() ? (acct = true) : (menu = !menu))}
+				>{user.displayName.slice(0, 1).toUpperCase()}</button
 			>
 			{#if menu}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -162,6 +166,7 @@
 	</div>
 </header>
 <CommandPalette bind:this={cmdk} />
+{#if acct}<AccountSheet {user} onclose={() => (acct = false)} />{/if}
 {#if help}
 	<div class="scrim" role="presentation" onclick={() => (help = false)}></div>
 	<div
@@ -457,6 +462,7 @@
 			gap: 8px;
 		}
 		.search kbd,
+		.mode, /* theme lives in Settings on phone (#88) */
 		.right > [aria-label='Keyboard shortcuts'] {
 			display: none; /* no keyboard on a phone */
 		}

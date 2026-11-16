@@ -164,7 +164,7 @@ Tests NOTIF-001..011: each of 5 offsets correct · two reminders coexist · resc
 Purpose: phone = **glance + capture**. Not for planning the week. Planning = PC.
 
 - **Breakpoint:** < 700 px wide → phone layout. Desktop layout never squeezed onto phone.
-- **Bottom bar (fixed, thumb zone, 5 slots):** Today · Week · **+ Add** (true centre, 56 px) · Keep · More. Labels + icons, active = pill. Safe-area padding.
+- **Bottom bar (fixed, thumb zone, 5 slots):** Today · Calendar · **+ Add** (true centre, 56 px) · Keep · Pages (#88). Labels + icons, active = pill + filled icon. A screen outside the tabs keeps the last tab lit. Safe-area padding.
 - **Today (default route on phone):**
   - Header: date, ‹ › day step, "Today" jump. Swipe left/right = day step.
   - **Now card:** current block (title, type colour, time left) or "Free until HH:MM".
@@ -176,7 +176,7 @@ Purpose: phone = **glance + capture**. Not for planning the week. Planning = PC.
 - **Keep tab:** opens the note list (search, binder chips, + Note). Fastest new note = + Add → Quick note tab, or + Note on the list.
 - **Undo on phone:** snackbar above the bar ("Note archived · Undo"), 5 s. Swipe left on a note = archive; same action also in the note's menu.
 - **Item tap:** bottom sheet (title, time, status, notes, open full). Edit allowed, kept simple.
-- **More:** Week (day/agenda list, read-first), Month (compact grid, tap day → that day's Today view), Pages, pins, Settings, Help.
+- **Account sheet** (avatar, #88; was the More tab): Settings, Shared with me, Keep archive, Trash, Help + tour, Sign out. Week + Month live in the Calendar tab, pins in Pages. Theme toggle: Settings only on phone. `/more` still loads (old links).
 - Moving/resizing blocks on phone: sheet with time pickers + "+15 / −15 min" buttons. No drag needed.
 - Touch: tap/menu alternative for move/resize/reorder; big targets; long-press never the only way; scrolling never triggers destructive drag.
 - PWA: manifest, icons, standalone; works un-installed too.
