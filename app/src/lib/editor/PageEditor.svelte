@@ -3,6 +3,8 @@
 <script lang="ts">
 	import { askText } from '$lib/client/dialog.svelte';
 	import { backCloses } from '$lib/client/layers';
+	import { isPhone } from '$lib/client/phone';
+	import ActionSheet from '$lib/components/ActionSheet.svelte';
 	import { onMount } from 'svelte';
 	import { Editor, type Content } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
@@ -180,7 +182,7 @@
 			editable: page.access !== 'view',
 			editorProps: { attributes: { 'aria-label': 'Page content', class: 'pm' } },
 			onUpdate: changed,
-			onSelectionUpdate: ({ editor: e }) => {
+			onTransaction: ({ editor: e }) => {
 				inTable = e.isActive('table');
 				marks = { bold: e.isActive('bold'), italic: e.isActive('italic'), underline: e.isActive('underline'), strike: e.isActive('strike'), code: e.isActive('code'), link: e.isActive('link') };
 			},
@@ -228,11 +230,31 @@
 		cmd((c) => c.extendMarkRange('link').setLink({ href }));
 	}
 	const op = (f: keyof typeof blockOps) => editor && (f === 'move' ? null : blockOps[f](editor.view));
+	// phone (#98): toolbar docks above the keyboard only while typing; block actions in one sheet
+	let phone = $state(false);
+	let typing = $state(false);
+	let blockMenu = $state(false);
+	onMount(() => {
+		phone = isPhone();
+		const dom = el?.querySelector('.pm');
+		const on = () => (typing = true);
+		const off = (e: Event) => {
+			const to = (e as FocusEvent).relatedTarget as HTMLElement | null;
+			if (!to?.closest('.tools')) typing = false;
+		};
+		dom?.addEventListener('focusin', on);
+		dom?.addEventListener('focusout', off);
+		return () => {
+			dom?.removeEventListener('focusin', on);
+			dom?.removeEventListener('focusout', off);
+		};
+	});
 </script>
 
 <!-- mousedown kept off the buttons so the text keeps focus + selection (Ctrl+Z still undoes in the page) -->
 <div
 	class="tools"
+	class:typing
 	role="toolbar"
 	tabindex="-1"
 	aria-label="Formatting and block tools"
@@ -242,21 +264,24 @@
 		type="button"
 		class="t"
 		aria-pressed={marks.bold}
-		title="Bold (Ctrl+B)"
+		aria-label="Bold"
+		title={phone ? undefined : 'Bold (Ctrl+B)'}
 		onclick={() => cmd((c) => c.toggleBold())}><b>B</b></button
 	>
 	<button
 		type="button"
 		class="t"
 		aria-pressed={marks.italic}
-		title="Italic (Ctrl+I)"
+		aria-label="Italic"
+		title={phone ? undefined : 'Italic (Ctrl+I)'}
 		onclick={() => cmd((c) => c.toggleItalic())}><i>I</i></button
 	>
 	<button
 		type="button"
 		class="t"
 		aria-pressed={marks.underline}
-		title="Underline (Ctrl+U)"
+		aria-label="Underline"
+		title={phone ? undefined : 'Underline (Ctrl+U)'}
 		onclick={() => cmd((c) => c.toggleUnderline())}><u>U</u></button
 	>
 	<button
@@ -275,22 +300,25 @@
 	>
 	<button type="button" class="t" aria-pressed={marks.link} title="Link" onclick={setLink}>Link</button>
 	<span class="sep"></span>
+	<button type="button" class="t ph" aria-label="Block actions" onclick={() => (blockMenu = true)}>⋯</button>
 	<button
 		type="button"
-		class="t"
+		class="t desk"
 		title="Move block up (Alt+↑)"
 		aria-label="Move block up"
 		onclick={() => editor && blockOps.move(editor.view, -1)}>↑</button
 	>
 	<button
 		type="button"
-		class="t"
+		class="t desk"
 		title="Move block down (Alt+↓)"
 		aria-label="Move block down"
 		onclick={() => editor && blockOps.move(editor.view, 1)}>↓</button
 	>
-	<button type="button" class="t" title="Duplicate block" onclick={() => op('duplicate')}>Duplicate</button>
-	<button type="button" class="t" title="Delete block" onclick={() => op('remove')}>Delete block</button>
+	<button type="button" class="t desk" title="Duplicate block" onclick={() => op('duplicate')}
+		>Duplicate</button
+	>
+	<button type="button" class="t desk" title="Delete block" onclick={() => op('remove')}>Delete block</button>
 	{#if inTable}
 		<span class="sep"></span>
 		<button type="button" class="t" onclick={() => cmd((c) => c.addRowAfter())}>+ Row</button>
@@ -298,7 +326,7 @@
 		<button type="button" class="t" onclick={() => cmd((c) => c.deleteRow())}>− Row</button>
 		<button type="button" class="t" onclick={() => cmd((c) => c.deleteColumn())}>− Col</button>
 	{:else}
-		<span class="hint">Type / for blocks</span>
+		<span class="hint desk">Type / for blocks</span>
 	{/if}
 </div>
 <div class="doc" bind:this={el}></div>
@@ -313,6 +341,19 @@
 	}}
 />
 
+{#if blockMenu}
+	{@const run = (f: () => unknown) => () => (f(), editor?.commands.focus())}
+	<ActionSheet
+		title="Block"
+		actions={[
+			{ label: 'Move up', run: run(() => editor && blockOps.move(editor.view, -1)) },
+			{ label: 'Move down', run: run(() => editor && blockOps.move(editor.view, 1)) },
+			{ label: 'Duplicate', run: run(() => op('duplicate')) },
+			{ label: 'Delete block', danger: true, run: run(() => op('remove')) },
+		]}
+		onclose={() => (blockMenu = false)}
+	/>
+{/if}
 {#if picker}
 	<div class="scrim" role="presentation" onclick={() => (picker = null)}></div>
 	<div
@@ -369,11 +410,65 @@
 		font-size: 12.5px;
 		cursor: pointer;
 	}
-	/* phone: 48 dp (#101); #98 moves this toolbar above the keyboard */
+	.ph {
+		display: none;
+	}
+	/* phone (#98): 48 dp, one scrolling row docked to the bottom of the (keyboard-shrunk, #118) screen while
+	   typing, over the tab bar; gone otherwise */
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.t {
 			min-width: 48px;
 			min-height: 48px;
+			flex: none;
+		}
+		.desk {
+			display: none !important;
+		}
+		.ph {
+			display: inline-block;
+		}
+		.tools {
+			display: none;
+		}
+		.tools.typing {
+			display: flex;
+			position: fixed;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			top: auto;
+			z-index: 60;
+			margin: 0;
+			padding: 0 4px;
+			border-radius: 0;
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			scrollbar-width: none;
+			background: var(--card);
+			border-top: 1.5px solid var(--rule);
+		}
+		.tools.typing::-webkit-scrollbar {
+			display: none;
+		}
+		.doc {
+			padding-bottom: 64px; /* last line clears the docked toolbar */
+		}
+		.picker input,
+		.picker button {
+			min-height: 48px;
+		}
+		/* 22 px box, 48 dp to tap */
+		.doc :global(ul[data-type='taskList'] li > label) {
+			position: relative;
+		}
+		.doc :global(ul[data-type='taskList'] li > label::after) {
+			content: '';
+			position: absolute;
+			inset: -12px;
+		}
+		.doc :global(ul[data-type='taskList'] input) {
+			width: 22px;
+			height: 22px;
 		}
 	}
 	.t:hover {
