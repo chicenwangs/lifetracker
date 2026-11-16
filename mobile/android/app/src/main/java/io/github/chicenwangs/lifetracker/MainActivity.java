@@ -26,9 +26,9 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(HapticsPlugin.class);
         registerPlugin(ThemeBarsPlugin.class);
         super.onCreate(state);
-        String ck = CookieManager.getInstance().getCookie(Native.base(this));
-        boolean dark = ck != null && ck.contains("lt_theme=light") ? false
-                : ck != null && ck.contains("lt_theme=dark") ? true
+        String themeCookie = CookieManager.getInstance().getCookie(Native.base(this));
+        boolean dark = themeCookie != null && themeCookie.contains("lt_theme=light") ? false
+                : themeCookie != null && themeCookie.contains("lt_theme=dark") ? true
                 : Theme.of(this, Native.cached(this)).dark;
         ThemeBarsPlugin.apply(this, dark);
         WebView w = getBridge().getWebView();
