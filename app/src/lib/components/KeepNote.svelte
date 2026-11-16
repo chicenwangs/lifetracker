@@ -4,6 +4,8 @@
 	import { askConfirm } from '$lib/client/dialog.svelte';
 	import Reminders from './Reminders.svelte';
 	import ShareDialog from './ShareDialog.svelte';
+	import ActionSheet from './ActionSheet.svelte';
+	import BottomSheet from './BottomSheet.svelte';
 	import { page } from '$app/state';
 	import { tick } from 'svelte';
 	import { patch, post } from '$lib/client/api';
@@ -31,6 +33,9 @@
 		shared?: 'view' | 'edit';
 	} = $props();
 	let sharing = $state(false);
+	// phone (#107): top bar Back · Pin · bell · ⋮, bottom + · colour; the rest in sheets
+	let sheet = $state<'add' | 'more' | 'colour' | 'labels' | 'remind' | null>(null);
+	let fileInput: HTMLInputElement | undefined = $state();
 
 	// svelte-ignore state_referenced_locally
 	const start = note;
@@ -341,6 +346,39 @@
 	}
 </script>
 
+{#snippet tags()}
+	<div class="chips" aria-label="Labels">
+		{#each labels as l (l.id)}
+			<button
+				type="button"
+				class="chip"
+				aria-pressed={noteLabels.includes(l.id)}
+				onclick={() => ((noteLabels = toggle(noteLabels, l.id)), changed())}>#{l.name}</button
+			>
+		{/each}
+		<input
+			class="newl"
+			autocomplete="off"
+			placeholder="+ label"
+			bind:value={newLabel}
+			maxlength="60"
+			onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), addLabel())}
+			aria-label="New label"
+		/>
+	</div>
+	{#if binders.length}
+		<div class="chips" aria-label="Binders">
+			{#each binders as b (b.id)}
+				<button
+					type="button"
+					class="chip bd"
+					aria-pressed={noteBinders.includes(b.id)}
+					onclick={() => ((noteBinders = toggle(noteBinders, b.id)), changed())}>▣ {b.name}</button
+				>
+			{/each}
+		</div>
+	{/if}
+{/snippet}
 <div class="scrim" role="presentation" onclick={close}></div>
 <div
 	class="note card"
@@ -350,6 +388,50 @@
 	style:--note-bg={color ?? 'var(--card)'}
 	class:tinted={!!color}
 >
+	<div class="ptop">
+		<button class="pb" type="button" aria-label="Back" onclick={close}
+			><svg
+				width="22"
+				height="22"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg
+			></button
+		>
+		<span class="grow"></span>
+		{#if !shared}
+			<button
+				class="pb"
+				type="button"
+				aria-label="Pin"
+				aria-pressed={pinned}
+				onclick={() => ((pinned = !pinned), changed())}
+				><svg
+					width="20"
+					height="20"
+					viewBox="0 0 24 24"
+					fill={pinned ? 'currentColor' : 'none'}
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"><path d="M12 17v5M9 10.8V4h6v6.8l3 3.2H6z" /></svg
+				></button
+			>
+			{#if id}<button class="pb" type="button" aria-label="Reminders" onclick={() => (sheet = 'remind')}
+					><svg
+						width="20"
+						height="20"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4" /></svg
+					></button
+				>{/if}
+			<button class="pb" type="button" aria-label="Note menu" onclick={() => (sheet = 'more')}>⋮</button>
+		{/if}
+	</div>
 	{#if shared}<p class="hint">
 			Shared with you · {shared === 'edit' ? 'you can edit the text' : 'view only'}
 		</p>{/if}
@@ -480,39 +562,7 @@
 		</div>
 	{/if}
 
-	{#if !shared}
-		<div class="chips" aria-label="Labels">
-			{#each labels as l (l.id)}
-				<button
-					type="button"
-					class="chip"
-					aria-pressed={noteLabels.includes(l.id)}
-					onclick={() => ((noteLabels = toggle(noteLabels, l.id)), changed())}>#{l.name}</button
-				>
-			{/each}
-			<input
-				class="newl"
-				autocomplete="off"
-				placeholder="+ label"
-				bind:value={newLabel}
-				maxlength="60"
-				onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), addLabel())}
-				aria-label="New label"
-			/>
-		</div>
-		{#if binders.length}
-			<div class="chips" aria-label="Binders">
-				{#each binders as b (b.id)}
-					<button
-						type="button"
-						class="chip bd"
-						aria-pressed={noteBinders.includes(b.id)}
-						onclick={() => ((noteBinders = toggle(noteBinders, b.id)), changed())}>▣ {b.name}</button
-					>
-				{/each}
-			</div>
-		{/if}
-	{/if}
+	{#if !shared}<div class="desk">{@render tags()}</div>{/if}
 	<div class="bar">
 		{#if !shared}
 			<div class="colors" role="radiogroup" aria-label="Colour">
@@ -551,6 +601,7 @@
 			<label class="mini wide file"
 				>Image<input
 					type="file"
+					bind:this={fileInput}
 					accept="image/png,image/jpeg,image/gif,image/webp"
 					multiple
 					onchange={(e) => addImages(e.currentTarget.files)}
@@ -581,18 +632,99 @@
 		<button class="btn sm" type="button" onclick={close} title="Esc">Close</button>
 	</div>
 	{#if sharing && id}<ShareDialog kind="note" {id} name={title} onclose={() => (sharing = false)} />{/if}
-	{#if id && !shared}<Reminders
-			source="keep_note"
-			sourceId={id}
-			tz={page.data.user?.timezone ?? 'Asia/Kuala_Lumpur'}
-			relative={false}
-		/>{/if}
+	{#if id && !shared}<div class="desk">
+			<Reminders
+				source="keep_note"
+				sourceId={id}
+				tz={page.data.user?.timezone ?? 'Asia/Kuala_Lumpur'}
+				relative={false}
+			/>
+		</div>{/if}
 	{#if start}<span class="hint"
 			>Edited {new Date(start.updatedAt).toLocaleString()} · Created {new Date(
 				start.createdAt,
 			).toLocaleDateString()}</span
 		>{/if}
+	{#if shared !== 'view'}
+		<div class="pbot" role="toolbar" aria-label="Note tools">
+			<button class="pb" type="button" aria-label="Add to note" onclick={() => (sheet = 'add')}
+				><svg
+					width="22"
+					height="22"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg
+				></button
+			>
+			{#if !shared}<button class="pb" type="button" aria-label="Colour" onclick={() => (sheet = 'colour')}
+					><span class="swatch" style:background={color ?? 'var(--card)'}></span></button
+				>{/if}
+		</div>
+	{/if}
 </div>
+{#if sheet === 'add'}
+	<ActionSheet
+		title="Add"
+		actions={[
+			{ label: type === 'checklist' ? 'Plain text' : 'Checklist', run: toChecklist },
+			...(shared ? [] : [{ label: 'Image', run: () => fileInput?.click() }]),
+		]}
+		onclose={() => (sheet = null)}
+	/>
+{:else if sheet === 'more'}
+	<ActionSheet
+		title={title || 'Note'}
+		actions={[
+			{ label: 'Labels and binders', run: () => (sheet = 'labels') },
+			...(start
+				? [
+						{ label: 'Share…', run: () => (sharing = true) },
+						{ label: 'Duplicate', run: duplicate },
+						{
+							label: start.archived ? 'Unarchive' : 'Archive',
+							run: () => act({ archived: !start.archived }, start.archived ? 'Unarchived' : 'Note archived'),
+						},
+						{ label: 'Delete', danger: true, run: () => act({ trashed: true }, 'Moved to Trash') },
+					]
+				: []),
+		]}
+		onclose={() => sheet === 'more' && (sheet = null)}
+	/>
+{:else if sheet === 'colour'}
+	<BottomSheet label="Colour" onclose={() => (sheet = null)}>
+		<h2 class="sh">Colour</h2>
+		<div class="colors big" role="radiogroup" aria-label="Colour">
+			{#each [null, ...colors] as c (c)}
+				<button
+					type="button"
+					role="radio"
+					class="sw"
+					aria-checked={color === c}
+					aria-label={c ? `Colour ${c}` : 'No colour'}
+					style:background={c ?? 'var(--card)'}
+					onclick={() => ((color = c), changed(), (sheet = null))}
+				></button>
+			{/each}
+		</div>
+	</BottomSheet>
+{:else if sheet === 'labels'}
+	<BottomSheet label="Labels and binders" onclose={() => (sheet = null)}>
+		<h2 class="sh">Labels and binders</h2>
+		{@render tags()}
+	</BottomSheet>
+{:else if sheet === 'remind' && id}
+	<BottomSheet label="Reminders" onclose={() => (sheet = null)}>
+		<Reminders
+			source="keep_note"
+			sourceId={id}
+			tz={page.data.user?.timezone ?? 'Asia/Kuala_Lumpur'}
+			relative={false}
+			quick
+		/>
+	</BottomSheet>
+{/if}
 <svelte:window
 	onkeydown={(e) => e.key === 'Escape' && close()}
 	onbeforeunload={(e) => (dirty || saving) && e.preventDefault()}
@@ -841,7 +973,69 @@
 		right: 4px;
 		background: var(--card);
 	}
+	.ptop,
+	.pbot {
+		display: none;
+	}
+	.pb {
+		flex: none;
+		width: 48px;
+		height: 48px;
+		display: grid;
+		place-items: center;
+		border: 0;
+		border-radius: 50%;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: 20px;
+		cursor: pointer;
+	}
+	.pb[aria-pressed='true'] {
+		background: color-mix(in srgb, currentColor 14%, transparent);
+	}
+	.swatch {
+		width: 24px;
+		height: 24px;
+		border-radius: 50%;
+		border: 1.5px solid var(--border);
+	}
+	.sh {
+		margin: 0 4px 8px;
+		font-size: 16px;
+	}
+	.colors.big {
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.colors.big .sw {
+		width: 48px;
+		height: 48px;
+	}
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.ptop,
+		.pbot {
+			display: flex;
+			align-items: center;
+			gap: 4px;
+		}
+		.ptop {
+			margin: -10px -10px 0;
+		}
+		.grow {
+			flex: 1;
+		}
+		.pbot {
+			margin: 0 -10px -10px;
+		}
+		/* desktop tools: on phone they live in the bars and sheets above */
+		.desk,
+		.bar > :not(.state) {
+			display: none;
+		}
+		.bar:not(:has(.state:not(:empty))) {
+			display: none;
+		}
 		.note {
 			top: 0;
 			left: 0;
