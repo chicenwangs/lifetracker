@@ -43,8 +43,14 @@
 	const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
 	let over = $state<string | null>(null); // the day a carried row would land on
 	let acting = $state<{ r: Row; date: string } | null>(null);
+	// under the finger, looking through the lifted row itself
 	const dayAt = (x: number, y: number) =>
-		(document.elementFromPoint(x, y)?.closest('[data-date]') as HTMLElement | null)?.dataset.date ?? null;
+		(
+			document
+				.elementsFromPoint(x, y)
+				.find((e) => !e.closest('.lt-lifted') && e.closest('section[data-date]'))
+				?.closest('section[data-date]') as HTMLElement | undefined
+		)?.dataset.date ?? null;
 	function gestures(r: Row, date: string) {
 		if (!mine(r)) return {};
 		return {

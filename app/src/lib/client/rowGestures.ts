@@ -9,6 +9,10 @@ export type RowGestures = {
 	/** hold + drag: live feedback (finger offset and position), then the drop */
 	drag?: (dy: number, x: number, y: number) => void;
 	drop?: (dy: number, x: number, y: number) => unknown;
+	/** hold and let go without moving (Keep: select, #97) */
+	hold?: () => unknown;
+	/** what shows under a swipe (default "✓ Done" / "Delete") */
+	labels?: { right?: string; left?: string };
 };
 
 export function rowGestures(node: HTMLElement, opts: RowGestures) {
@@ -34,8 +38,10 @@ export function rowGestures(node: HTMLElement, opts: RowGestures) {
 			width: `${node.offsetWidth}px`,
 			height: `${node.offsetHeight}px`,
 		});
-		under.dataset.act = x > 0 ? 'done' : 'delete';
-		under.textContent = x > 0 ? '✓ Done' : 'Delete';
+		const own = x > 0 ? o.labels?.right : o.labels?.left;
+		under.dataset.act = own ? 'other' : x > 0 ? 'done' : 'delete';
+		under.style.justifyContent = x > 0 ? 'flex-start' : 'flex-end';
+		under.textContent = x > 0 ? (o.labels?.right ?? '✓ Done') : (o.labels?.left ?? 'Delete');
 		if (!under.isConnected) p.insertBefore(under, node);
 	}
 	function slide(x: number, anim: boolean) {
@@ -56,7 +62,7 @@ export function rowGestures(node: HTMLElement, opts: RowGestures) {
 		sx = t.clientX;
 		sy = t.clientY;
 		reset();
-		if (o.drop)
+		if (o.drop || o.hold)
 			timer = setTimeout(() => {
 				mode = 'lift';
 				node.classList.add('lt-lifted');
@@ -71,7 +77,7 @@ export function rowGestures(node: HTMLElement, opts: RowGestures) {
 		if (mode === 'lift' || mode === 'x') e.stopPropagation(); // this row owns the gesture (not the day swipe)
 		if (mode === 'lift') {
 			e.preventDefault(); // the page holds still while an item is carried
-			node.style.translate = `0 ${dy}px`;
+			node.style.translate = `${dx}px ${dy}px`; // follows the finger (Keep cards move sideways too)
 			o.drag?.(dy, t.clientX, t.clientY);
 			return;
 		}
@@ -93,7 +99,8 @@ export function rowGestures(node: HTMLElement, opts: RowGestures) {
 			swallow = true;
 			node.style.translate = '';
 			node.classList.remove('lt-lifted');
-			void o.drop?.(dy, t?.clientX ?? sx, t?.clientY ?? sy + dy);
+			if (Math.hypot(dx, dy) < 10 && o.hold) void o.hold();
+			else void o.drop?.(dy, t?.clientX ?? sx, t?.clientY ?? sy + dy);
 		} else if (mode === 'x') {
 			swallow = true;
 			const go = Math.abs(dx) > node.offsetWidth * 0.35;
@@ -116,7 +123,7 @@ export function rowGestures(node: HTMLElement, opts: RowGestures) {
 		e.preventDefault();
 		e.stopPropagation();
 	};
-	const menu = (e: Event) => o.drop && e.preventDefault(); // Android's link menu on a long press
+	const menu = (e: Event) => (o.drop || o.hold) && e.preventDefault(); // Android's link menu on a long press
 	node.addEventListener('touchstart', start, { passive: true });
 	node.addEventListener('touchmove', move, { passive: false });
 	node.addEventListener('touchend', end);
