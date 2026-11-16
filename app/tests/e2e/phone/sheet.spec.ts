@@ -75,7 +75,7 @@ test('item peek uses the same sheet and Back closes it', async () => {
 		today,
 	);
 	await page.goto('/today');
-	await page.getByText('Sheet test item', { exact: true }).first().click();
+	await page.getByRole('button', { name: 'Sheet test item', exact: true }).click();
 	const sheet = page.getByRole('dialog', { name: 'Item' });
 	await expect(sheet).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Expand sheet' })).toBeVisible();
