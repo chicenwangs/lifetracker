@@ -19,6 +19,7 @@ export async function signIn(page: Page) {
 	}
 	await expect(page).not.toHaveURL(/\/(setup|login)/);
 	const skip = page.getByRole('button', { name: 'Skip tour' });
+	await skip.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
 	if (await skip.isVisible().catch(() => false)) await skip.click();
 }
 
@@ -37,15 +38,25 @@ async function centre(el: Locator) {
 	return { x: b.x + b.width / 2, y: b.y + b.height / 2, w: b.width, h: b.height };
 }
 
-/** finger swipe across 80 % of the element, 10 move steps */
-export async function swipe(page: Page, el: Locator, dir: 'left' | 'right' | 'up' | 'down') {
+/** finger swipe across 80 % of the element (or `distance` px), 10 move steps */
+export async function swipe(
+	page: Page,
+	el: Locator,
+	dir: 'left' | 'right' | 'up' | 'down',
+	distance?: number,
+) {
 	const c = await centre(el);
-	const dx = dir === 'left' ? -0.4 * c.w : dir === 'right' ? 0.4 * c.w : 0;
-	const dy = dir === 'up' ? -0.4 * c.h : dir === 'down' ? 0.4 * c.h : 0;
+	const across = dir === 'left' || dir === 'right' ? c.w : c.h;
+	const span = distance ?? 0.8 * across;
+	const sign = dir === 'left' || dir === 'up' ? -1 : 1;
+	const dx = dir === 'left' || dir === 'right' ? (sign * span) / 2 : 0;
+	const dy = dir === 'up' || dir === 'down' ? (sign * span) / 2 : 0;
+	// default: swipe inside the element; explicit distance: start at the centre and travel that far
+	const sx = distance === undefined ? c.x - dx : c.x;
+	const sy = distance === undefined ? c.y - dy : c.y;
 	const f = await finger(page);
-	await f.send('touchStart', c.x - dx, c.y - dy);
-	for (let i = 1; i <= 10; i++)
-		await f.send('touchMove', c.x - dx + (2 * dx * i) / 10, c.y - dy + (2 * dy * i) / 10);
+	await f.send('touchStart', sx, sy);
+	for (let i = 1; i <= 10; i++) await f.send('touchMove', sx + (2 * dx * i) / 10, sy + (2 * dy * i) / 10);
 	await f.send('touchEnd');
 	await f.done();
 }
