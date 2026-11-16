@@ -5,7 +5,7 @@ Caveman rules for Claude Code in this repo.
 ## Now
 - Live = **v1.1.0** (planner.jeremyjosh.org, homelab Docker + Cloudflare Tunnel). Do not deploy.
 - **v2.0.4** released (incl. Android app `mobile/`, 7 widgets) (tag + GHCR image + GitHub Release), not deployed. Owner deploys (`docs/SERVICE-HANDOFF.md` §5). v2 phases all DONE (`docs/v2/PHASES.md`).
-- Next work = v2.1 backlog (`docs/v2/CHAT-HANDOFF.md`). Branch from `main`, PR into `main`; keep `v2` = `main`.
+- Next work = **Mobile overhaul sprint** (#106). Tracker: `docs/v3/MOBILE-SPRINT.md`. One branch + PR per issue off `main`. v2.1 backlog (`docs/v2/CHAT-HANDOFF.md`) after.
 
 ## Docs
 - v2 truth: `docs/v2/PRD.md` → `FEATURES.md` → `DESIGN.md`. Decisions list = PRD §12 (D-xx). Don't guess an open D-xx — ask.
@@ -22,6 +22,16 @@ Caveman rules for Claude Code in this repo.
 - No behaviour keyed on a type *name* — use `item_types` flags.
 - New setting default = v1.1.0 behaviour.
 - Every drag has a click/keyboard path. Hit targets ≥ 24 px. No visible scrollbars.
+
+## Phone rules (Mobile overhaul, #106)
+- Phone layout = width < 700 px OR (pointer: coarse and max-height 500 px).
+- Hit areas ≥ 48 dp on phone (desktop rule stays 24 px).
+- Swipe = peers only (days, weeks, months, row actions). Never between tabs.
+- Long press = pick up / select. Never delete, never a menu.
+- Row swipe right = done, left = delete (Keep: archive). Always Undo.
+- One shared bottom sheet. Back closes the top layer first.
+- No "Click" / "Ctrl" / "Esc" / "PC view" text on phone.
+- Test in the phone projects (`npm run test:e2e:phone`, `tests/e2e/phone/`).
 
 ## Done per phase
 lint + types + unit + e2e (v1 regression too) green · docs updated · PR into `v2` · PHASES.md status row filled.

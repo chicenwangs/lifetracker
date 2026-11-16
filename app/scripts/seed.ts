@@ -1,10 +1,13 @@
 // Dev CLI: npm run db:seed -- --owner jeremy [--dir ../data/seed]
+//          npm run db:seed:phone  (fresh throwaway DB with phone-realistic data, see seed-phone.ts)
 // Reads app/.env (DATABASE_PATH, SEED_DIR, APP_SECRET...).
+import './tsx-shims';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { initEnv } from '../src/lib/server/env';
 import { migrateDb, openDb, setHandle } from '../src/lib/server/db';
 import { importSeed } from '../src/lib/server/seed';
+import { seedPhone } from './seed-phone';
 
 function loadDotEnv(path: string): Record<string, string> {
 	if (!existsSync(path)) return {};
@@ -22,18 +25,29 @@ const arg = (name: string) => {
 	return i >= 0 ? args[i + 1] : undefined;
 };
 
-const owner = arg('owner');
+const phone = args.includes('--phone');
+const db = arg('db');
+const owner = arg('owner') ?? (phone ? 'phone' : undefined);
 if (!owner) {
 	console.error('usage: npm run db:seed -- --owner <username> [--dir <seed dir>]');
 	process.exit(1);
 }
 
 try {
-	const e = initEnv({ ...loadDotEnv(resolve('.env')), ...process.env });
-	const dir = resolve(arg('dir') ?? e.SEED_DIR);
+	const e = initEnv({
+		...loadDotEnv(resolve('.env')),
+		...process.env,
+		...(db ? { DATABASE_PATH: resolve(db) } : {}),
+	});
 	const h = openDb(e.DATABASE_PATH);
 	migrateDb(h);
 	setHandle(h);
+	if (phone) {
+		await seedPhone(owner, e.DATABASE_PATH);
+		h.sqlite.close();
+		process.exit(0);
+	}
+	const dir = resolve(arg('dir') ?? e.SEED_DIR);
 	const r = importSeed(dir, owner);
 	console.log(`Imported from ${dir} for ${owner}\n`);
 	console.log('table'.padEnd(16), 'present', 'new', 'updated');

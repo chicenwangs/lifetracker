@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,6 +8,8 @@ import { join } from 'node:path';
 const dir = process.env.E2E_DIR ?? mkdtempSync(join(tmpdir(), 'lt-e2e-'));
 process.env.E2E_DIR = dir;
 const PORT = 4173;
+// Pixel 7 at its full screen (412×915), not Playwright's 839 px browser-chrome height
+const pixel7 = { ...devices['Pixel 7'], viewport: { width: 412, height: 915 } };
 
 export default defineConfig({
 	testDir: 'tests/e2e',
@@ -23,6 +25,16 @@ export default defineConfig({
 			? { executablePath: process.env.PW_CHROME, args: ['--no-sandbox'] }
 			: {},
 	},
+	projects: [
+		{ name: 'desktop', testIgnore: 'phone/**' },
+		// phone tests only (tests/e2e/phone): npm run test:e2e:phone
+		{ name: 'phone', testDir: 'tests/e2e/phone', use: pixel7 },
+		{
+			name: 'phone-landscape',
+			testDir: 'tests/e2e/phone',
+			use: { ...pixel7, viewport: { width: 915, height: 412 } },
+		},
+	],
 	webServer: {
 		command: 'npm run build && node build',
 		port: PORT,
