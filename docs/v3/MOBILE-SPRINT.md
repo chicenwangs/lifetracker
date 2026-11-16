@@ -42,7 +42,7 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 | 3 screens      | #115      | Touch wording + phone help (turns on wording checks)                     | DONE 2026-11-17                            | #144 |
 | 4 polish       | #104      | Teach each gesture once                                                  | DONE 2026-11-17                            | #147 |
 | 4 polish       | #84 / #83 | Phone onboarding tour                                                    | DONE 2026-11-17                            | #148 |
-| 4 polish       | #105      | Open instantly offline (owner 2026-11-17: server wins, latest edit wins) | PR open                                    |      |
+| 4 polish       | #105      | Open instantly offline (owner 2026-11-17: server wins, latest edit wins) | PR open                                    | #153 |
 | 4 polish       | #112      | Notification Done / Snooze (needs real phone)                            | todo                                       |      |
 | 4 polish       | #113      | Refresh on resume                                                        | DONE 2026-11-17                            | #145 |
 | 4 polish       | #114      | System bars follow theme, screen edges (needs real phone)                | todo                                       |      |
