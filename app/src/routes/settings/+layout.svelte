@@ -1,46 +1,19 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { SECTIONS } from '$lib/settings-sections';
 	let { children } = $props();
-	let nav: HTMLElement | undefined = $state();
-	// phone: keep the open section's chip in view
-	$effect(() => {
-		void page.url.pathname;
-		nav?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'center' });
-	});
-	const LINKS = [
-		{ href: '/settings/account', label: 'Account' },
-		{ href: '/settings/preferences', label: 'Preferences' },
-		{ href: '/settings/types', label: 'Item types' },
-		{ href: '/settings/notifications', label: 'Notifications' },
-		{ href: '/settings/sessions', label: 'Devices' },
-		{ href: '/settings/sharing', label: 'Sharing' },
-		{ href: '/settings/help', label: 'Help' },
-	];
 </script>
 
 <main class="wrap">
-	<nav class="side card" aria-label="Settings" bind:this={nav}>
+	<nav class="side card" aria-label="Settings">
 		<h2>Settings</h2>
-		{#each LINKS as l (l.href)}
+		{#each SECTIONS.filter((l) => !l.admin || page.data.user?.role === 'admin') as l (l.href)}
 			<a
 				href={l.href}
 				class:on={page.url.pathname === l.href}
 				aria-current={page.url.pathname === l.href ? 'page' : undefined}>{l.label}</a
 			>
 		{/each}
-		{#if page.data.user?.role === 'admin'}
-			<a
-				href="/settings/users"
-				class:on={page.url.pathname === '/settings/users'}
-				aria-current={page.url.pathname === '/settings/users' ? 'page' : undefined}>Users</a
-			>
-			<a
-				href="/settings/import"
-				class:on={page.url.pathname === '/settings/import'}
-				aria-current={page.url.pathname === '/settings/import' ? 'page' : undefined}>Import</a
-			>
-		{/if}
-		<a href="/trash" class:on={page.url.pathname === '/trash'}>Trash</a>
 	</nav>
 	<section class="body">{@render children()}</section>
 </main>
@@ -112,43 +85,15 @@
 	.side a {
 		transition: background-color var(--t) var(--ease);
 	}
-	/* phone: one swipe row of chips above the section (same as Keep), page scrolls under the bottom bar */
+	/* phone: page scrolls under the bottom bar */
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.wrap {
 			padding: 4px 16px 24px;
 			gap: 12px;
 		}
+		/* phone (#100): sections are a list screen of their own (/settings); each section has Back */
 		.side {
-			flex: 1 1 100%;
-			flex-direction: row;
-			align-items: center;
-			gap: 6px;
-			overflow-x: auto;
-			margin: 0 -16px;
-			padding: 2px 16px 4px;
-			background: none;
-			border: 0;
-			box-shadow: none;
-			border-radius: 0;
-		}
-		.side h2 {
 			display: none;
-		}
-		.side a {
-			flex: none;
-			white-space: nowrap;
-			min-height: 48px;
-			display: flex;
-			align-items: center;
-			padding: 0 14px;
-			border: 1.5px solid var(--border);
-			border-radius: 999px;
-			background: var(--card);
-			font-size: 13px;
-			font-weight: 600;
-		}
-		.side a.on {
-			box-shadow: none;
 		}
 		.body {
 			flex-basis: 100%;

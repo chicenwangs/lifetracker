@@ -4,7 +4,7 @@
 
 	let { user, onclose }: { user: App.SafeUser; onclose: () => void } = $props();
 	const LINKS = [
-		{ href: '/settings/preferences', label: 'Settings' },
+		{ href: '/settings', label: 'Settings' },
 		{ href: '/pages/shared', label: 'Shared with me' },
 		{ href: '/keep?scope=archive', label: 'Keep archive' },
 		{ href: '/trash', label: 'Trash' },

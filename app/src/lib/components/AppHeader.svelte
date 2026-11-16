@@ -1,6 +1,7 @@
 <!-- FR-H15. Nav shows only built pages. -->
 <script lang="ts">
 	import { backCloses } from '$lib/client/layers';
+	import { SECTIONS } from '$lib/settings-sections';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
 	import QuickAdd from './QuickAdd.svelte';
@@ -30,7 +31,7 @@
 	const scope = $derived(page.url.searchParams.get('scope'));
 	const deep = $derived(!(TAB_ROOTS.includes(path) && !scope));
 	const title = $derived.by(() => {
-		if (path.startsWith('/settings')) return 'Settings';
+		if (path.startsWith('/settings')) return SECTIONS.find((x) => x.href === path)?.label ?? 'Settings';
 		if (path === '/keep')
 			return scope === 'archive' ? 'Keep archive' : scope === 'shared' ? 'Shared notes' : 'Keep';
 		if (path === '/pages/shared') return 'Shared with me';
@@ -46,13 +47,15 @@
 		return '';
 	});
 	const parent = $derived(
-		path.startsWith('/pages/')
-			? '/pages'
-			: path === '/keep'
-				? '/keep'
-				: path === '/month'
-					? '/week'
-					: '/today',
+		path.startsWith('/settings/')
+			? '/settings'
+			: path.startsWith('/pages/')
+				? '/pages'
+				: path === '/keep'
+					? '/keep'
+					: path === '/month'
+						? '/week'
+						: '/today',
 	);
 	// Back = system Back while there is in-app history; opened straight from a link / widget: go to the parent tab
 	let inApp = false;
