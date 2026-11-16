@@ -2,6 +2,22 @@
 	import { closeToast, toast } from '$lib/client/toast.svelte';
 	import { undid } from '$lib/client/undo.svelte';
 	const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+
+	// swipe sideways to dismiss (#111, M3 snackbar); × stays the tap path
+	let dx = $state(0);
+	let x0 = $state<number | null>(null);
+	const down = (e: PointerEvent) => {
+		if ((e.target as Element).closest('button')) return;
+		x0 = e.clientX;
+	};
+	const move = (e: PointerEvent) => {
+		if (x0 !== null) dx = e.clientX - x0;
+	};
+	const up = () => {
+		if (x0 !== null && Math.abs(dx) > 80) closeToast();
+		x0 = null;
+		dx = 0;
+	};
 </script>
 
 <!-- centre note after Ctrl+Z: never takes clicks -->
@@ -28,7 +44,18 @@
 <div class="wrap" aria-live="polite">
 	{#if toast.current}
 		{@const t = toast.current}
-		<div class="toast" class:error={t.kind === 'error'} role={t.kind === 'error' ? 'alert' : 'status'}>
+		<div
+			class="toast"
+			class:error={t.kind === 'error'}
+			class:moving={x0 !== null}
+			role={t.kind === 'error' ? 'alert' : 'status'}
+			style:translate={dx ? `${dx}px 0` : null}
+			style:opacity={dx ? Math.max(0.2, 1 - Math.abs(dx) / 200) : null}
+			onpointerdown={down}
+			onpointermove={move}
+			onpointerup={up}
+			onpointercancel={up}
+		>
 			<span>{t.text}</span>
 			{#if t.undo}
 				<button
@@ -91,6 +118,39 @@
 
 	.toast {
 		animation: lt-rise 240ms var(--ease) both;
+		touch-action: pan-y;
+		transition:
+			translate 160ms var(--ease),
+			opacity 160ms var(--ease);
+	}
+	.toast.moving {
+		transition: none;
+	}
+	/* phone: a snackbar just above the bottom bar, never on it (#111); full width, 48 dp buttons */
+	@media (max-width: 699px) {
+		.wrap {
+			left: 8px;
+			right: 8px;
+			transform: none;
+			bottom: calc(76px + env(safe-area-inset-bottom));
+		}
+		.toast {
+			max-width: none;
+			min-height: 48px;
+			padding: 4px 4px 4px 16px;
+			font-size: 14px;
+		}
+		.toast > span {
+			flex: 1;
+		}
+		.undo,
+		.x {
+			min-width: 48px;
+			min-height: 48px;
+		}
+		.undo {
+			border: 0;
+		}
 	}
 	.centre {
 		position: fixed;
