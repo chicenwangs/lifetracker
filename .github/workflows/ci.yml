@@ -36,6 +36,9 @@ jobs:
       - run: npm run test:e2e
         env:
           TZ: Asia/Kuala_Lumpur
+      - run: npm run test:e2e:phone
+        env:
+          TZ: Asia/Kuala_Lumpur
 
   image:
     runs-on: ubuntu-24.04

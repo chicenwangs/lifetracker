@@ -17,9 +17,11 @@
 		"format": "prettier --write .",
 		"db:generate": "drizzle-kit generate",
 		"db:seed": "tsx scripts/seed.ts",
+		"db:seed:phone": "tsx scripts/seed.ts --phone --db ../data/phone-dev.db",
 		"reset-password": "node scripts/reset-password.mjs",
 		"test:unit": "vitest run",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test --project=desktop",
+		"test:e2e:phone": "playwright test --project=phone --project=phone-landscape"
 	},
 	"dependencies": {
 		"@date-fns/tz": "^1.5.0",
