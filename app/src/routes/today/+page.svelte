@@ -25,8 +25,11 @@
 	// Android widget "+" opens /today?add
 	afterNavigate(() => {
 		if (!new URLSearchParams(location.search).has('add')) return;
-		openAdd('');
-		setTimeout(() => replaceState(location.pathname, {})); // router not ready yet on first load
+		// router not ready yet on first load; drop ?add first so the sheet's own Back entry sits on a clean /today
+		setTimeout(() => {
+			replaceState(location.pathname, {});
+			openAdd('');
+		});
 	});
 	onMount(() => {
 		const t = setInterval(() => (now = Date.now()), 30_000);

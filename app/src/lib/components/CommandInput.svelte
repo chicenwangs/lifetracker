@@ -49,6 +49,8 @@
 	let menuHidden = $state(false);
 	let menuLeft = $state(0);
 	let menuUp = $state(false);
+	let menuY = $state(0);
+	let menuMax = $state(400);
 	let ghostEl: HTMLDivElement | undefined = $state();
 	const uid = `qm-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -80,12 +82,31 @@
 		c.font = cs.font;
 		const w = c.measureText(value.slice(0, value.length - optTok.length)).width;
 		const left = parseFloat(cs.paddingLeft) + w - input.scrollLeft;
-		menuLeft = Math.max(0, Math.min(left, input.clientWidth - 250));
 		// phone keyboard: open upward when the room below (visual viewport) is short and there is more above
 		const r = input.getBoundingClientRect();
 		const below = (window.visualViewport?.height ?? innerHeight) - r.bottom;
 		menuUp = below < 320 && r.top > below;
+		// fixed coords in the top layer: no sheet, scroller or overflow can clip it (#92)
+		menuLeft = r.left + Math.max(0, Math.min(left, input.clientWidth - 250));
+		menuY = menuUp ? innerHeight - r.top + 2 : r.bottom + 2;
+		menuMax = Math.max(120, (menuUp ? r.top : below) - 8);
 	}
+	/** show the menu in the browser top layer; old browsers without popover keep it fixed in place */
+	function topLayer(node: HTMLElement) {
+		node.showPopover?.();
+	}
+	$effect(() => {
+		if (!menuOpen) return;
+		const again = () => placeMenu();
+		addEventListener('scroll', again, true);
+		addEventListener('resize', again);
+		visualViewport?.addEventListener('resize', again);
+		return () => {
+			removeEventListener('scroll', again, true);
+			removeEventListener('resize', again);
+			visualViewport?.removeEventListener('resize', again);
+		};
+	});
 	/** ghost layer follows the input when long text scrolls it sideways (else the hint drifts over the text) */
 	const syncGhost = () => ghostEl && input && (ghostEl.scrollLeft = input.scrollLeft);
 	$effect(() => {
@@ -164,7 +185,18 @@
 		onpointerdown={(e) => e.stopPropagation()}
 	/>
 	{#if menuOpen}
-		<div class="menu" class:up={menuUp} id={uid} role="listbox" style:left="{menuLeft}px">
+		<div
+			class="menu"
+			class:up={menuUp}
+			id={uid}
+			role="listbox"
+			popover="manual"
+			use:topLayer
+			style:left="{menuLeft}px"
+			style:top={menuUp ? null : `${menuY}px`}
+			style:bottom={menuUp ? `${menuY}px` : null}
+			style:max-height="{menuMax}px"
+		>
 			{#each options as o, i (o.token)}
 				{#if i === 0 || options[i - 1]?.group !== o.group}<div class="mg">{o.group}</div>{/if}
 				<div
@@ -264,8 +296,11 @@
 		box-shadow: inset 0 -2px 0 var(--ink);
 	}
 	.menu {
-		position: absolute;
-		top: calc(100% + 2px);
+		position: fixed;
+		inset: auto;
+		margin: 0;
+		overflow-y: auto;
+		scrollbar-width: none;
 		width: 250px;
 		background: var(--raised);
 		border-radius: 10px;
@@ -340,8 +375,9 @@
 		transform-origin: top left;
 	}
 	.menu.up {
-		top: auto;
-		bottom: calc(100% + 2px);
 		transform-origin: bottom left;
+	}
+	.menu::-webkit-scrollbar {
+		display: none;
 	}
 </style>
