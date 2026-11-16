@@ -39,7 +39,7 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 | 3 screens | #108 | Item opens as a phone sheet | PR open | #143 |
 | 3 screens | #115 | Touch wording + phone help (turns on wording checks) | PR open | #144 |
 | 4 polish | #104 | Teach each gesture once | PR open | #147 |
-| 4 polish | #84 / #83 | Phone onboarding tour | todo | |
+| 4 polish | #84 / #83 | Phone onboarding tour | PR open | #148 |
 | 4 polish | #105 | Open instantly offline (conflict rules: owner check first) | todo | |
 | 4 polish | #112 | Notification Done / Snooze (needs real phone) | todo | |
 | 4 polish | #113 | Refresh on resume | PR open | #145 |

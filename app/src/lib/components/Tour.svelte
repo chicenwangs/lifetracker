@@ -3,10 +3,11 @@
      reposition. Nothing behind is clickable while it runs, so nothing can get stuck half-way. -->
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import { isPhone } from '$lib/client/phone';
 
 	let { onend }: { onend: (state: 'done' | 'skipped') => void } = $props();
 	type Step = { title: string; text: string; at?: string[] };
-	const STEPS: Step[] = [
+	const DESK: Step[] = [
 		{ title: 'Welcome to Life Tracker', text: 'A quick look around: 6 short steps. Skip any time; restart it from Settings › Help.' },
 		{ title: 'Home', text: 'Your month on the left, the day planner on the right. Click a day to plan it.', at: ['.hdr nav a[href="/"]', '.mbar a[href="/today"]'] },
 		{ title: 'Planner blocks', text: 'Drag on empty time to block it, then type a title. Every drag also has a button.', at: ['aside[aria-label="Daily planner"]', '.wheel'] },
@@ -15,6 +16,18 @@
 		{ title: 'Pages', text: 'Longer writing, linked pages and databases. Ctrl+K finds anything.', at: ['.hdr nav a[href="/pages"]', '.mbar a[href="/more"]'] },
 		{ title: "You're set", text: 'That is it. Settings › Help has short guides if you need them.' },
 	]; // prettier-ignore
+	// phone (#83): its own walk through the tab bar, in touch words; every gesture named with its tap path
+	const PHONE: Step[] = [
+		{ title: 'Welcome to Life Tracker', text: 'A quick look around: 7 short steps. Skip any time; restart it from Settings › Help.' },
+		{ title: 'Today', text: 'Your day. Swipe sideways for other days, or tap a day in the week strip.', at: ['.mbar a[href="/today"]'] },
+		{ title: 'Add', text: 'Adds the right thing for the tab: a plan here, a note in Keep, a page in Pages. Try "dentist fri 3pm".', at: ['.mbar .add'] },
+		{ title: 'Your plans', text: 'Swipe a plan right = done, left = delete (Undo is on the toast). Hold it to move it. ⋯ on a plan does all of it by tap.' },
+		{ title: 'Calendar', text: 'Week and Month. Swipe for the next one; tap a day to see it.', at: ['.mbar a[href="/week"]'] },
+		{ title: 'Keep', text: 'Quick notes and checklists. Swipe a note to archive it, hold one to select.', at: ['.mbar a[href="/keep"]'] },
+		{ title: 'Pages', text: 'Longer writing and linked pages. The search at the top finds anything.', at: ['.mbar a[href="/pages"]'] },
+		{ title: "You're set", text: 'Pull down on a tab to refresh. Settings › Help lists every gesture.' },
+	]; // prettier-ignore
+	const STEPS = isPhone() ? PHONE : DESK;
 
 	const visible = (sel: string) => {
 		const el = document.querySelector(sel) as HTMLElement | null;
