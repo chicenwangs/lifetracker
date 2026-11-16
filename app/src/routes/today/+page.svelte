@@ -38,8 +38,13 @@
 		});
 	});
 	onMount(() => {
-		const t = setInterval(() => (now = Date.now()), 30_000);
-		return () => clearInterval(t);
+		const tick = () => (now = Date.now());
+		const t = setInterval(tick, 30_000);
+		document.addEventListener('visibilitychange', tick); // back to the front: Now jumps to the real time (#113)
+		return () => {
+			clearInterval(t);
+			document.removeEventListener('visibilitychange', tick);
+		};
 	});
 	const isToday = $derived(data.day === data.today);
 	const nowMin = $derived(nowLocalMinutes(tz, now));
