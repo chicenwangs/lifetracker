@@ -20,6 +20,8 @@ export interface QAContext {
 	nowMinutes: number; // local minutes since 00:00
 	/** drag-created range on a timeline: used when the text has no day / no time of its own (typed ones win) */
 	slot?: QASlot;
+	/** the day on screen (phone +, #93): used when the text has no day of its own; relative words still count from today */
+	day?: string;
 	/** the user's item types (default: the 5 built-ins) */
 	types?: Pick<ItemTypeDTO, 'key' | 'slug' | 'name' | 'isDefault'>[];
 	/** no destination typed: 'planner' (default) or 'calendar' */
@@ -769,7 +771,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 		}
 	}
 	const dateSet = date !== null;
-	date ??= ctx.slot?.date ?? today;
+	date ??= ctx.slot?.date ?? ctx.day ?? today;
 
 	// --- little words glued to a day/time: "on fri", "at 6pm", "from 6 to 8" ---
 	for (let i = 0; i < low.length; i++) {

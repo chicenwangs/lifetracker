@@ -17,6 +17,7 @@
 	const tz = $derived(page.data.user?.timezone ?? 'Asia/Kuala_Lumpur');
 	const ctx = $derived({
 		today: todayLocal(tz),
+		day: addSheet.day ?? undefined,
 		nowMinutes: nowLocalMinutes(tz),
 		...qaPrefs(page.data.user),
 	});
@@ -65,7 +66,12 @@
 </script>
 
 {#if addSheet.open}
-	<BottomSheet label="Add" onclose={close}>
+	<BottomSheet
+		label="Add"
+		onclose={close}
+		intro={addSheet.from ? 'grow' : 'rise'}
+		origin={addSheet.from ?? undefined}
+	>
 		<div class="add">
 			<div class="tabs" role="tablist">
 				<button

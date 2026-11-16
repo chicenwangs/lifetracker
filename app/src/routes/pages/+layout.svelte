@@ -97,7 +97,9 @@
 	{#if !hidden}
 		<nav class="tree card" aria-label="Pages">
 			<div class="head">
-				<button class="btn primary sm grow" type="button" onclick={() => create(null)}>New page</button>
+				<button class="btn primary sm grow newpage" type="button" onclick={() => create(null)}
+					>New page</button
+				>
 				<button class="mini" type="button" aria-label="New database" title="New database" onclick={createDb}
 					>▤</button
 				>
@@ -338,6 +340,10 @@
 		display: none;
 	}
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		/* the bar's + makes the page on phone (#93) */
+		.newpage {
+			display: none;
+		}
 		/* 48 dp rows (#101) */
 		.row a,
 		.foot a {

@@ -25,7 +25,7 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 | 1 foundation | #109 | In-app dialogs instead of confirm / prompt | PR open | #129 |
 | 1 foundation | #118 | Sheets and inputs above the keyboard | PR open (real-keyboard check owed) | #130 |
 | 1 foundation | #110 | Phone layout in landscape (turns on landscape smoke) | PR open | #131 |
-| 2 interactions | #93 | + adds the right thing per tab, grows into the sheet | todo | |
+| 2 interactions | #93 | + adds the right thing per tab, grows into the sheet | PR open | #133 |
 | 2 interactions | #94 | Today date strip; days slide with the finger | todo | |
 | 2 interactions | #95 | Calendar tab: Week + Month, swipe periods, day agenda | todo | |
 | 2 interactions | #96 | Hold to pick up; row swipe done / delete + Undo | todo | |

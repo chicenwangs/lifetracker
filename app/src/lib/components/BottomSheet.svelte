@@ -97,6 +97,7 @@
 	<div
 		class="panel"
 		class:full={height === 'full'}
+		class:grow={intro === 'grow'}
 		class:dragging
 		role="dialog"
 		aria-modal="true"
@@ -203,6 +204,10 @@
 		}
 		.panel.full {
 			height: 92dvh;
+		}
+		/* container transform from the + or the tapped item (#93, G11): the grow transition, not the rise */
+		.panel.grow {
+			animation: none;
 		}
 		.panel.dragging {
 			transition: none;

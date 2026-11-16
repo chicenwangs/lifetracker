@@ -188,7 +188,7 @@
 				bind:value={q}
 				oninput={search}
 			/>{/if}
-		{#if data.scope === 'active'}<button class="btn primary" type="button" onclick={() => show('new')}
+		{#if data.scope === 'active'}<button class="btn primary newnote" type="button" onclick={() => show('new')}
 				>New note</button
 			>{/if}
 		{#if data.scope !== 'shared'}<button
@@ -641,6 +641,10 @@
 		margin: 16px 0 0;
 	}
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		/* the bar's + makes the note on phone (#93): one create button per screen */
+		.newnote {
+			display: none;
+		}
 		.open {
 			min-height: 48px;
 		}
