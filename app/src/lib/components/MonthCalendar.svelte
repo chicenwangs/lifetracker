@@ -67,7 +67,10 @@
 		'<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.5 5.2l2.3 2.3 4.7-5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
 
 	const SVG_X =
-		'<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.3" fill="var(--card)" stroke="currentColor" stroke-width="1.1"/><path d="M4.2 4.2l3.6 3.6M7.8 4.2L4.2 7.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+		'<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.3" fill="var(--x-bg)" stroke="currentColor" stroke-width="1.1"/><path d="M4.2 4.2l3.6 3.6M7.8 4.2L4.2 7.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+
+	/** the square just ticked: only it plays the pop, once (every re-feed re-creates all squares) */
+	let popId: string | null = null;
 
 	function toEvents(list: ItemDTO[]): EventInput[] {
 		const out: EventInput[] = [];
@@ -114,7 +117,9 @@
 		}
 		const btn = document.createElement('button');
 		btn.type = 'button';
-		btn.className = 'lt-sq' + (it.status === 'done' ? ' on' : '');
+		btn.className =
+			'lt-sq' + (it.status === 'done' ? ' on' : '') + (popId === it.id && it.status === 'done' ? ' pop' : '');
+		if (popId === it.id) popId = null;
 		btn.style.setProperty('--ink', c.ink);
 		btn.setAttribute('aria-label', `${it.title}: ${ARIA[it.status]}`);
 		btn.title = ARIA[it.status];
@@ -126,6 +131,7 @@
 		btn.addEventListener('click', (e) => {
 			e.preventDefault();
 			e.stopPropagation();
+			popId = it.id;
 			oncycle(it.id);
 		});
 		const t = document.createElement('a');
@@ -153,6 +159,7 @@
 			const x = document.createElement('button');
 			x.type = 'button';
 			x.className = 'lt-x';
+			x.style.setProperty('--x-bg', c.bg); // circle = chip colour, so the X reads in light and dark
 			x.setAttribute('aria-label', `Delete ${it.title}`);
 			x.title = 'Delete';
 			x.innerHTML = SVG_X;
@@ -241,8 +248,8 @@
 		slotCell?.classList.remove('lt-adding');
 		slotCell = cell;
 		cell.classList.add('lt-adding');
-		const W = 340;
-		const H = 140;
+		const W = 460;
+		const H = 300;
 		slot = {
 			key: ++slotSeq,
 			date,
@@ -491,7 +498,7 @@
 	}
 	.grid :global(.lt-inner) {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		gap: 5px;
 		min-width: 0;
 		color: var(--fg);
@@ -518,8 +525,14 @@
 		flex: 1;
 		min-width: 0;
 		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		/* full name on up to two lines, then … (owner 2026-11-16) */
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		white-space: normal; /* FullCalendar sets nowrap on events */
+		line-clamp: 2;
+		overflow-wrap: anywhere;
+		line-height: 1.3;
 		color: inherit;
 		font-weight: 600;
 		font-size: 12px;
@@ -566,7 +579,7 @@
 		fill: currentColor;
 	}
 	.grid :global(.lt-x:hover path) {
-		stroke: var(--card);
+		stroke: var(--x-bg);
 	}
 	.grid :global(.is-done .lt-title) {
 		text-decoration: line-through;
@@ -600,15 +613,23 @@
 	.slotpop {
 		position: fixed;
 		z-index: 60;
-		width: 340px;
+		width: min(460px, calc(100vw - 24px));
 		padding: 10px;
 		display: flex;
 		flex-direction: column;
 		gap: 6px;
-		border: 1.5px dashed var(--ink);
-		box-shadow: var(--shadow-card);
+		background: var(--raised);
+		border: 1.5px solid var(--card-edge);
+		box-shadow: -8px 8px 0 var(--accent);
 		animation: lt-pop 160ms var(--ease) both;
 		transform-origin: top left;
+	}
+	/* the popup is the palette frame; the box inside drops its own */
+	.slotpop :global(.sc) {
+		background: none;
+		border: 0;
+		box-shadow: none;
+		min-width: 0;
 	}
 	.sp-h {
 		display: flex;

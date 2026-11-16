@@ -55,7 +55,7 @@ Non-goals: microservices, native iOS/Android, spreadsheet engine/macros, social/
 - PL-3 **Global undo.** Ctrl+Z (Cmd+Z mac) outside text fields = undo last app action, all modules. In text fields = native text undo. Toast centre-ish: "Undid: moved 'X'". No false success. Permanent delete not undoable. No redo (yet).
 - PL-4 **Alt-drag = duplicate.** Source unchanged, new copy at drop, one undo step. Which objects + which fields copy = D-09. Minimum safe: plain planner block.
 - PL-5 Theme schedule changes theme only, never calendar view.
-- PL-6 **Custom item types (owner 2026-11-12).** 5 defaults (Work, Deadline, Event, Hobby, Date) + user types, **max 10 total** (D-24); "No type" always exists, not counted. Type bar on Month + Week shows every type (colour + name = legend, click = show/hide) with **+** to add one fast. Settings › Item types: rename, recolour, reorder, quick-add slug, share default, delete (custom only; items moved to a chosen type, undoable). Defaults can be renamed/recoloured, not deleted. Each type has two flags: **★ default** (used when quick add has no `/type`; Event at start) and **counts down** (shows `5d`/`Today`/`2d late`; on for Deadline). Behaviour never keys off a type name.
+- PL-6 **Custom item types (owner 2026-11-12).** 5 defaults (Work, Deadline, Event, Hobby, Date) + user types, **max 10 total** (D-24); "No type" always exists, not counted. Type bar on Month + Week shows every type (colour + name = legend, click = show/hide) with **+** to add one fast. Settings › Item types: rename, recolour, reorder, quick-add slug, share default, delete (custom only; items moved to a chosen type, undoable). Defaults can be renamed/recoloured, not deleted. Each type has a **counts down** flag; quick add with no `/type` = No type (owner 2026-11-16, was ★ default) (shows `5d`/`Today`/`2d late`; on for Deadline). Behaviour never keys off a type name.
 - PL-7 **Defaults, not hard-wiring (SYSTEM-AUDIT, owner 2026-11-12).** Preferences adds: timezone, **region style** (Malaysia/UK: Mon · 24 h · D/M — or US: Sun · 12 h · M/D), **quick add goes to** (Timeline/Calendar), **default block length** (15–90, 60). Visible hours saved on the user (all devices). Badge colours: one list of 8. Every default = v1.1.0 behaviour, so nothing changes for existing users.
 
 ## 5. Theme + timezone
@@ -111,7 +111,7 @@ Own route + layout. No Pages tree. Note in 1 click, no title/label needed. Refer
 ## 9. Mobile + PWA
 
 - **Phone = glance + capture, not planning.** Plan week/day on PC. Phone answers "what now, what next" and grabs notes fast. (Owner, 2026-11-12.)
-- Opens on **Today**: Now card, "To do today · no time set" list (dated today, no time; tap clock = give it a time), scrollable timeline wheel centred on now.
+- Opens on **Today**: Now card, scrollable timeline wheel centred on now ("To do today" list removed, owner 2026-11-16).
 - Bottom bar (5, Material/HIG pattern): Today · Week · **+ Add** (centre) · Keep · More. Add sheet has two tabs: Plan it / Quick note.
 - More = pinned pages, All pages, Month, Trash, Settings, Help. Week/Month read-first on phone.
 - Own phone layout, same data/account. Not a shrunk desktop.

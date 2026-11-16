@@ -192,7 +192,22 @@
 			}
 		});
 		editor = ed;
+		// Ctrl+Z / Ctrl+Y on a page = this page's undo, even after a toolbar click took focus out of the text
+		// (the app-wide undo would otherwise undo the last planner action instead)
+		const keys = (e: KeyboardEvent) => {
+			const k = e.key.toLowerCase();
+			if (!(e.ctrlKey || e.metaKey) || e.altKey || (k !== 'z' && k !== 'y') || !ed.isEditable) return;
+			const t = e.target as HTMLElement;
+			if (ed.view.dom.contains(t) || t.closest?.('input, textarea, select, [contenteditable]')) return;
+			if (document.querySelector('[aria-modal="true"]')) return;
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			const c = ed.chain().focus();
+			(k === 'y' || e.shiftKey ? c.redo() : c.undo()).run();
+		};
+		addEventListener('keydown', keys, true);
 		return () => {
+			removeEventListener('keydown', keys, true);
 			if (pending) void flush();
 			ed.destroy();
 			editor = null;
@@ -213,7 +228,14 @@
 	const op = (f: keyof typeof blockOps) => editor && (f === 'move' ? null : blockOps[f](editor.view));
 </script>
 
-<div class="tools" role="toolbar" aria-label="Formatting and block tools">
+<!-- mousedown kept off the buttons so the text keeps focus + selection (Ctrl+Z still undoes in the page) -->
+<div
+	class="tools"
+	role="toolbar"
+	tabindex="-1"
+	aria-label="Formatting and block tools"
+	onmousedown={(e) => (e.target as HTMLElement).closest('button') && e.preventDefault()}
+>
 	<button
 		type="button"
 		class="t"
@@ -363,6 +385,12 @@
 		line-height: 1.6;
 		color: var(--ink);
 	}
+	/* desktop: bigger text (owner 2026-11-16: had to squint) */
+	@media (min-width: 1024px) {
+		.doc :global(.pm) {
+			font-size: 17px;
+		}
+	}
 	.doc :global(.pm > *) {
 		margin: 3px 0;
 	}
@@ -460,6 +488,7 @@
 		padding: 0 4px;
 		border-radius: 4px;
 		background: var(--pill);
+		color: var(--pill-ink);
 		color: var(--ink);
 		text-decoration: none;
 	}
@@ -477,6 +506,7 @@
 	}
 	.doc :global(pre) {
 		background: var(--pill);
+		color: var(--pill-ink);
 		padding: 8px 12px;
 		border-radius: 8px;
 		overflow-x: auto;
@@ -521,5 +551,6 @@
 	}
 	.picker button:hover {
 		background: var(--pill);
+		color: var(--pill-ink);
 	}
 </style>

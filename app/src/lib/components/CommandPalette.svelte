@@ -189,6 +189,7 @@
 	}
 	[aria-selected='true'] {
 		background: var(--pill);
+		color: var(--pill-ink);
 	}
 	.l {
 		font-size: 14px;

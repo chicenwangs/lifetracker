@@ -109,7 +109,7 @@ const days: Row[] = [
 	['party 31/2', { title: 'party 31/2', dateSet: false }],
 	['move mon meeting to wed', { title: 'move mon meeting to', date: '2026-11-11' }],
 	['dinner #spot', { title: 'dinner #spot' }],
-	['quiz #ds fri /cal', { title: 'quiz #ds', type: 'Event' }],
+	['quiz #ds fri /cal', { title: 'quiz #ds', type: null }],
 	['and/or thing', { title: 'and/or thing' }],
 	['shout !loud', { title: 'shout !loud' }],
 	// rollover
@@ -159,7 +159,7 @@ const timesRows: Row[] = [
 
 // Where it goes.
 const targetRows: Row[] = [
-	['call mum 6pm', { target: 'planner', targetSet: false, type: 'Event', typeSet: false }],
+	['call mum 6pm', { target: 'planner', targetSet: false, type: null, typeSet: false }],
 	['/planner call mum 6pm', { target: 'planner', targetSet: true }],
 	['outing sat /calendar', { target: 'calendar', time: null, endTime: null }],
 	['outing sat 2pm /calendar', { target: 'calendar', time: '14:00', endTime: null }],
@@ -326,7 +326,7 @@ describe('quickAdd server', () => {
 		expect(r.item).toBeNull();
 		expect(r.block).toMatchObject({
 			label: 'drive to kuching',
-			type: 'Event',
+			type: null, // no /type = No type (owner 2026-11-16)
 			itemId: null,
 			startAt: '2026-11-07T10:00:00Z',
 			endAt: '2026-11-07T11:00:00Z',
@@ -338,18 +338,18 @@ describe('quickAdd server', () => {
 		expect(quickAdd(me, 'focus /calendar', NOW, slot).item).toMatchObject({ type: null });
 		expect(quickAdd(me, 'focus /hobby', NOW, slot).block).toMatchObject({ type: 'Hobby' });
 	});
-	it('month day (double-click): calendar item, Event default; time + /both adds a block', () => {
+	it('month day (double-click): calendar item, No type; time + /both adds a block', () => {
 		const day = { date: '2026-11-12', start: 0, end: 0, day: true };
 		const r = quickAdd(me, 'picnic', NOW, day);
 		expect(r.block).toBeNull();
-		expect(r.item).toMatchObject({ title: 'picnic', type: 'Event', date: '2026-11-12', time: null });
+		expect(r.item).toMatchObject({ title: 'picnic', type: null, date: '2026-11-12', time: null });
 		const b = quickAdd(me, 'gym 6pm /both /hobby', NOW, day);
 		expect(b.item).toMatchObject({ date: '2026-11-12', type: 'Hobby' });
 		expect(b.block).not.toBeNull();
 	});
 	it('/calendar: item only', () => {
 		const r = quickAdd(me, 'outing sat /calendar', NOW);
-		expect(r.item).toMatchObject({ title: 'outing', date: '2026-11-07', time: null, type: 'Event' });
+		expect(r.item).toMatchObject({ title: 'outing', date: '2026-11-07', time: null, type: null });
 		expect(r.block).toBeNull();
 		expect(blocksRepo.forItem(me.id, r.item!.id)).toHaveLength(0);
 	});

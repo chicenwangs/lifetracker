@@ -83,7 +83,7 @@ describe('item types', () => {
 		expect(types.list(me).some((x) => x.id === t.id)).toBe(true);
 	});
 
-	it('built-ins and the default type cannot be deleted', () => {
+	it('built-ins cannot be deleted; a starred (dormant default) custom type can', () => {
 		const work = types.list(me).find((t) => t.key === 'Work');
 		expect(() => types.remove(me, work?.id ?? '', null)).toThrow(/Built-in/);
 		const t = add('Main');
@@ -94,15 +94,15 @@ describe('item types', () => {
 				.filter((x) => x.isDefault)
 				.map((x) => x.id),
 		).toEqual([t.id]); // exactly one
-		expect(() => types.remove(me, t.id, null)).toThrow(/default type/);
+		expect(types.remove(me, t.id, null).moved).toBe(0); // the star no longer means anything (owner 2026-11-16)
 	});
 
-	it('quick add: custom slug, old /exam alias, default = starred type', () => {
+	it('quick add: custom slug, old /exam alias, no /type = No type even with a starred type', () => {
 		const t = add('Bills');
 		expect(quickAdd(user, 'rent fri /calendar /bills', NOW).item?.type).toBe(t.key);
 		expect(quickAdd(user, 'quiz fri /calendar /exam', NOW).item?.type).toBe('Exam');
 		types.patch(me, t.id, { isDefault: true });
-		expect(quickAdd(user, 'water fri /calendar', NOW).item?.type).toBe(t.key);
+		expect(quickAdd(user, 'water fri /calendar', NOW).item?.type).toBeNull();
 	});
 
 	it('countdown follows the flag, not the name', () => {

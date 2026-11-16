@@ -588,6 +588,7 @@
 		border-style: solid;
 		border-color: var(--ink);
 		background: var(--pill);
+		color: var(--pill-ink);
 	}
 	.panel {
 		border: 1.5px solid var(--ink);
@@ -625,8 +626,8 @@
 	.types button {
 		font: inherit;
 		text-align: left;
-		color: var(--ink);
 		background: var(--pill);
+		color: var(--pill-ink);
 		border: 1px solid var(--rule);
 		border-radius: 8px;
 		min-height: 32px;

@@ -1,11 +1,12 @@
-<!-- Phone Today (FEATURES §10, MOB-001..006): date header with day step + swipe, Now card, "No time set today",
-     timeline top-aligned on now (owner 2026-11-14). Glance + capture; planning stays on the PC. Works on desktop too. -->
+<!-- Phone Today (FEATURES §10, MOB-001..006): date header with day step + swipe, Now card, timeline top-aligned on
+     now (owner 2026-11-14). Hold a row ~0.5 s = delete with Undo. No "To do today" list (owner 2026-11-16).
+     Glance + capture; planning stays on the PC. Works on desktop too. -->
 <script lang="ts">
 	import { afterNavigate, goto, invalidateAll, replaceState } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
 	import { post } from '$lib/client/api';
 	import { calendarBus } from '$lib/client/bus.svelte';
-	import { shown, typeOf } from '$lib/client/itemtypes.svelte';
+	import { shown } from '$lib/client/itemtypes.svelte';
 	import { openItem } from '$lib/client/peek.svelte';
 	import { entryColors } from '$lib/client/partner';
 	import { showError } from '$lib/client/toast.svelte';
@@ -13,7 +14,8 @@
 	import { openAdd } from '$lib/client/mobile.svelte';
 	import { colorsFor } from '$lib/colors';
 	import StatusSquare from '$lib/components/StatusSquare.svelte';
-	import { addDays, clock, examCountdown, nowLocalMinutes, prettyDate, utcToLocal } from '$lib/time';
+	import { addDays, clock, nowLocalMinutes, prettyDate, utcToLocal } from '$lib/time';
+	import { removeBlock, removeItem } from '$lib/client/remove';
 	import type { BlockDTO, ItemDTO, Status } from '$lib/types';
 
 	let { data } = $props();
@@ -78,6 +80,34 @@
 		} finally {
 			over = without(over, id);
 		}
+	}
+
+	// ---------- hold to delete (phone, owner 2026-11-16) ----------
+	// ~0.5 s press on a row = delete with the usual Undo toast. Moving the finger (scroll) cancels.
+	let hold: { t: ReturnType<typeof setTimeout>; x: number; y: number } | null = null;
+	let held = false; // swallow the tap that ends a hold
+	function press(e: PointerEvent, en: Entry) {
+		const row = en.block ?? en.item;
+		if (!row || row.theirs || !row.editable) return;
+		held = false;
+		hold = {
+			x: e.clientX,
+			y: e.clientY,
+			t: setTimeout(() => {
+				hold = null;
+				held = true;
+				navigator.vibrate?.(20);
+				const done = () => invalidateAll();
+				if (en.item) void removeItem(en.item.id, en.label, done);
+				else if (en.block) void removeBlock(en.block.id, en.label, done);
+			}, 500),
+		};
+	}
+	function unpress(e?: PointerEvent) {
+		if (!hold) return;
+		if (e && e.type === 'pointermove' && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) < 10) return;
+		clearTimeout(hold.t);
+		hold = null;
 	}
 
 	// ---------- wheel ----------
@@ -149,29 +179,6 @@
 		</section>
 	{/if}
 
-	<section class="card list" aria-labelledby="nt-h">
-		<h2 id="nt-h" class="label">To do {isToday ? 'today' : 'this day'} · no time set</h2>
-		{#each data.noTime as i (i.id)}
-			{@const c = colorsFor(i.type)}
-			{@const cd = examCountdown(i, data.today, !!typeOf(i.type)?.countsDown)}
-			<div class="row" style:border-left-color={c.edge}>
-				<StatusSquare
-					status={over[i.id] ?? i.status}
-					size={20}
-					oncycle={() => cycle('items', i.id, over[i.id] ?? i.status)}
-				/>
-				<button class="t" type="button" onclick={() => openItem(i.id)}>{i.title}</button>
-				{#if cd}<span class="due" class:soon={cd.days <= 3}>{cd.short}</span>{/if}
-				<button
-					class="clock"
-					type="button"
-					aria-label="Give {i.title} a time"
-					onclick={() => openAdd(`${i.title} `, i.id)}>🕒</button
-				>
-			</div>
-		{:else}<p class="hint">Nothing without a time.</p>{/each}
-	</section>
-
 	<section class="card tl" aria-label="Timeline">
 		{#if entries.length}
 			<div class="wheel" bind:this={wheel}>
@@ -187,6 +194,14 @@
 						style:--bg={c.bg}
 						style:--fg={c.ink}
 						style:--sq-on={c.bg}
+						role="group"
+						aria-label="{e.label}, hold to delete"
+						onpointerdown={(ev) => press(ev, e)}
+						onpointermove={unpress}
+						onpointerup={() => unpress()}
+						onpointercancel={() => unpress()}
+						oncontextmenu={(ev) => (e.block ?? e.item)?.editable && ev.preventDefault()}
+						onclickcapture={(ev) => held && (ev.stopPropagation(), ev.preventDefault(), (held = false))}
 					>
 						<span class="tm">{fmt(e.start)}<br /><span class="hint">{fmt(e.end)}</span></span>
 						<div class="box">
@@ -270,7 +285,6 @@
 		box-shadow: 0 0 0 var(--accent);
 	}
 	.now,
-	.list,
 	.tl {
 		padding: 14px;
 		display: flex;
@@ -292,14 +306,6 @@
 		flex-direction: column;
 		gap: 2px;
 	}
-	.row {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		border-left: 4px solid transparent;
-		padding: 4px 0 4px 8px;
-		min-height: 40px;
-	}
 	.t {
 		flex: 1;
 		text-align: left;
@@ -315,24 +321,6 @@
 	.t:disabled {
 		cursor: default;
 	}
-	.due {
-		font-size: 11px;
-		padding: 2px 8px;
-		border-radius: 999px;
-		border: 1px solid var(--exam-edge);
-	}
-	.due.soon {
-		background: var(--exam-bg);
-		color: var(--exam-ink);
-	}
-	.clock {
-		width: 40px;
-		height: 40px;
-		border-radius: 50%;
-		border: 1.5px solid var(--border);
-		background: var(--card);
-		cursor: pointer;
-	}
 	.tl {
 		position: relative;
 	}
@@ -346,6 +334,8 @@
 		padding: 0 0 8px;
 	}
 	.ent {
+		user-select: none; /* long-press deletes; no text selection or callout */
+		-webkit-touch-callout: none;
 		scroll-snap-align: start;
 		display: flex;
 		gap: 10px;

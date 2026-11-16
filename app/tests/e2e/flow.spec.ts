@@ -510,7 +510,7 @@ test('month: double-click a day opens the add box; N palette covers the whole sc
 	await page.keyboard.press('Enter');
 	await expect(page.locator('.slotpop')).toHaveCount(0);
 	await expect(cell.locator('.lt-chip', { hasText: 'Picnic dblclick' })).toBeVisible();
-	await expect(cell.locator('.lt-chip', { hasText: 'Picnic dblclick' })).toHaveClass(/t-event/);
+	await expect(cell.locator('.lt-chip', { hasText: 'Picnic dblclick' })).toHaveClass(/t-none/); // no /type = No type
 	// quick add overlay is full screen (not trapped in the header)
 	await page.keyboard.press('n');
 	const scrim = page.locator('.scrim');
@@ -1090,6 +1090,136 @@ test('plan ahead "before bed": after today ends, Home opens on tomorrow', async 
 	await page.getByLabel('Off').check();
 	await page.goto('/');
 	await expect(page.locator('.ahead')).toHaveCount(0);
+});
+
+test('owner test pass 2026-11-16: chips, popups, Keep, Pages undo + dark, pins, phone Today, storage', async ({
+	browser,
+}) => {
+	test.setTimeout(120_000);
+	const d = await today();
+	// calendar chip: name on two lines, X drawn on the chip colour (visible in dark), one pop per tick (#70 #71 #77)
+	const long = 'Owner test a really long calendar title that wraps';
+	expect((await api('POST', '/api/items', { title: long, date: d })).s).toBe(201);
+	await page.goto('/?desktop=1');
+	await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+	const chip = page.locator('.lt-chip', { hasText: 'Owner test a really long' });
+	await expect(chip).toBeVisible();
+	const look = await chip.evaluate((el) => {
+		const t = getComputedStyle(el.querySelector('.lt-title') as HTMLElement);
+		return {
+			clamp: t.webkitLineClamp,
+			ws: t.whiteSpace,
+			fill: getComputedStyle(el.querySelector('.lt-x circle') as SVGElement).fill,
+			bg: getComputedStyle(el).backgroundColor,
+		};
+	});
+	expect(look).toMatchObject({ clamp: '2', ws: 'normal', fill: look.bg });
+	await chip.locator('.lt-sq').click();
+	await expect(chip.locator('.lt-sq')).toHaveAttribute('aria-label', /In progress/);
+	await chip.locator('.lt-sq').click();
+	await expect(chip.locator('.lt-sq')).toHaveAttribute('aria-label', /Completed/);
+	expect(await page.locator('.grid .lt-sq.pop').count()).toBeLessThanOrEqual(1);
+	// header pins: no page icon (#63)
+	await expect(page.locator('nav a.pin svg')).toHaveCount(0);
+
+	// N palette: no /type = No type; /remind shows in its own slot (#81)
+	await page.locator('button.opener').click();
+	await page.keyboard.type('e2e remind slot fri 3pm /remind 2h');
+	await expect(page.locator('#qa-slots')).toContainText('No type');
+	await expect(page.locator('#qa-slots')).toContainText('2 hours before');
+	await page.keyboard.press('Escape');
+	await page.keyboard.press('Escape');
+	await expect(page.getByRole('dialog', { name: 'Quick add' })).toHaveCount(0);
+
+	// week drag popup: same slots; grey hint follows long text (#81)
+	await page.goto('/week');
+	const col = (await page.locator(`.fc-timegrid-col[data-date="${d}"]`).boundingBox())!;
+	const lane = async (t: string) => (await page.locator(`.fc-timegrid-slot-lane[data-time="${t}"]`).boundingBox())!; // prettier-ignore
+	const a = await lane('10:00:00');
+	await page.mouse.move(col.x + col.width / 2, a.y + 3);
+	await page.mouse.down();
+	await page.mouse.move(col.x + col.width / 2, a.y + a.height * 2 - 3, { steps: 6 });
+	await page.mouse.up();
+	const pop = page.getByRole('dialog', { name: 'New entry' });
+	await expect(pop.locator('input')).toBeFocused();
+	await page.keyboard.type('a very long entry title that scrolls the input sideways for sure /remind 1d');
+	await expect(pop).toContainText('No type');
+	await expect(pop).toContainText('1 day before');
+	const scroll = await pop.evaluate((el) => [el.querySelector('.ghost')!.scrollLeft, el.querySelector('input')!.scrollLeft]); // prettier-ignore
+	expect(scroll[1]).toBeGreaterThan(0);
+	expect(scroll[0]).toBe(scroll[1]);
+	for (let i = 0; i < 3 && (await pop.count()); i++) await page.keyboard.press('Escape');
+	await expect(pop).toHaveCount(0);
+
+	// Keep: big dialog, no form history, N does nothing over a note, drag + Alt+arrow reorder (#65 #66 #67 #68)
+	const n = await api('POST', '/api/keep/notes', { type: 'checklist', title: 'Drag list', items: ['one', 'two', 'three'].map((text) => ({ text, checked: false, parentId: null })) }); // prettier-ignore
+	await page.goto(`/keep?note=${n.j.note.id}`);
+	const note = page.getByRole('dialog', { name: 'Drag list' });
+	await expect(note).toBeVisible();
+	expect((await note.boundingBox())!.width).toBeGreaterThan(900);
+	await expect(note.locator('input.it').first()).toHaveAttribute('autocomplete', 'off');
+	await note.getByRole('radio', { name: 'No colour' }).click();
+	await page.keyboard.press('n');
+	await expect(page.getByRole('dialog', { name: 'Quick add' })).toHaveCount(0);
+	const rows = () =>
+		note.locator('input.it').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+	const g3 = (await note.locator('.grip').nth(2).boundingBox())!;
+	const r1 = (await note.locator('li').first().boundingBox())!;
+	await page.mouse.move(g3.x + g3.width / 2, g3.y + g3.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(g3.x + g3.width / 2, r1.y + r1.height / 2, { steps: 8 });
+	await page.mouse.up();
+	await expect.poll(rows).toEqual(['three', 'one', 'two']);
+	await note.locator('input.it').first().focus();
+	await page.keyboard.press('Alt+ArrowDown');
+	await expect.poll(rows).toEqual(['one', 'three', 'two']);
+	await page.keyboard.press('Escape');
+	await expect(note).toHaveCount(0);
+
+	// Pages: Ctrl+Z after a toolbar click undoes in the page (#61); code block readable in dark (#78)
+	const pg = await api('POST', '/api/pages', { title: 'Undo page' });
+	await page.goto(`/pages/${pg.j.page.id}`);
+	await page.locator('.pm').click();
+	await page.keyboard.type('undo me');
+	await page.getByRole('toolbar').getByRole('button', { name: 'Duplicate' }).click();
+	await expect(page.locator('.pm p', { hasText: 'undo me' })).toHaveCount(2);
+	await page.keyboard.press('Control+z');
+	await expect(page.locator('.pm p', { hasText: 'undo me' })).toHaveCount(1);
+	await page.keyboard.press('Control+End');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('/code');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('x = 1');
+	await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+	expect(await page.locator('.pm pre').evaluate((el) => getComputedStyle(el).color)).toBe('rgb(0, 0, 61)');
+
+	// Settings › Users: storage per person (#85)
+	await page.goto('/settings/users');
+	await expect(page.locator('table')).toContainText('Storage');
+	await expect(page.locator('td.store').first()).toContainText('of 2.00 GB');
+
+	// phone: no "To do today" card; hold a timeline row = delete with Undo (#74 #75); "/" list opens upward (#80)
+	expect((await api('POST', '/api/blocks', { label: 'hold me', startAt: utc(d, '22:00'), endAt: utc(d, '22:30') })).s).toBe(201); // prettier-ignore
+	const ctx = await browser.newContext({ storageState: await page.context().storageState(), viewport: { width: 390, height: 844 }, timezoneId: 'Asia/Kuala_Lumpur', hasTouch: true }); // prettier-ignore
+	const ph = await ctx.newPage();
+	await ph.goto('/today');
+	await expect(ph.locator('main')).not.toContainText('To do today');
+	const held = ph.locator('.ent', { hasText: 'hold me' });
+	await expect(held).toBeVisible();
+	await held.locator('.t').evaluate(async (el) => {
+		const r = el.getBoundingClientRect();
+		const o = { bubbles: true, clientX: r.x + 10, clientY: r.y + 10, pointerId: 1, pointerType: 'touch' };
+		el.dispatchEvent(new PointerEvent('pointerdown', o));
+		await new Promise((f) => setTimeout(f, 700));
+		el.dispatchEvent(new PointerEvent('pointerup', o));
+	});
+	await expect(ph.locator('.toast')).toContainText('Deleted "hold me"');
+	await ph.locator('.toast').getByRole('button', { name: 'Undo' }).click();
+	await expect(held).toBeVisible();
+	await ph.getByRole('button', { name: 'Add', exact: true }).click();
+	await ph.keyboard.type('gym tmr 6pm /');
+	await expect(ph.locator('.sheet .menu.up')).toBeVisible();
+	await ctx.close();
 });
 
 test('reset-password script works', async ({ browser }) => {

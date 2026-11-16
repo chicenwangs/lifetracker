@@ -82,14 +82,10 @@
 			style:--bg={c.bg}
 			style:--fg={c.ink}
 			aria-pressed={!off}
-			title="{off ? 'Show' : 'Hide'} {t.name}{t.isDefault ? ' (default for quick add)' : ''}{t.countsDown
-				? ' · counts down'
-				: ''}"
+			title="{off ? 'Show' : 'Hide'} {t.name}{t.countsDown ? ' · counts down' : ''}"
 			onclick={() => toggle(t.key)}
 		>
-			<span class="sw" aria-hidden="true"></span>{t.name}{#if t.isDefault}<span aria-hidden="true">
-					★</span
-				>{/if}
+			<span class="sw" aria-hidden="true"></span>{t.name}
 		</button>
 	{/each}
 	<div class="new">

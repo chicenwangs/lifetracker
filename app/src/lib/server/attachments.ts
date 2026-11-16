@@ -71,6 +71,15 @@ const tooBig = () =>
 	new ApiFail(413, 'too_large', `Files can be up to ${Math.round(env().MAX_UPLOAD_BYTES / 1048576)} MB.`);
 
 /** stream a request body to disk. `declared` = Content-Length if the client sent one. */
+/** files that count toward the quota (same rule for the check and the admin storage column) */
+const COUNTS = `status IN ('ready','uploading') AND deleted_at IS NULL`;
+
+/** Settings › Users: bytes of files each person stores, by owner id */
+export function usageByOwner(): Record<string, number> {
+	const rows = db().prepare(`SELECT owner_id AS id, sum(byte_size) AS n FROM attachments WHERE ${COUNTS} GROUP BY owner_id`).all() as { id: string; n: number }[]; // prettier-ignore
+	return Object.fromEntries(rows.map((r) => [r.id, r.n]));
+}
+
 export async function save(
 	ownerId: string,
 	body: ReadableStream<Uint8Array> | null,
@@ -83,7 +92,7 @@ export async function save(
 	const max = env().MAX_UPLOAD_BYTES;
 	if (declared !== null && declared > max) throw tooBig();
 	if (!body) throw new ApiFail(400, 'no_body', 'No file sent (missing Content-Type?).');
-	const used = (db().prepare(`SELECT coalesce(sum(byte_size), 0) AS n FROM attachments WHERE owner_id = ? AND status IN ('ready','uploading') AND deleted_at IS NULL`).get(ownerId) as { n: number }).n; // prettier-ignore
+	const used = (db().prepare(`SELECT coalesce(sum(byte_size), 0) AS n FROM attachments WHERE owner_id = ? AND ${COUNTS}`).get(ownerId) as { n: number }).n; // prettier-ignore
 	const quota = env().UPLOAD_QUOTA_BYTES;
 	if (used + (declared ?? 0) > quota) throw new ApiFail(413, 'quota', `Your files use ${Math.round(used / 1048576)} of ${Math.round(quota / 1048576)} MB. Delete some first.`); // prettier-ignore
 

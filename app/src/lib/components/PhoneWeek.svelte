@@ -106,8 +106,14 @@
 		flex: 1;
 		min-width: 0;
 		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		white-space: normal; /* FullCalendar sets nowrap on events */
+		line-clamp: 2;
+		overflow-wrap: anywhere;
+		line-height: 1.3;
+		padding: 4px 0;
 	}
 	.who {
 		width: 20px;

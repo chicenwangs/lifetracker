@@ -23,14 +23,14 @@ import java.util.Calendar;
 import java.util.Locale;
 
 /**
- * Seven home screen widgets, all drawn from the cached /api/native answer (SyncWorker refreshes it). They copy the
+ * Six home screen widgets, all drawn from the cached /api/native answer (SyncWorker refreshes it). They copy the
  * app's look: card with border + yellow hard shadow, type-coloured boxes, tick squares, the now band, and follow the
  * account's Light / Dark / Auto theme. Big lists scroll; the + sits bottom-right under the thumb.
  */
 final class Widgets {
     private Widgets() {}
 
-    private static final Class<?>[] ALL = {Timeline.class, Keep.class, NowNext.class, Quick.class, Todo.class, Countdown.class, Week.class};
+    private static final Class<?>[] ALL = {Timeline.class, Keep.class, NowNext.class, Quick.class, Countdown.class, Week.class};
 
     static void updateAll(Context c) {
         JSONObject j = Native.cached(c);
@@ -51,7 +51,6 @@ final class Widgets {
         if (k == Keep.class) return keep(c, id, j, t);
         if (k == NowNext.class) return nowNext(c, j, t);
         if (k == Quick.class) return quick(c, t);
-        if (k == Todo.class) return todo(c, id, j, t);
         if (k == Countdown.class) return countdown(c, id, j, t);
         return week(c, id, j, t);
     }
@@ -267,33 +266,7 @@ final class Widgets {
         return v;
     }
 
-    // ---------- 5. To do today ----------
-    static RemoteViews todo(Context c, int widgetId, JSONObject j, Theme t) {
-        JSONArray todos = isToday(j) ? j.optJSONArray("todos") : null;
-        int left = 0;
-        RemoteViewsCompat.RemoteCollectionItems.Builder b = new RemoteViewsCompat.RemoteCollectionItems.Builder();
-        java.util.List<RemoteViews> all = new java.util.ArrayList<>();
-        for (int i = 0; todos != null && i < todos.length(); i++) {
-            JSONObject r = todos.optJSONObject(i);
-            boolean done = "done".equals(r.optString("status"));
-            if (!done) left++;
-            RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.item_todo);
-            check(v, done, t.ink, t.card);
-            v.setInt(R.id.dot, "setColorFilter", col(r.optString("bg"), t.quiet));
-            v.setTextViewText(R.id.text, r.optString("title"));
-            v.setTextColor(R.id.text, done ? t.quiet : t.ink);
-            strike(v, R.id.text, done);
-            v.setOnClickFillInIntent(R.id.row, WidgetAction.open("/item/" + r.optString("id")));
-            v.setOnClickFillInIntent(R.id.chk, WidgetAction.tick("item", r.optString("id"), r.optString("status")));
-            b.addItem(r.optString("id").hashCode(), v);
-            all.add(v);
-        }
-        String msg = status(c, j);
-        if (msg.isEmpty()) msg = "Nothing without a time today.";
-        RemoteViews v = frame(c, t, "To do today", "No time set", left > 0 ? left + " left" : "", "/today", "/today?add", msg, 50);
-        list(c, v, widgetId, b, all);
-        return v;
-    }
+    // ("To do today" widget removed, owner 2026-11-16)
 
     // ---------- 6. Countdowns ----------
     static RemoteViews countdown(Context c, int widgetId, JSONObject j, Theme t) {
@@ -363,7 +336,7 @@ final class Widgets {
         String next = "done".equals(status) ? "todo" : "done";
         JSONObject j = Native.cached(c);
         boolean known = false;
-        for (String key : new String[] {"rows", "todos"}) {
+        for (String key : new String[] {"rows"}) {
             JSONArray a = j.optJSONArray(key);
             for (int i = 0; a != null && i < a.length(); i++) {
                 JSONObject r = a.optJSONObject(i);
@@ -414,7 +387,6 @@ final class Widgets {
 
     public static class Quick extends Base {}
 
-    public static class Todo extends Base {}
 
     public static class Countdown extends Base {}
 

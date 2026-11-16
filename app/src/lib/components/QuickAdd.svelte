@@ -10,15 +10,16 @@
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import { qaPrefs, typeName } from '$lib/client/itemtypes.svelte';
+	import { OFFSET_LABEL, type Offset } from '$lib/remind';
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
 	import CommandInput from './CommandInput.svelte';
+	import QASlots from './QASlots.svelte';
 	import TimelinePreview from './TimelinePreview.svelte';
 	import { parseQuickAdd, type QATarget } from '$lib/quickadd';
 	import { addDays, nowLocalMinutes, prettyDate, prettyTime, todayLocal } from '$lib/time';
 	import { del, get, post } from '$lib/client/api';
 	import { calendarBus, calendarChanged } from '$lib/client/bus.svelte';
-	import { colorsFor } from '$lib/colors';
 	import type { BlockDTO, ItemType } from '$lib/types';
 
 	let { tz }: { tz: string } = $props();
@@ -103,13 +104,7 @@
 		calendar: 'calendar',
 		both: 'calendar + planner',
 	};
-	const WHERE_SLOT: Record<QATarget, string> = {
-		planner: 'Planner',
-		calendar: 'Calendar',
-		both: 'Calendar + planner',
-	};
 	const shortDate = (d: string) => prettyDate(d).replace(/ \d{4}$/, '');
-	const tc = (t: ItemType) => colorsFor(t);
 
 	function timeLabel(p = parsed): string {
 		if (!p.time) return p.target === 'calendar' ? 'All day' : 'add a time';
@@ -170,7 +165,10 @@
 				undoPath,
 				title: r.item?.title ?? r.block?.label ?? p.title,
 				summary:
-					`${WHERE[r.target]} · ${shortDate(p.date)} · ${timeLabel(p)} · ${r.item?.type ?? r.block?.type ?? 'None'}` +
+					`${WHERE[r.target]} · ${shortDate(p.date)} · ${timeLabel(p)} · ${typeName(r.item?.type ?? r.block?.type ?? null) ?? 'No type'}` +
+					(p.reminders.length
+						? ` · reminder ${p.reminders.map((o) => OFFSET_LABEL[o as Offset] ?? o).join(', ')}`
+						: '') +
 					(extra.length ? ` (${extra.join(', ')})` : ''),
 				undone: false,
 			});
@@ -217,6 +215,7 @@
 		if (e.ctrlKey || e.metaKey || e.altKey) return;
 		const t = e.target as HTMLElement | null;
 		if (t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))) return;
+		if (document.querySelector('[aria-modal="true"]')) return; // a note/dialog is open: N is just a letter there
 		e.preventDefault();
 		show();
 	}
@@ -290,34 +289,7 @@
 					/>
 				</div>
 
-				<div class="slots" id="qa-slots">
-					{#if parsed.typeSet}
-						{@const c = tc(parsed.type)}
-						<div class="s" style:background={c.bg} style:color={c.ink} style:border-color={c.bg}>
-							<span class="k">Type</span><span class="v">{typeName(parsed.type)}</span>
-						</div>
-					{:else}
-						<div class="s d">
-							<span class="k">Type</span><span class="v">{typeName(parsed.type)} · default</span>
-						</div>
-					{/if}
-					<div class="s" class:d={!parsed.title}>
-						<span class="k">Title</span><span class="v">{parsed.title || 'your words'}</span>
-					</div>
-					<div class="s" class:d={!parsed.targetSet}>
-						<span class="k">Goes to</span>
-						<span class="v">{parsed.targetSet ? WHERE_SLOT[parsed.target] : 'Planner · default'}</span>
-					</div>
-					<div class="s" class:d={!parsed.dateSet}>
-						<span class="k">Day</span><span class="v"
-							>{parsed.dateSet ? shortDate(parsed.date) : 'Today · default'}</span
-						>
-					</div>
-					<div class="s" class:d={!parsed.time}>
-						<span class="k">Time{parsed.notes.length ? ` · ${parsed.notes.join(', ')}` : ''}</span>
-						<span class="v">{timeLabel()}</span>
-					</div>
-				</div>
+				<QASlots {parsed} id="qa-slots" />
 
 				{#if problems.length}
 					<div class="err" id="qa-err" role="alert">
@@ -471,38 +443,6 @@
 	}
 	.iwrap {
 		border-top: 1px solid var(--rule);
-	}
-	.slots {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-		gap: 6px;
-		padding: 10px 16px;
-		border-top: 1px solid var(--rule);
-	}
-	.s {
-		border: 1px solid var(--border);
-		border-radius: 8px;
-		padding: 4px 8px;
-		font-size: 12px;
-		min-width: 0;
-	}
-	.s .k {
-		display: block;
-		font-size: 11px;
-		opacity: 0.8;
-	}
-	.s .v {
-		display: block;
-		overflow-wrap: anywhere;
-		font-weight: 500;
-	}
-	.s.d {
-		border-style: dashed;
-	}
-	.s.d .k,
-	.s.d .v {
-		color: var(--quiet);
-		font-weight: 400;
 	}
 	.err {
 		margin: 0 16px 10px;

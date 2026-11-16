@@ -7,6 +7,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import CommandInput from './CommandInput.svelte';
+	import QASlots from './QASlots.svelte';
 	import { qaPrefs } from '$lib/client/itemtypes.svelte';
 	import { parseQuickAdd, withTarget, type QAParse, type QATarget } from '$lib/quickadd';
 	import { nowLocalMinutes, prettyDate, todayLocal } from '$lib/time';
@@ -110,7 +111,6 @@
 		bind:value={text}
 		{ctx}
 		slotted={day ? 'day' : true}
-		size="sm"
 		label="New entry. Type a title, options like /hobby or /calendar"
 		{autofocus}
 		onenter={submit}
@@ -118,6 +118,7 @@
 		oninput={() => (problem = '')}
 		onblur={() => !text.trim() && !busy && oncancel()}
 	/>
+	<QASlots {parsed} slot />
 	<div class="row">
 		<div class="seg" role="group" aria-label="Goes to">
 			{#each TARGETS as o (o.t)}
@@ -140,11 +141,25 @@
 </div>
 
 <style>
+	/* same look as the N palette (owner 2026-11-16): big input, live slots, then where it goes */
 	.sc {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 6px;
 		color: var(--ink);
+		background: var(--raised);
+		border: 1.5px solid var(--card-edge);
+		border-radius: 12px;
+		box-shadow: -6px 6px 0 var(--accent);
+		padding-bottom: 8px;
+		min-width: min(420px, 86vw);
+	}
+	.sc :global(.slots) {
+		padding: 8px 10px;
+	}
+	.sc > .row,
+	.sc > .err {
+		margin: 0 10px;
 	}
 	/* sits on a backing so it stays readable when it hangs below a short box */
 	.row {
