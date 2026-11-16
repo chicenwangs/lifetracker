@@ -5,7 +5,7 @@
 	import { isPhone } from '$lib/client/phone';
 	import { askConfirm, askText } from '$lib/client/dialog.svelte';
 	import { afterNavigate, goto, pushState, replaceState } from '$app/navigation';
-	import { invalidateAll } from '$lib/client/refresh';
+	import { invalidateAll, refreshing } from '$lib/client/refresh';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { del, patch, post } from '$lib/client/api';
@@ -48,9 +48,11 @@
 
 	// ---------- open note ----------
 	let open = $state<NoteDTO | 'new' | null>(null);
+	let seed = $state<{ title: string; body: string } | undefined>(undefined);
 	// an open note = one history entry: Back / edge swipe closes it and stays on Keep (owner 2026-11-14)
 	let pushed = false;
-	function show(n: NoteDTO | 'new') {
+	function show(n: NoteDTO | 'new', initial?: { title: string; body: string }) {
+		seed = initial;
 		open = n;
 		if (!pushed) pushState('', { keepNote: n === 'new' ? 'new' : n.id });
 		pushed = true;
@@ -58,7 +60,32 @@
 	function hide() {
 		if (pushed)
 			history.back(); // the effect below clears `open`
-		else open = null;
+		else {
+			open = null;
+			seed = undefined;
+		}
+	}
+	function parseShared(u: URL): { title: string; body: string } | undefined {
+		const rawTitle = u.searchParams.get('title');
+		const rawText = u.searchParams.get('text');
+		const rawUrl = u.searchParams.get('url');
+		if (!u.searchParams.has('share') && rawTitle === null && rawText === null && rawUrl === null)
+			return undefined;
+		const t = (rawTitle ?? '').trim();
+		let txt = (rawText ?? '').trim();
+		const link = (rawUrl ?? '').trim();
+		if (link && !txt.includes(link)) txt = txt ? `${txt}\n${link}` : link;
+		if (t) {
+			if (txt.startsWith(t))
+				txt = txt
+					.slice(t.length)
+					.replace(/^\r?\n/, '')
+					.trim();
+			return { title: t.slice(0, 200), body: txt };
+		}
+		const lines = txt.split(/\r?\n/);
+		const first = (lines.shift() ?? '').trim();
+		return { title: first.slice(0, 200), body: lines.join('\n').trim() };
 	}
 	// Back closes it. popstate, not page.state: saving refreshes the page data, which drops page.state
 	onMount(() => {
@@ -68,21 +95,23 @@
 			if (!pushed || st?.keepNote || st?.layer) return;
 			pushed = false;
 			open = null;
+			seed = undefined;
+			if (refreshing()) setTimeout(() => void invalidateAll());
 		};
 		addEventListener('popstate', pop);
 		return () => removeEventListener('popstate', pop);
-	}); // ?note=… (search, reminders, widget) and ?new (Ctrl+K, widget +): drop the param, then open like a tap.
+	}); // ?note=… (search, reminders, widget), ?new (Ctrl+K, widget +, shortcut) and ?share/title/text/url (#117)
 	afterNavigate(() => {
 		const id = page.url.searchParams.get('note');
 		const isNew = page.url.searchParams.has('new');
+		const shared = parseShared(page.url);
 		const n = id ? notes.find((x) => x.id === id) : undefined;
-		if (!n && !isNew) return;
+		if (!n && !isNew && !shared) return;
 		const u = new URL(page.url);
-		u.searchParams.delete('note');
-		u.searchParams.delete('new');
+		for (const k of ['note', 'new', 'share', 'title', 'text', 'url']) u.searchParams.delete(k);
 		setTimeout(() => {
 			replaceState(u, {});
-			show(n ?? 'new');
+			show(n ?? 'new', shared);
 		}); // first load: afterNavigate runs before the router is ready for shallow routing
 	});
 	const refresh = () => invalidateAll();
@@ -463,6 +492,7 @@
 	{#key open === 'new' ? 'new' : open.id}
 		<KeepNote
 			note={open === 'new' ? null : open}
+			seed={open === 'new' ? seed : undefined}
 			labels={data.labels}
 			binders={data.binders}
 			colors={data.colors}

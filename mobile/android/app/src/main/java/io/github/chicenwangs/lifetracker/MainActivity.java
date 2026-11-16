@@ -91,9 +91,22 @@ public class MainActivity extends BridgeActivity {
         SyncWorker.now(this); // widgets + alarms pick up what was just changed
     }
 
-    /** widget / notification taps carry a server path to open */
+    /** widget / notification / shortcut taps carry a server path; ACTION_SEND shares text/link into Keep (#117) */
     private void openPath(Intent i) {
-        String p = i == null ? null : i.getStringExtra("path");
+        if (i == null) return;
+        if (Intent.ACTION_SEND.equals(i.getAction()) && "text/plain".equals(i.getType())) {
+            String subj = i.getStringExtra(Intent.EXTRA_SUBJECT);
+            String txt = i.getStringExtra(Intent.EXTRA_TEXT);
+            i.setAction(Intent.ACTION_MAIN);
+            Uri.Builder b = Uri.parse(Native.base(this) + "/keep").buildUpon().appendQueryParameter("share", "1");
+            if (subj != null && !subj.isEmpty()) b.appendQueryParameter("title", subj);
+            if (txt != null && !txt.isEmpty()) b.appendQueryParameter("text", txt);
+            WebView w = getBridge().getWebView();
+            final String url = b.build().toString();
+            w.post(() -> w.loadUrl(url));
+            return;
+        }
+        String p = i.getStringExtra("path");
         if (p == null || !p.startsWith("/") || p.startsWith("//")) return;
         i.removeExtra("path");
         WebView w = getBridge().getWebView();

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="add_item"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher_round"
+        android:shortcutShortLabel="@string/sc_add_item"
+        android:shortcutLongLabel="@string/sc_add_item">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="io.github.chicenwangs.lifetracker"
+            android:targetClass="io.github.chicenwangs.lifetracker.MainActivity">
+            <extra android:name="path" android:value="/today?add=1" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="new_note"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher_round"
+        android:shortcutShortLabel="@string/sc_new_note"
+        android:shortcutLongLabel="@string/sc_new_note">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="io.github.chicenwangs.lifetracker"
+            android:targetClass="io.github.chicenwangs.lifetracker.MainActivity">
+            <extra android:name="path" android:value="/keep?new=1" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="today"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher_round"
+        android:shortcutShortLabel="@string/sc_today"
+        android:shortcutLongLabel="@string/sc_today">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="io.github.chicenwangs.lifetracker"
+            android:targetClass="io.github.chicenwangs.lifetracker.MainActivity">
+            <extra android:name="path" android:value="/today" />
+        </intent>
+    </shortcut>
+</shortcuts>

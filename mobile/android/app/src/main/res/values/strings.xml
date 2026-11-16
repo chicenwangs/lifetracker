@@ -19,4 +19,8 @@
     <string name="wdesc_countdown">Days left until exams and other counted-down items.</string>
     <string name="wname_week">Week ahead</string>
     <string name="wdesc_week">The next seven days at a glance. Tap a day to open it.</string>
+    <!-- app icon shortcuts (#117) -->
+    <string name="sc_add_item">Add item</string>
+    <string name="sc_new_note">New note</string>
+    <string name="sc_today">Today</string>
 </resources>
