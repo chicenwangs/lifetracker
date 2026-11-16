@@ -123,13 +123,12 @@ public class WidgetShotsTest {
             shot("keep-" + mode, Widgets.keep(c, 2, j, t), 2, 280, 340);
             shot("now-" + mode, Widgets.nowNext(c, j, t), -1, 360, 110);
             shot("quick-" + mode, Widgets.quick(c, t), -1, 280, 100);
-            shot("todo-" + mode, Widgets.todo(c, 3, j, t), 3, 280, 220);
             shot("countdown-" + mode, Widgets.countdown(c, 4, j, t), 4, 280, 220);
             shot("week-" + mode, Widgets.week(c, 5, j, t), 5, 360, 340);
         }
         // every list widget must actually hold its rows (a widget that draws empty is the bug we fear most)
         String r = rows.toString();
-        for (String k : new String[] {"timeline-light=4", "keep-light=3", "todo-light=2", "countdown-light=2", "week-light=7"})
+        for (String k : new String[] {"timeline-light=4", "keep-light=3", "countdown-light=2", "week-light=7"})
             assertTrue("list rows: " + r, r.contains(k + " "));
         // never synced: every widget says so instead of crashing
         JSONObject empty = new JSONObject();

@@ -539,7 +539,12 @@ test('theme: new account = Auto (D-07); sun/moon = fixed choice; Auto schedule r
 	await page.getByLabel('Light from').fill('00:00');
 	await page.getByLabel('Light from').dispatchEvent('change');
 	await page.getByLabel('Dark from').fill('23:59');
+	// wait for the dark time to reach the server, else the D-08 check below races it (seen in CI)
+	const darkSaved = page.waitForResponse(
+		(r) => r.url().endsWith('/api/me/prefs') && r.request().method() === 'PATCH',
+	);
 	await page.getByLabel('Dark from').dispatchEvent('change');
+	await darkSaved;
 	await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 	// D-08: same start time refused
 	await page.getByLabel('Light from').fill('23:59');
