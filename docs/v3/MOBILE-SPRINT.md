@@ -14,8 +14,8 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 ## Status
 | Group | # | Issue | State | PR |
 |---|---|---|---|---|
-| setup | — | Dev setup: seed, phone projects, helpers, shots, this doc | DONE (PR open) | #119 |
-| 1 foundation | #92 | One bottom sheet — handle, swipe down, Back, half then full | PR open (stacked on #119) | #120 |
+| setup | — | Dev setup: seed, phone projects, helpers, shots, this doc | DONE 2026-11-16 | #119 |
+| 1 foundation | #92 | One bottom sheet — handle, swipe down, Back, half then full | DONE 2026-11-16 | #120 |
 | 1 foundation | #91 | Android Back closes the top layer + predictive back | todo | |
 | 1 foundation | #88 | Tab bar Today · Calendar · + · Keep · Pages; More → account sheet | todo | |
 | 1 foundation | #89 | Top app bar with Back + title on deeper screens | todo | |

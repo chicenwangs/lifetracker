@@ -27,7 +27,8 @@
 	let dragY = $state(0);
 	let startY = 0;
 	let didDrag = false;
-	let opener: Element | null = null;
+	// read before children mount: an autofocus input inside would otherwise be taken as the opener
+	const opener = typeof document === 'undefined' ? null : document.activeElement;
 
 	// desktop peek grows from the click point; the phone sheet rises from the bottom (CSS)
 	function grow(node: HTMLElement, { duration = 220 }: { duration?: number } = {}) {
@@ -43,7 +44,6 @@
 	}
 
 	onMount(() => {
-		opener = document.activeElement;
 		if (!panel?.contains(document.activeElement)) panel?.focus();
 		const prev = document.body.style.overflow;
 		document.body.style.overflow = 'hidden';

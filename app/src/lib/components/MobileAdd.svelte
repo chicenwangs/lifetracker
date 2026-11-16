@@ -91,6 +91,7 @@
 				<QASlots {parsed} />
 				{#if problem}<p class="alert" role="alert">{problem}</p>{/if}
 				<div class="row">
+					<button class="btn wide" type="button" onclick={close}>Close</button>
 					<button class="btn primary" type="button" disabled={busy || !addSheet.text.trim()} onclick={plan}
 						>Add</button
 					>
@@ -100,6 +101,7 @@
 				<textarea bind:value={note} rows="5" placeholder="Note" aria-label="Note" maxlength="20000" autofocus
 				></textarea>
 				<div class="row">
+					<button class="btn wide" type="button" onclick={close}>Close</button>
 					<button class="btn primary" type="button" disabled={busy || !note.trim()} onclick={saveNote}
 						>Save note</button
 					>
@@ -146,6 +148,12 @@
 		display: flex;
 		gap: 8px;
 		justify-content: flex-end;
+	}
+	/* the shared sheet's Close is phone-only; wide screens (landscape until #110) need this one */
+	@media (max-width: 699px) {
+		.wide {
+			display: none;
+		}
 	}
 	.add :global(.iw.lg) {
 		border: 1.5px solid var(--border);

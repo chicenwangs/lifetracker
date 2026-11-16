@@ -85,3 +85,35 @@ test('item peek uses the same sheet and Back closes it', async () => {
 	await expect(sheet).toBeHidden();
 	expect(new URL(page.url()).pathname).toBe('/today');
 });
+
+test('widget + (/today?add): Back closes the sheet and stays on Today', async () => {
+	await page.goto('/week');
+	await page.goto('/today?add');
+	const sheet = page.getByRole('dialog', { name: 'Add' });
+	await expect(sheet).toBeVisible();
+	await expect(page).toHaveURL(/\/today$/);
+	await page.goBack();
+	await expect(sheet).toBeHidden();
+	await expect(page).toHaveURL(/\/today$/);
+	await page.goBack();
+	await expect(page).toHaveURL(/\/week$/);
+});
+
+test('closing the Add sheet returns focus to the + button', async () => {
+	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape has no bottom bar yet');
+	await page.goto('/today');
+	const plus = bottomBar(page).getByRole('button', { name: 'Add' });
+	await plus.click();
+	await page.getByRole('dialog', { name: 'Add' }).getByRole('button', { name: 'Close' }).click();
+	await expect(plus).toBeFocused();
+});
+
+test('wide screen (landscape until #110): Add sheet still has a visible Close', async () => {
+	await page.goto('/today?add');
+	const sheet = page.getByRole('dialog', { name: 'Add' });
+	await expect(sheet).toBeVisible();
+	await page.setViewportSize({ width: 915, height: 412 });
+	await sheet.getByRole('button', { name: 'Close' }).click();
+	await expect(sheet).toBeHidden();
+	await page.setViewportSize(test.info().project.use.viewport!);
+});
