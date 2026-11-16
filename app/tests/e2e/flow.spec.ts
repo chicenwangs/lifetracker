@@ -1146,8 +1146,9 @@ test('owner test pass 2026-11-16: chips, popups, Keep, Pages undo + dark, pins, 
 	for (const t of ['10:00:00', '08:00:00', '09:00:00', '12:00:00', '15:00:00', '18:00:00', '21:00:00']) {
 		a = await lane(t);
 		const busy = await page.evaluate(
-			([x, y1, y2]) => [y1, y2].some((y) => document.elementFromPoint(x, y)?.closest('.fc-event')),
-			[col.x + col.width / 2, a.y + 3, a.y + a.height * 2 - 3],
+			([x, y1, y2]: [number, number, number]) =>
+				[y1, y2].some((y) => document.elementFromPoint(x, y)?.closest('.fc-event')),
+			[col.x + col.width / 2, a.y + 3, a.y + a.height * 2 - 3] as [number, number, number],
 		);
 		if (!busy) break;
 	}
