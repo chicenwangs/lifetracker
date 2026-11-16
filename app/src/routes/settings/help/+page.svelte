@@ -6,6 +6,7 @@
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { onMount } from 'svelte';
 	import { isApp, updater } from '$lib/client/native';
+	import { isPhone } from '$lib/client/phone';
 
 	// Android app: native update check (the pages themselves always come fresh from the server)
 	let app = $state<{ current: string; latest?: string; available?: boolean } | null>(null);
@@ -29,7 +30,7 @@
 	async function restart() {
 		try {
 			await patch('/api/me/prefs', { tourState: 'new' });
-			await goto('/');
+			await goto(isPhone() ? '/today' : '/'); // phone tour walks the tab bar from Today (#83)
 			await invalidateAll();
 		} catch (e) {
 			showError(e);
