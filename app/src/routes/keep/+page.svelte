@@ -1,5 +1,7 @@
 <!-- Keep (FEATURES §5): side nav (notes, binders, labels, archive, trash) · search · New note · Pinned · notes · Select mode. -->
 <script lang="ts">
+	import { rowGestures } from '$lib/client/rowGestures';
+	import { isPhone } from '$lib/client/phone';
 	import { askConfirm, askText } from '$lib/client/dialog.svelte';
 	import { afterNavigate, goto, pushState, replaceState } from '$app/navigation';
 	import { invalidateAll } from '$lib/client/refresh';
@@ -124,6 +126,40 @@
 			showError(e);
 		}
 	}
+	// ---------- phone gestures (#97): swipe = archive, hold = select, hold + drag = reorder ----------
+	const pick = (n: NoteDTO) =>
+		(picked = picked.includes(n.id) ? picked.filter((x) => x !== n.id) : [...picked, n.id]);
+	// under the finger, looking through the lifted card itself
+	const noteAt = (x: number, y: number) =>
+		(
+			document
+				.elementsFromPoint(x, y)
+				.map((e) => e.closest('article.note'))
+				.find((e) => e && !e.classList.contains('lt-lifted')) as HTMLElement | undefined
+		)?.dataset.id;
+	function cardGestures(n: NoteDTO) {
+		if (!isPhone() || data.scope !== 'active' || selecting) return {}; // desktop keeps its own drag + menus
+		const archive = () => quick(n, { archived: true }, 'Archived', { archived: false });
+		return {
+			done: archive,
+			remove: archive,
+			labels: { right: 'Archive', left: 'Archive' },
+			hold: () => {
+				selecting = true;
+				picked = [n.id];
+			},
+			drop: async (_dy: number, x: number, y: number) => {
+				const to = noteAt(x, y);
+				if (!to || to === n.id) return;
+				try {
+					await post(`/api/keep/notes/${n.id}/move`, { before: to, binder: data.binder || undefined });
+					await refresh();
+				} catch (e) {
+					showError(e);
+				}
+			},
+		};
+	}
 	async function move(n: NoteDTO, dir: -1 | 1) {
 		const list = n.pinned ? pinned : rest;
 		const i = list.findIndex((x) => x.id === n.id);
@@ -192,7 +228,7 @@
 				>New note</button
 			>{/if}
 		{#if data.scope !== 'shared'}<button
-				class="btn sm"
+				class="btn sm selbtn"
 				type="button"
 				aria-pressed={selecting}
 				onclick={() => ((selecting = !selecting), (picked = []))}>{selecting ? 'Done' : 'Select'}</button
@@ -255,6 +291,9 @@
 		{#if selecting}
 			<div class="bulkbar" role="toolbar" aria-label="Selected notes">
 				<span>{picked.length} selected</span>
+				<button class="btn sm phoneonly" type="button" onclick={() => ((selecting = false), (picked = []))}
+					>Done</button
+				>
 				{#if data.scope === 'trash'}
 					<button
 						class="btn sm"
@@ -304,9 +343,11 @@
 		{#snippet card(n: NoteDTO)}
 			<article
 				class="note"
+				data-id={n.id}
 				style:--nbg={n.color ?? 'var(--card)'}
 				class:tinted={!!n.color}
 				class:sel={picked.includes(n.id)}
+				use:rowGestures={cardGestures(n)}
 			>
 				{#if selecting}
 					<label class="pick"
@@ -321,7 +362,7 @@
 				<button
 					type="button"
 					class="open"
-					onclick={() => (data.scope === 'trash' ? null : show(n))}
+					onclick={() => (selecting ? pick(n) : data.scope === 'trash' ? null : show(n))}
 					disabled={data.scope === 'trash'}
 					aria-label="Open note {n.title || n.body.slice(0, 40)}"
 				>
@@ -359,13 +400,13 @@
 						{:else}
 							{#if data.scope === 'active'}
 								<button
-									class="mini"
+									class="mini ud"
 									type="button"
 									aria-label="Move {n.title || 'note'} up"
 									onclick={() => move(n, -1)}>↑</button
 								>
 								<button
-									class="mini"
+									class="mini ud"
 									type="button"
 									aria-label="Move {n.title || 'note'} down"
 									onclick={() => move(n, 1)}>↓</button
@@ -516,6 +557,14 @@
 		color: var(--ink);
 		font: inherit;
 	}
+	.phoneonly {
+		display: none;
+	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.phoneonly {
+			display: inline-flex;
+		}
+	}
 	.filters,
 	.bulkbar {
 		display: flex;
@@ -642,8 +691,22 @@
 	}
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		/* the bar's + makes the note on phone (#93): one create button per screen */
-		.newnote {
+		.newnote,
+		/* hold a card selects (#97) */
+		.selbtn {
 			display: none;
+		}
+		/* ↑ ↓: hold + drag on phone; kept for TalkBack (#97) */
+		.ud {
+			position: absolute !important;
+			width: 1px !important;
+			min-width: 0 !important;
+			height: 1px !important;
+			min-height: 0 !important;
+			padding: 0;
+			overflow: hidden;
+			clip-path: inset(50%);
+			border: 0 !important;
 		}
 		.open {
 			min-height: 48px;

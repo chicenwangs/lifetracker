@@ -547,6 +547,10 @@ main .card:nth-child(n + 4) {
 	background: var(--danger);
 	color: var(--card);
 }
+.lt-under[data-act='other'] {
+	background: var(--pill-card);
+	color: var(--pill-ink);
+}
 .lt-lifted {
 	position: relative;
 	z-index: 5;
