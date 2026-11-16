@@ -4,7 +4,7 @@
 import { pushState, replaceState } from '$app/navigation';
 import { invalidateAll, refreshing } from './refresh';
 
-type Layer = { close: () => void; gone: boolean };
+type Layer = { id: number; close: () => void; gone: boolean };
 const stack: Layer[] = [];
 let skip = 0; // popstates from our own history.back() after a layer closed in the UI
 let leaving = false; // a link / goto is replacing the page: its new entry replaces the layer's
@@ -20,6 +20,13 @@ if (typeof window !== 'undefined')
 		// SvelteKit drops a data refresh in flight on any popstate (e.g. save + close a dialog): refetch once
 		// (next task: SvelteKit's own popstate listener resets its load token after ours runs)
 		if ((self || top) && refreshing()) setTimeout(() => void invalidateAll());
+		// landed on the entry of a layer that is already gone (it closed while a new one opened, e.g. a sheet's
+		// outro still running): step over it, one Back = one visible change
+		const at = history.state?.['sveltekit:states']?.layer;
+		if (at && !stack.some((l) => l.id === at)) {
+			skip++;
+			history.back();
+		}
 	});
 
 /** call right before a goto() that closes a layer (beforeNavigate can fire too late for the layer's Back) */
@@ -50,19 +57,25 @@ let pending: { id: number; dropped: boolean } | null = null; // a closed layer a
 /** Svelte action for a layer's root element: `use:backCloses={() => (open = false)}`. */
 export function backCloses(_node: HTMLElement, close: () => void) {
 	const id = ++ids;
-	const layer: Layer = { close: () => close(), gone: false };
-	// a layer swapped for a new one in the same tick (e.g. a new slot popup) reuses its entry
-	if (pending && ours(pending.id)) {
-		pending.dropped = true;
-		replaceState('', { layer: id });
-	} else pushState('', { layer: id });
-	pending = null;
+	const layer: Layer = { id, close: () => close(), gone: false };
+	let dead = false;
+	// a layer swapped for a new one in the same tick (e.g. a new slot popup, or a menu row opening a sheet) reuses
+	// its entry. A microtask: Svelte may mount the new layer before it destroys the old one in the same flush.
+	queueMicrotask(() => {
+		if (dead) return;
+		if (pending && ours(pending.id)) {
+			pending.dropped = true;
+			replaceState('', { layer: id });
+		} else pushState('', { layer: id });
+		pending = null;
+	});
 	stack.push(layer);
 	return {
 		update(next: () => void) {
 			close = next;
 		},
 		destroy() {
+			dead = true;
 			const i = stack.indexOf(layer);
 			if (i >= 0) stack.splice(i, 1);
 			if (layer.gone) return; // closed by Back: its entry is already used

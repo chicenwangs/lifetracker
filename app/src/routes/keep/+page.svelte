@@ -62,7 +62,9 @@
 	// Back closes it. popstate, not page.state: saving refreshes the page data, which drops page.state
 	onMount(() => {
 		const pop = () => {
-			if (!pushed) return;
+			// back onto the note's own entry or a layer above it = a sheet on top of it closed (#107): the note stays
+			const st = history.state?.['sveltekit:states'];
+			if (!pushed || st?.keepNote || st?.layer) return;
 			pushed = false;
 			open = null;
 		};

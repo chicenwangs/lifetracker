@@ -5,6 +5,7 @@
 	import { del, get, post } from '$lib/client/api';
 	import { showError } from '$lib/client/toast.svelte';
 	import { OFFSET_LABEL, OFFSETS } from '$lib/remind';
+	import { addDays } from '$lib/time';
 	import type { ReminderDTO } from '$lib/types';
 
 	let {
@@ -12,7 +13,10 @@
 		sourceId,
 		tz,
 		relative = true,
-	}: { source: 'planner_item' | 'planner_block' | 'keep_note' | 'database_record'; sourceId: string; tz: string; relative?: boolean } = $props(); // prettier-ignore
+		quick = false,
+	}: { source: 'planner_item' | 'planner_block' | 'keep_note' | 'database_record'; sourceId: string; tz: string; relative?: boolean; quick?: boolean } = $props(); // prettier-ignore
+	// svelte-ignore state_referenced_locally
+	let picking = $state(!quick); // starts open unless the quick picks show
 	let list = $state<ReminderDTO[]>([]);
 	let offset = $state<string>('1d');
 	let at = $state('');
@@ -40,13 +44,17 @@
 		}
 	}
 	/** datetime-local is in the browser's zone; the user's tz may differ, so convert from the user's tz explicitly */
-	function exact() {
-		if (!at) return;
-		const [d, t] = at.split('T');
+	function exact(when = at) {
+		if (!when) return;
+		const [d, t] = when.split('T');
 		const guess = Date.parse(`${d}T${t}:00Z`);
 		const off = (Date.parse(new Date(guess).toLocaleString('en-US', { timeZone: tz })) - Date.parse(new Date(guess).toLocaleString('en-US', { timeZone: 'UTC' }))); // prettier-ignore
 		void add({ at: new Date(guess - off).toISOString().slice(0, 19) + 'Z' });
 	}
+	// phone quick picks (#107): in 3 hours (on the minute), tomorrow 09:00 in the user's zone
+	const later = () => void add({ at: new Date(Math.ceil((Date.now() + 3 * 3600_000) / 60_000) * 60_000).toISOString().slice(0, 19) + 'Z' }); // prettier-ignore
+	const tomorrow = () =>
+		exact(`${addDays(new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date()), 1)}T09:00`);
 </script>
 
 <div class="rem">
@@ -66,17 +74,26 @@
 			>
 		</div>
 	{:else}<span class="hint">None yet.</span>{/each}
-	<div class="row add">
-		{#if relative}
-			<select aria-label="When" bind:value={offset}>
-				{#each OFFSETS as o (o)}<option value={o}>{OFFSET_LABEL[o]}</option>{/each}
-			</select>
-			<button class="btn sm" type="button" onclick={() => add({ offset })}>Add</button>
-			<span class="hint">or</span>
-		{/if}
-		<input type="datetime-local" aria-label="Exact reminder time" bind:value={at} />
-		<button class="btn sm" type="button" disabled={!at} onclick={exact}>Add at time</button>
-	</div>
+	{#if quick}
+		<div class="row quick">
+			<button class="btn sm" type="button" onclick={later}>Later today</button>
+			<button class="btn sm" type="button" onclick={tomorrow}>Tomorrow morning</button>
+			<button class="btn sm" type="button" aria-expanded={picking} onclick={() => (picking = !picking)}
+				>Pick date &amp; time</button
+			>
+		</div>
+	{/if}
+	{#if picking}<div class="row add">
+			{#if relative}
+				<select aria-label="When" bind:value={offset}>
+					{#each OFFSETS as o (o)}<option value={o}>{OFFSET_LABEL[o]}</option>{/each}
+				</select>
+				<button class="btn sm" type="button" onclick={() => add({ offset })}>Add</button>
+				<span class="hint">or</span>
+			{/if}
+			<input type="datetime-local" aria-label="Exact reminder time" bind:value={at} />
+			<button class="btn sm" type="button" disabled={!at} onclick={() => exact()}>Add at time</button>
+		</div>{/if}
 	{#if err}<span class="alert" role="alert">{err}</span>{/if}
 </div>
 
