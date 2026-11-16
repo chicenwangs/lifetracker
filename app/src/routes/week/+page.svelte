@@ -2,6 +2,8 @@
      Right column (top to bottom): month heatmap with this week highlighted · Not scheduled (all-day items with
      no block; drag onto the grid to block time, drag a block here to unschedule it) · stats. -->
 <script lang="ts">
+	import CalSwitch from '$lib/components/CalSwitch.svelte';
+	import { peerSwipe } from '$lib/client/peerSwipe';
 	import { backCloses } from '$lib/client/layers';
 	import { shown } from '$lib/client/itemtypes.svelte';
 	import TypeBar from '$lib/components/TypeBar.svelte';
@@ -61,6 +63,9 @@
 	});
 
 	const refresh = () => invalidateAll();
+	// "16 Nov – 22 Nov" (phone week bar + swipe peek)
+	const noYear = (d: string) => prettyDate(d).split(' ').slice(1, 3).join(' ');
+	const weekLabel = (from: string) => `${noYear(from)} – ${noYear(addDays(from, 6))}`;
 	const go = (w: string) => goto(`/week?w=${w}`, { keepFocus: true, noScroll: true, replaceState: true });
 	const wrap = async (fn: () => Promise<unknown>) => {
 		try {
@@ -202,18 +207,22 @@
 
 <!-- phone (< 700 px): read-first agenda; the grid below is for the PC -->
 <main class="phone" aria-label="Week agenda">
+	<CalSwitch on="week" week="/week?w={data.from}" month="/month?m={data.from.slice(0, 7)}" />
 	<div class="pbar">
 		<a class="btn sm" href="/week?w={addDays(data.from, -7)}" aria-label="Previous week">‹</a>
-		<strong
-			>{prettyDate(data.from).replace(/ d{4}$/, '')} – {prettyDate(addDays(data.to, -1)).replace(
-				/ d{4}$/,
-				'',
-			)}</strong
-		>
+		<strong>{weekLabel(data.from)}</strong>
 		<a class="btn sm" href="/week?w={addDays(data.from, 7)}" aria-label="Next week">›</a>
-		<a class="btn sm month" href="/month">Month</a>
 	</div>
-	<PhoneWeek from={data.from} to={data.to} today={data.today} {tz} cal={data.cal} />
+	<div
+		role="group"
+		aria-label="The week. Swipe sideways for the week before or after"
+		use:peerSwipe={{
+			step: (n) => goto(`/week?w=${addDays(data.from, 7 * n)}`, { noScroll: true }),
+			peek: (n) => weekLabel(addDays(data.from, 7 * n)),
+		}}
+	>
+		<PhoneWeek from={data.from} to={data.to} today={data.today} {tz} cal={data.cal} />
+	</div>
 </main>
 
 <main class="wrap">
@@ -422,6 +431,9 @@
 	.phone {
 		display: none;
 		padding: 8px 12px 24px;
+	}
+	.phone :global(.cs) {
+		margin-bottom: 8px;
 	}
 	.pbar {
 		display: flex;

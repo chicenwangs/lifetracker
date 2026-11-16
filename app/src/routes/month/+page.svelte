@@ -1,8 +1,14 @@
-<!-- Phone Month: 6 x 7 grid, a dot per thing that day (type colour, max 3 + count). Tap a day = its Today view. -->
+<!-- Phone Month (Calendar tab, #95): 6 x 7 grid, a dot per thing that day (type colour, max 3 + count). Tap a day =
+     select it: its agenda shows below, you stay in Calendar. Swipe the grid for the month before / after. -->
 <script lang="ts">
 	import { shown } from '$lib/client/itemtypes.svelte';
 	import { entryColors } from '$lib/client/partner';
-	import { addDays, utcToLocal } from '$lib/time';
+	import { addDays, prettyDate, utcToLocal, weekStartOf } from '$lib/time';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { openItem } from '$lib/client/peek.svelte';
+	import { peerSwipe } from '$lib/client/peerSwipe';
+	import CalSwitch from '$lib/components/CalSwitch.svelte';
 	import type { BlockDTO, ItemDTO } from '$lib/types';
 
 	let { data } = $props();
@@ -25,47 +31,140 @@
 			});
 		return out;
 	});
+	// selected day: ?d=, else today when it's in this month, else the 1st
+	const sel = $derived.by(() => {
+		const d = page.url.searchParams.get('d');
+		if (d && cells.some((c) => c.date === d)) return d;
+		return data.today.startsWith(data.ym) ? data.today : `${data.ym}-01`;
+	});
+	const timeOf = (t: ItemDTO | BlockDTO) =>
+		'startAt' in t ? utcToLocal(t.startAt, tz).time : ((t as ItemDTO).time ?? '');
+	const agenda = $derived(
+		(cells.find((c) => c.date === sel)?.things ?? []).toSorted((a, b) => timeOf(a).localeCompare(timeOf(b))),
+	);
+	const labelOf = (t: ItemDTO | BlockDTO) => ('title' in t ? t.title : t.label);
+	const itemIdOf = (t: ItemDTO | BlockDTO) => ('startAt' in t ? t.itemId : t.id);
+	const monthName = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
 	const heads = $derived(cells.slice(0, 7).map((c) => new Date(c.date + 'T12:00:00Z').toLocaleDateString('en', { weekday: 'narrow', timeZone: 'UTC' }))); // prettier-ignore
 </script>
 
 <svelte:head><title>Month · Life Tracker</title></svelte:head>
 
-<main class="pm card">
-	<div class="bar">
-		<a class="btn sm" href="/month?m={shift(-1)}" aria-label="Previous month">‹</a>
-		<h1>{MONTHS[Number(data.ym.slice(5, 7)) - 1]} {data.ym.slice(0, 4)}</h1>
-		<a class="btn sm" href="/month?m={shift(1)}" aria-label="Next month">›</a>
+<main class="pm">
+	<CalSwitch
+		on="month"
+		week="/week?w={weekStartOf(sel, data.user?.region === 'us' ? 7 : 1)}"
+		month="/month?m={data.ym}"
+	/>
+	<div class="card mc">
+		<div class="bar">
+			<a class="btn sm" href="/month?m={shift(-1)}" aria-label="Previous month">‹</a>
+			<h1>{monthName(data.ym)}</h1>
+			<a class="btn sm" href="/month?m={shift(1)}" aria-label="Next month">›</a>
+		</div>
+		<nav
+			class="grid"
+			aria-label="Days. Swipe sideways for the month before or after"
+			use:peerSwipe={{
+				step: (n) => goto(`/month?m=${shift(n)}`, { noScroll: true }),
+				peek: (n) => monthName(shift(n)),
+			}}
+		>
+			{#each heads as h, i (i)}<span class="wd" aria-hidden="true">{h}</span>{/each}
+			{#each cells as c (c.date)}
+				<a
+					class="cell"
+					class:out={!c.inMonth}
+					class:today={c.date === data.today}
+					class:sel={c.date === sel}
+					href="/month?m={c.date.slice(0, 7)}&d={c.date}"
+					data-sveltekit-replacestate
+					data-sveltekit-noscroll
+					aria-current={c.date === sel ? 'date' : undefined}
+					aria-label="{prettyDate(c.date)}, {c.things.length} planned"
+				>
+					<span class="n">{Number(c.date.slice(8))}</span>
+					<span class="dots">
+						{#each c.things.slice(0, 3) as t (t.id)}<i style:background={entryColors(t).bg}></i>{/each}
+						{#if c.things.length > 3}<b>+{c.things.length - 3}</b>{/if}
+					</span>
+				</a>
+			{/each}
+		</nav>
 	</div>
-	<nav class="grid" aria-label="Days">
-		{#each heads as h, i (i)}<span class="wd" aria-hidden="true">{h}</span>{/each}
-		{#each cells as c (c.date)}
-			<a
-				class="cell"
-				class:out={!c.inMonth}
-				class:today={c.date === data.today}
-				href="/today?d={c.date}"
-				aria-label="{c.date}, {c.things.length} planned"
-			>
-				<span class="n">{Number(c.date.slice(8))}</span>
-				<span class="dots">
-					{#each c.things.slice(0, 3) as t (t.id)}<i style:background={entryColors(t).bg}></i>{/each}
-					{#if c.things.length > 3}<b>+{c.things.length - 3}</b>{/if}
-				</span>
-			</a>
+	<section class="card agenda" aria-label="Agenda for {prettyDate(sel)}">
+		<h2>{prettyDate(sel)}</h2>
+		{#each agenda as t (t.id)}
+			{@const id = itemIdOf(t)}
+			{@const c = entryColors(t)}
+			{#snippet body()}
+				<span class="tm">{timeOf(t) || 'All day'}</span><span class="tt">{labelOf(t)}</span>
+			{/snippet}
+			{#if id}
+				<button class="row" type="button" style:--bg={c.bg} style:--fg={c.ink} onclick={() => openItem(id)}
+					>{@render body()}</button
+				>
+			{:else}
+				<div class="row" style:--bg={c.bg} style:--fg={c.ink}>{@render body()}</div>
+			{/if}
+		{:else}
+			<p class="muted">Nothing planned.</p>
 		{/each}
-	</nav>
-	<a class="hint" href="/?desktop=1">Full month (PC view)</a>
+		<a class="btn sm" href="/today?d={sel}">Open in Today</a>
+	</section>
 </main>
 
 <style>
-	.hint {
-		display: inline-flex;
-		align-items: center;
-		min-height: 48px;
-	}
 	.pm {
 		margin: 8px 12px 104px;
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+	}
+	.mc {
 		padding: 12px;
+		overflow-x: clip;
+	}
+	.cell.sel {
+		outline: 2px solid var(--ink);
+		outline-offset: -2px;
+	}
+	.agenda {
+		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.agenda h2 {
+		font-size: 15px;
+		margin: 0 0 4px;
+	}
+	.row {
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		min-height: 48px;
+		padding: 0 12px;
+		border: 0;
+		border-radius: 10px;
+		background: var(--bg);
+		color: var(--fg);
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	div.row {
+		cursor: default;
+	}
+	.tm {
+		font-size: 13px;
+		min-width: 52px;
+	}
+	.tt {
+		font-weight: 600;
+	}
+	.agenda .btn {
+		align-self: flex-start;
 	}
 	.bar {
 		display: flex;

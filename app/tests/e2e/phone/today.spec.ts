@@ -45,7 +45,7 @@ test('the day follows the finger; a short drag snaps back, a long one steps', as
 	const y = b.y + 40;
 	const f = await finger(page);
 	await f.send('touchStart', 300, y);
-	for (let x = 290; x >= 200; x -= 10) await f.send('touchMove', x, y);
+	for (let x = 290; x >= 230; x -= 10) await f.send('touchMove', x, y); // 70 px: under a quarter
 	await expect.poll(() => area.evaluate((el) => getComputedStyle(el).translate)).toMatch(/^-\d/);
 	await expect(page.getByText(/16 Jan 2030/)).toBeVisible(); // the next day peeks in
 	await f.send('touchEnd');
