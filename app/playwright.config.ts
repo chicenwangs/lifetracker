@@ -13,6 +13,8 @@ const pixel7 = { ...devices['Pixel 7'], viewport: { width: 412, height: 915 } };
 
 export default defineConfig({
 	testDir: 'tests/e2e',
+	// keep phone-baseline screenshots alive across runs (Playwright clears outputDir)
+	outputDir: 'test-results/run',
 	workers: 1,
 	fullyParallel: false,
 	timeout: 60_000,
