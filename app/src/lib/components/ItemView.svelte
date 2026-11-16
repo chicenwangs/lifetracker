@@ -14,6 +14,7 @@
 	import { get, patch, post } from '$lib/client/api';
 	import { showError } from '$lib/client/toast.svelte';
 	import { removeItem } from '$lib/client/remove';
+	import { isPhone } from '$lib/client/phone';
 
 	interface View {
 		item: ItemDTO & { notes: string | null };
@@ -93,7 +94,9 @@
 		onchanged?.();
 	}
 
+	let phone = $state(false); // phone wording (#108); set after mount so SSR and hydration agree
 	onMount(async () => {
+		phone = isPhone();
 		if (!v) await load();
 		planDate = v ? startDay(v) : '';
 		await loadDay();
@@ -262,7 +265,9 @@
 			{#if it}<span>/</span><span class="cur">{it.title}</span>{/if}
 		</nav>
 		<div class="acts">
-			{#if peek && it}<a class="btn sm ghost" href="/item/{it.id}" data-sveltekit-reload>Open as page</a>{/if}
+			{#if peek && it}<a class="btn sm ghost" href="/item/{it.id}" data-sveltekit-reload
+					>{phone ? 'Open full' : 'Open as page'}</a
+				>{/if}
 			{#if peek}
 				<button
 					class="close"
@@ -405,8 +410,9 @@
 							placeholder="Write anything. Markdown works: # heading, - list, **bold**, [link](https://…)"
 						></textarea>
 						<div class="savestate" aria-live="polite">
-							{saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : ''} · Esc or click away to
-							finish
+							{saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : ''} · {phone
+								? 'Tap outside to finish'
+								: 'Esc or click away to finish'}
 						</div>
 					{:else if notes}
 						<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
@@ -416,7 +422,7 @@
 						<button class="btn sm ghost editbtn" type="button" onclick={() => startNotes()}>Edit</button>
 					{:else}
 						<button class="empty" type="button" onclick={() => startNotes()}>
-							Click to write. Markdown works.
+							{phone ? 'Tap to write notes' : 'Click to write. Markdown works.'}
 						</button>
 					{/if}
 				</div>
@@ -888,6 +894,49 @@
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.top .close {
 			display: none;
+		}
+		/* #108: no desktop breadcrumb (the top bar / sheet says where you are); fields = one 48 dp row each */
+		.crumb {
+			visibility: hidden;
+		}
+		/* the day timeline + drag chip are desktop mouse tools; phone plans blocks in Today. Trash: account sheet */
+		.tb,
+		.delbox .hint {
+			display: none;
+		}
+		.title-btn {
+			min-height: 48px;
+		}
+		.props {
+			flex-direction: column;
+			gap: 0;
+		}
+		.prop {
+			height: auto;
+			min-height: 48px;
+			justify-content: space-between;
+			border: 0;
+			border-bottom: 1px solid var(--rule);
+			border-radius: 0;
+			padding: 0 4px;
+			background: none;
+		}
+		.prop > span {
+			font-size: 14px;
+		}
+		.prop select,
+		.prop input:not([type='checkbox']) {
+			height: 44px;
+			font-size: 15px;
+			text-align: right;
+		}
+		.prop.check {
+			justify-content: flex-start;
+			gap: 12px;
+		}
+		.prop.check input {
+			width: 22px;
+			height: 22px;
 		}
 	}
 </style>
