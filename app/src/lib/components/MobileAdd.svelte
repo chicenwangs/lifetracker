@@ -6,6 +6,7 @@
 	import { calendarChanged } from '$lib/client/bus.svelte';
 	import { qaPrefs } from '$lib/client/itemtypes.svelte';
 	import { addSheet, closeAdd } from '$lib/client/mobile.svelte';
+	import { buzz } from '$lib/client/haptics';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { parseQuickAdd } from '$lib/quickadd';
 	import { nowLocalMinutes, todayLocal } from '$lib/time';
@@ -34,6 +35,7 @@
 		busy = true;
 		try {
 			await post('/api/quickadd', { text: addSheet.text });
+			buzz('success');
 			showToast(`Added "${parsed.title}"`);
 			addSheet.text = ''; // batch add: sheet stays open
 			problem = '';
@@ -50,6 +52,7 @@
 		try {
 			await post('/api/keep/notes', { body: note });
 			note = '';
+			buzz('success');
 			showToast('Note saved');
 			close();
 			await invalidateAll();

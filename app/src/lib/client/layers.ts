@@ -44,7 +44,7 @@ if (typeof window !== 'undefined')
 // SvelteKit keeps shallow state here; unlike page.state it survives invalidateAll()
 const ours = (id: number) => history.state?.['sveltekit:states']?.layer === id;
 let ids = 0;
-let pending: { id: number; timer: ReturnType<typeof setTimeout> } | null = null; // a closed layer about to go back
+let pending: { id: number; dropped: boolean } | null = null; // a closed layer about to go back
 
 /** Svelte action for a layer's root element: `use:backCloses={() => (open = false)}`. */
 export function backCloses(_node: HTMLElement, close: () => void) {
@@ -52,7 +52,7 @@ export function backCloses(_node: HTMLElement, close: () => void) {
 	const layer: Layer = { close: () => close(), gone: false };
 	// a layer swapped for a new one in the same tick (e.g. a new slot popup) reuses its entry
 	if (pending && ours(pending.id)) {
-		clearTimeout(pending.timer);
+		pending.dropped = true;
 		replaceState('', { layer: id });
 	} else pushState('', { layer: id });
 	pending = null;
@@ -65,14 +65,17 @@ export function backCloses(_node: HTMLElement, close: () => void) {
 			const i = stack.indexOf(layer);
 			if (i >= 0) stack.splice(i, 1);
 			if (layer.gone) return; // closed by Back: its entry is already used
-			// let a link click start its navigation first (our microtask runs before SvelteKit's click handler)
-			const timer = setTimeout(() => {
-				pending = null;
+			// after this flush (a layer swapped in the same tick reuses the entry), but still in this task: a later
+			// timer could fire after a new navigation began. Links and goto() have set leaving by now.
+			const mine = { id, dropped: false };
+			pending = mine;
+			queueMicrotask(() => {
+				if (mine.dropped) return;
+				if (pending === mine) pending = null;
 				if (leaving || !ours(id)) return;
 				skip++;
 				history.back();
 			});
-			pending = { id, timer };
 		},
 	};
 }

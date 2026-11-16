@@ -23,6 +23,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle state) {
         registerPlugin(UpdaterPlugin.class);
+        registerPlugin(HapticsPlugin.class);
         super.onCreate(state);
         WebView w = getBridge().getWebView();
 
