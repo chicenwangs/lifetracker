@@ -11,9 +11,9 @@
 	}: { status: Status; size?: number; ink?: string; disabled?: boolean; oncycle: () => void } = $props();
 
 	const LABEL: Record<Status, string> = {
-		todo: 'Not started. Click to start',
-		doing: 'In progress. Click to complete',
-		done: 'Completed. Click to reset',
+		todo: 'Not started. Activate to start',
+		doing: 'In progress. Activate to complete',
+		done: 'Completed. Activate to reset',
 	};
 	const icon = $derived(Math.round(size * 0.62));
 </script>

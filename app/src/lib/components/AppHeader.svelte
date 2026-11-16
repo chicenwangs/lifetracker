@@ -63,6 +63,8 @@
 		if (n.from) inApp = true;
 	});
 	const back = () => (inApp ? history.back() : goto(parent));
+	let phone = $state(false); // no key hints in tooltips on phone (#115); after mount so hydration agrees
+	afterNavigate(() => (phone = isPhone()));
 	let help = $state(false);
 	let cmdk: CommandPalette | undefined = $state();
 	const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
@@ -132,7 +134,7 @@
 			class="search"
 			type="button"
 			aria-label="Search"
-			title="Search  Ctrl+K"
+			title={phone ? undefined : 'Search  Ctrl+K'}
 			onclick={() => cmdk?.show()}
 			><svg
 				class="sicon"

@@ -58,9 +58,9 @@
 	let cal: Calendar | null = null;
 
 	const ARIA: Record<Status, string> = {
-		todo: 'Not started. Click to start',
-		doing: 'In progress. Click to complete',
-		done: 'Completed. Click to reset',
+		todo: 'Not started. Activate to start',
+		doing: 'In progress. Activate to complete',
+		done: 'Completed. Activate to reset',
 	};
 	const SVG_DOING =
 		'<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 1.5l6 3.5-6 3.5z" fill="currentColor"/></svg>';

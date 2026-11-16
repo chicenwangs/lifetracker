@@ -71,7 +71,7 @@
 	}
 </script>
 
-<div class="bar" role="group" aria-label="Item types: click to show or hide">
+<div class="bar" role="group" aria-label="Item types: show or hide">
 	{#each typesState.list as t (t.key)}
 		{@const off = typesState.hidden.includes(t.key)}
 		{@const c = colorsFor(t.key)}

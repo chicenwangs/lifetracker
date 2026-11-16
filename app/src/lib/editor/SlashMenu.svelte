@@ -70,6 +70,12 @@
 		font-size: 11px;
 		color: var(--quiet);
 	}
+	/* keyboard hints mean nothing on a phone (#115) */
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.keys {
+			display: none;
+		}
+	}
 	.none {
 		font-size: 13px;
 	}

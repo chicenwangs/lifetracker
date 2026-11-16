@@ -125,8 +125,9 @@ export async function expectTargets48(page: Page) {
 	expect(small.filter((s) => !known.has(s.replace(/ \(\d+×\d+\)$/, '')))).toEqual([]);
 }
 
-/** Fails on visible desktop wording: Ctrl, Click, Esc, PC view (G13, #115). */
+/** Fails on desktop wording shown or read out on phone: Ctrl, Click, Esc, PC view (G13, #115). */
 export async function noDesktopHints(page: Page) {
+	await page.waitForLoadState('networkidle'); // hydrated: phone-only wording is set after mount
 	const hits = await page.evaluate(() => {
 		const out: string[] = [];
 		const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -137,6 +138,14 @@ export async function noDesktopHints(page: Page) {
 				n.parentElement?.checkVisibility({ checkVisibilityCSS: true })
 			)
 				out.push(t.trim().slice(0, 60));
+		}
+		// what TalkBack reads counts too (#115: "Not started. Click to start")
+		for (const el of document.querySelectorAll<HTMLElement>('[aria-label], [aria-description], [title]')) {
+			if (!el.checkVisibility({ checkVisibilityCSS: true })) continue;
+			for (const at of ['aria-label', 'aria-description', 'title']) {
+				const t = el.getAttribute(at) ?? '';
+				if (/\b(ctrl|click|esc)\b|pc view/i.test(t)) out.push(`[${at}] ${t.slice(0, 60)}`);
+			}
 		}
 		return out;
 	});

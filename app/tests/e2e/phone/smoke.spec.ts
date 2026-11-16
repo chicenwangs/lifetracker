@@ -1,4 +1,4 @@
-// Phone smoke: each tab loads, shows the bottom bar, every control is 48 dp (#101). Wording checks wait on #115.
+// Phone smoke: each tab loads, shows the bottom bar, every control is 48 dp (#101). Wording: #115.
 import { expect, test, type Page } from '@playwright/test';
 import { bottomBar, expectTappable, expectTargets48, noDesktopHints, signIn } from './helpers';
 
@@ -27,6 +27,10 @@ const TABS: [string, () => string][] = [
 	['More', () => '/more'],
 	['a page', () => pagePath],
 	['Settings', () => '/settings/preferences'],
+	['Month', () => '/month'],
+	['Pages', () => '/pages'],
+	['Help', () => '/settings/help'],
+	['Settings list', () => '/settings'],
 ];
 
 test('Add sheet: every / command in quick add can be tapped', async () => {
@@ -48,7 +52,7 @@ for (const [name, path] of TABS) {
 		await page.goto(path());
 		await expectTargets48(page);
 	});
-	test.fixme(`${name}: no desktop wording (#115)`, async () => {
+	test(`${name}: no desktop wording (#115)`, async () => {
 		await page.goto(path());
 		await noDesktopHints(page);
 	});
