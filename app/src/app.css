@@ -503,6 +503,30 @@ main .card:nth-child(3) {
 main .card:nth-child(n + 4) {
 	animation-delay: 160ms;
 }
+/* phone: tabs switch with a fade-through instead; cards are just there (#90, G12) */
+@media (max-width: 699px) {
+	main .card,
+	.box.card {
+		animation: none;
+	}
+}
+::view-transition-old(root) {
+	animation: 60ms ease-in both lt-vt-out;
+}
+::view-transition-new(root) {
+	animation: 150ms var(--ease) 40ms both lt-vt-in;
+}
+@keyframes lt-vt-out {
+	to {
+		opacity: 0;
+	}
+}
+@keyframes lt-vt-in {
+	from {
+		opacity: 0;
+		transform: scale(0.98);
+	}
+}
 /* tactile buttons: lift into the shadow on hover, press flat on click */
 .btn:not(:disabled):not(.ghost):hover {
 	transform: translate(1px, -1px);

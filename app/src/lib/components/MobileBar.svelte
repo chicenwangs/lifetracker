@@ -1,7 +1,10 @@
 <!-- Phone bottom bar (#88, G1): Today · Calendar · + · Keep · Pages. Only under 700 px. Account lives in the
-     avatar sheet (AccountSheet). A screen outside the tabs (Settings, Trash, an item) keeps the last tab lit. -->
+     avatar sheet (AccountSheet). A screen outside the tabs (Settings, Trash, an item) keeps the last tab lit.
+     #90: a tab reopens where you left it (URL + scroll), re-tap = top, switch = fade-through. -->
 <script lang="ts">
 	import { page } from '$app/state';
+	import { afterNavigate, beforeNavigate, goto, onNavigate, preloadCode } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { openAdd } from '$lib/client/mobile.svelte';
 
 	const TABS = [
@@ -38,12 +41,65 @@
 		if (current) last = current;
 	});
 	const on = (href: string) => (current ?? last) === href;
+
+	// each tab remembers its last URL (open day / week / filters) and every URL its scroll
+	const lastUrl = $state<Record<string, string>>({});
+	const scrolls = new Map<string, number>();
+	const key = (u: URL) => u.pathname + u.search;
+	$effect(() => {
+		if (current) lastUrl[current] = key(page.url);
+	});
+	beforeNavigate(({ from }) => {
+		if (from) scrolls.set(key(from.url), scrollY);
+	});
+	let viaTab = false;
+	afterNavigate(({ to }) => {
+		if (!viaTab || !to) return;
+		scrollTo(0, scrolls.get(key(to.url)) ?? 0);
+	});
+	function tap(e: MouseEvent, root: string) {
+		if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+		e.preventDefault();
+		if (on(root) && current) {
+			// re-tap the active tab: top of its root screen
+			if (key(page.url) === root) return scrollTo({ top: 0, behavior: 'smooth' });
+			viaTab = true;
+			scrolls.delete(root);
+			return goto(root, { noScroll: true });
+		}
+		viaTab = true;
+		goto(lastUrl[root] ?? root, { noScroll: true });
+	}
+	// M3 fade-through between tabs (G1); the bar itself stays put (view-transition-name)
+	onNavigate((nav) => {
+		const fade =
+			viaTab && 'startViewTransition' in document && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+		if (!fade) return;
+		return new Promise<void>((done) =>
+			document.startViewTransition(async () => {
+				done();
+				await nav.complete;
+			}),
+		);
+	});
+	afterNavigate(() => setTimeout(() => (viaTab = false)));
+	// warm app: every tab's code ready before the first tap
+	onMount(() => {
+		const warm = () => TABS.forEach((t) => t && preloadCode(t.href));
+		if ('requestIdleCallback' in window) requestIdleCallback(warm);
+		else setTimeout(warm, 1500);
+	});
 </script>
 
 <nav class="mbar" aria-label="Phone navigation">
 	{#each TABS as t, i (i)}
 		{#if t}
-			<a href={t.href} class:on={on(t.href)} aria-current={on(t.href) ? 'page' : undefined}>
+			<a
+				href={lastUrl[t.href] ?? t.href}
+				class:on={on(t.href)}
+				aria-current={on(t.href) ? 'page' : undefined}
+				onclick={(e) => tap(e, t.href)}
+			>
 				<svg
 					width="22"
 					height="22"
@@ -81,6 +137,7 @@
 			padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
 			background: var(--card);
 			border-top: 1.5px solid var(--border);
+			view-transition-name: mbar;
 		}
 		a {
 			display: flex;
