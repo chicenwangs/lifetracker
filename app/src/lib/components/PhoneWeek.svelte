@@ -1,10 +1,16 @@
-<!-- Phone Week (FEATURES §10): read-first agenda, one row per day. Tap a day = that day's Today; tap an item = its page.
-     Planning (drag, resize) stays on the PC. -->
+<!-- Phone Week (FEATURES §10): agenda, one section per day. Tap a day = that day's Today; tap an item = its page.
+     #96: swipe a row right = done, left = delete; hold + drag it onto another day = move; ⋯ = the same by tap. -->
 <script lang="ts">
 	import { shown } from '$lib/client/itemtypes.svelte';
 	import { entryColors } from '$lib/client/partner';
 	import { addDays, prettyDate, utcToLocal } from '$lib/time';
 	import type { BlockDTO, CalendarPayload, ItemDTO } from '$lib/types';
+	import ActionSheet from './ActionSheet.svelte';
+	import { askText } from '$lib/client/dialog.svelte';
+	import { openItem } from '$lib/client/peek.svelte';
+	import { invalidateAll } from '$lib/client/refresh';
+	import { deleteRow, moveRow, toggleDone } from '$lib/client/rowOps';
+	import { rowGestures } from '$lib/client/rowGestures';
 
 	let {
 		from,
@@ -32,33 +38,101 @@
 		}
 		return out;
 	});
+	const mine = (r: Row) => r.x.editable && !r.x.theirs && !r.x.busy;
+	const refresh = () => invalidateAll();
+	const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
+	let over = $state<string | null>(null); // the day a carried row would land on
+	let acting = $state<{ r: Row; date: string } | null>(null);
+	const dayAt = (x: number, y: number) =>
+		(document.elementFromPoint(x, y)?.closest('[data-date]') as HTMLElement | null)?.dataset.date ?? null;
+	function gestures(r: Row, date: string) {
+		if (!mine(r)) return {};
+		return {
+			done: () => toggleDone(r.x, refresh),
+			remove: () => deleteRow(r.x, refresh),
+			drag: (_dy: number, x: number, y: number) => (over = dayAt(x, y)),
+			drop: (_dy: number, x: number, y: number) => {
+				const to = dayAt(x, y);
+				over = null;
+				if (to && to !== date) return moveRow(r.x, { days: daysBetween(date, to) }, refresh);
+			},
+		};
+	}
+	async function pickDay(r: Row, date: string) {
+		const id = 'startAt' in r.x ? r.x.itemId : r.x.id;
+		if (id) return openItem(id); // the item sheet edits the day
+		const d = await askText('Move to which day? (YYYY-MM-DD)', { value: date, ok: 'Move' });
+		if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) return moveRow(r.x, { days: daysBetween(date, d) }, refresh);
+	}
 </script>
 
 <div class="pweek">
 	{#each days as d (d.date)}
-		<section class="day card" class:today={d.date === today}>
+		<section class="day card" class:today={d.date === today} class:over={over === d.date} data-date={d.date}>
 			<a class="hd" href="/today?d={d.date}">{prettyDate(d.date).replace(/ \d{4}$/, '')}</a>
 			{#each d.rows as r (r.key)}
 				{@const c = entryColors(r.x)}
-				<svelte:element
-					this={r.href ? 'a' : 'div'}
-					href={r.href}
-					class="row"
-					class:theirs={r.x.theirs}
-					style:--bg={c.bg}
-					style:--fg={c.ink}
-				>
-					<span class="tm">{r.time || 'all day'}</span>
-					<span class="lb">{r.x.busy ? 'Busy' : r.label}</span>
-					{#if r.x.theirs}<span class="who" style:background={r.x.owner?.color}>{r.x.owner?.initial}</span
+				<div class="rw" use:rowGestures={gestures(r, d.date)}>
+					<svelte:element
+						this={r.href ? 'a' : 'div'}
+						href={r.href}
+						class="row"
+						class:theirs={r.x.theirs}
+						style:--bg={c.bg}
+						style:--fg={c.ink}
+					>
+						<span class="tm">{r.time || 'all day'}</span>
+						<span class="lb">{r.x.busy ? 'Busy' : r.label}</span>
+						{#if r.x.theirs}<span class="who" style:background={r.x.owner?.color}>{r.x.owner?.initial}</span
+							>{/if}
+					</svelte:element>
+					{#if mine(r)}<button
+							class="more"
+							type="button"
+							aria-label="Actions for {r.label}"
+							onclick={() => (acting = { r, date: d.date })}>⋯</button
 						>{/if}
-				</svelte:element>
+				</div>
 			{:else}<span class="hint">Nothing planned</span>{/each}
 		</section>
 	{/each}
 </div>
+{#if acting}
+	{@const a = acting}
+	<ActionSheet
+		title={a.r.label}
+		actions={[
+			{ label: a.r.x.status === 'done' ? 'Not done' : 'Done', run: () => toggleDone(a.r.x, refresh) },
+			{ label: 'Move…', run: () => pickDay(a.r, a.date) },
+			{ label: 'Delete', danger: true, run: () => deleteRow(a.r.x, refresh) },
+		]}
+		onclose={() => (acting = null)}
+	/>
+{/if}
 
 <style>
+	.rw {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+	.rw > :global(.row) {
+		flex: 1;
+		min-width: 0;
+	}
+	.more {
+		flex: none;
+		width: 48px;
+		height: 48px;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font-size: 20px;
+		cursor: pointer;
+	}
+	.day.over {
+		outline: 2px dashed var(--ink);
+	}
 	.pweek {
 		display: flex;
 		flex-direction: column;

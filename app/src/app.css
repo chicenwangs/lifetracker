@@ -528,6 +528,32 @@ main .card:nth-child(n + 4) {
 		gap: 10px;
 	}
 }
+/* rowGestures (#96): what a row swipe will do, under the sliding row; a lifted row floats */
+.lt-under {
+	position: absolute;
+	display: flex;
+	align-items: center;
+	padding: 0 18px;
+	border-radius: 12px;
+	font-weight: 700;
+	pointer-events: none;
+}
+.lt-under[data-act='done'] {
+	background: var(--done-bg, #2e7d4f);
+	color: #fff;
+}
+.lt-under[data-act='delete'] {
+	justify-content: flex-end;
+	background: var(--danger);
+	color: var(--card);
+}
+.lt-lifted {
+	position: relative;
+	z-index: 5;
+	box-shadow: 0 10px 24px rgb(0 0 0 / 0.35);
+	scale: 1.02;
+	transition: scale 100ms var(--ease);
+}
 /* peerSwipe (#94 #95): the neighbour day / week / month name peeking in beside the dragged element */
 .lt-peek {
 	position: absolute;

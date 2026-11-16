@@ -9,6 +9,10 @@
 	import { openItem } from '$lib/client/peek.svelte';
 	import { peerSwipe } from '$lib/client/peerSwipe';
 	import CalSwitch from '$lib/components/CalSwitch.svelte';
+	import ActionSheet from '$lib/components/ActionSheet.svelte';
+	import { invalidateAll } from '$lib/client/refresh';
+	import { deleteRow, toggleDone } from '$lib/client/rowOps';
+	import { rowGestures } from '$lib/client/rowGestures';
 	import type { BlockDTO, ItemDTO } from '$lib/types';
 
 	let { data } = $props();
@@ -45,6 +49,10 @@
 	const labelOf = (t: ItemDTO | BlockDTO) => ('title' in t ? t.title : t.label);
 	const itemIdOf = (t: ItemDTO | BlockDTO) => ('startAt' in t ? t.itemId : t.id);
 	const monthName = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
+	// row gestures + actions (#96): same meaning as Today and Week
+	const mine = (t: ItemDTO | BlockDTO) => t.editable && !t.theirs;
+	const refresh = () => invalidateAll();
+	let acting = $state<ItemDTO | BlockDTO | null>(null);
 	const heads = $derived(cells.slice(0, 7).map((c) => new Date(c.date + 'T12:00:00Z').toLocaleDateString('en', { weekday: 'narrow', timeZone: 'UTC' }))); // prettier-ignore
 </script>
 
@@ -100,17 +108,42 @@
 			{#snippet body()}
 				<span class="tm">{timeOf(t) || 'All day'}</span><span class="tt">{labelOf(t)}</span>
 			{/snippet}
-			{#if id}
-				<button class="row" type="button" style:--bg={c.bg} style:--fg={c.ink} onclick={() => openItem(id)}
-					>{@render body()}</button
-				>
-			{:else}
-				<div class="row" style:--bg={c.bg} style:--fg={c.ink}>{@render body()}</div>
-			{/if}
+			<div
+				class="rw"
+				use:rowGestures={mine(t)
+					? { done: () => toggleDone(t, refresh), remove: () => deleteRow(t, refresh) }
+					: {}}
+			>
+				{#if id}
+					<button class="row" type="button" style:--bg={c.bg} style:--fg={c.ink} onclick={() => openItem(id)}
+						>{@render body()}</button
+					>
+				{:else}
+					<div class="row" style:--bg={c.bg} style:--fg={c.ink}>{@render body()}</div>
+				{/if}
+				{#if mine(t)}<button
+						class="more"
+						type="button"
+						aria-label="Actions for {labelOf(t)}"
+						onclick={() => (acting = t)}>⋯</button
+					>{/if}
+			</div>
 		{:else}
 			<p class="muted">Nothing planned.</p>
 		{/each}
 		<a class="btn sm" href="/today?d={sel}">Open in Today</a>
+		{#if acting}
+			{@const a = acting}
+			<ActionSheet
+				title={labelOf(a)}
+				actions={[
+					{ label: a.status === 'done' ? 'Not done' : 'Done', run: () => toggleDone(a, refresh) },
+					...(itemIdOf(a) ? [{ label: 'Move…', run: () => openItem(itemIdOf(a) as string) }] : []),
+					{ label: 'Delete', danger: true, run: () => deleteRow(a, refresh) },
+				]}
+				onclose={() => (acting = null)}
+			/>
+		{/if}
 	</section>
 </main>
 
@@ -155,6 +188,25 @@
 	}
 	div.row {
 		cursor: default;
+	}
+	.rw {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+	}
+	.rw > .row {
+		flex: 1;
+		min-width: 0;
+	}
+	.more {
+		flex: none;
+		width: 48px;
+		height: 48px;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font-size: 20px;
+		cursor: pointer;
 	}
 	.tm {
 		font-size: 13px;

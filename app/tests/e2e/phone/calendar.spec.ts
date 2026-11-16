@@ -39,7 +39,7 @@ test('Month: tap a day = its agenda below, still in Calendar; tap the row = item
 	await expect.poll(() => q('d')).toBe('2030-02-12');
 	await expect(page).toHaveURL(/\/month/);
 	const agenda = page.getByRole('region', { name: /Agenda for/ });
-	const row = agenda.getByRole('button', { name: new RegExp(`Cal agenda ${test.info().project.name}`) });
+	const row = agenda.locator('button.row', { hasText: `Cal agenda ${test.info().project.name}` });
 	await expect(row).toContainText('09:30');
 	await row.click();
 	await expect(page.getByRole('dialog', { name: 'Item' })).toBeVisible();
