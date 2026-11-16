@@ -17,6 +17,7 @@ test.afterAll(() => page.context().close());
 const openAdd = async () => {
 	await page.goto('/today');
 	await bottomBar(page).getByRole('button', { name: 'Add' }).click();
+	await page.waitForTimeout(300); // the sheet grows out of the + (#93)
 	return page.getByRole('dialog', { name: 'Add' });
 };
 

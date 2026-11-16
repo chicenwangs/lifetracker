@@ -6,6 +6,9 @@
 	import { afterNavigate, beforeNavigate, goto, onNavigate, preloadCode } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { openAdd } from '$lib/client/mobile.svelte';
+	import { post } from '$lib/client/api';
+	import { buzz } from '$lib/client/haptics';
+	import { showError } from '$lib/client/toast.svelte';
 
 	const TABS = [
 		// icons = wireframe MBar
@@ -41,6 +44,13 @@
 		if (current) last = current;
 	});
 	const on = (href: string) => (current ?? last) === href;
+	const addLabel = $derived(
+		page.url.pathname.startsWith('/keep')
+			? 'New note'
+			: page.url.pathname.startsWith('/pages')
+				? 'New page'
+				: 'Add',
+	);
 
 	// each tab remembers its last URL (open day / week / filters) and every URL its scroll
 	const lastUrl = $state<Record<string, string>>({});
@@ -83,6 +93,33 @@
 		);
 	});
 	afterNavigate(() => setTimeout(() => (viaTab = false)));
+	// + makes what this tab makes (#93, G6): a note on Keep, a page on Pages, else an item on the day on screen
+	async function add(e: MouseEvent) {
+		const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		const from = { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+		buzz('tick');
+		const p = page.url.pathname;
+		if (p.startsWith('/keep')) {
+			const u = new URL(page.url);
+			u.searchParams.set('new', '');
+			return goto(u, { noScroll: true, keepFocus: true });
+		}
+		if (p.startsWith('/pages')) {
+			try {
+				const made = await post<{ page: { id: string } }>('/api/pages', { parentId: null });
+				return goto(`/pages/${made.page.id}`);
+			} catch (err) {
+				return showError(err);
+			}
+		}
+		const d = page.data as { day?: string; from?: string; to?: string; today?: string };
+		const day = p.startsWith('/today')
+			? d.day
+			: p.startsWith('/week') && d.from && d.today && !(d.today >= d.from && d.today < (d.to ?? ''))
+				? d.from
+				: undefined;
+		openAdd('', 'plan', { day, from });
+	}
 	// warm app: every tab's code ready before the first tap
 	onMount(() => {
 		const warm = () => TABS.forEach((t) => t && preloadCode(t.href));
@@ -115,7 +152,7 @@
 				<span>{t.label}</span>
 			</a>
 		{:else}
-			<button class="add" type="button" aria-label="Add" onclick={() => openAdd()}>+</button>
+			<button class="add" type="button" aria-label={addLabel} onclick={add}>+</button>
 		{/if}
 	{/each}
 </nav>

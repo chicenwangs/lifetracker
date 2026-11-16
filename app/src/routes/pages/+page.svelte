@@ -25,7 +25,7 @@
 	{:else}
 		<p class="muted">Your second brain starts here: notes that grow, link to each other and nest.</p>
 	{/if}
-	<button class="btn primary" type="button" onclick={create}>New page</button>
+	<button class="btn primary newpage" type="button" onclick={create}>New page</button>
 	<p class="hint">Tip: Ctrl+K searches pages, notes and planner items.</p>
 </div>
 
@@ -38,7 +38,8 @@
 	}
 	/* phone: the tree above is the screen and has its own New page */
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
-		.has {
+		.has,
+		.newpage /* the bar's + (#93) */ {
 			display: none;
 		}
 	}

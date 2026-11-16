@@ -447,3 +447,12 @@ describe('/remind (P6)', () => {
 		expect(p('gym tmr 6pm').reminders).toEqual([]);
 	});
 });
+
+describe('day on screen (#93)', () => {
+	it('is the date when none is typed; typed days and relative words still win', () => {
+		expect(p('gym 6pm', { day: '2026-11-10' }).date).toBe('2026-11-10');
+		expect(p('gym tmr 6pm', { day: '2026-11-10' }).date).toBe('2026-11-07');
+		expect(p('gym 12 nov 6pm', { day: '2026-11-10' }).date).toBe('2026-11-12');
+		expect(p('gym 6pm').date).toBe('2026-11-06');
+	});
+});
