@@ -56,7 +56,33 @@
 			onpointerup={up}
 			onpointercancel={up}
 		>
-			<span>{t.text}</span>
+			{#if t.onclick}
+				<button
+					class="open"
+					type="button"
+					onclick={async () => {
+						const fn = t.onclick;
+						closeToast();
+						await fn?.();
+					}}>{t.text}</button
+				>
+			{:else}
+				<span>{t.text}</span>
+			{/if}
+			{#if t.actions?.length}
+				<div class="acts">
+					{#each t.actions as a (a.label)}
+						<button
+							class="undo"
+							type="button"
+							onclick={async () => {
+								closeToast();
+								await a.run();
+							}}>{a.label}</button
+						>
+					{/each}
+				</div>
+			{/if}
 			{#if t.undo}
 				<button
 					class="undo"
@@ -106,6 +132,22 @@
 		border: 1.5px solid currentColor;
 		border-radius: 8px;
 	}
+	.open {
+		flex: 1;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.acts {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex-wrap: wrap;
+	}
 	.x {
 		background: none;
 		border: 0;
@@ -140,8 +182,12 @@
 			padding: 4px 4px 4px 16px;
 			font-size: 14px;
 		}
-		.toast > span {
+		.toast > span,
+		.open {
 			flex: 1;
+			min-height: 48px;
+			display: flex;
+			align-items: center;
 		}
 		.undo,
 		.x {
