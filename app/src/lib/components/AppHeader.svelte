@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { backCloses } from '$lib/client/layers';
 	import { page } from '$app/state';
+	import { afterNavigate, goto } from '$app/navigation';
 	import QuickAdd from './QuickAdd.svelte';
 	import AppIcon from './AppIcon.svelte';
 	import CommandPalette from './CommandPalette.svelte';
@@ -22,6 +23,43 @@
 	];
 	let menu = $state(false);
 	let acct = $state(false); // phone: account sheet instead of the dropdown (#88)
+
+	// phone top bar (#89): tab screens = mark · search · avatar; deeper screens = Back + title (+ the same 2 actions)
+	const TAB_ROOTS = ['/', '/today', '/week', '/keep', '/pages'];
+	const path = $derived(page.url.pathname);
+	const scope = $derived(page.url.searchParams.get('scope'));
+	const deep = $derived(!(TAB_ROOTS.includes(path) && !scope));
+	const title = $derived.by(() => {
+		if (path.startsWith('/settings')) return 'Settings';
+		if (path === '/keep')
+			return scope === 'archive' ? 'Keep archive' : scope === 'shared' ? 'Shared notes' : 'Keep';
+		if (path === '/pages/shared') return 'Shared with me';
+		if (path === '/pages/archive') return 'Archive';
+		if (path === '/pages/trash') return 'Pages trash';
+		if (path === '/pages/graph') return 'Graph';
+		if (path.startsWith('/pages/'))
+			return (page.data.page as { title?: string } | undefined)?.title || 'Untitled';
+		if (path === '/trash') return 'Trash';
+		if (path === '/month') return 'Month';
+		if (path.startsWith('/item/')) return 'Item';
+		if (path === '/more') return 'More';
+		return '';
+	});
+	const parent = $derived(
+		path.startsWith('/pages/')
+			? '/pages'
+			: path === '/keep'
+				? '/keep'
+				: path === '/month'
+					? '/week'
+					: '/today',
+	);
+	// Back = system Back while there is in-app history; opened straight from a link / widget: go to the parent tab
+	let inApp = false;
+	afterNavigate((n) => {
+		if (n.from) inApp = true;
+	});
+	const back = () => (inApp ? history.back() : goto(parent));
 	let help = $state(false);
 	let cmdk: CommandPalette | undefined = $state();
 	const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
@@ -49,8 +87,24 @@
 	);
 </script>
 
-<header class="hdr">
+<header class="hdr" class:deep>
 	<a class="mark" href="/" aria-label="Life Tracker home"><AppIcon size={30} label="" /></a>
+	{#if deep}
+		<button class="pback" type="button" aria-label="Back" onclick={back}>
+			<svg
+				width="24"
+				height="24"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg
+			>
+		</button>
+		<span class="ptitle">{title}</span>
+	{/if}
 	<nav aria-label="Main">
 		{#each NAV as n (n.href)}
 			<a
@@ -74,9 +128,20 @@
 		<button
 			class="search"
 			type="button"
-			aria-label="Search (Ctrl+K)"
+			aria-label="Search"
 			title="Search  Ctrl+K"
-			onclick={() => cmdk?.show()}>Search <kbd>{mod}+K</kbd></button
+			onclick={() => cmdk?.show()}
+			><svg
+				class="sicon"
+				width="20"
+				height="20"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg
+			><span class="stext">Search</span> <kbd>{mod}+K</kbd></button
 		>
 		<QuickAdd tz={user.timezone} />
 		<button
@@ -207,6 +272,11 @@
 		white-space: nowrap;
 		font-size: 13px;
 		opacity: 0.9;
+	}
+	.pback,
+	.ptitle,
+	.sicon {
+		display: none;
 	}
 	.search {
 		display: inline-flex;
@@ -461,6 +531,63 @@
 			min-width: 0;
 			gap: 8px;
 		}
+		/* top app bar (#89): 48 dp actions, Back + title on deeper screens, no desktop header */
+		.deep .mark {
+			display: none;
+		}
+		.pback {
+			display: grid;
+			place-items: center;
+			width: 48px;
+			height: 48px;
+			margin-left: -8px;
+			border: 0;
+			border-radius: 50%;
+			background: transparent;
+			color: var(--ink);
+			cursor: pointer;
+			flex: none;
+		}
+		.pback:active {
+			background: var(--rule);
+		}
+		.ptitle {
+			display: block;
+			font-size: 18px;
+			font-weight: 700;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			min-width: 0;
+			flex: 1 1 auto;
+		}
+		.deep .right {
+			flex: none;
+		}
+		.search {
+			width: 48px;
+			height: 48px;
+			padding: 0;
+			justify-content: center;
+			border-radius: 50%;
+		}
+		.sicon {
+			display: block;
+		}
+		.avatar {
+			width: 44px;
+			height: 44px;
+			border-radius: 22px;
+			margin: 2px;
+		}
+		.mark {
+			display: grid;
+			place-items: center;
+			width: 48px;
+			height: 48px;
+			margin-left: -9px;
+		}
+		.stext,
 		.search kbd,
 		.mode, /* theme lives in Settings on phone (#88) */
 		.right > [aria-label='Keyboard shortcuts'] {
