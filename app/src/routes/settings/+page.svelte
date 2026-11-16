@@ -90,9 +90,9 @@
 		font-size: 13px;
 		color: var(--quiet);
 		max-width: 45%;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
+		min-width: 0;
+		text-align: right;
+		overflow-wrap: anywhere; /* big system text: wrap, never run off (#116) */
 	}
 	.chev {
 		color: var(--quiet);

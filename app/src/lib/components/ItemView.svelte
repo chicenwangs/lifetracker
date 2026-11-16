@@ -608,7 +608,7 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		font-weight: 700;
 		letter-spacing: 0.06em;
 		min-height: 22px;

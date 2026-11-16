@@ -496,7 +496,7 @@
 	.wk :global(.fc-event-mirror .fc-event-main) {
 		color: var(--ink) !important;
 		font-weight: 600;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 	}
 	/* the mirror above is the one visible box; FC's own highlight would draw a second one */
 	.wk :global(.fc-highlight) {
@@ -543,7 +543,7 @@
 	}
 	.wk :global(.fc-timegrid-slot-label-cushion),
 	.wk :global(.fc-timegrid-axis-cushion) {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 	}
 	.wk :global(.fc-timegrid-slot) {
@@ -661,7 +661,7 @@
 		line-height: 1.3;
 	}
 	.wk :global(.lt-time) {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 	}
 	.wk :global(.is-done .lt-title) {
 		text-decoration: line-through;

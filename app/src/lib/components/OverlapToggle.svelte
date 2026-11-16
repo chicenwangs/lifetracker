@@ -82,7 +82,7 @@
 		height: 20px;
 		border-radius: 10px;
 		color: #fff;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		font-weight: 700;
 		display: inline-flex;
 		align-items: center;

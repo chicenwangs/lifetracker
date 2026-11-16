@@ -185,7 +185,7 @@
 		border: 0;
 		background: none;
 		color: var(--ink);
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		padding: 2px 8px;
 		cursor: pointer;
 	}
@@ -198,7 +198,7 @@
 		color: var(--seg-on-ink);
 	}
 	.hint {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 	}
 	.err {

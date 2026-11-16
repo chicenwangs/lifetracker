@@ -133,7 +133,7 @@
 		font-size: 16px;
 	}
 	.st {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 		border: 1px solid var(--border);
 		border-radius: 10px;
@@ -164,7 +164,7 @@
 		display: block;
 		width: 56px;
 		padding: 3px 0 0 12px;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 	}
 	.now {
@@ -209,6 +209,6 @@
 		white-space: nowrap;
 	}
 	.tm {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 	}
 </style>

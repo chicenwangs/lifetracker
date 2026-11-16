@@ -165,7 +165,7 @@
 		align-items: center;
 		gap: 5px;
 		max-width: calc(100% - 16px);
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 		background: var(--card);
 		border: 1px solid var(--border);

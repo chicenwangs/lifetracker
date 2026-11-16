@@ -345,7 +345,7 @@
 	}
 	kbd {
 		font-family: inherit;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		border: 1px solid var(--border);
 		border-radius: 5px;
 		padding: 0 5px;

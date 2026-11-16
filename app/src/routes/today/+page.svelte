@@ -410,7 +410,7 @@
 		gap: 8px;
 	}
 	.k {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		font-weight: 700;
 		text-transform: uppercase;
 		color: var(--muted);
@@ -509,7 +509,7 @@
 		height: 22px;
 		border-radius: 50%;
 		color: #fff;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		display: grid;
 		place-items: center;
 	}

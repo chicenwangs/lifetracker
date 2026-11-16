@@ -313,7 +313,7 @@
 		box-shadow: var(--shadow-card);
 	}
 	.mg {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 		padding: 4px 8px 2px;
 	}
@@ -352,11 +352,11 @@
 	}
 	.hint {
 		margin-left: auto;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 	}
 	.mfoot {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 		padding: 6px 8px 4px;
 		margin-top: 4px;
@@ -364,7 +364,7 @@
 		line-height: 1.7;
 	}
 	code {
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		background: var(--rule);
 		border-radius: 4px;
 		padding: 0 4px;

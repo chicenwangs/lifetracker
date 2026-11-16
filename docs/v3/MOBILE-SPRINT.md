@@ -44,7 +44,7 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 | 4 polish | #112 | Notification Done / Snooze (needs real phone) | todo | |
 | 4 polish | #113 | Refresh on resume | PR open | #145 |
 | 4 polish | #114 | System bars follow theme, screen edges (needs real phone) | todo | |
-| 4 polish | #116 | Text sizes + system font size | todo | |
+| 4 polish | #116 | Text sizes + system font size | PR open | #146 |
 | 4 polish | #117 | App shortcuts + share target (needs real phone) | todo | |
 
 Mark a row DONE (date + PR) when merged.

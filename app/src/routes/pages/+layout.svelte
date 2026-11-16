@@ -377,7 +377,7 @@
 		}
 		.lbl {
 			margin: 6px 0 0;
-			font-size: 11px;
+			font-size: max(var(--fs-min), 11px);
 			font-weight: 700;
 			letter-spacing: 0.06em;
 			text-transform: uppercase;

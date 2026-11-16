@@ -145,7 +145,7 @@
 		align-items: center;
 	}
 	.hd span {
-		font-size: 10px;
+		font-size: max(var(--fs-min), 10px);
 		color: var(--quiet);
 		text-align: center;
 	}
@@ -171,7 +171,7 @@
 		outline-offset: 2px;
 	}
 	.wn {
-		font-size: 10px;
+		font-size: max(var(--fs-min), 10px);
 		font-weight: 600;
 		color: var(--quiet);
 	}
@@ -185,7 +185,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		font-weight: 500;
 		border: 1px solid var(--rule);
 	}
@@ -231,7 +231,7 @@
 		display: flex;
 		align-items: center;
 		gap: 4px;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 	}
 	.legend .sw {

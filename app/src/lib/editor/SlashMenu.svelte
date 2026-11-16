@@ -67,7 +67,7 @@
 	.none,
 	.keys {
 		padding: 6px 8px 2px;
-		font-size: 11px;
+		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 	}
 	/* keyboard hints mean nothing on a phone (#115) */
