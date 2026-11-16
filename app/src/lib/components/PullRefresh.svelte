@@ -1,6 +1,7 @@
 <!-- Phone pull to refresh (#103, G11): on a tab screen at the very top, pull down past the line and let go = fetch
      fresh data. The browser's own pull (reloads the page) is off on phone (app.css overscroll-behavior). Tap path:
-     re-tap the open tab while at the top (MobileBar). TalkBack: the sr-only Refresh button. -->
+     re-tap the open tab while at the top (MobileBar). TalkBack: the sr-only Refresh button.
+     Also refreshes quietly when the app comes back after 30 s+ (#113). -->
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -11,18 +12,33 @@
 	const ROOTS = ['/', '/today', '/week', '/month', '/keep', '/pages'];
 	const LINE = 72; // px of pull (after damping) that refreshes
 	let pull = $state(0);
-	let busy = $state(false);
+	let busy = false;
+	let spin = $state(false); // the spinner: at once for a pull or tap, after 1 s for a quiet refresh
 	const onTab = $derived(ROOTS.includes(page.url.pathname));
 
-	async function run() {
+	async function run(quiet = false) {
 		if (busy) return;
 		busy = true;
+		const slow = quiet ? setTimeout(() => (spin = true), 1000) : null;
+		spin = !quiet;
 		try {
 			await invalidateAll();
 		} finally {
-			busy = false;
+			if (slow) clearTimeout(slow);
+			busy = spin = false;
 		}
 	}
+
+	// #113: back to the front after a while (app resumed, tab shown again) = refresh this screen quietly, scroll kept
+	onMount(() => {
+		let away = 0;
+		const vis = () => {
+			if (document.hidden) away = Date.now();
+			else if (away && Date.now() - away > 30_000 && isPhone()) void run(true);
+		};
+		document.addEventListener('visibilitychange', vis);
+		return () => document.removeEventListener('visibilitychange', vis);
+	});
 
 	onMount(() => {
 		let y0: number | null = null;
@@ -74,15 +90,15 @@
 </script>
 
 {#if onTab}
-	<button class="sr-only ptrbtn" type="button" onclick={run}>Refresh</button>
-	{#if pull > 0 || busy}
+	<button class="sr-only ptrbtn" type="button" onclick={() => run()}>Refresh</button>
+	{#if pull > 0 || spin}
 		<div
 			class="ptr"
-			class:spin={busy}
-			style:translate="0 {busy ? LINE * 0.75 : pull * 0.75}px"
-			style:rotate="{busy ? 0 : pull * 3}deg"
+			class:spin
+			style:translate="0 {spin ? LINE * 0.75 : pull * 0.75}px"
+			style:rotate="{spin ? 0 : pull * 3}deg"
 			role="status"
-			aria-label={busy ? 'Refreshing' : pull >= LINE ? 'Let go to refresh' : 'Pull to refresh'}
+			aria-label={spin ? 'Refreshing' : pull >= LINE ? 'Let go to refresh' : 'Pull to refresh'}
 		>
 			<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
 				><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" /></svg

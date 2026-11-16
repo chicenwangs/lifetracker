@@ -53,3 +53,21 @@ test('tap path: re-tap the open tab at the top; Refresh button for TalkBack', as
 	await page.getByRole('button', { name: 'Refresh', exact: true }).dispatchEvent('click'); // sr-only: how TalkBack activates it
 	await expect(page.getByText(`Read out in ${tag}`).first()).toBeVisible();
 });
+
+test('back to the front after a while = fresh data, no pull (#113)', async () => {
+	await page.goto('/keep');
+	await addNote(`Resumed in ${tag}`);
+	await page.evaluate(() => {
+		const hide = (h: boolean) => {
+			Object.defineProperty(document, 'hidden', { value: h, configurable: true });
+			document.dispatchEvent(new Event('visibilitychange'));
+		};
+		hide(true);
+		const now = Date.now;
+		Date.now = () => now() + 60_000; // a minute away
+		hide(false);
+	});
+	await expect(page.getByText(`Resumed in ${tag}`).first()).toBeVisible();
+	const y = await page.evaluate(() => scrollY);
+	expect(y).toBe(0);
+});
