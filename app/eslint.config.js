@@ -22,6 +22,24 @@ export default ts.config(
 	// no paths.base in this app -> resolve() adds nothing
 	{ rules: { 'svelte/no-navigation-without-resolve': 'off' } },
 	{ files: ['tests/**'], rules: { '@typescript-eslint/no-non-null-assertion': 'off' } },
+	// in-app dialogs only (#109): the browser ones show the site address and ignore the theme on a phone
+	{
+		files: ['src/**'],
+		rules: {
+			'no-restricted-globals': [
+				'error',
+				{ name: 'confirm', message: 'Use askConfirm from $lib/client/dialog.svelte.' },
+				{ name: 'prompt', message: 'Use askText from $lib/client/dialog.svelte.' },
+				{ name: 'alert', message: 'Use showToast.' },
+			],
+			'no-restricted-properties': [
+				'error',
+				{ object: 'window', property: 'confirm' },
+				{ object: 'window', property: 'prompt' },
+				{ object: 'window', property: 'alert' },
+			],
+		},
+	},
 	// Back closing a layer drops a refresh in flight; the wrapper lets layers.ts redo it (#91)
 	{
 		files: ['src/**'],

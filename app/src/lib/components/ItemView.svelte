@@ -228,13 +228,6 @@
 
 	async function del() {
 		if (!it) return;
-		const n = v?.steps.length ?? 0;
-		if (
-			!confirm(
-				`Delete "${it.title}"${n ? ` and its ${n} steps` : ''}? Undo for 5 s, or restore from Trash for 30 days.`,
-			)
-		)
-			return;
 		const parent = it.parentId;
 		await removeItem(it.id, it.title, () => onchanged?.());
 		ondeleted?.(parent);

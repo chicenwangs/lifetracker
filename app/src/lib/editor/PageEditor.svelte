@@ -1,6 +1,7 @@
 <!-- Pages editor (FEATURES §6 PG-EDIT/BLOCKS/SLASH/MOVE/INLINE/TABLE/LINK). Tiptap is not $state: created in
      onMount, destroyed on teardown (ADR-002). Autosave ~600 ms after the last change; failed save keeps the text. -->
 <script lang="ts">
+	import { askText } from '$lib/client/dialog.svelte';
 	import { backCloses } from '$lib/client/layers';
 	import { onMount } from 'svelte';
 	import { Editor, type Content } from '@tiptap/core';
@@ -116,7 +117,7 @@
 		if (!r.ok) throw new Error(j?.error?.message ?? 'Upload failed');
 		if (!editor) return;
 		if (fileKind === 'image') {
-			const alt = prompt('Describe the image (alt text, required)', f.name.replace(/\.[^.]+$/, ''))?.trim();
+			const alt = await askText('Describe the image (alt text, required)', { value: f.name.replace(/\.[^.]+$/, ''), ok: 'Add image' }); // prettier-ignore
 			if (!alt) return showToast('Image not added: it needs a description.', { kind: 'error' });
 			editor.chain().focus().setImage({ src: j.attachment.url, alt }).run();
 		} else {
@@ -217,10 +218,10 @@
 
 	const cmd = (f: (c: ReturnType<Editor['chain']>) => ReturnType<Editor['chain']>) =>
 		editor && f(editor.chain().focus()).run();
-	function setLink() {
+	async function setLink() {
 		if (!editor) return;
 		if (editor.isActive('link')) return cmd((c) => c.unsetLink());
-		const href = prompt('Link address (https://…)')?.trim();
+		const href = await askText('Link address (https://…)', { ok: 'Add link' });
 		if (!href) return;
 		if (!/^(https?:\/\/|mailto:)/i.test(href))
 			return showToast('Links must start with https://, http:// or mailto:', { kind: 'error' });

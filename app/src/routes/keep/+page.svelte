@@ -1,5 +1,6 @@
 <!-- Keep (FEATURES §5): side nav (notes, binders, labels, archive, trash) · search · New note · Pinned · notes · Select mode. -->
 <script lang="ts">
+	import { askConfirm, askText } from '$lib/client/dialog.svelte';
 	import { afterNavigate, goto, pushState, replaceState } from '$app/navigation';
 	import { invalidateAll } from '$lib/client/refresh';
 	import { page } from '$app/state';
@@ -113,7 +114,8 @@
 		}
 	}
 	async function forever(n: NoteDTO) {
-		if (!confirm(`Delete "${n.title || 'this note'}" for good? This can't be undone.`)) return;
+		const msg = `Delete "${n.title || 'this note'}" for good? This can't be undone.`;
+		if (!(await askConfirm(msg, { ok: 'Delete', danger: true }))) return;
 		try {
 			await del(`/api/keep/notes/${n.id}`);
 			await refresh();
@@ -140,8 +142,8 @@
 
 	// ---------- binders + labels ----------
 	async function newBinder() {
-		const name = prompt('Binder name');
-		if (!name?.trim()) return;
+		const name = await askText('Binder name', { ok: 'Add' });
+		if (!name) return;
 		try {
 			const r = await post<{ binder: { id: string } }>('/api/keep/binders', { name });
 			await refresh();
@@ -151,11 +153,11 @@
 		}
 	}
 	async function editThing(kind: 'binders' | 'labels', id: string, name: string) {
-		const v = prompt(`Rename (empty = delete; notes are kept)`, name);
+		const v = await askText(`Rename (empty = delete; notes are kept)`, { value: name, ok: 'Save' });
 		if (v === null) return;
 		try {
 			if (v.trim()) await patch(`/api/keep/${kind}/${id}`, { name: v });
-			else if (confirm(`Delete "${name}"? Notes stay.`)) {
+			else if (await askConfirm(`Delete "${name}"? Notes stay.`, { ok: 'Delete', danger: true })) {
 				await del(`/api/keep/${kind}/${id}`);
 				if (kind === 'binders' && data.binder === id) go({ binder: null });
 				else if (kind === 'labels') go({ label: data.labelFilter.filter((x: string) => x !== id) });

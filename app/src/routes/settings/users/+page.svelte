@@ -1,5 +1,6 @@
 <!-- Admin: sign-up mode + accounts (with storage used: uploaded files vs the per-person quota). New installs start invite-only. Disable = can't log in, signed out everywhere. -->
 <script lang="ts">
+	import { askConfirm } from '$lib/client/dialog.svelte';
 	import { enhance } from '$app/forms';
 	import { prettyDate, utcToLocal } from '$lib/time';
 	let { data, form } = $props();
@@ -90,13 +91,9 @@
 							<form
 								method="post"
 								action="?/disable"
-								use:enhance={({ cancel }) => {
-									if (
-										!confirm(
-											`Disable ${u.displayName}? They are signed out and can't log in. Their data stays.`,
-										)
-									)
-										cancel();
+								use:enhance={async ({ cancel }) => {
+									const msg = `Disable ${u.displayName}? They are signed out and can't log in. Their data stays.`;
+									if (!(await askConfirm(msg, { ok: 'Disable', danger: true }))) cancel();
 								}}
 							>
 								<input type="hidden" name="id" value={u.id} />

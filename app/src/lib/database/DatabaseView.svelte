@@ -2,6 +2,7 @@
      Columns (hide / reorder), table with in-place cells, column menu, new record. Phone (≤700 px) = cards.
      Every action is a button or field: no drag anywhere. -->
 <script lang="ts">
+	import { askConfirm, askText } from '$lib/client/dialog.svelte';
 	import { goto } from '$app/navigation';
 	import { del, get, patch, post, ApiError } from '$lib/client/api';
 	import { showError } from '$lib/client/toast.svelte';
@@ -73,7 +74,7 @@
 			await send(false);
 		} catch (e) {
 			if (!(e instanceof ApiError) || e.code !== 'values_lost') return showError(e);
-			if (!confirm(`${e.message}\n\nGo ahead?`)) return;
+			if (!(await askConfirm(`${e.message}\n\nGo ahead?`, { ok: 'Go ahead', danger: true }))) return;
 			await send(true).catch(showError);
 		}
 		await load();
@@ -81,20 +82,21 @@
 	const saveView = (c: ViewConfig) => run(() => patch(`/api/database-views/${d?.viewId}`, { config: c }));
 
 	// ---------- views ----------
-	function addView() {
-		const name = prompt('Name the view')?.trim();
+	async function addView() {
+		const name = await askText('Name the view', { ok: 'Add' });
 		if (!name) return;
 		void run(async () => {
 			const r = await post<{ view: { id: string } }>(`/api/databases/${databaseId}/views`, { name });
 			await load(r.view.id);
 		}, false);
 	}
-	function renameView() {
-		const name = prompt('Rename the view', view?.name)?.trim();
+	async function renameView() {
+		const name = await askText('Rename the view', { value: view?.name, ok: 'Rename' });
 		if (name) void run(() => patch(`/api/database-views/${d?.viewId}`, { name }));
 	}
-	function deleteView() {
-		if (!confirm(`Delete the view "${view?.name}"? Records stay.`)) return;
+	async function deleteView() {
+		if (!(await askConfirm(`Delete the view "${view?.name}"? Records stay.`, { ok: 'Delete', danger: true })))
+			return;
 		void run(async () => {
 			await del(`/api/database-views/${d?.viewId}`);
 			await load('');
@@ -197,8 +199,14 @@
 			const p = await post<{ pageId: string }>(`/api/database-records/${r.id}/page`);
 			await goto(`/pages/${p.pageId}`);
 		}, false);
-	function deleteRecord(r: DbRow) {
-		if (!confirm(`Delete "${title(r)}"? Its page goes to Trash for 30 days; its values are gone.`)) return;
+	async function deleteRecord(r: DbRow) {
+		if (
+			!(await askConfirm(`Delete "${title(r)}"? Its page goes to Trash for 30 days; its values are gone.`, {
+				ok: 'Delete',
+				danger: true,
+			}))
+		)
+			return;
 		void run(() => del(`/api/database-records/${r.id}`));
 	}
 	const toggle = (p: typeof panel) => (panel = panel === p ? null : p);
