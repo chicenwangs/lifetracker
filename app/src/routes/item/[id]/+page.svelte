@@ -1,6 +1,7 @@
 <!-- Full page for an item (direct link / reload). Same view as the centre peek. -->
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import ItemView from '$lib/components/ItemView.svelte';
 	let { data } = $props();
 </script>

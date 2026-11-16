@@ -4,6 +4,7 @@
 	import { onMount, type Snippet } from 'svelte';
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
+	import { backCloses } from '$lib/client/layers';
 
 	let {
 		onclose,
@@ -11,6 +12,7 @@
 		labelledby,
 		origin,
 		intro = 'rise',
+		back = true,
 		children,
 	}: {
 		onclose: () => void;
@@ -18,10 +20,14 @@
 		labelledby?: string;
 		origin?: { x: number; y: number };
 		intro?: 'rise' | 'grow';
+		/** false = the caller has its own history entry (item peek: /item/<id>) */
+		back?: boolean;
 		children: Snippet;
 	} = $props();
 
 	let panel: HTMLDivElement | undefined = $state();
+	// svelte-ignore state_referenced_locally
+	const layer = back ? backCloses : () => {};
 	let height = $state<'half' | 'full'>('half');
 	let dragging = $state(false);
 	let dragY = $state(0);
@@ -98,6 +104,7 @@
 		aria-labelledby={labelledby}
 		tabindex="-1"
 		bind:this={panel}
+		use:layer={onclose}
 		style:transform={dragY ? `translateY(${dragY}px)` : ''}
 		in:grow={intro === 'grow' ? { duration: 220 } : { duration: 0 }}
 		out:grow={intro === 'grow' ? { duration: 150 } : { duration: 0 }}

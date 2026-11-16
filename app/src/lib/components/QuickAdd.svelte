@@ -7,6 +7,7 @@
   Slots preview live; problems only on Enter. Server re-parses (truth).
 -->
 <script lang="ts">
+	import { backCloses } from '$lib/client/layers';
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import { qaPrefs, typeName } from '$lib/client/itemtypes.svelte';
@@ -250,6 +251,7 @@
 		>
 			<div
 				class="pal"
+				use:backCloses={hide}
 				role="dialog"
 				aria-modal="true"
 				aria-label="Quick add"

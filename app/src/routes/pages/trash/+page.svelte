@@ -1,6 +1,6 @@
 <!-- Pages Trash (D-18): restore within 30 days, then gone. -->
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	let { data } = $props();

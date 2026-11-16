@@ -16,6 +16,7 @@ import android.widget.Toast;
 import androidx.activity.OnBackPressedCallback;
 
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.BridgeWebViewClient;
 
 /** The app = the server's own pages in a WebView (Capacitor), plus widgets, reminder alarms and self-update. */
 public class MainActivity extends BridgeActivity {
@@ -25,17 +26,21 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(state);
         WebView w = getBridge().getWebView();
 
-        // Android back = page back; at the first page, leave the app
-        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+        // Back = web history back: closes the top sheet / dialog / menu first, then the page (#91, layers.ts).
+        // Enabled only while there is web history, so at the first page the system takes Back and shows the
+        // predictive back-to-home preview (enableOnBackInvokedCallback in the manifest).
+        OnBackPressedCallback back = new OnBackPressedCallback(false) {
             @Override
             public void handleOnBackPressed() {
-                if (w.canGoBack()) {
-                    w.goBack();
-                    return;
-                }
-                setEnabled(false);
-                getOnBackPressedDispatcher().onBackPressed();
-                setEnabled(true);
+                if (w.canGoBack()) w.goBack();
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, back);
+        getBridge().setWebViewClient(new BridgeWebViewClient(getBridge()) {
+            @Override
+            public void doUpdateVisitedHistory(WebView v, String url, boolean reload) {
+                super.doUpdateVisitedHistory(v, url, reload);
+                back.setEnabled(v.canGoBack()); // pushState (sheets, dialogs) lands here too
             }
         });
 

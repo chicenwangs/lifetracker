@@ -29,7 +29,8 @@ Caveman rules for Claude Code in this repo.
 - Swipe = peers only (days, weeks, months, row actions). Never between tabs.
 - Long press = pick up / select. Never delete, never a menu.
 - Row swipe right = done, left = delete (Keep: archive). Always Undo.
-- One shared bottom sheet. Back closes the top layer first.
+- One shared bottom sheet (`BottomSheet.svelte`). Back closes the top layer first: new sheet / dialog / menu root gets `use:backCloses` (`lib/client/layers.ts`).
+- `invalidateAll` only from `$lib/client/refresh` (lint rule): Back drops a refresh in flight, layers redo it.
 - No "Click" / "Ctrl" / "Esc" / "PC view" text on phone.
 - Test in the phone projects (`npm run test:e2e:phone`, `tests/e2e/phone/`).
 

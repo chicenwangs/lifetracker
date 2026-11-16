@@ -1,7 +1,7 @@
 <!-- Settings › Notifications (FEATURES §9, D-15). Explain first, ask the browser only on a click. Three honest states:
      browser permission · this device subscribed · server can send. "Sent" never means "delivered". -->
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { onMount } from 'svelte';
 	import { get, patch, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';

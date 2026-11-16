@@ -2,7 +2,8 @@
      now (owner 2026-11-14). Hold a row ~0.5 s = delete with Undo. No "To do today" list (owner 2026-11-16).
      Glance + capture; planning stays on the PC. Works on desktop too. -->
 <script lang="ts">
-	import { afterNavigate, goto, invalidateAll, replaceState } from '$app/navigation';
+	import { afterNavigate, goto, replaceState } from '$app/navigation';
+	import { invalidateAll } from '$lib/client/refresh';
 	import { onMount, tick } from 'svelte';
 	import { post } from '$lib/client/api';
 	import { calendarBus } from '$lib/client/bus.svelte';
