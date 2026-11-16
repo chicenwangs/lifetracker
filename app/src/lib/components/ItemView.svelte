@@ -891,4 +891,10 @@
 	.bchip.on {
 		box-shadow: inset 0 0 0 1.5px currentColor;
 	}
+	/* phone peek: the shared bottom sheet owns the visible Close (#92); desktop keeps this one */
+	@media (max-width: 699px) {
+		.top .close {
+			display: none;
+		}
+	}
 </style>

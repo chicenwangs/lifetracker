@@ -40,6 +40,8 @@ declare global {
 			peekId?: string;
 			/** Keep: an open note has its own history entry, so Back (or the Android edge swipe) closes it */
 			keepNote?: string;
+			/** phone Add sheet: own history entry so Back closes it (#92) */
+			addSheet?: boolean;
 		}
 		interface Error {
 			code: string;

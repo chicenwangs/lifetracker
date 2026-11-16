@@ -691,7 +691,8 @@ test('v2 P2 phone: opens on Today, Now card, + Add, Keep quick note, no sideways
 	await ph.keyboard.type('stretch 23:00 to 23:30');
 	await ph.getByRole('button', { name: 'Add', exact: true }).last().click();
 	await expect(ph.locator('.toast')).toContainText('Added "stretch"');
-	await ph.locator('.sheet').getByRole('button', { name: 'Close' }).click();
+	await ph.getByRole('dialog', { name: 'Add' }).getByRole('button', { name: 'Close' }).click();
+	await expect(ph.getByRole('dialog', { name: 'Add' })).toBeHidden();
 	await expect(ph.locator('.wheel')).toContainText('stretch');
 	// MOB-005: square cycles by tap
 	const row = ph.locator('.ent', { hasText: 'stretch' });
@@ -1223,7 +1224,7 @@ test('owner test pass 2026-11-16: chips, popups, Keep, Pages undo + dark, pins, 
 	await expect(held).toBeVisible();
 	await ph.getByRole('button', { name: 'Add', exact: true }).click();
 	await ph.keyboard.type('gym tmr 6pm /');
-	await expect(ph.locator('.sheet .menu.up')).toBeVisible();
+	await expect(ph.getByRole('dialog', { name: 'Add' }).locator('.menu.up')).toBeVisible();
 	await ctx.close();
 });
 
