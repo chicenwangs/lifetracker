@@ -211,6 +211,7 @@
 			)}</strong
 		>
 		<a class="btn sm" href="/week?w={addDays(data.from, 7)}" aria-label="Next week">›</a>
+		<a class="btn sm month" href="/month">Month</a>
 	</div>
 	<PhoneWeek from={data.from} to={data.to} today={data.today} {tz} cal={data.cal} />
 </main>
