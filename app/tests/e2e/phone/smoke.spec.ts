@@ -1,6 +1,6 @@
 // Phone smoke: each tab loads and shows the bottom bar. 48 dp + wording checks are fixme until their issue lands.
 import { expect, test, type Page } from '@playwright/test';
-import { bottomBar, expectTargets48, noDesktopHints, signIn } from './helpers';
+import { bottomBar, expectTappable, expectTargets48, noDesktopHints, signIn } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 let page: Page;
@@ -28,6 +28,15 @@ const TABS: [string, () => string][] = [
 	['a page', () => pagePath],
 	['Settings', () => '/settings/preferences'],
 ];
+
+test('Add sheet: every / command in quick add can be tapped', async () => {
+	test.fixme(test.info().project.name === 'phone-landscape', '#110: landscape has no bottom bar yet');
+	await page.goto('/today');
+	await bottomBar(page).getByRole('button', { name: 'Add' }).click();
+	await page.keyboard.type('gym tmr 6pm /');
+	await expectTappable(page.getByRole('dialog', { name: 'Add' }).getByRole('option'));
+	await page.keyboard.press('Escape');
+});
 
 for (const [name, path] of TABS) {
 	test(`${name} loads and shows the bottom bar`, async () => {

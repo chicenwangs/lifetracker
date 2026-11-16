@@ -60,6 +60,22 @@ export async function longPress(page: Page, el: Locator, ms = 600) {
 	await f.done();
 }
 
+/** toBeVisible() can't see clipping (overflow) or cover (another layer on top); this checks a tap at the
+ * centre of every match lands on it. Use it for popups and menus, e.g. inside sheets (#120 clipped the / menu). */
+export async function expectTappable(el: Locator) {
+	await expect(el.first()).toBeVisible();
+	for (const one of await el.all()) {
+		await one.scrollIntoViewIfNeeded();
+		const hit = () =>
+			one.evaluate((n) => {
+				const r = n.getBoundingClientRect();
+				const at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+				return !!at && n.contains(at);
+			});
+		await expect.poll(hit, { message: `tap misses ${await one.innerText().catch(() => '?')}` }).toBe(true);
+	}
+}
+
 /** Fails on any visible control under 48×48 CSS px. Allowlist (targets48-allowlist.json) = known gaps by label;
  * empty it as #101 lands. shortcut: measures the element box, so a ::before hit-slop doesn't count; read it from
  * getComputedStyle if #101 uses pseudo-element hit areas. */
