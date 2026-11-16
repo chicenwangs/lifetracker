@@ -59,10 +59,18 @@
 			const late = new Promise((r) => setTimeout(r, 2000));
 			void Promise.race([dropPush().catch(() => {}), late]).then(() => f.requestSubmit());
 		};
+		// keyboard opened (the page shrank, interactive-widget=resizes-content): keep the field you type in on screen (#118)
+		const keep = () => {
+			const f = document.activeElement as HTMLElement | null;
+			if (f && (f.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)))
+				f.scrollIntoView({ block: 'nearest' });
+		};
+		visualViewport?.addEventListener('resize', keep);
 		addEventListener('offline', off);
 		addEventListener('online', on);
 		addEventListener('submit', out, true);
 		return () => {
+			visualViewport?.removeEventListener('resize', keep);
 			removeEventListener('offline', off);
 			removeEventListener('online', on);
 			removeEventListener('submit', out, true);
