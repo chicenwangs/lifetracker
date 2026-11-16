@@ -148,6 +148,11 @@
 		display: flex;
 		gap: 8px;
 		justify-content: flex-end;
+		/* main button stays in view when the keyboard shrinks the sheet (#118) */
+		position: sticky;
+		bottom: 0;
+		padding: 8px 0;
+		background: var(--card);
 	}
 	/* the shared sheet's Close is phone-only; wide screens (landscape until #110) need this one */
 	@media (max-width: 699px) {

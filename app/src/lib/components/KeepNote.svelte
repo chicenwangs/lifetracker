@@ -615,11 +615,13 @@
 	.note {
 		position: fixed;
 		top: 8vh;
+		top: 8dvh; /* shrinks with the on-screen keyboard (#118) */
 		left: 50%;
 		translate: -50% 0;
 		z-index: 71;
 		width: min(620px, 94vw);
 		max-height: 84vh;
+		max-height: 84dvh;
 		overflow: auto;
 		padding: 18px;
 		display: flex;
