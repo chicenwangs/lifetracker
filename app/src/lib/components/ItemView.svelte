@@ -25,7 +25,8 @@
 	import { addDays, examCountdown, prettyDate, utcToLocal, weekdayOf } from '$lib/time';
 	import type { BlockDTO, ItemDTO, ItemType } from '$lib/types';
 	import { get, patch, post } from '$lib/client/api';
-	import { showError } from '$lib/client/toast.svelte';
+	import { enqueueAction, isOffline } from '$lib/client/offline';
+	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { removeItem } from '$lib/client/remove';
 	import { isPhone } from '$lib/client/phone';
 
@@ -141,6 +142,17 @@
 			await patch(`/api/items/${encodeURIComponent(it.id)}`, body);
 			await changed();
 		} catch (e) {
+			if (isOffline(e)) {
+				Object.assign(it, p);
+				enqueueAction({
+					key: `/api/items/${it.id}`,
+					method: 'PATCH',
+					path: `/api/items/${it.id}`,
+					payload: p,
+				});
+				showToast('Saved · Waiting to sync');
+				return;
+			}
 			showError(e);
 			await load();
 		}

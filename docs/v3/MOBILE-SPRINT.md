@@ -40,12 +40,12 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 | 3 screens | #115 | Touch wording + phone help (turns on wording checks) | DONE 2026-11-17 | #144 |
 | 4 polish | #104 | Teach each gesture once | DONE 2026-11-17 | #147 |
 | 4 polish | #84 / #83 | Phone onboarding tour | DONE 2026-11-17 | #148 |
-| 4 polish | #105 | Open instantly offline (owner 2026-11-17: server wins, latest edit wins) | todo | |
-| 4 polish | #112 | Notification Done / Snooze (needs real phone) | todo | |
+| 4 polish | #105 | Open instantly offline (owner 2026-11-17: server wins, latest edit wins) | DONE 2026-11-17 | #153 |
+| 4 polish | #112 | Notification Done / Snooze (needs real phone) | DONE 2026-11-17 | #151 |
 | 4 polish | #113 | Refresh on resume | DONE 2026-11-17 | #145 |
-| 4 polish | #114 | System bars follow theme, screen edges (needs real phone) | todo | |
+| 4 polish | #114 | System bars follow theme, screen edges (needs real phone) | DONE 2026-11-17 | #150 |
 | 4 polish | #116 | Text sizes + system font size | DONE 2026-11-17 | #146 |
-| 4 polish | #117 | App shortcuts + share target (needs real phone) | todo | |
+| 4 polish | #117 | App shortcuts + share target (needs real phone) | DONE 2026-11-17 | #152 |
 
 Mark a row DONE (date + PR) when merged.
 

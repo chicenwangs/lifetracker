@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { invalidateAll } from '$lib/client/refresh';
 	import { post } from '$lib/client/api';
+	import { enqueue, enqueueAction, isOffline } from '$lib/client/offline';
 	import { calendarChanged } from '$lib/client/bus.svelte';
 	import { qaPrefs } from '$lib/client/itemtypes.svelte';
 	import { addSheet, closeAdd } from '$lib/client/mobile.svelte';
@@ -42,6 +43,19 @@
 			problem = '';
 			calendarChanged();
 		} catch (e) {
+			if (isOffline(e)) {
+				enqueueAction({
+					key: `qa_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+					method: 'POST',
+					path: '/api/quickadd',
+					payload: { text: addSheet.text },
+				});
+				buzz('success');
+				showToast(`Added "${parsed.title}" · Waiting to sync`);
+				addSheet.text = '';
+				problem = '';
+				return;
+			}
 			showError(e);
 		} finally {
 			busy = false;
@@ -58,6 +72,18 @@
 			close();
 			await invalidateAll();
 		} catch (e) {
+			if (isOffline(e)) {
+				enqueue({
+					key: `new_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+					noteId: null,
+					payload: { body: note },
+				});
+				note = '';
+				buzz('success');
+				showToast('Note saved · Waiting to sync');
+				close();
+				return;
+			}
 			showError(e); // text stays in the box
 		} finally {
 			busy = false;

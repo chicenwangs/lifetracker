@@ -5,7 +5,7 @@ import { db, handle } from '../db';
 import { blocks, calendars, items, users } from '../schema';
 import { newId } from '../crypto';
 import { notFound, bad } from '../http';
-import { zDate, zStatus, zTime, zTitle, zType, zId } from '../validate';
+import { zDate, zIsoZ, zStatus, zTime, zTitle, zType, zId } from '../validate';
 import * as calendarsRepo from './calendars';
 import * as itemTypesRepo from './itemtypes';
 import { addDays, diffDays, nowUtcIso } from '$lib/time';
@@ -283,6 +283,8 @@ export const itemPatchSchema = z
 		rrule: zRRule.nullable(),
 		/** repeating edit scope (#72): 'this' detaches one date, 'following' splits the series, 'all' updates the series */
 		scope: z.enum(['this', 'following', 'all']),
+		/** #105 offline edit timestamp (UTC Z): if server's updatedAt >= editedAt, server wins */
+		editedAt: zIsoZ,
 	})
 	.partial()
 	.strict();
@@ -332,7 +334,9 @@ function detachOccurrence(meId: string, cur: ItemRow, occDate: string, p: ItemPa
 export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	const { id, occDate } = splitOccId(rawId);
 	const cur = mustOwn(meId, id);
-	const { scope, ...fields } = p;
+	const { scope, editedAt, ...fields } = p;
+	// #105 offline edit made before the server copy last changed: the server wins
+	if (editedAt && cur.updatedAt > editedAt) return cur;
 	if (fields.type !== undefined) itemTypesRepo.mustHave(meId, fields.type);
 
 	// Repeating occurrence handling (#72):

@@ -163,18 +163,21 @@ export const blockPatchSchema = z
 		endAt: zIsoZ,
 		status: zStatus,
 		itemId: zId('itm').nullable(),
+		/** #105 offline edit timestamp (UTC Z): if server's updatedAt >= editedAt, server wins */
+		editedAt: zIsoZ,
 	})
 	.partial()
 	.strict();
 
 export function patch(meId: string, id: string, p: z.infer<typeof blockPatchSchema>): BlockRow {
 	const cur = mustOwn(meId, id);
+	const { editedAt, ...set } = p;
+	if (editedAt && cur.updatedAt > editedAt) return cur;
 	if (p.type !== undefined) itemTypesRepo.mustHave(meId, p.type);
 	const s = p.startAt ?? cur.startAt;
 	const e = p.endAt ?? cur.endAt;
 	checkRange(s, e);
 	if (p.itemId) itemsRepo.mustOwn(meId, p.itemId);
-	const set = { ...p };
 	// unlinking from a private item: its title (copied into the label) must not become shareable text
 	if (p.itemId === null && cur.itemId && p.label === undefined && itemsRepo.getOwn(meId, cur.itemId)?.private)
 		set.label = 'Block';

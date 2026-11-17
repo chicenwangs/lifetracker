@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '@fontsource-variable/inter';
 	import '../app.css';
-	import { closePeek, peek } from '$lib/client/peek.svelte';
+	import { closePeek, openItem, peek } from '$lib/client/peek.svelte';
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import UndoToast from '$lib/components/UndoToast.svelte';
 	import Dialog from '$lib/components/Dialog.svelte';
@@ -15,7 +15,7 @@
 	import { onUndoKey } from '$lib/client/undo.svelte';
 	import { watchInbox } from '$lib/client/inbox';
 	import { onMount } from 'svelte';
-	import { beforeNavigate } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, replaceState } from '$app/navigation';
 	import { invalidateAll } from '$lib/client/refresh';
 	import { leavingPage } from '$lib/client/layers';
 	import Tour from '$lib/components/Tour.svelte';
@@ -30,16 +30,35 @@
 	$effect.pre(() => initTypes(data.types, data.user?.hiddenTypes ?? []));
 	onMount(() => (data.user ? watchInbox() : undefined));
 	beforeNavigate(leavingPage); // a link inside a menu or sheet must not be undone by its Back entry (#91)
+	// reminder notification tap (#112): /today?item=<id> opens that item's sheet over the screen
+	afterNavigate(() => {
+		const item = new URLSearchParams(location.search).get('item');
+		if (!item) return;
+		const u = new URL(location.href);
+		u.searchParams.delete('item');
+		setTimeout(() => {
+			replaceState(u.pathname + u.search + u.hash, {});
+			openItem(item);
+		});
+	});
 
-	// PWA + offline (FEATURES §10, DESIGN §17): shell cache via the service worker, a visible offline badge,
-	// Keep edits made offline sent when back. Sign-out wipes them (they may be private).
+	// PWA + offline (FEATURES §10, DESIGN §17, #105): shell + last-seen data cache via the service worker,
+	// a visible offline / Waiting to sync badge, Keep + planner edits queued offline and sent when back.
 	let online = $state(true);
+	let waiting = $state(0);
 	async function back() {
 		online = true;
-		if (!data.user || !queued()) return;
+		waiting = queued();
+		if (!data.user || !waiting) return;
 		const r = await flushQueue();
-		if (r.sent || r.copies) {
-			showToast(r.copies ? `Back online: ${r.sent} note change(s) sent, ${r.copies} kept as "(offline copy)" because they changed elsewhere` : `Back online: ${r.sent} note change(s) sent`); // prettier-ignore
+		waiting = queued();
+		if (r.sent || r.copies || r.planner) {
+			const msg = r.copies
+				? `Back online: ${r.sent} note change(s) sent, ${r.copies} kept as "(offline copy)" because they changed elsewhere`
+				: r.sent && !r.planner
+					? `Back online: ${r.sent} note change(s) sent`
+					: `Back online: ${r.sent + r.planner} change(s) synced`;
+			showToast(msg);
 			await invalidateAll();
 		}
 	}
@@ -47,9 +66,11 @@
 		navigator.serviceWorker?.register('/sw.js', { scope: '/' }).catch(() => {});
 		if (data.user && navigator.serviceWorker) void resyncPush().catch(() => {});
 		online = navigator.onLine;
+		waiting = queued();
 		if (online) void back();
 		const off = () => (online = false);
 		const on = () => void back();
+		const syncCount = () => (waiting = queued());
 		const out = (e: SubmitEvent) => {
 			const f = e.target as HTMLFormElement;
 			if (!f.action?.endsWith('/logout') || f.dataset.out) return;
@@ -69,11 +90,13 @@
 		visualViewport?.addEventListener('resize', keep);
 		addEventListener('offline', off);
 		addEventListener('online', on);
+		addEventListener('lt:queue', syncCount);
 		addEventListener('submit', out, true);
 		return () => {
 			visualViewport?.removeEventListener('resize', keep);
 			removeEventListener('offline', off);
 			removeEventListener('online', on);
+			removeEventListener('lt:queue', syncCount);
 			removeEventListener('submit', out, true);
 		};
 	});
@@ -107,7 +130,10 @@
 <UndoToast />
 <Dialog />
 {#if !online}<div class="offline" role="status">
-		Offline · changes aren't saved (Keep notes wait on this device)
+		Offline · changes aren't saved (Keep notes wait on this device){#if waiting}
+			· Waiting to sync ({waiting}){/if}
+	</div>{:else if waiting}<div class="offline" role="status">
+		Waiting to sync ({waiting})
 	</div>{/if}
 {#if tourOn && data.user}<Tour onend={endTour} />{/if}
 <svelte:window onkeydown={(e) => data.user && onUndoKey(e)} />

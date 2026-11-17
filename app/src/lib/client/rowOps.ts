@@ -3,6 +3,7 @@ import { isoPlus } from '$lib/time';
 import type { BlockDTO, ItemDTO, Status } from '$lib/types';
 import { patch } from './api';
 import { buzz } from './haptics';
+import { enqueueAction, isOffline } from './offline';
 import { removeBlock, removeItem } from './remove';
 import { showError, showToast } from './toast.svelte';
 
@@ -32,6 +33,12 @@ async function change(
 			},
 		});
 	} catch (e) {
+		if (isOffline(e)) {
+			Object.assign(x, body);
+			enqueueAction({ key: path(x), method: 'PATCH', path: path(x), payload: body });
+			showToast(`${text} · Waiting to sync`);
+			return;
+		}
 		showError(e);
 	}
 }

@@ -1,6 +1,9 @@
 // Service worker. Push (DESIGN §13, ADR-006): show a reminder, open its page on click. Payload = title + route only.
-// PWA (DESIGN §17): cache only hashed build files + the offline page. Never pages or /api (private data, always fresh).
-const CACHE = 'lt-shell-v1';
+// Offline (#105, G12): cache the app shell and last-seen pages/data so opening in airplane mode shows Today at once.
+// Sign-out wipes `lt-data-v1` so private data never stays behind.
+const CACHE = 'lt-shell-v2';
+const DATA = 'lt-data-v1';
+
 self.addEventListener('install', (e) => {
 	self.skipWaiting();
 	e.waitUntil(caches.open(CACHE).then((c) => c.add('/offline.html')));
@@ -8,7 +11,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) =>
 	e.waitUntil(
 		(async () => {
-			for (const k of await caches.keys()) if (k !== CACHE) await caches.delete(k);
+			for (const k of await caches.keys()) if (k !== CACHE && k !== DATA) await caches.delete(k);
 			await self.clients.claim();
 		})(),
 	),
@@ -17,7 +20,12 @@ self.addEventListener('fetch', (e) => {
 	const r = e.request;
 	const u = new URL(r.url);
 	if (r.method !== 'GET' || u.origin !== self.location.origin) return;
-	if (u.pathname.startsWith('/_app/immutable/'))
+	if (
+		u.pathname.startsWith('/_app/immutable/') ||
+		u.pathname === '/manifest.webmanifest' ||
+		u.pathname === '/favicon.svg' ||
+		u.pathname.startsWith('/icon-')
+	) {
 		e.respondWith(
 			caches.match(r).then(
 				(hit) =>
@@ -31,11 +39,47 @@ self.addEventListener('fetch', (e) => {
 					}),
 			),
 		);
-	else if (r.mode === 'navigate') e.respondWith(fetch(r).catch(() => caches.match('/offline.html')));
+		return;
+	}
+	const isData =
+		r.mode === 'navigate' ||
+		u.pathname.endsWith('/__data.json') ||
+		(u.pathname.startsWith('/api/') && u.pathname !== '/api/reminders/inbox' && u.pathname !== '/healthz');
+	if (!isData) return;
+	e.respondWith(
+		(async () => {
+			try {
+				const res = await fetch(r);
+				if (
+					res.ok &&
+					!u.pathname.startsWith('/login') &&
+					!u.pathname.startsWith('/setup') &&
+					!res.url.includes('/login')
+				) {
+					const c = await caches.open(DATA);
+					void c.put(r, res.clone());
+					if (r.mode === 'navigate' && u.pathname === '/today' && !u.search) {
+						void c.put('/today', res.clone());
+					}
+				}
+				return res;
+			} catch {
+				const c = await caches.open(DATA);
+				const hit =
+					(await c.match(r)) ||
+					(await c.match(u.pathname)) ||
+					(r.mode === 'navigate'
+						? (await c.match('/today')) || (await c.match('/')) || (await caches.match('/offline.html'))
+						: null);
+				if (hit) return hit;
+				throw new Error('offline');
+			}
+		})(),
+	);
 });
 
 self.addEventListener('push', (e) => {
-	let p = { title: 'Reminder', body: '', route: '/' };
+	let p = { title: 'Reminder', body: '', route: '/', reminderId: '', sourceType: '', sourceId: '' };
 	try {
 		p = { ...p, ...e.data.json() };
 	} catch {
@@ -44,17 +88,35 @@ self.addEventListener('push', (e) => {
 	e.waitUntil(
 		self.registration.showNotification(p.title, {
 			body: p.body,
-			data: { route: p.route },
-			tag: p.route,
+			data: { route: p.route, reminderId: p.reminderId, sourceType: p.sourceType, sourceId: p.sourceId },
+			tag: p.reminderId || p.route,
 			renotify: true, // same page again = alert again (else Android swaps it in silently)
 			icon: '/icon-192.png', // Android can't draw SVG notification icons
+			actions: p.reminderId
+				? [
+						{ action: 'done', title: 'Done' },
+						{ action: 'snooze10', title: 'Snooze 10 min' },
+						{ action: 'tomorrow', title: 'Tomorrow' },
+					]
+				: [],
 		}),
 	);
 });
 
 self.addEventListener('notificationclick', (e) => {
 	e.notification.close();
-	const route = e.notification.data?.route || '/';
+	const d = e.notification.data || {};
+	if (d.reminderId && (e.action === 'done' || e.action === 'snooze10' || e.action === 'tomorrow')) {
+		e.waitUntil(
+			fetch(`/api/reminders/${encodeURIComponent(d.reminderId)}`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ action: e.action }),
+			}).catch(() => {}),
+		);
+		return;
+	}
+	const route = d.route || '/';
 	// a normal page load: the app checks sign-in + access again before showing anything
 	e.waitUntil(
 		(async () => {
