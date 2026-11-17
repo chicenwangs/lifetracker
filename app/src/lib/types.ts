@@ -38,6 +38,14 @@ export interface ItemDTO {
 	stepsDone: number;
 	stepsTotal: number;
 	editable: boolean;
+	/** RFC 5545 repeat rule (#72), e.g. FREQ=WEEKLY;BYDAY=MO,WE */
+	rrule?: string | null;
+	/** series item id when this is an expanded occurrence (#72) */
+	seriesId?: string;
+	/** YYYY-MM-DD of this specific occurrence (#72) */
+	occurrenceDate?: string;
+	/** YYYY-MM-DD start date of the repeating series (#72) */
+	seriesDate?: string;
 	/** someone else's calendar, shared with me (read-only) */
 	theirs?: boolean;
 	owner?: PartnerTag;

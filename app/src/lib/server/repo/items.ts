@@ -1,5 +1,5 @@
 // Items. ALL scoping here: only rows in calendars owned by `me` (P2 adds grants via access.ts).
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db, handle } from '../db';
 import { blocks, calendars, items, users } from '../schema';
@@ -9,9 +9,22 @@ import { zDate, zStatus, zTime, zTitle, zType, zId } from '../validate';
 import * as calendarsRepo from './calendars';
 import * as itemTypesRepo from './itemtypes';
 import { addDays, diffDays, nowUtcIso } from '$lib/time';
+import {
+	baseItemId,
+	expandRRule,
+	formatRRule,
+	parseExdates,
+	parseRRule,
+	splitOccId,
+	withUntil,
+} from '$lib/rrule';
 import { nextStatus, type ItemDTO, type Status } from '$lib/types';
 
-export type ItemRow = typeof items.$inferSelect;
+export type ItemRow = typeof items.$inferSelect & {
+	seriesId?: string;
+	occurrenceDate?: string;
+	seriesDate?: string;
+};
 
 const live = isNull(items.deletedAt);
 
@@ -26,7 +39,7 @@ export function myCalendarIds(meId: string): string[] {
 }
 
 export function toDTO(r: ItemRow, counts?: { done: number; total: number }): ItemDTO {
-	return {
+	const dto: ItemDTO = {
 		id: r.id,
 		title: r.title,
 		type: r.type,
@@ -40,6 +53,13 @@ export function toDTO(r: ItemRow, counts?: { done: number; total: number }): Ite
 		stepsTotal: counts?.total ?? 0,
 		editable: true,
 	};
+	if (r.rrule) {
+		dto.rrule = r.rrule;
+		dto.seriesId = r.seriesId ?? baseItemId(r.id);
+		dto.occurrenceDate = r.occurrenceDate ?? r.date ?? undefined;
+		dto.seriesDate = r.seriesDate ?? r.date ?? undefined;
+	}
+	return dto;
 }
 
 /** rows per calendar (items, blocks): a runaway script or abuse can't grow the DB without end */
@@ -79,29 +99,70 @@ function stepCountsChunk(ids: string[]): Map<string, { done: number; total: numb
 }
 
 export function withCounts(rows: ItemRow[]): ItemDTO[] {
-	const c = stepCounts(rows.map((r) => r.id));
-	return rows.map((r) => toDTO(r, c.get(r.id)));
+	const c = stepCounts([...new Set(rows.map((r) => baseItemId(r.id)))]);
+	return rows.map((r) => toDTO(r, c.get(baseItemId(r.id))));
 }
 
-/** items overlapping [from, to) local dates. Steps (parent_id) excluded from calendar. */
+/** items overlapping [from, to) local dates, including expanded occurrences of repeating items (#72). */
 export function inRange(calendarId: string, from: string, to: string): ItemRow[] {
-	return db()
+	const plain = db()
 		.select()
 		.from(items)
 		.where(
 			and(
 				eq(items.calendarId, calendarId),
 				live,
+				isNull(items.rrule),
 				isNotNull(items.date),
 				lt(items.date, to),
 				gte(sql`COALESCE(${items.endDate}, ${items.date})`, from),
 			),
 		)
-		.orderBy(asc(items.date), sql`${items.time} IS NULL DESC`, asc(items.time), asc(items.createdAt))
 		.all();
+	const repeating = db()
+		.select()
+		.from(items)
+		.where(
+			and(
+				eq(items.calendarId, calendarId),
+				live,
+				isNotNull(items.rrule),
+				isNotNull(items.date),
+				lt(items.date, to),
+			),
+		)
+		.all();
+	const expanded: ItemRow[] = [...plain];
+	for (const r of repeating) {
+		if (!r.date || !r.rrule) continue;
+		const span = r.endDate ? diffDays(r.date, r.endDate) : 0;
+		const occs = expandRRule(r.date, r.rrule, parseExdates(r.exdates), from, to, span);
+		for (const occ of occs) {
+			expanded.push({
+				...r,
+				id: `${r.id}@${occ}`,
+				seriesId: r.id,
+				occurrenceDate: occ,
+				seriesDate: r.date,
+				date: occ,
+				endDate: span > 0 ? addDays(occ, span) : null,
+			});
+		}
+	}
+	return expanded.sort((a, b) => {
+		const da = a.date ?? '';
+		const dbDate = b.date ?? '';
+		if (da !== dbDate) return da < dbDate ? -1 : 1;
+		const ta = a.time;
+		const tb = b.time;
+		if ((ta === null) !== (tb === null)) return ta === null ? -1 : 1;
+		if (ta && tb && ta !== tb) return ta < tb ? -1 : 1;
+		return a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0;
+	});
 }
 
-export function getOwn(meId: string, id: string): ItemRow | undefined {
+export function getOwn(meId: string, rawId: string): ItemRow | undefined {
+	const { id } = splitOccId(rawId);
 	const cals = myCalendarIds(meId);
 	if (!cals.length) return undefined;
 	return db()
@@ -111,8 +172,8 @@ export function getOwn(meId: string, id: string): ItemRow | undefined {
 		.get();
 }
 
-export function mustOwn(meId: string, id: string): ItemRow {
-	return getOwn(meId, id) ?? notFound();
+export function mustOwn(meId: string, rawId: string): ItemRow {
+	return getOwn(meId, rawId) ?? notFound();
 }
 
 function checkParent(meId: string, parentId: string | null | undefined, selfId?: string) {
@@ -128,6 +189,15 @@ function checkDates(date: string | null, endDate: string | null) {
 	if (endDate && date && endDate < date) bad('end date before date');
 }
 
+const zRRule = z
+	.string()
+	.max(200)
+	.refine((s) => parseRRule(s) !== null, 'invalid repeat rule')
+	.transform((s) => {
+		const parsed = parseRRule(s);
+		return parsed ? formatRRule(parsed) : s;
+	});
+
 // ---------- create ----------
 export const itemCreateSchema = z
 	.object({
@@ -140,6 +210,7 @@ export const itemCreateSchema = z
 		parentId: zId('itm').nullable().default(null),
 		notes: z.string().max(20_000).nullable().default(null),
 		private: z.boolean().default(false),
+		rrule: zRRule.nullable().default(null),
 	})
 	.strict();
 export type ItemCreate = z.infer<typeof itemCreateSchema>;
@@ -148,6 +219,8 @@ export function create(meId: string, input: ItemCreate): ItemRow {
 	itemTypesRepo.mustHave(meId, input.type);
 	checkDates(input.date, input.endDate);
 	if (input.time && !input.date) bad('time needs a date');
+	if (input.rrule && !input.date) bad('repeat needs a date');
+	if (input.rrule && input.parentId) bad('steps cannot repeat');
 	checkParent(meId, input.parentId);
 	const cal = calendarsRepo.defaultFor(meId);
 	checkCap(items, cal.id);
@@ -167,6 +240,7 @@ export function create(meId: string, input: ItemCreate): ItemRow {
 			parentId: input.parentId,
 			notes: input.notes,
 			private: input.private,
+			rrule: input.rrule ?? null,
 			startedAt: input.status !== 'todo' ? now : null,
 			completedAt: input.status === 'done' ? now : null,
 			createdAt: now,
@@ -206,6 +280,9 @@ export const itemPatchSchema = z
 		parentId: zId('itm').nullable(),
 		notes: z.string().max(20_000).nullable(),
 		private: z.boolean(),
+		rrule: zRRule.nullable(),
+		/** repeating edit scope (#72): 'this' detaches one date, 'following' splits the series, 'all' updates the series */
+		scope: z.enum(['this', 'following', 'all']),
 	})
 	.partial()
 	.strict();
@@ -218,31 +295,122 @@ function statusStamps(prev: ItemRow, s: Status, now: string) {
 	return { startedAt: prev.startedAt ?? now, completedAt: now };
 }
 
-export function patch(meId: string, id: string, p: ItemPatch): ItemRow {
+function addExdate(meId: string, cur: ItemRow, occDate: string, now: string): void {
+	const ex = parseExdates(cur.exdates);
+	if (!ex.includes(occDate)) {
+		ex.push(occDate);
+		ex.sort();
+	}
+	db().update(items).set({ exdates: ex, updatedAt: now, updatedBy: meId }).where(eq(items.id, cur.id)).run();
+}
+
+function detachOccurrence(meId: string, cur: ItemRow, occDate: string, p: ItemPatch): ItemRow {
+	const now = nowUtcIso();
+	const span = cur.date && cur.endDate ? diffDays(cur.date, cur.endDate) : 0;
+	const date = p.date !== undefined ? p.date : occDate;
+	let endDate = p.endDate !== undefined ? p.endDate : date && span > 0 ? addDays(date, span) : null;
+	if (date === null || endDate === date) endDate = null;
+	return handle().sqlite.transaction(() => {
+		addExdate(meId, cur, occDate, now);
+		return create(
+			meId,
+			itemCreateSchema.parse({
+				title: p.title ?? cur.title,
+				type: p.type !== undefined ? p.type : cur.type,
+				status: p.status ?? cur.status,
+				date,
+				time: p.time !== undefined ? p.time : date === null ? null : cur.time,
+				endDate,
+				notes: p.notes !== undefined ? p.notes : cur.notes,
+				private: p.private !== undefined ? p.private : cur.private,
+				rrule: null,
+			}),
+		);
+	})();
+}
+
+export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
+	const { id, occDate } = splitOccId(rawId);
 	const cur = mustOwn(meId, id);
-	if (p.type !== undefined) itemTypesRepo.mustHave(meId, p.type);
-	const date = p.date !== undefined ? p.date : cur.date;
-	let endDate = p.endDate !== undefined ? p.endDate : cur.endDate;
+	const { scope, ...fields } = p;
+	if (fields.type !== undefined) itemTypesRepo.mustHave(meId, fields.type);
+
+	// Repeating occurrence handling (#72):
+	// - Ticking status (only `status` changed, no `scope`) detaches that single occurrence date.
+	// - `scope === 'this'` (or dragging an occurrence date on the calendar without scope) detaches that date.
+	// - `scope === 'following'` truncates the existing series before `occDate` and starts a new series at `occDate`.
+	if (cur.rrule && cur.date) {
+		const targetOcc = occDate ?? cur.date;
+		const keys = Object.keys(fields);
+		const onlyStatus = keys.length === 1 && keys[0] === 'status';
+		const draggedOcc = !scope && occDate !== null && fields.date !== undefined && fields.rrule === undefined;
+		const effScope = scope ?? (onlyStatus || draggedOcc ? 'this' : 'all');
+
+		if (effScope === 'this') {
+			return detachOccurrence(meId, cur, targetOcc, fields);
+		}
+		if (effScope === 'following' && targetOcc > cur.date) {
+			const now = nowUtcIso();
+			const span = cur.endDate ? diffDays(cur.date, cur.endDate) : 0;
+			const newDate = fields.date !== undefined ? fields.date : targetOcc;
+			let newEnd =
+				fields.endDate !== undefined ? fields.endDate : newDate && span > 0 ? addDays(newDate, span) : null;
+			if (newDate === null || newEnd === newDate) newEnd = null;
+			return handle().sqlite.transaction(() => {
+				db()
+					.update(items)
+					.set({
+						rrule: withUntil(cur.rrule as string, addDays(targetOcc, -1)),
+						updatedAt: now,
+						updatedBy: meId,
+					})
+					.where(eq(items.id, cur.id))
+					.run();
+				return create(
+					meId,
+					itemCreateSchema.parse({
+						title: fields.title ?? cur.title,
+						type: fields.type !== undefined ? fields.type : cur.type,
+						status: fields.status ?? cur.status,
+						date: newDate,
+						time: fields.time !== undefined ? fields.time : newDate === null ? null : cur.time,
+						endDate: newEnd,
+						notes: fields.notes !== undefined ? fields.notes : cur.notes,
+						private: fields.private !== undefined ? fields.private : cur.private,
+						rrule: fields.rrule !== undefined ? fields.rrule : cur.rrule,
+					}),
+				);
+			})();
+		}
+	}
+
+	const date = fields.date !== undefined ? fields.date : cur.date;
+	let endDate = fields.endDate !== undefined ? fields.endDate : cur.endDate;
 	// moving date without explicit endDate keeps the span
-	if (p.date !== undefined && p.endDate === undefined && cur.date && cur.endDate && p.date) {
-		endDate = addDays(p.date, diffDays(cur.date, cur.endDate));
+	if (fields.date !== undefined && fields.endDate === undefined && cur.date && cur.endDate && fields.date) {
+		endDate = addDays(fields.date, diffDays(cur.date, cur.endDate));
 	}
 	if (date === null) endDate = null;
 	if (endDate === date) endDate = null;
-	const time = p.time !== undefined ? p.time : date === null ? null : cur.time;
+	const time = fields.time !== undefined ? fields.time : date === null ? null : cur.time;
+	const rrule = fields.rrule !== undefined ? fields.rrule : date === null ? null : cur.rrule;
 	checkDates(date, endDate);
 	if (time && !date) bad('time needs a date');
-	if (p.parentId !== undefined) checkParent(meId, p.parentId, id);
-	if (p.parentId && steps(meId, id).length) bad('an item with steps cannot become a step');
+	if (rrule && !date) bad('repeat needs a date');
+	if (fields.parentId !== undefined) checkParent(meId, fields.parentId, id);
+	if (fields.parentId && steps(meId, id).length) bad('an item with steps cannot become a step');
+	if ((fields.parentId ?? cur.parentId) && rrule) bad('steps cannot repeat');
 	const now = nowUtcIso();
 	db()
 		.update(items)
 		.set({
-			...p,
+			...fields,
 			date,
 			time,
 			endDate,
-			...(p.status ? statusStamps(cur, p.status, now) : {}),
+			rrule,
+			...(rrule === null ? { exdates: null } : {}),
+			...(fields.status ? statusStamps(cur, fields.status, now) : {}),
 			updatedAt: now,
 			updatedBy: meId,
 		})
@@ -251,10 +419,10 @@ export function patch(meId: string, id: string, p: ItemPatch): ItemRow {
 	return mustOwn(meId, id);
 }
 
-/** FR-H3/H4: todo -> doing -> done -> todo */
-export function cycle(meId: string, id: string): ItemRow {
-	const cur = mustOwn(meId, id);
-	return patch(meId, id, { status: nextStatus(cur.status) });
+/** FR-H3/H4: todo -> doing -> done -> todo. On a repeating item (#72), detaches that occurrence date. */
+export function cycle(meId: string, rawId: string): ItemRow {
+	const cur = mustOwn(meId, rawId);
+	return patch(meId, rawId, { status: nextStatus(cur.status) });
 }
 
 // ---------- delete / trash (FR-I5) ----------
@@ -273,10 +441,34 @@ export function deleteSet(meId: string, id: string): { t: 'items' | 'blocks'; id
 	];
 }
 
-export function softDelete(meId: string, id: string): { batch: string } {
+export function softDelete(
+	meId: string,
+	rawId: string,
+	scope?: 'this' | 'following' | 'all',
+): { batch: string } {
+	const { id, occDate } = splitOccId(rawId);
 	const cur = mustOwn(meId, id);
 	const batch = newId('del');
 	const now = nowUtcIso();
+	if (cur.rrule && cur.date) {
+		const targetOcc = occDate ?? cur.date;
+		if (scope === 'this') {
+			addExdate(meId, cur, targetOcc, now);
+			return { batch };
+		}
+		if (scope === 'following' && targetOcc > cur.date) {
+			db()
+				.update(items)
+				.set({
+					rrule: withUntil(cur.rrule, addDays(targetOcc, -1)),
+					updatedAt: now,
+					updatedBy: meId,
+				})
+				.where(eq(items.id, cur.id))
+				.run();
+			return { batch };
+		}
+	}
 	handle().sqlite.transaction(() => {
 		const stepIds = db()
 			.select({ id: items.id })
@@ -374,25 +566,18 @@ export function unscheduled(meId: string): ItemRow[] {
 		.all();
 }
 
-/** FR-H12: dated today (or spanning today), not done, top-level */
+/** FR-H12: dated today (or spanning today), not done, top-level (includes repeating occurrences, #72) */
 export function dueOn(meId: string, day: string): ItemRow[] {
 	const cals = myCalendarIds(meId);
 	if (!cals.length) return [];
-	return db()
-		.select()
-		.from(items)
-		.where(
-			and(
-				inArray(items.calendarId, cals),
-				live,
-				isNull(items.parentId),
-				or(eq(items.status, 'todo'), eq(items.status, 'doing')),
-				lte(items.date, day),
-				gte(sql`COALESCE(${items.endDate}, ${items.date})`, day),
-			),
-		)
-		.orderBy(sql`${items.time} IS NULL`, asc(items.time), asc(items.title))
-		.all();
+	return cals
+		.flatMap((cid) => inRange(cid, day, addDays(day, 1)))
+		.filter((r) => !r.parentId && (r.status === 'todo' || r.status === 'doing'))
+		.sort((a, b) => {
+			if ((a.time === null) !== (b.time === null)) return a.time === null ? -1 : 1;
+			if (a.time && b.time && a.time !== b.time) return a.time < b.time ? -1 : 1;
+			return a.title.localeCompare(b.title);
+		});
 }
 
 /** all-day (no time) items touching [from, to) that are not done and have no planner block anywhere */

@@ -5,7 +5,8 @@ import { handle } from './db';
 import { newId } from './crypto';
 import { bad, notFound } from './http';
 import { itemRef, offsetMs, parseOffset, type Unit } from '$lib/remind';
-import { isoPlus, nowUtcIso, utcToLocal } from '$lib/time';
+import { baseItemId, expandRRule, parseExdates } from '$lib/rrule';
+import { addDays, isoPlus, nowUtcIso, todayLocal, utcToLocal } from '$lib/time';
 import type { ReminderDTO } from '$lib/types';
 
 export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record';
@@ -17,6 +18,8 @@ export interface SourceInfo {
 	title: string;
 	/** UTC Z instant the item happens, null = none (no date) */
 	ref: string | null;
+	/** repeating item fields (#72) for per-occurrence relative reminders */
+	repeat?: { date: string; time: string | null; rrule: string; exdates: string[]; tz: string };
 	/** trashed / deleted / gone = reminders stop (D-16: archived notes still remind) */
 	live: boolean;
 	route: string;
@@ -24,14 +27,19 @@ export interface SourceInfo {
 }
 
 /** what a source is right now, if it belongs to ownerId; undefined = not mine / never existed */
-export function sourceInfo(ownerId: string, type: Source, id: string): SourceInfo | undefined {
+export function sourceInfo(ownerId: string, type: Source, rawId: string): SourceInfo | undefined {
+	const id = type === 'planner_item' ? baseItemId(rawId) : rawId;
 	const tz = (db().prepare(`SELECT timezone FROM users WHERE id = ?`).get(ownerId) as { timezone: string } | undefined)?.timezone ?? 'Asia/Kuala_Lumpur'; // prettier-ignore
 	if (type === 'planner_item') {
-		const r = db().prepare(`SELECT i.title, i.date, i.time, i.deleted_at FROM items i JOIN calendars c ON c.id = i.calendar_id WHERE i.id = ? AND c.owner_id = ?`).get(id, ownerId) as { title: string; date: string | null; time: string | null; deleted_at: string | null } | undefined; // prettier-ignore
+		const r = db().prepare(`SELECT i.title, i.date, i.time, i.rrule, i.exdates, i.deleted_at FROM items i JOIN calendars c ON c.id = i.calendar_id WHERE i.id = ? AND c.owner_id = ?`).get(id, ownerId) as { title: string; date: string | null; time: string | null; rrule: string | null; exdates: string | null; deleted_at: string | null } | undefined; // prettier-ignore
 		return (
 			r && {
 				title: r.title,
 				ref: r.date ? itemRef(r.date, r.time, tz) : null,
+				repeat:
+					r.date && r.rrule
+						? { date: r.date, time: r.time, rrule: r.rrule, exdates: parseExdates(r.exdates), tz }
+						: undefined,
 				live: !r.deleted_at,
 				route: `/item/${id}`,
 				kind: 'planner',
@@ -74,8 +82,29 @@ export function sourceInfo(ownerId: string, type: Source, id: string): SourceInf
 	};
 }
 
-const dueOf = (r: Pick<Row, 'rule_kind' | 'rel_value' | 'rel_unit' | 'at_time'>, info: SourceInfo): string | null =>
-	r.rule_kind === 'absolute' ? r.at_time : info.ref && r.rel_value && r.rel_unit ? isoPlus(info.ref, -offsetMs(r.rel_value, r.rel_unit)) : null; // prettier-ignore
+/** next due UTC Z instant for a relative reminder on a repeating item (#72): earliest occurrence whose reminder is > now */
+function nextRepeatDue(rep: NonNullable<SourceInfo['repeat']>, ms: number, now = Date.now()): string | null {
+	const start = addDays(todayLocal(rep.tz, now), -1);
+	const end = addDays(start, 400);
+	const occs = expandRRule(rep.date, rep.rrule, rep.exdates, start, end);
+	for (const d of occs) {
+		const due = isoPlus(itemRef(d, rep.time, rep.tz), -ms);
+		if (Date.parse(due) > now) return due;
+	}
+	return null;
+}
+
+const dueOf = (
+	r: Pick<Row, 'rule_kind' | 'rel_value' | 'rel_unit' | 'at_time'>,
+	info: SourceInfo,
+	now = Date.now(),
+): string | null => {
+	if (r.rule_kind === 'absolute') return r.at_time;
+	if (!r.rel_value || !r.rel_unit) return null;
+	const ms = offsetMs(r.rel_value, r.rel_unit);
+	if (info.repeat) return nextRepeatDue(info.repeat, ms, now);
+	return info.ref ? isoPlus(info.ref, -ms) : null;
+};
 
 const toDTO = (r: Row): ReminderDTO => ({ id: r.id, kind: r.rule_kind, offset: r.rel_value && r.rel_unit ? `${r.rel_value} ${r.rel_unit}` : null, dueAt: r.due_at, status: r.status as ReminderDTO['status'] }); // prettier-ignore
 
@@ -95,10 +124,11 @@ export const addSchema = z
 export function add(
 	ownerId: string,
 	type: Source,
-	sourceId: string,
+	rawSourceId: string,
 	p: z.infer<typeof addSchema>,
 	now = Date.now(),
 ): ReminderDTO {
+	const sourceId = type === 'planner_item' ? baseItemId(rawSourceId) : rawSourceId;
 	const info = sourceInfo(ownerId, type, sourceId);
 	if (!info || !info.live) notFound();
 	let rel: { value: number; unit: Unit } | null = null;
@@ -108,8 +138,8 @@ export function add(
 		if (!info?.ref) bad('This has no date yet, so "before" has nothing to count from. Give it a date, or pick an exact time.', 'no_ref'); // prettier-ignore
 	}
 	const rule = { rule_kind: rel ? ('relative' as const) : ('absolute' as const), rel_value: rel?.value ?? null, rel_unit: rel?.unit ?? null, at_time: p.at ?? null }; // prettier-ignore
-	const due = dueOf(rule, info as SourceInfo) as string;
-	if (Date.parse(due) <= now) bad('That reminder time has already passed.', 'past');
+	const due = dueOf(rule, info as SourceInfo, now) as string;
+	if (!due || Date.parse(due) <= now) bad('That reminder time has already passed.', 'past');
 	const dup = db().prepare(`SELECT 1 FROM reminders WHERE source_type = ? AND source_id = ? AND due_at = ? AND status IN ('scheduled','processing')`).get(type, sourceId, due); // prettier-ignore
 	if (dup) bad('There is already a reminder at that time.', 'duplicate');
 	// one global queue drains 50 per tick: an owner with thousands due at once would delay everyone else's
@@ -123,7 +153,8 @@ export function add(
 	return toDTO(db().prepare(`SELECT * FROM reminders WHERE id = ?`).get(id) as Row);
 }
 
-export function list(ownerId: string, type: Source, sourceId: string): ReminderDTO[] {
+export function list(ownerId: string, type: Source, rawSourceId: string): ReminderDTO[] {
+	const sourceId = type === 'planner_item' ? baseItemId(rawSourceId) : rawSourceId;
 	return (db().prepare(`SELECT * FROM reminders WHERE owner_id = ? AND source_type = ? AND source_id = ? AND status <> 'cancelled' ORDER BY due_at`).all(ownerId, type, sourceId) as Row[]).map(toDTO); // prettier-ignore
 }
 
@@ -139,12 +170,30 @@ export function recalc(ownerId: string, type: Source, sourceId: string, now = Da
 	const info = sourceInfo(ownerId, type, sourceId);
 	const t = nowUtcIso(now);
 	for (const r of rows) {
-		const due = info?.live ? dueOf(r, info) : null;
+		const due = info?.live ? dueOf(r, info, now) : null;
 		const status = due && Date.parse(due) > now ? 'scheduled' : 'cancelled';
 		db()
 			.prepare(`UPDATE reminders SET due_at = ?, status = ?, updated_at = ? WHERE id = ?`)
 			.run(due ?? r.due_at, status, t, r.id);
 	}
+}
+
+/** After a relative reminder on a repeating item fires (#72), schedule the next occurrence if one exists. */
+export function advanceRepeating(id: string, ownerId: string, now = Date.now()): void {
+	const r = db().prepare(`SELECT * FROM reminders WHERE id = ? AND owner_id = ?`).get(id, ownerId) as Row | undefined; // prettier-ignore
+	if (!r || r.rule_kind !== 'relative' || !r.rel_value || !r.rel_unit) return;
+	const info = sourceInfo(ownerId, r.source_type, r.source_id);
+	if (!info?.live || !info.repeat) return;
+	const after = Math.max(now, r.due_at ? Date.parse(r.due_at) + 1000 : now);
+	const nextDue = nextRepeatDue(info.repeat, offsetMs(r.rel_value, r.rel_unit), after);
+	if (!nextDue) return;
+	const dup = db().prepare(`SELECT 1 FROM reminders WHERE source_type = ? AND source_id = ? AND due_at = ? AND status IN ('scheduled','processing')`).get(r.source_type, r.source_id, nextDue); // prettier-ignore
+	if (dup) return;
+	const newRemId = newId('rem');
+	const t = nowUtcIso(now);
+	db()
+		.prepare(`INSERT INTO reminders (id, owner_id, source_type, source_id, rule_kind, rel_value, rel_unit, at_time, due_at, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'relative', ?, ?, NULL, ?, 'scheduled', ?, ?)`)
+		.run(newRemId, ownerId, r.source_type, r.source_id, r.rel_value, r.rel_unit, nextDue, t, t); // prettier-ignore
 }
 
 /** Android app: scheduled reminders due in the next `ms`, for local alarms. Kinds the owner turned off are left out. */

@@ -5,6 +5,7 @@ import * as users from '$lib/server/repo/users';
 import { USER_COLORS } from '$lib/colors';
 import { parseHours } from '$lib/hours';
 import { MAX_TYPES } from '$lib/itemtypes';
+import { OFFSETS } from '$lib/remind';
 import { zTime } from '$lib/server/validate';
 
 const isZone = (tz: string) => {
@@ -36,6 +37,8 @@ const schema = z
 		hiddenTypes: z.array(z.string().max(40)).max(MAX_TYPES + 1),
 		/** phone gesture hints dismissed (#104); the client sends the whole list */
 		hintsSeen: z.array(z.string().regex(/^[a-z-]{1,20}$/)).max(20),
+		/** account-level default reminder on new dated items (#72) */
+		defaultReminder: z.enum(OFFSETS).nullable(),
 		notifyPlanner: z.boolean(),
 		notifyKeep: z.boolean(),
 		notifyPages: z.boolean(),

@@ -4,6 +4,7 @@
 	import { typeName } from '$lib/client/itemtypes.svelte';
 	import { colorsFor } from '$lib/colors';
 	import { OFFSET_LABEL } from '$lib/remind';
+	import { describeRRule } from '$lib/rrule';
 	import { prettyDate, prettyTime } from '$lib/time';
 	import type { QAParse, QATarget } from '$lib/quickadd';
 
@@ -55,6 +56,12 @@
 			>{parsed.reminders.length ? parsed.reminders.map(remind).join(', ') : 'none · /remind'}</span
 		>
 	</div>
+	{#if parsed.rrule}
+		<div class="s">
+			<span class="k">Repeat</span>
+			<span class="v">{describeRRule(parsed.rrule)}</span>
+		</div>
+	{/if}
 </div>
 
 <style>

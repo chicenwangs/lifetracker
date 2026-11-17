@@ -10,6 +10,7 @@
 		type ThemeMode,
 	} from '$lib/client/prefs.svelte';
 	import { showError, showToast } from '$lib/client/toast.svelte';
+	import { OFFSET_LABEL, OFFSETS } from '$lib/remind';
 	import { schedulePreview } from '$lib/theme';
 
 	let { data } = $props();
@@ -175,6 +176,18 @@
 			{#each [15, 30, 45, 60, 90] as m (m)}<option value={String(m)}>{m} min</option>{/each}
 		</select>
 		<span class="hint">For a single typed time, and when you drop or schedule an item on the timeline.</span>
+	</label>
+	<label class="field">
+		<span class="label">Default reminder on new items</span>
+		<select
+			aria-label="Default reminder on new items"
+			value={u.defaultReminder ?? ''}
+			onchange={(e) => save({ defaultReminder: e.currentTarget.value || null })}
+		>
+			<option value="">None</option>
+			{#each OFFSETS as o (o)}<option value={o}>{OFFSET_LABEL[o]}</option>{/each}
+		</select>
+		<span class="hint">Added automatically to new dated calendar items unless you set /remind.</span>
 	</label>
 	<p class="hint">Visible hours now follow you to every device.</p>
 </section>

@@ -71,6 +71,13 @@
       "when": 1794861173494,
       "tag": "0009_v2_hints",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1794900000000,
+      "tag": "0010_v2_default_reminder",
+      "breakpoints": true
     }
   ]
 }

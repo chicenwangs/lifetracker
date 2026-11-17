@@ -30,6 +30,7 @@ export function safe(u: UserRow): App.SafeUser {
 		visibleHours: u.visibleHours,
 		hiddenTypes: u.hiddenTypes,
 		hintsSeen: u.hintsSeen,
+		defaultReminder: u.defaultReminder ?? null,
 		notifyPlanner: u.notifyPlanner,
 		notifyKeep: u.notifyKeep,
 		notifyPages: u.notifyPages,
@@ -111,7 +112,7 @@ export type Prefs = Partial<
 	Pick<
 		UserRow,
 		| 'overlapOn' | 'displayName' | 'color' | 'theme' | 'themeMode' | 'themeLightStart' | 'themeDarkStart'
-		| 'planMode' | 'tourState' | 'timezone' | 'region' | 'qaTarget' | 'blockMin' | 'visibleHours' | 'hiddenTypes' | 'hintsSeen'
+		| 'planMode' | 'tourState' | 'timezone' | 'region' | 'qaTarget' | 'blockMin' | 'visibleHours' | 'hiddenTypes' | 'hintsSeen' | 'defaultReminder'
 		| 'notifyPlanner' | 'notifyKeep' | 'notifyPages'
 	>
 >; // prettier-ignore

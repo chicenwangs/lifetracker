@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { handle } from './db';
 import { env } from './env';
 import { newId } from './crypto';
-import { sourceInfo, type Source } from './reminders';
+import { advanceRepeating, sourceInfo, type Source } from './reminders';
 import { isoPlus, nowUtcIso } from '$lib/time';
 
 const db = () => handle().sqlite;
@@ -170,6 +170,7 @@ export async function tick(now = Date.now()): Promise<number> {
 		}
 		// in-app always gets it (inbox); "sent" = handed to the push service, never "delivered"
 		set(late ? 'missed' : 'sent', res.failed && !res.sent ? ", last_error = 'push failed, in-app only'" : '');
+		advanceRepeating(r.id, r.owner_id, now);
 	}
 	return claimed.length;
 }

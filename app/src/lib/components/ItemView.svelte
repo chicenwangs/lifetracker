@@ -8,8 +8,21 @@
 	import Markdown from './Markdown.svelte';
 	import DayPlanner from './DayPlanner.svelte';
 	import { typeOf, typesState } from '$lib/client/itemtypes.svelte';
+	import { askScope } from '$lib/client/dialog.svelte';
 	import { colorsFor } from '$lib/colors';
-	import { addDays, examCountdown, prettyDate, utcToLocal } from '$lib/time';
+	import {
+		baseItemId,
+		describeRRule,
+		formatRRule,
+		nthWeekdayOfDate,
+		parseRRule,
+		presetsForDate,
+		WD_CODES,
+		WD_SHORT,
+		type Freq,
+		type WdCode,
+	} from '$lib/rrule';
+	import { addDays, examCountdown, prettyDate, utcToLocal, weekdayOf } from '$lib/time';
 	import type { BlockDTO, ItemDTO, ItemType } from '$lib/types';
 	import { get, patch, post } from '$lib/client/api';
 	import { showError } from '$lib/client/toast.svelte';
@@ -115,8 +128,17 @@
 
 	async function save(p: Record<string, unknown>) {
 		if (!it) return;
+		let body = p;
+		if (it.rrule && !('rrule' in p) && !('scope' in p)) {
+			const scope = await askScope(`Edit repeating item "${it.title}"?`, { ok: 'Save' });
+			if (!scope) {
+				await load();
+				return;
+			}
+			body = { ...p, scope };
+		}
 		try {
-			await patch(`/api/items/${it.id}`, p);
+			await patch(`/api/items/${encodeURIComponent(it.id)}`, body);
 			await changed();
 		} catch (e) {
 			showError(e);
@@ -125,7 +147,7 @@
 	}
 	async function cycle(itemId: string) {
 		try {
-			await post(`/api/items/${itemId}/cycle`);
+			await post(`/api/items/${encodeURIComponent(itemId)}/cycle`);
 			await changed();
 		} catch (e) {
 			showError(e);
@@ -138,6 +160,53 @@
 		} catch (e) {
 			showError(e);
 		}
+	}
+
+	// ---------- repeat (#72) ----------
+	let customRepeat = $state(false);
+	let cFreq = $state<Freq>('WEEKLY');
+	let cInterval = $state(1);
+	let cDays = $state<WdCode[]>(['MO']);
+	let cMonthKind = $state<'day' | 'nth'>('day');
+	let cEndKind = $state<'never' | 'until' | 'count'>('never');
+	let cUntil = $state('');
+	let cCount = $state(5);
+
+	function openCustomRepeat() {
+		if (!it?.date) return;
+		const p = parseRRule(it.rrule);
+		cFreq = p?.freq ?? 'WEEKLY';
+		cInterval = p?.interval ?? 1;
+		const defWd = WD_CODES[weekdayOf(it.date) - 1] as WdCode;
+		cDays = p?.freq === 'WEEKLY' && p.byday?.length ? (p.byday as WdCode[]) : [defWd];
+		cMonthKind = p?.freq === 'MONTHLY' && p.byday?.length ? 'nth' : 'day';
+		cEndKind = p?.until ? 'until' : p?.count ? 'count' : 'never';
+		cUntil = p?.until ?? addDays(it.date, 30);
+		cCount = p?.count ?? 5;
+		customRepeat = true;
+	}
+	function toggleWd(w: WdCode) {
+		if (cDays.includes(w)) {
+			if (cDays.length > 1) cDays = cDays.filter((x) => x !== w);
+		} else {
+			cDays = [...cDays, w].sort((a, b) => WD_CODES.indexOf(a) - WD_CODES.indexOf(b));
+		}
+	}
+	async function applyCustomRepeat() {
+		if (!it?.date) return;
+		const dNum = Number(it.date.slice(8, 10));
+		const nth = nthWeekdayOfDate(it.date);
+		const rule = formatRRule({
+			freq: cFreq,
+			interval: Math.max(1, Math.min(99, Number(cInterval) || 1)),
+			byday:
+				cFreq === 'WEEKLY' ? cDays : cFreq === 'MONTHLY' && cMonthKind === 'nth' ? [nth.token] : undefined,
+			bymonthday: cFreq === 'MONTHLY' && cMonthKind === 'day' ? dNum : undefined,
+			until: cEndKind === 'until' && cUntil ? cUntil : undefined,
+			count: cEndKind === 'count' ? Math.max(1, Math.min(999, Number(cCount) || 5)) : undefined,
+		});
+		customRepeat = false;
+		await save({ rrule: rule });
 	}
 
 	// ---------- title: edit in place ----------
@@ -232,8 +301,8 @@
 	async function del() {
 		if (!it) return;
 		const parent = it.parentId;
-		await removeItem(it.id, it.title, () => onchanged?.());
-		ondeleted?.(parent);
+		const ok = await removeItem(it.id, it.title, () => onchanged?.(), !!it.rrule);
+		if (ok) ondeleted?.(parent);
 	}
 
 	const fmtZ = (z: string | null) => (z ? prettyDate(z.slice(0, 10)) : '—');
@@ -381,6 +450,35 @@
 							onchange={(e) => save({ endDate: e.currentTarget.value || null })}
 						/>
 					</label>
+					{#if !it.parentId}
+						{@const presets = it.date ? presetsForDate(it.date) : [{ value: '', label: 'Does not repeat' }]}
+						{@const curRRule = it.rrule ?? ''}
+						{@const isCustom = !!curRRule && !presets.some((p) => p.value === curRRule)}
+						<label class="prop">
+							<span>Repeat</span>
+							<select
+								aria-label="Repeat"
+								value={curRRule}
+								disabled={!it.date}
+								onchange={(e) => {
+									const val = e.currentTarget.value;
+									if (val === '__custom__') openCustomRepeat();
+									else {
+										customRepeat = false;
+										void save({ rrule: val || null });
+									}
+								}}
+							>
+								{#each presets as p (p.value)}
+									<option value={p.value}>{p.label}</option>
+								{/each}
+								{#if isCustom}
+									<option value={curRRule}>{describeRRule(curRRule)}</option>
+								{/if}
+								<option value="__custom__">Custom…</option>
+							</select>
+						</label>
+					{/if}
 					<label class="prop check" title="Shows as Busy to anyone you share with">
 						<input
 							type="checkbox"
@@ -390,6 +488,59 @@
 						<span>Keep secret</span>
 					</label>
 				</div>
+				{#if customRepeat && it.date}
+					{@const nth = nthWeekdayOfDate(it.date)}
+					<div class="card box cust-rep" role="region" aria-label="Custom repeat">
+						<div class="crow">
+							<span>Repeat every</span>
+							<input type="number" min="1" max="99" aria-label="Repeat interval" bind:value={cInterval} />
+							<select aria-label="Repeat frequency" bind:value={cFreq}>
+								<option value="DAILY">{cInterval === 1 ? 'day' : 'days'}</option>
+								<option value="WEEKLY">{cInterval === 1 ? 'week' : 'weeks'}</option>
+								<option value="MONTHLY">{cInterval === 1 ? 'month' : 'months'}</option>
+								<option value="YEARLY">{cInterval === 1 ? 'year' : 'years'}</option>
+							</select>
+						</div>
+						{#if cFreq === 'WEEKLY'}
+							<div class="crow wds" role="group" aria-label="Repeat on weekdays">
+								{#each WD_CODES as w (w)}
+									<button
+										type="button"
+										class="bchip"
+										class:on={cDays.includes(w)}
+										aria-pressed={cDays.includes(w)}
+										onclick={() => toggleWd(w)}>{WD_SHORT[w]}</button
+									>
+								{/each}
+							</div>
+						{:else if cFreq === 'MONTHLY'}
+							<div class="crow">
+								<select aria-label="Monthly repeat mode" bind:value={cMonthKind}>
+									<option value="day">Monthly on day {Number(it.date.slice(8, 10))}</option>
+									<option value="nth">Monthly on the {nth.label}</option>
+								</select>
+							</div>
+						{/if}
+						<div class="crow">
+							<span>Ends</span>
+							<select aria-label="Repeat ends" bind:value={cEndKind}>
+								<option value="never">Never</option>
+								<option value="until">On date</option>
+								<option value="count">After occurrences</option>
+							</select>
+							{#if cEndKind === 'until'}
+								<input type="date" aria-label="Repeat end date" min={it.date} bind:value={cUntil} />
+							{:else if cEndKind === 'count'}
+								<input type="number" min="1" max="999" aria-label="Occurrence count" bind:value={cCount} />
+								<span>times</span>
+							{/if}
+						</div>
+						<div class="crow">
+							<button class="btn sm primary" type="button" onclick={applyCustomRepeat}>Apply repeat</button>
+							<button class="btn sm" type="button" onclick={() => (customRepeat = false)}>Cancel</button>
+						</div>
+					</div>
+				{/if}
 
 				<div class="doc">
 					{#if editingNotes}
@@ -449,7 +600,7 @@
 				</div>
 
 				<div class="card box">
-					<Reminders source="planner_item" sourceId={it.id} tz={v.tz} />
+					<Reminders source="planner_item" sourceId={baseItemId(it.id)} tz={v.tz} />
 				</div>
 
 				<div class="card box hist">
@@ -889,6 +1040,23 @@
 	}
 	.bchip.on {
 		box-shadow: inset 0 0 0 1.5px currentColor;
+	}
+	.cust-rep {
+		gap: 8px;
+	}
+	.crow {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-wrap: wrap;
+		font-size: 13px;
+	}
+	.crow input[type='number'] {
+		width: 64px;
+	}
+	.wds .bchip {
+		min-width: 36px;
+		min-height: 32px;
 	}
 	/* phone peek: the shared bottom sheet owns the visible Close (#92); desktop keeps this one */
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {

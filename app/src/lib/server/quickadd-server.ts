@@ -34,6 +34,7 @@ export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(
 					type: r.type,
 					date: r.date,
 					time: r.time,
+					rrule: r.rrule ?? null,
 				}),
 			);
 			item = items.withCounts([row])[0] ?? null;
@@ -58,7 +59,9 @@ export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(
 			: block
 				? ({ t: 'planner_block', id: block.id } as const)
 				: null;
-		for (const o of src ? r.reminders : []) {
+		const rems =
+			r.reminders.length > 0 ? r.reminders : item && me.defaultReminder ? [me.defaultReminder] : [];
+		for (const o of src ? rems : []) {
 			try {
 				reminders.add(
 					me.id,

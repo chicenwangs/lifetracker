@@ -1,5 +1,7 @@
-// In-app confirm / text dialogs (#109): the browser's confirm() / prompt() show the site address and ignore the
+// In-app confirm / text / repeat-scope dialogs (#109, #72): the browser's confirm() / prompt() show the site address and ignore the
 // theme on a phone. One dialog at a time; Dialog.svelte (root layout) renders it. Back / Esc / scrim = cancel.
+export type RepeatScope = 'this' | 'following' | 'all';
+
 export type Ask =
 	| { kind: 'confirm'; text: string; ok: string; danger: boolean; done: (v: boolean) => void }
 	| {
@@ -9,6 +11,13 @@ export type Ask =
 			value: string;
 			label: string;
 			done: (v: string | null) => void;
+	  }
+	| {
+			kind: 'scope';
+			text: string;
+			ok: string;
+			danger: boolean;
+			done: (v: RepeatScope | null) => void;
 	  };
 
 export const dialog = $state<{ current: Ask | null }>({ current: null });
@@ -45,10 +54,24 @@ export function askText(text: string, opts: { value?: string; ok?: string; label
 	);
 }
 
+/** repeating item scope choice (#72): 'this' | 'following' | 'all' | null */
+export function askScope(text: string, opts: { ok?: string; danger?: boolean } = {}) {
+	return new Promise<RepeatScope | null>((done) =>
+		open({
+			kind: 'scope',
+			text,
+			ok: opts.ok ?? 'OK',
+			danger: opts.danger ?? false,
+			done: (v) => done(v),
+		}),
+	);
+}
+
 export function answer(v: boolean | string | null) {
 	const a = dialog.current;
 	if (!a) return;
 	dialog.current = null;
 	if (a.kind === 'confirm') a.done(v === true);
+	else if (a.kind === 'scope') a.done(v === 'this' || v === 'following' || v === 'all' ? v : null);
 	else a.done(typeof v === 'string' ? v : null);
 }
