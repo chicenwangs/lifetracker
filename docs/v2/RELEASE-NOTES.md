@@ -14,9 +14,9 @@
   - Phone Today: "To do today" card gone · hold a timeline item to delete (Undo).
   - Android: "To do today" widget removed (6 widgets).
   - Settings › Users: storage each person uses.
+- **Phone system bars (#114):** browser bar and Android status / navigation bars follow Light, Dark and Auto; screen edges (cut-outs, gesture bar) respected.
 
 ## v2.0.4 (2026-11-14) — widgets v2 + phone fixes, no migration
-- **Phone system bars (#114):** browser bar and Android status / navigation bars follow Light, Dark and Auto; screen edges (cut-outs, gesture bar) respected.
 From v2.0.x: pull the new image. The Android app offers the update by itself.
 - **7 widgets**, all following Light / Dark / Auto and looking like the app: Today timeline (scrolls to now, tick things off), Keep (scroll your notes, + bottom-right), Now and next, Quick add, To do today, Countdowns, Week ahead.
 - **Today:** ticks visible again · current row highlighted across · "Back to now" gone · easier ‹ › buttons.
