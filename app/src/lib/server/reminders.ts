@@ -5,7 +5,7 @@ import { handle } from './db';
 import { newId } from './crypto';
 import { bad, notFound } from './http';
 import { itemRef, offsetMs, parseOffset, type Unit } from '$lib/remind';
-import { isoPlus, nowUtcIso, utcToLocal } from '$lib/time';
+import { addDays, isoPlus, localToUtc, nowUtcIso, todayLocal, utcToLocal } from '$lib/time';
 import type { ReminderDTO } from '$lib/types';
 
 export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record';
@@ -154,7 +154,16 @@ export function upcoming(ownerId: string, now = Date.now(), ms = 48 * 3_600_000)
 	return rows.flatMap((r) => {
 		const i = sourceInfo(ownerId, r.source_type, r.source_id);
 		return i?.live && on[i.kind]
-			? [{ id: r.id, title: i.title, route: i.route, dueAt: r.due_at as string }]
+			? [
+					{
+						id: r.id,
+						title: i.title,
+						route: r.source_type === 'planner_item' ? `/today?item=${r.source_id}` : i.route,
+						dueAt: r.due_at as string,
+						sourceType: r.source_type,
+						sourceId: r.source_id,
+					},
+				]
 			: [];
 	});
 }
@@ -168,12 +177,45 @@ export function inbox(ownerId: string) {
 			id: r.id,
 			title: i?.title ?? 'Reminder',
 			route: i?.route ?? '/',
+			sourceType: r.source_type,
+			sourceId: r.source_id,
 			late: r.status === 'missed',
 			dueAt: r.due_at,
 		};
 	});
 	if (rows.length) db().prepare(`UPDATE reminders SET seen_at = ? WHERE id IN (${rows.map(() => '?').join(',')})`).run(nowUtcIso(), ...rows.map((r) => r.id)); // prettier-ignore
 	return out;
+}
+
+export const actSchema = z.object({ action: z.enum(['done', 'snooze10', 'tomorrow']) }).strict();
+
+/** Notification / in-app reminder actions (#112): Done · Snooze 10 min · Tomorrow (09:00 local). */
+export function act(
+	ownerId: string,
+	id: string,
+	action: 'done' | 'snooze10' | 'tomorrow',
+	now = Date.now(),
+): ReminderDTO | null {
+	const r = db().prepare(`SELECT * FROM reminders WHERE id = ? AND owner_id = ?`).get(id, ownerId) as Row | undefined; // prettier-ignore
+	if (!r) return notFound() as never;
+	const t = nowUtcIso(now);
+	if (action === 'done') {
+		db().prepare(`UPDATE reminders SET status = 'sent', seen_at = COALESCE(seen_at, ?), updated_at = ? WHERE id = ?`).run(t, t, id); // prettier-ignore
+		if (r.source_type === 'planner_item')
+			db().prepare(`UPDATE items SET status = 'done', completed_at = COALESCE(completed_at, ?), updated_at = ? WHERE id = ? AND calendar_id IN (SELECT id FROM calendars WHERE owner_id = ?)`).run(t, t, r.source_id, ownerId); // prettier-ignore
+		else if (r.source_type === 'planner_block')
+			db().prepare(`UPDATE blocks SET status = 'done', updated_at = ? WHERE id = ? AND calendar_id IN (SELECT id FROM calendars WHERE owner_id = ?)`).run(t, r.source_id, ownerId); // prettier-ignore
+		return null;
+	}
+	const tz = (db().prepare(`SELECT timezone FROM users WHERE id = ?`).get(ownerId) as { timezone: string } | undefined)?.timezone ?? 'Asia/Kuala_Lumpur'; // prettier-ignore
+	const due =
+		action === 'snooze10'
+			? isoPlus(t, 10 * 60_000)
+			: localToUtc(addDays(todayLocal(tz, now), 1), '09:00', tz);
+	db()
+		.prepare(`UPDATE reminders SET rule_kind = 'absolute', rel_value = NULL, rel_unit = NULL, at_time = ?, due_at = ?, status = 'scheduled', attempts = 0, sent_at = NULL, seen_at = NULL, last_error = NULL, updated_at = ? WHERE id = ?`)
+		.run(due, due, t, id); // prettier-ignore
+	return toDTO(db().prepare(`SELECT * FROM reminders WHERE id = ?`).get(id) as Row);
 }
 
 export const backlog = () =>

@@ -78,7 +78,14 @@ export const subscriptionCount = (userId: string) =>
 /** send to every live device of a user. Payload = title + route only (no private body, DESIGN §13). */
 export async function pushTo(
 	userId: string,
-	payload: { title: string; body?: string; route: string },
+	payload: {
+		title: string;
+		body?: string;
+		route: string;
+		reminderId?: string;
+		sourceType?: string;
+		sourceId?: string;
+	},
 ): Promise<{ sent: number; failed: number; error?: string }> {
 	if (!pushEnabled()) return { sent: 0, failed: 0 };
 	const e = env();
@@ -161,7 +168,10 @@ export async function tick(now = Date.now()): Promise<number> {
 		const res = await pushTo(r.owner_id, {
 			title: info.title,
 			body: late ? 'Missed reminder' : 'Reminder',
-			route: info.route,
+			route: r.source_type === 'planner_item' ? `/today?item=${r.source_id}` : info.route,
+			reminderId: r.id,
+			sourceType: r.source_type,
+			sourceId: r.source_id,
 		});
 		if (res.failed && !res.sent && r.attempts + 1 < MAX_ATTEMPTS) {
 			// all devices failed: back off and retry (2, 4, 8, 16 min)

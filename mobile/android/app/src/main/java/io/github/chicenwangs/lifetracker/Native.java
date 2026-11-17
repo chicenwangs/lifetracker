@@ -48,11 +48,20 @@ final class Native {
 
     /** PATCH a JSON body as the signed-in user (widget ticks). Origin = the server, as its write check wants. */
     static boolean patch(Context c, String path, JSONObject body) {
+        return send(c, "PATCH", path, body);
+    }
+
+    /** POST a JSON body as the signed-in user (reminder notification actions, #112). */
+    static boolean post(Context c, String path, JSONObject body) {
+        return send(c, "POST", path, body);
+    }
+
+    private static boolean send(Context c, String method, String path, JSONObject body) {
         HttpURLConnection h = null;
         try {
             String url = base(c) + path;
             h = (HttpURLConnection) new URL(url).openConnection();
-            h.setRequestMethod("PATCH");
+            h.setRequestMethod(method);
             h.setConnectTimeout(10_000);
             h.setReadTimeout(20_000);
             h.setDoOutput(true);
@@ -63,7 +72,8 @@ final class Native {
             try (java.io.OutputStream out = h.getOutputStream()) {
                 out.write(body.toString().getBytes(StandardCharsets.UTF_8));
             }
-            return h.getResponseCode() == 200;
+            int code = h.getResponseCode();
+            return code >= 200 && code < 300;
         } catch (Exception e) {
             return false;
         } finally {
