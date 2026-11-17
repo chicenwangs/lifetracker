@@ -15,6 +15,7 @@
 
 	let {
 		note,
+		seed,
 		labels,
 		binders,
 		colors,
@@ -24,6 +25,8 @@
 	}: {
 		/** null = new note */
 		note: NoteDTO | null;
+		/** initial title/body when opened from Android / PWA Share Target (#117) */
+		seed?: { title: string; body: string };
 		labels: LabelDTO[];
 		binders: BinderDTO[];
 		colors: readonly string[];
@@ -39,11 +42,13 @@
 
 	// svelte-ignore state_referenced_locally
 	const start = note;
+	// svelte-ignore state_referenced_locally
+	const initialSeed = seed;
 	let id = $state(start?.id ?? null);
 	let revision = $state(start?.revision ?? 0);
 	let type = $state<'text' | 'checklist'>(start?.type ?? 'text');
-	let title = $state(start?.title ?? '');
-	let body = $state(start?.body ?? '');
+	let title = $state(start?.title ?? initialSeed?.title ?? '');
+	let body = $state(start?.body ?? initialSeed?.body ?? '');
 	let color = $state<string | null>(start?.color ?? null);
 	let pinned = $state(start?.pinned ?? false);
 	let items = $state<(ChecklistItem & { open?: boolean })[]>(start?.items.map((i) => ({ ...i })) ?? []);
@@ -123,6 +128,14 @@
 			return;
 		onclose();
 	}
+	// Shared text / link (#117): opens filled in, saved when you close it (Back too) or type, like any new note.
+	// Not on open: a link to /keep?text=… must not plant a note nobody looked at.
+	$effect(() => {
+		if (!start && !id && (initialSeed?.title || initialSeed?.body)) dirty = true;
+		return () => {
+			if (dirty) void flush();
+		};
+	});
 
 	// ---------- checklist ----------
 	const depthOf = (i: number): number => {
