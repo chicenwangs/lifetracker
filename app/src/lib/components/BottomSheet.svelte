@@ -192,7 +192,8 @@
 			min-height: 0;
 			height: 50dvh;
 			border-radius: 16px 16px 0 0;
-			padding: 0 16px calc(16px + env(safe-area-inset-bottom));
+			padding: 0 calc(16px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom))
+				calc(16px + env(safe-area-inset-left));
 			box-shadow: none;
 			display: flex;
 			flex-direction: column;
