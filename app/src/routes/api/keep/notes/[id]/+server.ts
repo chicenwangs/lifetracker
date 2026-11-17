@@ -20,7 +20,7 @@ export const PATCH = api(async (e) => {
 	const id = e.params.id ?? '';
 	const owner = need('note', u.id, id, 'edit');
 	const p = await body(e, keep.noteSchema);
-	const note = keep.update(owner, id, owner === u.id ? p : { title: p.title, body: p.body, type: p.type, items: p.items, revision: p.revision }); // prettier-ignore
+	const note = keep.update(owner, id, owner === u.id ? p : { title: p.title, body: p.body, type: p.type, items: p.items, revision: p.revision, editedAt: p.editedAt }); // prettier-ignore
 	recalcOwner(owner);
 	return json({ note: owner === u.id ? note : { ...note, labels: [], binders: [] } });
 });

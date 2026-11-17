@@ -17,6 +17,7 @@
 - **Phone system bars (#114):** browser bar and Android status / navigation bars follow Light, Dark and Auto; screen edges (cut-outs, gesture bar) respected.
 - **App shortcuts + share (#117):** long-press the app icon for Add item, New note, Today; share text or a link into Life Tracker = a new Keep note to edit.
 - **Reminder actions (#112):** Done · Snooze 10 min · Tomorrow on Android notifications, web push and the in-app reminder; tap opens the item sheet. Android: works offline, sent when back.
+- **Open instantly offline (#105):** last-seen screens open with no signal; planner adds, ticks and edits wait ("Waiting to sync") and send when back. Clash: the server wins if it changed later, else the latest edit wins. Sign-out wipes the cache.
 
 ## v2.0.4 (2026-11-14) — widgets v2 + phone fixes, no migration
 From v2.0.x: pull the new image. The Android app offers the update by itself.

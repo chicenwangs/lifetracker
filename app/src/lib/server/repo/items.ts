@@ -5,7 +5,7 @@ import { db, handle } from '../db';
 import { blocks, calendars, items, users } from '../schema';
 import { newId } from '../crypto';
 import { notFound, bad } from '../http';
-import { zDate, zStatus, zTime, zTitle, zType, zId } from '../validate';
+import { zDate, zIsoZ, zStatus, zTime, zTitle, zType, zId } from '../validate';
 import * as calendarsRepo from './calendars';
 import * as itemTypesRepo from './itemtypes';
 import { addDays, diffDays, nowUtcIso } from '$lib/time';
@@ -206,6 +206,8 @@ export const itemPatchSchema = z
 		parentId: zId('itm').nullable(),
 		notes: z.string().max(20_000).nullable(),
 		private: z.boolean(),
+		/** #105 offline edit timestamp (UTC Z): if server's updatedAt >= editedAt, server wins */
+		editedAt: zIsoZ,
 	})
 	.partial()
 	.strict();
@@ -220,6 +222,8 @@ function statusStamps(prev: ItemRow, s: Status, now: string) {
 
 export function patch(meId: string, id: string, p: ItemPatch): ItemRow {
 	const cur = mustOwn(meId, id);
+	const { editedAt, ...fields } = p;
+	if (editedAt && cur.updatedAt > editedAt) return cur;
 	if (p.type !== undefined) itemTypesRepo.mustHave(meId, p.type);
 	const date = p.date !== undefined ? p.date : cur.date;
 	let endDate = p.endDate !== undefined ? p.endDate : cur.endDate;
@@ -238,7 +242,7 @@ export function patch(meId: string, id: string, p: ItemPatch): ItemRow {
 	db()
 		.update(items)
 		.set({
-			...p,
+			...fields,
 			date,
 			time,
 			endDate,
