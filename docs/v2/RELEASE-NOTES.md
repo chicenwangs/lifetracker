@@ -1,7 +1,6 @@
 # Life Tracker v2 — release notes
 
 ## Unreleased (next 2.0.5) — security hardening, no migration
-
 - Hardening across push, sign-in, shared pages, upload limits, backups and the Android app (issues #22–#59).
 - **New installs start invite-only.** Existing installs keep their sign-up mode.
 - Settings › Users: **Disable** a member.
@@ -15,21 +14,17 @@
   - Phone Today: "To do today" card gone · hold a timeline item to delete (Undo).
   - Android: "To do today" widget removed (6 widgets).
   - Settings › Users: storage each person uses.
-- **Phone system bars (#114):** browser bar and Android status / navigation bars follow Light, Dark and Auto; top, side and bottom safe-area insets respected across phone screens.
 
 ## v2.0.4 (2026-11-14) — widgets v2 + phone fixes, no migration
-
+- **Phone system bars (#114):** browser bar and Android status / navigation bars follow Light, Dark and Auto; screen edges (cut-outs, gesture bar) respected.
 From v2.0.x: pull the new image. The Android app offers the update by itself.
-
 - **7 widgets**, all following Light / Dark / Auto and looking like the app: Today timeline (scrolls to now, tick things off), Keep (scroll your notes, + bottom-right), Now and next, Quick add, To do today, Countdowns, Week ahead.
 - **Today:** ticks visible again · current row highlighted across · "Back to now" gone · easier ‹ › buttons.
 - **Keep on phone:** note fills the screen, tools at the bottom · back / edge swipe closes the note and stays in Keep.
 - No blue tap flash · snappier feedback (done pop, tick draws in, small vibration) · bigger touch targets.
 
 ## v2.0.3 (2026-11-14) — Android app, no migration
-
 From v2.0.x: just pull the new image. The app needs this server (it reads the new `/api/native`).
-
 - **Android app:** `life-tracker-2.0.3.apk` on this release. The site in an app, plus:
   - **Widgets:** Today timeline (from now on, `+` = quick add) and Keep notes (`+` = new note).
   - **Reminders ring on the phone** as alarms, app closed or not (no Chrome push needed).
@@ -37,9 +32,7 @@ From v2.0.x: just pull the new image. The app needs this server (it reads the ne
 - Today: past rows no longer fade their time label (hard to read).
 
 ## v2.0.2 (2026-11-14) — phone + push fixes, no migration
-
 From v2.0.x: just pull the new image. From v1.1.0: go straight to 2.0.2 (same steps as 2.0.0, SERVICE-HANDOFF §5).
-
 - **Push on Android Chrome:** sent as high priority (sleeping phones held it before) · repeat reminders alert again · PNG icon · the app re-sends this device's push link on every open (server lost it, or VAPID keys changed) · Send a test says why it failed · sign out turns push off on that device.
 - **Phone header:** one row (logo · Search · theme · avatar), scrolls away · account menu opens on top.
 - **Bottom bar:** real icons (More had none).
@@ -52,9 +45,7 @@ From v2.0.x: just pull the new image. From v1.1.0: go straight to 2.0.2 (same st
 - 404 / error page = card + Go home.
 
 ## v2.0.1 (2026-11-14) — fixes, no migration
-
 From v2.0.0: just pull the new image. From v1.1.0: go straight to 2.0.1 (same steps as 2.0.0, SERVICE-HANDOFF §5).
-
 - **Pages look like the wireframes:** page list with New page button, pin icons, tools list · page bar = path · save state · Pin · Share · ⋯ · text in a centred column (database pages full width) · tidy editor spacing, to-do boxes in line, calmer `/` menu.
 - **Graph:** nodes were giant circles (graph library default) → normal size, every node named, readable in dark mode.
 - **Header pins:** Settings › Preferences › Header pins = reorder (↑ ↓) + Unpin.
@@ -70,7 +61,6 @@ From v2.0.0: just pull the new image. From v1.1.0: go straight to 2.0.1 (same st
 Caveman doc. From v1.1.0. **Migration release** (0003–0008, forward-only). Back up before you pull.
 
 ## New
-
 - **Item types** you own: rename, recolour, add up to 10 (5 built-in kept, same data). ★ default type, "counts down" flag. Type bar hides types per person.
 - **Preferences**: theme Light / Dark / Auto (by time), timezone, region (week start, 12/24 h), quick-add target, block length. Visible hours follow you to every device.
 - **Undo** (Ctrl+Z / toast) for most changes. **Alt-drag** copies a block. Every drag has a button (Schedule…, Start/End).
@@ -87,13 +77,11 @@ Caveman doc. From v1.1.0. **Migration release** (0003–0008, forward-only). Bac
 - **Old v1 data** (lists, people, ideas, places, goals, workouts): Settings › Account › "Bring them into Keep" (once, originals kept).
 
 ## Changed
-
 - Existing users keep their theme (as a fixed Light/Dark); no tour for them.
 - Planner blocks are a focusable group (screen readers), active nav pill readable in dark mode, other-month days readable.
 - Request bodies over 1 MB refused (uploads: 25 MB).
 
 ## Ops (details in `docs/SERVICE-HANDOFF.md`)
-
 - **Migration** on first boot: 6 SQL files, seconds on a few-MB DB. Rollback = v1.1.0 image + restore the pre-upgrade backup.
 - New optional env: `UPLOAD_DIR`, `MAX_UPLOAD_BYTES`, `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT`, `JOBS_ENABLED`, `REMINDER_POLL_INTERVAL_MS`. All unset = works, push off.
 - New data: `data/uploads/` (files). `backup.sh` / `restore.sh` now include it.
@@ -102,15 +90,12 @@ Caveman doc. From v1.1.0. **Migration release** (0003–0008, forward-only). Bac
 - Still one replica (the reminder runner must not run twice).
 
 ## Not in v2.0 (→ v2.1)
-
 Live co-edit (a clash shows "changed elsewhere", text kept) · Google Keep Takeout import/export · board/calendar/list/gallery database views · 2-hop local graph · reminders on page to-dos · swipe gestures.
 
 ## Known limits / not verified
-
 - Web Push tested on Edge (spike) only; Chrome/Android/iOS and from the homelab through the tunnel = check after deploy.
 - Uploads on the real read-only container: covered by design (temp dir on the data volume), not run in Docker on the dev PC.
 - Migration rehearsed on a built v1.1.0 DB (`tests/unit/rehearsal.test.ts`, in CI) and on an anonymised copy of the dev DB; **not on a copy of the live backup** (owner's call). Take the backup before pulling.
 
 ## Tests at release
-
 Unit 340 · e2e 25 (incl. axe sweep, v1 regression) · lint + types clean · CI green on every phase PR (#5–#14).
