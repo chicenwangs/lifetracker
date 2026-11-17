@@ -78,11 +78,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 		redirect(303, next === '/' ? '/login' : `/login?next=${encodeURIComponent(next)}`);
 	}
 
-	// theme: user pref, else cookie (login page), else dark. Set on <html> server side = no flash.
+	// theme: user pref, else cookie (login page), else dark. Set on <html> and theme-color server side = no flash (#114).
 	const ck = event.cookies.get('lt_theme');
 	const theme = event.locals.user?.theme ?? (ck === 'light' ? 'light' : 'dark');
+	const themeColor = theme === 'light' ? '#e8d9e6' : '#0e0d2a';
 	const res = await resolve(event, {
-		transformPageChunk: ({ html }) => html.replace('%lt.theme%', theme),
+		transformPageChunk: ({ html }) =>
+			html.replace('%lt.theme%', theme).replace('%lt.theme_color%', themeColor),
 	});
 
 	// 5 headers (CSP comes from kit.csp)

@@ -67,3 +67,18 @@ test('sharing multi-line text uses the first line as title and the rest as body'
 	await expect(dlg).toBeHidden();
 	await expect(page.locator('article.note', { hasText: 'Shared first line' }).first()).toBeVisible();
 });
+
+test('a share link alone saves nothing: the note is saved only when you close it', async () => {
+	const word = `Planted${test.info().project.name.replace(/\W/g, '')}`;
+	const count = () =>
+		page.evaluate(async (w) => {
+			const r = await fetch(`/api/keep/notes?q=${w}`);
+			return ((await r.json()) as { notes: unknown[] }).notes.length;
+		}, word);
+	await page.goto(`/keep?share=1&text=${word}`);
+	await expect(page.locator('.note[role="dialog"]')).toBeVisible();
+	await page.waitForTimeout(1500); // longer than the 600 ms autosave
+	expect(await count()).toBe(0);
+	await page.goBack();
+	await expect.poll(count).toBe(1);
+});

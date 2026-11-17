@@ -128,12 +128,10 @@
 			return;
 		onclose();
 	}
-	// Shared text / link (#117): save as a new Keep note as soon as the editor opens, and flush on unmount if Back closed it.
+	// Shared text / link (#117): opens filled in, saved when you close it (Back too) or type, like any new note.
+	// Not on open: a link to /keep?text=… must not plant a note nobody looked at.
 	$effect(() => {
-		if (!start && !id && (initialSeed?.title || initialSeed?.body)) {
-			dirty = true;
-			void flush();
-		}
+		if (!start && !id && (initialSeed?.title || initialSeed?.body)) dirty = true;
 		return () => {
 			if (dirty) void flush();
 		};
@@ -1059,7 +1057,8 @@
 			height: 100dvh;
 			max-height: none;
 			border-radius: 0;
-			padding-bottom: calc(18px + env(safe-area-inset-bottom));
+			padding: calc(18px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right))
+				calc(18px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));
 		}
 		/* phone: the text fills the screen and the tools sit at the bottom, under the thumb (was all packed at the top) */
 		.body {
