@@ -1044,7 +1044,8 @@
 			height: 100dvh;
 			max-height: none;
 			border-radius: 0;
-			padding-bottom: calc(18px + env(safe-area-inset-bottom));
+			padding: calc(18px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right))
+				calc(18px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));
 		}
 		/* phone: the text fills the screen and the tools sit at the bottom, under the thumb (was all packed at the top) */
 		.body {

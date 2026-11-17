@@ -24,7 +24,13 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle state) {
         registerPlugin(UpdaterPlugin.class);
         registerPlugin(HapticsPlugin.class);
+        registerPlugin(ThemeBarsPlugin.class);
         super.onCreate(state);
+        String themeCookie = CookieManager.getInstance().getCookie(Native.base(this));
+        boolean dark = themeCookie != null && themeCookie.contains("lt_theme=light") ? false
+                : themeCookie != null && themeCookie.contains("lt_theme=dark") ? true
+                : Theme.of(this, Native.cached(this)).dark;
+        ThemeBarsPlugin.apply(this, dark);
         WebView w = getBridge().getWebView();
 
         // Back = web history back: closes the top sheet / dialog / menu first, then the page (#91, layers.ts).
