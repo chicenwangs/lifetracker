@@ -22,6 +22,7 @@ declare global {
 			visibleHours: string;
 			hiddenTypes: string[];
 			hintsSeen: string[];
+			defaultReminder: string | null;
 			notifyPlanner: boolean;
 			notifyKeep: boolean;
 			notifyPages: boolean;

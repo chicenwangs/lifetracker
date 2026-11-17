@@ -14,6 +14,7 @@ import { addDays, hhmm, isDate, makeDate, weekdayOf } from './time';
 import type { ItemType, ItemTypeDTO } from './types';
 import { defaultTypes, LEGACY_SLUGS, slugMap } from './itemtypes';
 import { parseOffset } from './remind';
+import { WD_CODES } from './rrule';
 
 export interface QAContext {
 	today: string; // local YYYY-MM-DD
@@ -62,6 +63,8 @@ export interface QAParse {
 	warnings: string[]; // shown with the result, never block
 	/** /remind offsets (1w 3d 2d 1d 2h 15min), set on what gets created */
 	reminders: string[];
+	/** RFC 5545 repeat rule when "every …" is typed (#72) */
+	rrule?: string | null;
 	problems: string[]; // shown on Enter; `code` in backticks
 }
 
@@ -369,6 +372,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	const targets = new Set<QATarget>();
 	let dur: number | null = null;
 	let allDay = false;
+	let rrule: string | null = null;
 	const dates: DateHit[] = [];
 	const times: TimeHit[] = [];
 
@@ -449,6 +453,86 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 			range(i, len).forEach((k) => used.add(k));
 			i += len - 1;
 			continue;
+		}
+
+		// --- repeat phrases (#72): every day/week/month/year/weekday, every N days/weeks/months/years, every mon,wed,fri ---
+		if (t === 'every' && n1) {
+			if (n1 === 'day') {
+				rrule = 'FREQ=DAILY';
+				used.add(i);
+				used.add(i + 1);
+				i += 1;
+				continue;
+			}
+			if (n1 === 'weekday' || n1 === 'weekdays') {
+				rrule = 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR';
+				pushDate({
+					idx: [i, i + 1],
+					resolve: (passed) => {
+						for (let k = 0; k < 7; k++) {
+							const d = addDays(today, k);
+							const wd = weekdayOf(d);
+							if (wd <= 5 && (k > 0 || !passed)) return d;
+						}
+						return today;
+					},
+				});
+				i += 1;
+				continue;
+			}
+			if (n1 === 'week' || n1 === 'month' || n1 === 'year') {
+				rrule = n1 === 'week' ? 'FREQ=WEEKLY' : n1 === 'month' ? 'FREQ=MONTHLY' : 'FREQ=YEARLY';
+				used.add(i);
+				used.add(i + 1);
+				i += 1;
+				continue;
+			}
+			const iv = numberOf(n1);
+			if (iv && iv >= 1 && iv <= 99 && n2 && /^(days?|weeks?|wks?|months?|years?|yrs?)$/.test(n2)) {
+				const f = n2.startsWith('d')
+					? 'DAILY'
+					: n2.startsWith('w')
+						? 'WEEKLY'
+						: n2.startsWith('m')
+							? 'MONTHLY'
+							: 'YEARLY';
+				rrule = iv === 1 ? `FREQ=${f}` : `FREQ=${f};INTERVAL=${iv}`;
+				range(i, 3).forEach((k) => used.add(k));
+				i += 2;
+				continue;
+			}
+			// every mon,wed,fri · every mon and wed · every tue
+			const wds: number[] = [];
+			let j = i + 1;
+			while (j < low.length) {
+				const rawW = (tokens[j] ?? '').toLowerCase().replace(/^[("'[]+|[)"'\],;:!?]+$/g, '');
+				if (rawW === 'and' && wds.length) {
+					j++;
+					continue;
+				}
+				const partsW = rawW.split(',').filter(Boolean);
+				const mapped = partsW.map((p) => weekdayOfWord(p) ?? weekdayOfWord(p.replace(/s$/, '')));
+				if (!mapped.length || mapped.some((x) => !x)) break;
+				for (const x of mapped) if (x && !wds.includes(x)) wds.push(x);
+				j++;
+			}
+			if (wds.length) {
+				wds.sort((a, b) => a - b);
+				rrule = `FREQ=WEEKLY;BYDAY=${wds.map((w) => WD_CODES[w - 1]).join(',')}`;
+				const len = j - i;
+				pushDate({
+					idx: range(i, len),
+					resolve: (passed) => {
+						for (let k = 0; k < 8; k++) {
+							const d = addDays(today, k);
+							if (wds.includes(weekdayOf(d)) && (k > 0 || !passed)) return d;
+						}
+						return today;
+					},
+				});
+				i = j - 1;
+				continue;
+			}
 		}
 
 		// --- relative phrases ---
@@ -772,6 +856,8 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	}
 	const dateSet = date !== null;
 	date ??= ctx.slot?.date ?? ctx.day ?? today;
+	if (rrule === 'FREQ=WEEKLY') rrule = `FREQ=WEEKLY;BYDAY=${WD_CODES[weekdayOf(date) - 1]}`;
+	else if (rrule === 'FREQ=MONTHLY') rrule = `FREQ=MONTHLY;BYMONTHDAY=${Number(date.slice(8, 10))}`;
 
 	// --- little words glued to a day/time: "on fri", "at 6pm", "from 6 to 8" ---
 	for (let i = 0; i < low.length; i++) {
@@ -787,6 +873,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	if (targets.has('both') || (targets.has('calendar') && targets.has('planner'))) target = 'both';
 	else if (targets.has('calendar')) target = 'calendar';
 	else if (targets.has('planner')) target = 'planner';
+	else if (rrule) target = start !== null && target === 'planner' ? 'both' : 'calendar';
 	const makesBlock = target !== 'calendar';
 
 	let endNextDay = false;
@@ -860,6 +947,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 		notes,
 		warnings,
 		reminders,
+		...(rrule ? { rrule } : {}),
 		problems,
 	};
 }

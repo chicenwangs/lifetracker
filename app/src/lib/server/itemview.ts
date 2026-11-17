@@ -1,14 +1,26 @@
 // Item view payload (centre peek + /item/[id] page). Own items only (P2 adds partner read-only card).
 import * as items from './repo/items';
 import * as blocks from './repo/blocks';
-import { todayLocal } from '$lib/time';
+import { splitOccId } from '$lib/rrule';
+import { addDays, diffDays, todayLocal } from '$lib/time';
 import type { ItemDTO } from '$lib/types';
 
-export function itemView(me: App.SafeUser, id: string) {
+export function itemView(me: App.SafeUser, rawId: string) {
+	const { id, occDate } = splitOccId(rawId);
 	const it = items.mustOwn(me.id, id); // 404 if not mine
 	const parent = it.parentId ? items.getOwn(me.id, it.parentId) : undefined;
+	const dto = { ...(items.withCounts([it])[0] as ItemDTO), notes: it.notes };
+	if (occDate && it.rrule && it.date) {
+		const span = it.endDate ? diffDays(it.date, it.endDate) : 0;
+		dto.id = `${it.id}@${occDate}`;
+		dto.seriesId = it.id;
+		dto.date = occDate;
+		dto.endDate = span > 0 ? addDays(occDate, span) : null;
+		dto.occurrenceDate = occDate;
+		dto.seriesDate = it.date;
+	}
 	return {
-		item: { ...(items.withCounts([it])[0] as ItemDTO), notes: it.notes },
+		item: dto,
 		parent: parent ? { id: parent.id, title: parent.title } : null,
 		steps: items.withCounts(items.steps(me.id, it.id)),
 		blocks: blocks.forItem(me.id, it.id).map((b) => blocks.toDTO(b, it.type)),

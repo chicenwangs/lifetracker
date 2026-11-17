@@ -4,10 +4,13 @@
 	import { backCloses } from '$lib/client/layers';
 
 	let value = $state('');
+	let scope = $state<'this' | 'following' | 'all'>('this');
 	$effect(() => {
 		if (dialog.current?.kind === 'text') value = dialog.current.value;
+		else if (dialog.current?.kind === 'scope') scope = 'this';
 	});
-	const ok = () => answer(dialog.current?.kind === 'text' ? value : true);
+	const ok = () =>
+		answer(dialog.current?.kind === 'text' ? value : dialog.current?.kind === 'scope' ? scope : true);
 	const cancel = () => answer(null);
 </script>
 
@@ -39,15 +42,30 @@
 			{#if d.kind === 'text'}
 				<!-- svelte-ignore a11y_autofocus -->
 				<input class="in" bind:value aria-label={d.label} autofocus />
+			{:else if d.kind === 'scope'}
+				<div class="scopes" role="radiogroup" aria-labelledby="dlg-t">
+					<label class="sopt">
+						<input type="radio" name="rscope" value="this" bind:group={scope} />
+						<span>This item</span>
+					</label>
+					<label class="sopt">
+						<input type="radio" name="rscope" value="following" bind:group={scope} />
+						<span>This and following</span>
+					</label>
+					<label class="sopt">
+						<input type="radio" name="rscope" value="all" bind:group={scope} />
+						<span>All items</span>
+					</label>
+				</div>
 			{/if}
 			<div class="row">
 				<button class="btn" type="button" onclick={cancel}>Cancel</button>
 				<!-- svelte-ignore a11y_autofocus -->
 				<button
 					class="btn primary"
-					class:danger={d.kind === 'confirm' && d.danger}
+					class:danger={(d.kind === 'confirm' || d.kind === 'scope') && d.danger}
 					type="submit"
-					autofocus={d.kind === 'confirm'}>{d.ok}</button
+					autofocus={d.kind !== 'text'}>{d.ok}</button
 				>
 			</div>
 		</form>
@@ -96,6 +114,23 @@
 		display: flex;
 		justify-content: flex-end;
 		gap: 8px;
+	}
+	.scopes {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.sopt {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		min-height: 44px;
+		padding: 0 8px;
+		border-radius: 8px;
+		cursor: pointer;
+	}
+	.sopt:hover {
+		background: var(--hover);
 	}
 	.danger {
 		background: var(--danger);

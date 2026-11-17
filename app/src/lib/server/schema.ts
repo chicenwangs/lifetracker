@@ -81,6 +81,8 @@ export const users = sqliteTable(
 			.$type<string[]>()
 			.notNull()
 			.default(sql`'[]'`),
+		/** account-level default reminder on new dated items (#72): '1w'|'3d'|'2d'|'1d'|'2h'|'15min' or null */
+		defaultReminder: text('default_reminder'),
 		// D-15 per-kind reminder toggles. On by default: v1 had no reminders, so nobody gets one they didn't add.
 		notifyPlanner: integer('notify_planner', { mode: 'boolean' }).notNull().default(true),
 		notifyKeep: integer('notify_keep', { mode: 'boolean' }).notNull().default(true),

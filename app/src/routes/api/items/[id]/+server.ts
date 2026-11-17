@@ -24,16 +24,26 @@ export const PATCH = api(async (e) => {
 	const id = e.params.id ?? '';
 	const p = await body(e, items.itemPatchSchema);
 	const cur = items.mustOwn(u.id, id);
-	const r = undoable(u.id, `${what(p)} "${cur.title}"`, [{ t: 'items', id }], () => ({ result: items.patch(u.id, id, p) }));
+	const r = undoable(u.id, `${what(p)} "${cur.title}"`, [{ t: 'items', id: cur.id }], () => {
+		const result = items.patch(u.id, id, p);
+		return {
+			result,
+			created: result.id !== cur.id ? [{ t: 'items' as const, id: result.id }] : [],
+		};
+	});
 	recalcOwner(u.id);
 	return json({ item: items.withCounts([r.result])[0], undo: r.undo });
-}); // prettier-ignore
+});
 
 export const DELETE = api((e) => {
 	const u = me(e);
 	const id = e.params.id ?? '';
 	const cur = items.mustOwn(u.id, id);
-	const r = undoable(u.id, `Delete "${cur.title}"`, items.deleteSet(u.id, id), () => ({ result: items.softDelete(u.id, id) }));
+	const rawScope = e.url.searchParams.get('scope');
+	const scope = rawScope === 'this' || rawScope === 'following' || rawScope === 'all' ? rawScope : undefined;
+	const r = undoable(u.id, `Delete "${cur.title}"`, items.deleteSet(u.id, cur.id), () => ({
+		result: items.softDelete(u.id, id, scope),
+	}));
 	recalcOwner(u.id);
 	return json({ ...r.result, undo: r.undo });
-}); // prettier-ignore
+});

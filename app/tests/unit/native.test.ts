@@ -73,3 +73,13 @@ it('rows = today in the owner timezone, sorted, hidden types dropped; notes; upc
 	usersRepo.setPrefs(user.id, { notifyPlanner: false } as never);
 	expect(nativeSync(user, NOW).reminders).toEqual([]); // kind turned off = no alarm
 });
+
+it('Done on a repeating item reminder ticks that occurrence only (#112 + #72)', () => {
+	const gym = items.create(user.id, items.itemCreateSchema.parse({ title: 'Gym', date: '2026-11-13', time: '18:00', rrule: 'FREQ=DAILY' })); // prettier-ignore
+	const r = rem.add(user.id, 'planner_item', gym.id, { offset: '2h' }, NOW); // 16:00 KL today
+	expect(rem.act(user.id, r.id, 'done', NOW)).toBeNull();
+	const day = (d: string) => items.inRange(items.myCalendarIds(user.id)[0] as string, d, d.replace(/\d\d$/, (x) => String(Number(x) + 1).padStart(2, '0'))); // prettier-ignore
+	expect(day('2026-11-13').map((x) => [x.title, x.status, x.rrule ?? null])).toEqual([['Gym', 'done', null]]); // detached, done
+	expect(day('2026-11-14').map((x) => [x.title, x.status])).toEqual([['Gym', 'todo']]); // series keeps going
+	expect(items.mustOwn(user.id, gym.id).status).toBe('todo');
+});

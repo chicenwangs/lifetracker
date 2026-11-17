@@ -1,6 +1,6 @@
 # Life Tracker v2 — release notes
 
-## Unreleased (next 2.0.5) — security hardening, no migration
+## Unreleased (next 2.0.5) — security hardening + mobile overhaul + repeating items, migration (0009, 0010)
 - Hardening across push, sign-in, shared pages, upload limits, backups and the Android app (issues #22–#59).
 - **New installs start invite-only.** Existing installs keep their sign-up mode.
 - Settings › Users: **Disable** a member.
@@ -18,6 +18,11 @@
 - **App shortcuts + share (#117):** long-press the app icon for Add item, New note, Today; share text or a link into Life Tracker = a new Keep note to edit.
 - **Reminder actions (#112):** Done · Snooze 10 min · Tomorrow on Android notifications, web push and the in-app reminder; tap opens the item sheet. Android: works offline, sent when back.
 - **Open instantly offline (#105):** last-seen screens open with no signal; planner adds, ticks and edits wait ("Waiting to sync") and send when back. Clash: the server wins if it changed later, else the latest edit wins. Sign-out wipes the cache.
+- **Repeating items & default reminders (#72, #73):**
+  - Repeat daily, weekly, monthly (day of month or Nth weekday), yearly or custom weekdays (`every day`, `every weekday`, `every mon,wed,fri`), with optional end date or count.
+  - Ticking one occurrence detaches that date as done; future ones stay to-do. Edit / delete asks: **This item**, **This and following** or **All items**.
+  - Relative reminders fire before each occurrence; a reminder's Done ticks only that occurrence. Settings › Preferences: **Default reminder on new items**.
+  - **Migrations 0009 (`users.hints_seen`) + 0010 (`users.default_reminder`)**: forward-only add-column. Back up first.
 
 ## v2.0.4 (2026-11-14) — widgets v2 + phone fixes, no migration
 From v2.0.x: pull the new image. The Android app offers the update by itself.
