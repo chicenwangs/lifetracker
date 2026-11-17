@@ -46,8 +46,29 @@ it('rows = today in the owner timezone, sorted, hidden types dropped; notes; upc
 	]); // Exam counts down
 	expect(s.theme.mode).toBe(user.themeMode);
 	expect(s.reminders).toEqual([
-		{ id: r.id, title: 'Quiz', route: `/item/${quiz.id}`, dueAt: '2026-11-13T04:30:00Z' },
+		{
+			id: r.id,
+			title: 'Quiz',
+			route: `/today?item=${quiz.id}`,
+			dueAt: '2026-11-13T04:30:00Z',
+			sourceType: 'planner_item',
+			sourceId: quiz.id,
+		},
 	]);
+
+	// #112: notification actions (snooze10, tomorrow, done)
+	expect(rem.act(user.id, r.id, 'snooze10', NOW)).toMatchObject({
+		id: r.id,
+		status: 'scheduled',
+		dueAt: '2026-11-13T02:10:00Z',
+	});
+	expect(rem.act(user.id, r.id, 'tomorrow', NOW)).toMatchObject({
+		id: r.id,
+		status: 'scheduled',
+		dueAt: '2026-11-14T01:00:00Z', // 09:00 KL (UTC+8) = 01:00Z
+	});
+	expect(rem.act(user.id, r.id, 'done', NOW)).toBeNull();
+	expect(nativeSync(user, NOW).rows.find((x) => x.id === quiz.id)?.status).toBe('done');
 
 	usersRepo.setPrefs(user.id, { notifyPlanner: false } as never);
 	expect(nativeSync(user, NOW).reminders).toEqual([]); // kind turned off = no alarm

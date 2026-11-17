@@ -27,6 +27,7 @@ public class SyncWorker extends Worker {
     @Override
     public Result doWork() {
         Context c = getApplicationContext();
+        Reminders.flushQueue(c);
         JSONObject j = Native.get(c, Native.base(c) + "/api/native", true);
         if (j == null) {
             // offline or signed out: widgets keep the last copy, alarms already set stay set

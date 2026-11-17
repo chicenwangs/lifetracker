@@ -1,9 +1,15 @@
-// One toast at a time (FR-H6 undo 5 s). Errors use the same slot.
+// One toast at a time (FR-H6 undo 5 s). Errors and in-app reminders use the same slot.
+export interface ToastAction {
+	label: string;
+	run: () => void | Promise<void>;
+}
 export interface Toast {
 	id: number;
 	text: string;
 	kind: 'info' | 'error';
 	undo?: () => void | Promise<void>;
+	actions?: ToastAction[];
+	onclick?: () => void | Promise<void>;
 }
 
 let seq = 0;
@@ -13,10 +19,23 @@ export const toast = $state<{ current: Toast | null }>({ current: null });
 
 export function showToast(
 	text: string,
-	opts: { undo?: Toast['undo']; kind?: Toast['kind']; ms?: number } = {},
+	opts: {
+		undo?: Toast['undo'];
+		actions?: ToastAction[];
+		onclick?: Toast['onclick'];
+		kind?: Toast['kind'];
+		ms?: number;
+	} = {},
 ) {
 	if (timer) clearTimeout(timer);
-	const t: Toast = { id: ++seq, text, kind: opts.kind ?? 'info', undo: opts.undo };
+	const t: Toast = {
+		id: ++seq,
+		text,
+		kind: opts.kind ?? 'info',
+		undo: opts.undo,
+		actions: opts.actions,
+		onclick: opts.onclick,
+	};
 	toast.current = t;
 	timer = setTimeout(() => {
 		if (toast.current?.id === t.id) toast.current = null;

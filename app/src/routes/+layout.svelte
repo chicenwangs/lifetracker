@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '@fontsource-variable/inter';
 	import '../app.css';
-	import { closePeek, peek } from '$lib/client/peek.svelte';
+	import { closePeek, openItem, peek } from '$lib/client/peek.svelte';
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import UndoToast from '$lib/components/UndoToast.svelte';
 	import Dialog from '$lib/components/Dialog.svelte';
@@ -15,7 +15,7 @@
 	import { onUndoKey } from '$lib/client/undo.svelte';
 	import { watchInbox } from '$lib/client/inbox';
 	import { onMount } from 'svelte';
-	import { beforeNavigate } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, replaceState } from '$app/navigation';
 	import { invalidateAll } from '$lib/client/refresh';
 	import { leavingPage } from '$lib/client/layers';
 	import Tour from '$lib/components/Tour.svelte';
@@ -30,6 +30,17 @@
 	$effect.pre(() => initTypes(data.types, data.user?.hiddenTypes ?? []));
 	onMount(() => (data.user ? watchInbox() : undefined));
 	beforeNavigate(leavingPage); // a link inside a menu or sheet must not be undone by its Back entry (#91)
+	// reminder notification tap (#112): /today?item=<id> opens that item's sheet over the screen
+	afterNavigate(() => {
+		const item = new URLSearchParams(location.search).get('item');
+		if (!item) return;
+		const u = new URL(location.href);
+		u.searchParams.delete('item');
+		setTimeout(() => {
+			replaceState(u.pathname + u.search + u.hash, {});
+			openItem(item);
+		});
+	});
 
 	// PWA + offline (FEATURES §10, DESIGN §17, #105): shell + last-seen data cache via the service worker,
 	// a visible offline / Waiting to sync badge, Keep + planner edits queued offline and sent when back.

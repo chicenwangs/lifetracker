@@ -79,7 +79,7 @@ self.addEventListener('fetch', (e) => {
 });
 
 self.addEventListener('push', (e) => {
-	let p = { title: 'Reminder', body: '', route: '/' };
+	let p = { title: 'Reminder', body: '', route: '/', reminderId: '', sourceType: '', sourceId: '' };
 	try {
 		p = { ...p, ...e.data.json() };
 	} catch {
@@ -88,17 +88,35 @@ self.addEventListener('push', (e) => {
 	e.waitUntil(
 		self.registration.showNotification(p.title, {
 			body: p.body,
-			data: { route: p.route },
-			tag: p.route,
+			data: { route: p.route, reminderId: p.reminderId, sourceType: p.sourceType, sourceId: p.sourceId },
+			tag: p.reminderId || p.route,
 			renotify: true, // same page again = alert again (else Android swaps it in silently)
 			icon: '/icon-192.png', // Android can't draw SVG notification icons
+			actions: p.reminderId
+				? [
+						{ action: 'done', title: 'Done' },
+						{ action: 'snooze10', title: 'Snooze 10 min' },
+						{ action: 'tomorrow', title: 'Tomorrow' },
+					]
+				: [],
 		}),
 	);
 });
 
 self.addEventListener('notificationclick', (e) => {
 	e.notification.close();
-	const route = e.notification.data?.route || '/';
+	const d = e.notification.data || {};
+	if (d.reminderId && (e.action === 'done' || e.action === 'snooze10' || e.action === 'tomorrow')) {
+		e.waitUntil(
+			fetch(`/api/reminders/${encodeURIComponent(d.reminderId)}`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ action: e.action }),
+			}).catch(() => {}),
+		);
+		return;
+	}
+	const route = d.route || '/';
 	// a normal page load: the app checks sign-in + access again before showing anything
 	e.waitUntil(
 		(async () => {
