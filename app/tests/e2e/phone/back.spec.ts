@@ -64,6 +64,7 @@ test('Back closes the account sheet; a link in it navigates once', async () => {
 	await expect(sheet).toBeHidden();
 	await page.goBack();
 	expect(path()).toBe('/today');
+	await expect(page).toHaveTitle(/^Today/); // the page itself, not only the URL (#221)
 	await expect(sheet).toBeHidden();
 });
 
