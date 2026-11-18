@@ -296,3 +296,24 @@ export function withUntil(raw: string, untilDate: string): string {
 	if (!r) return raw;
 	return formatRRule({ ...r, until: untilDate, count: undefined });
 }
+
+/**
+ * #164: a series whose date moved keeps its pattern but follows the new day: a single-day weekly BYDAY, a
+ * BYMONTHDAY or a monthly nth-weekday token are rebuilt from `newDate`. Multi-day weekly lists stay as they are.
+ */
+export function retargetRRule(raw: string, oldDate: string, newDate: string): string {
+	const r = parseRRule(raw);
+	if (!r || oldDate === newDate) return raw;
+	const oldWd = WD_CODES[weekdayOf(oldDate) - 1];
+	if (r.freq === 'WEEKLY' && r.byday?.length === 1 && r.byday[0] === oldWd)
+		return formatRRule({ ...r, byday: [WD_CODES[weekdayOf(newDate) - 1] as WdCode] });
+	if (r.freq === 'MONTHLY' && r.bymonthday) return formatRRule({ ...r, bymonthday: dateParts(newDate)[2] });
+	if (r.freq === 'MONTHLY' && r.byday?.length === 1)
+		return formatRRule({ ...r, byday: [nthWeekdayOfDate(newDate).token] });
+	return raw;
+}
+
+/** #155: occurrences (exdated ones too, as COUNT counts them) a series has before `date` */
+export function countBefore(startDate: string, raw: string, date: string): number {
+	return expandRRule(startDate, raw, [], startDate, date).length;
+}

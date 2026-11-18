@@ -11,10 +11,12 @@ import * as itemTypesRepo from './itemtypes';
 import { addDays, diffDays, nowUtcIso } from '$lib/time';
 import {
 	baseItemId,
+	countBefore,
 	expandRRule,
 	formatRRule,
 	parseExdates,
 	parseRRule,
+	retargetRRule,
 	splitOccId,
 	withUntil,
 } from '$lib/rrule';
@@ -334,6 +336,8 @@ function detachOccurrence(meId: string, cur: ItemRow, occDate: string, p: ItemPa
 export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	const { id, occDate } = splitOccId(rawId);
 	const cur = mustOwn(meId, id);
+	// #158/#163: that date was already detached into its own row; editing it again would make a second copy
+	if (occDate && parseExdates(cur.exdates).includes(occDate)) notFound();
 	const { scope, editedAt, ...fields } = p;
 	// #105 offline edit made before the server copy last changed: the server wins
 	if (editedAt && cur.updatedAt > editedAt) return cur;
@@ -360,6 +364,21 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 			let newEnd =
 				fields.endDate !== undefined ? fields.endDate : newDate && span > 0 ? addDays(newDate, span) : null;
 			if (newDate === null || newEnd === newDate) newEnd = null;
+			// #155: the new half keeps what is left of a COUNT and the dates the user already deleted;
+			// #164: a moved start date takes the rule's weekday / day of month with it
+			let newRule = fields.rrule !== undefined ? fields.rrule : (cur.rrule as string);
+			let newEx: string[] = [];
+			if (fields.rrule === undefined && newDate) {
+				let nr = cur.rrule as string;
+				const r = parseRRule(nr);
+				if (r?.count)
+					nr = formatRRule({ ...r, count: Math.max(1, r.count - countBefore(cur.date, nr, targetOcc)) });
+				newRule = retargetRRule(nr, targetOcc, newDate);
+				const shift = diffDays(targetOcc, newDate);
+				newEx = parseExdates(cur.exdates)
+					.filter((d) => d >= targetOcc)
+					.map((d) => addDays(d, shift));
+			}
 			return handle().sqlite.transaction(() => {
 				db()
 					.update(items)
@@ -370,7 +389,7 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 					})
 					.where(eq(items.id, cur.id))
 					.run();
-				return create(
+				const made = create(
 					meId,
 					itemCreateSchema.parse({
 						title: fields.title ?? cur.title,
@@ -381,9 +400,12 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 						endDate: newEnd,
 						notes: fields.notes !== undefined ? fields.notes : cur.notes,
 						private: fields.private !== undefined ? fields.private : cur.private,
-						rrule: fields.rrule !== undefined ? fields.rrule : cur.rrule,
+						rrule: newDate === null ? null : newRule,
 					}),
 				);
+				if (!newEx.length || !made.rrule) return made;
+				db().update(items).set({ exdates: newEx }).where(eq(items.id, made.id)).run();
+				return mustOwn(meId, made.id);
 			})();
 		}
 	}
@@ -397,7 +419,10 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	if (date === null) endDate = null;
 	if (endDate === date) endDate = null;
 	const time = fields.time !== undefined ? fields.time : date === null ? null : cur.time;
-	const rrule = fields.rrule !== undefined ? fields.rrule : date === null ? null : cur.rrule;
+	let rrule = fields.rrule !== undefined ? fields.rrule : date === null ? null : cur.rrule;
+	// #164: moving a whole series' date moves its weekday / day of month too
+	if (fields.rrule === undefined && rrule && cur.date && date && date !== cur.date)
+		rrule = retargetRRule(rrule, cur.date, date);
 	checkDates(date, endDate);
 	if (time && !date) bad('time needs a date');
 	if (rrule && !date) bad('repeat needs a date');
