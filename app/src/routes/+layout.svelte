@@ -23,6 +23,7 @@
 	import { flushQueue, queued, wipe } from '$lib/client/offline';
 	import { showToast } from '$lib/client/toast.svelte';
 	import { dropPush, resyncPush } from '$lib/client/push';
+	import { signOutNative } from '$lib/client/native';
 	let { data, children } = $props();
 	// svelte-ignore state_referenced_locally
 	if (browser) initHours(data.hours);
@@ -79,7 +80,9 @@
 			e.preventDefault();
 			f.dataset.out = '1';
 			const late = new Promise((r) => setTimeout(r, 2000));
-			void Promise.race([dropPush().catch(() => {}), late]).then(() => f.requestSubmit());
+			void Promise.race([Promise.all([dropPush().catch(() => {}), signOutNative()]), late]).then(() =>
+				f.requestSubmit(),
+			);
 		};
 		// keyboard opened (the page shrank, interactive-widget=resizes-content): keep the field you type in on screen (#118)
 		const keep = () => {

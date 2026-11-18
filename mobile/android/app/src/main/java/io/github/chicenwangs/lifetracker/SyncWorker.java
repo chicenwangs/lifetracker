@@ -30,8 +30,11 @@ public class SyncWorker extends Worker {
         Reminders.flushQueue(c);
         JSONObject j = Native.get(c, Native.base(c) + "/api/native", true);
         if (j == null) {
-            // offline or signed out: widgets keep the last copy, alarms already set stay set
-            c.getSharedPreferences(Native.PREFS, 0).edit().putBoolean("signedOut", Native.get(c, Native.base(c) + "/healthz", false) != null).apply();
+            // offline: widgets keep the last copy, alarms already set stay set. Signed out (server up, no data):
+            // nothing private stays (#201)
+            boolean signedOut = Native.get(c, Native.base(c) + "/healthz", false) != null;
+            if (signedOut) SessionPlugin.wipe(c);
+            else c.getSharedPreferences(Native.PREFS, 0).edit().putBoolean("signedOut", false).apply();
         } else {
             c.getSharedPreferences(Native.PREFS, 0).edit().putString("sync", j.toString()).putBoolean("signedOut", false).apply();
             Reminders.schedule(c, j.optJSONArray("reminders"));
