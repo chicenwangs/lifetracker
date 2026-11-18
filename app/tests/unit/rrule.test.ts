@@ -117,6 +117,32 @@ describe('repeating items repo, reminders per occurrence, and default reminders'
 		expect(afterDelThis.find((x) => x.date === '2026-11-18')).toBeDefined();
 	});
 
+	it('"this and following" keeps the COUNT total and deleted dates (#155); a moved date moves the rule (#164); a detached date cannot be detached twice (#158/#163)', () => {
+		const mk = (rrule: string, date: string) =>
+			items.create(user.id, items.itemCreateSchema.parse({ title: 'S', date, rrule }));
+		const s = mk('FREQ=DAILY;COUNT=5', '2026-11-16');
+		items.softDelete(user.id, `${s.id}@2026-11-20`, 'this');
+		items.patch(user.id, `${s.id}@2026-11-19`, { title: 'T', scope: 'following' });
+		const dates = items.inRange(calId, '2026-11-01', '2026-12-01').map((x) => x.date);
+		expect(dates).toEqual(['2026-11-16', '2026-11-17', '2026-11-18', '2026-11-19']);
+
+		const rent = mk('FREQ=MONTHLY;BYMONTHDAY=5', '2026-11-05');
+		expect(items.patch(user.id, rent.id, { date: '2026-11-10', scope: 'all' }).rrule).toBe(
+			'FREQ=MONTHLY;BYMONTHDAY=10',
+		);
+		const wk = mk('FREQ=WEEKLY;BYDAY=MO', '2026-11-16');
+		const split = items.patch(user.id, `${wk.id}@2026-11-23`, { date: '2026-11-25', scope: 'following' });
+		expect(split.rrule).toBe('FREQ=WEEKLY;BYDAY=WE');
+
+		const d = mk('FREQ=DAILY', '2026-11-16');
+		items.patch(user.id, `${d.id}@2026-11-17`, { status: 'done' });
+		expect(() => items.patch(user.id, `${d.id}@2026-11-17`, { status: 'todo' })).toThrow();
+		const onDay = items
+			.inRange(calId, '2026-11-17', '2026-11-18')
+			.filter((x) => (x.seriesId ?? x.id) !== s.id);
+		expect(onDay).toHaveLength(1);
+	});
+
 	it('advances relative reminders to the next occurrence when a reminder fires, and applies defaultReminder on new items', async () => {
 		const startMs = Date.parse('2026-11-16T00:00:00Z'); // 08:00 KL
 		const series = items.create(

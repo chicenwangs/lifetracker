@@ -69,6 +69,12 @@
 	let failed = $state(false);
 	let planDate = $state('');
 	let dayBlocks = $state<BlockDTO[]>([]);
+	// #158: editing one date of a repeating item detaches it into its own row; keep showing that row
+	let detached = $state<string | null>(null);
+	const viewId = $derived(detached ?? id);
+	function follow(sent: string, got: { item?: { id: string } } | undefined) {
+		if (got?.item && sent === it?.id && got.item.id !== sent) detached = got.item.id;
+	}
 
 	const it = $derived(v?.item);
 	const c = $derived(colorsFor(it?.type ?? null));
@@ -81,7 +87,7 @@
 	async function load() {
 		const n = ++loadSeq;
 		try {
-			const r = await get<View>(`/api/items/${id}/view`);
+			const r = await get<View>(`/api/items/${encodeURIComponent(viewId)}/view`);
 			if (n !== loadSeq) return;
 			v = r;
 			failed = false;
@@ -139,7 +145,7 @@
 			body = { ...p, scope };
 		}
 		try {
-			await patch(`/api/items/${encodeURIComponent(it.id)}`, body);
+			follow(it.id, await patch<{ item: { id: string } }>(`/api/items/${encodeURIComponent(it.id)}`, body));
 			await changed();
 		} catch (e) {
 			if (isOffline(e)) {
@@ -148,7 +154,7 @@
 					key: `/api/items/${it.id}`,
 					method: 'PATCH',
 					path: `/api/items/${it.id}`,
-					payload: p,
+					payload: { ...body }, // #208: with the repeat scope the user picked
 				});
 				showToast('Saved · Waiting to sync');
 				return;
@@ -159,7 +165,7 @@
 	}
 	async function cycle(itemId: string) {
 		try {
-			await post(`/api/items/${encodeURIComponent(itemId)}/cycle`);
+			follow(itemId, await post<{ item: { id: string } }>(`/api/items/${encodeURIComponent(itemId)}/cycle`));
 			await changed();
 		} catch (e) {
 			showError(e);
