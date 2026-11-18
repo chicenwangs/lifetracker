@@ -63,6 +63,10 @@ const writeActions = (q: ActionOp[]) => {
 
 export const queued = () => read().length + readActions().length;
 export const isOffline = (e: unknown) => e instanceof ApiError && e.code === 'offline';
+/** worth retrying later: no network, session expired, or the server failed (only a clear 4xx drops an op) */
+const keepForLater = (e: unknown) =>
+	isOffline(e) ||
+	(e instanceof ApiError && (e.status === 401 || e.status === 408 || e.status === 429 || e.status >= 500));
 
 /** one entry per note: a later edit replaces the payload and updates editedAt */
 export function enqueue(op: Op): void {
@@ -110,7 +114,7 @@ export function flushQueue(): Promise<{ sent: number; copies: number; planner: n
 				else await post('/api/keep/notes', op.payload);
 				sent++;
 			} catch (e) {
-				if (isOffline(e)) break; // still offline: keep the rest for next time
+				if (keepForLater(e)) break; // offline / signed out / server down: keep the rest for next time (#181)
 				if (e instanceof ApiError && e.status === 409) {
 					const p = op.payload as { title?: string };
 					await post('/api/keep/notes', { ...op.payload, title: `${p.title ?? ''} (offline copy)`.trim() }).catch(() => {}); // prettier-ignore
@@ -125,7 +129,7 @@ export function flushQueue(): Promise<{ sent: number; copies: number; planner: n
 				else await post(op.path, op.payload);
 				planner++;
 			} catch (e) {
-				if (isOffline(e)) break;
+				if (keepForLater(e)) break;
 				// 400/403/404: item was deleted or invalid; drop from queue
 			}
 			writeActions(readActions().filter((o) => o.key !== op.key));

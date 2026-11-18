@@ -287,6 +287,15 @@
 			onchanged?.();
 			return true;
 		} catch (e) {
+			if (isOffline(e)) {
+				// #209: offline notes wait on this device like every other edit
+				const path = `/api/items/${it.id}`;
+				enqueueAction({ key: path, method: 'PATCH', path, payload: { notes: val } });
+				if (v) v = { ...v, item: { ...v.item, notes: val } };
+				saveState = 'saved';
+				showToast('Saved · Waiting to sync');
+				return true;
+			}
 			saveState = 'idle';
 			showError(e);
 			return false;

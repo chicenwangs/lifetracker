@@ -99,8 +99,13 @@
 					: await post<{ note: NoteDTO }>('/api/keep/notes', payload());
 				id = r.note.id;
 				revision = r.note.revision;
-				// server ids for new checklist rows, kept in place so typing isn't disturbed
-				items = items.map((it, i) => ({ ...it, id: r.note.items[i]?.id ?? it.id }));
+				// server ids for new checklist rows, kept in place so typing isn't disturbed; children follow (#171)
+				const ids = new Map(items.map((it, i) => [it.id, r.note.items[i]?.id ?? it.id]));
+				items = items.map((it) => ({
+					...it,
+					id: ids.get(it.id) ?? it.id,
+					parentId: it.parentId ? (ids.get(it.parentId) ?? it.parentId) : it.parentId,
+				}));
 				saveState = dirty ? 'saving' : 'saved';
 				onchanged();
 			} catch (e) {
@@ -133,7 +138,13 @@
 	$effect(() => {
 		if (!start && !id && (initialSeed?.title || initialSeed?.body)) dirty = true;
 		return () => {
-			if (dirty) void flush();
+			// closed without close() (Android Back unmounts it, #209): a save that still fails waits on this device
+			if (dirty || saveState === 'failed')
+				void flush().then(() => {
+					if (saveState !== 'failed') return;
+					enqueue({ key: id ?? localKey, noteId: id, revision, payload: payload() });
+					showToast('Note not saved yet · kept on this device, tries again later');
+				});
 		};
 	});
 
@@ -333,9 +344,10 @@
 			const nid = id;
 			showToast(msg, {
 				undo: async () => {
+					// the opposite of each field sent (#211: Unarchive sends archived:false, its Undo archives again)
 					await patch(`/api/keep/notes/${nid}`, {
-						archived: p.archived ? false : undefined,
-						trashed: p.trashed ? false : undefined,
+						...('archived' in p ? { archived: !p.archived } : {}),
+						...('trashed' in p ? { trashed: !p.trashed } : {}),
 					});
 					onchanged();
 				},

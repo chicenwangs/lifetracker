@@ -27,6 +27,8 @@ export async function apiFetch<T>(
 		throw new ApiError(0, 'offline', "You're offline. Not saved.");
 	}
 	if (res.status === 401) {
+		// #205: signed out on the server: this device's offline copies go too (the offline queue stays for after sign-in)
+		if (typeof caches !== 'undefined') await caches.delete('lt-data-v1').catch(() => {});
 		location.href = `/login?next=${encodeURIComponent(location.pathname + location.search)}`;
 		throw new ApiError(401, 'unauthorized', 'Log in first');
 	}
