@@ -7,6 +7,7 @@ import { parseHours } from '$lib/hours';
 import { MAX_TYPES } from '$lib/itemtypes';
 import { OFFSETS } from '$lib/remind';
 import { zTime } from '$lib/server/validate';
+import { recalcOwner } from '$lib/server/reminders';
 
 const isZone = (tz: string) => {
 	try {
@@ -60,6 +61,8 @@ export const PATCH = api(async (e) => {
 		p.visibleHours = `${r.start}-${r.end}`;
 	}
 	if (Object.keys(p).length) users.setPrefs(u.id, p);
+	// #189: relative reminders follow the new zone's clock
+	if (p.timezone) recalcOwner(u.id);
 	const row = users.byId(u.id);
 	return json({ user: row ? users.safe(row) : null });
 });

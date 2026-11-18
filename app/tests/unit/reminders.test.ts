@@ -125,6 +125,14 @@ describe('reminders', () => {
 		expect(late.warnings.join()).toMatch(/already passed/);
 	});
 
+	it('#198 inbox hands out one reminder at a time and marks only that one seen', async () => {
+		for (const d of ['2026-11-20', '2026-11-21', '2026-11-22']) add(item(d).id, '2h');
+		await tick(Date.parse('2026-11-22T00:00:30Z'));
+		const seen = [rem.inbox(me), rem.inbox(me), rem.inbox(me), rem.inbox(me)];
+		expect(seen.map((x) => x.length)).toEqual([1, 1, 1, 0]);
+		expect(seen[0]?.[0]?.more).toBe(2);
+	});
+
 	it("someone else's item: not found", () => {
 		const i = item('2026-11-20');
 		const other = usersRepo.createWithCalendar({

@@ -86,7 +86,8 @@ export function sourceInfo(ownerId: string, type: Source, rawId: string): Source
 /** next due UTC Z instant for a relative reminder on a repeating item (#72): earliest occurrence whose reminder is > now */
 function nextRepeatDue(rep: NonNullable<SourceInfo['repeat']>, ms: number, now = Date.now()): string | null {
 	const start = addDays(todayLocal(rep.tz, now), -1);
-	const end = addDays(start, 400);
+	// #187: far enough for yearly / every-N-years rules (expandRRule caps its own steps)
+	const end = addDays(start, 36_600);
 	const occs = expandRRule(rep.date, rep.rrule, rep.exdates, start, end);
 	for (const d of occs) {
 		const due = isoPlus(itemRef(d, rep.time, rep.tz), -ms);
@@ -218,10 +219,10 @@ export function upcoming(ownerId: string, now = Date.now(), ms = 48 * 3_600_000)
 	});
 }
 
-/** in-app channel: sent/missed reminders not shown yet */
+/** in-app channel: the oldest sent/missed reminder not shown yet (#198: one at a time, the toast has one slot) */
 export function inbox(ownerId: string) {
-	const rows = db().prepare(`SELECT * FROM reminders WHERE owner_id = ? AND status IN ('sent','missed') AND seen_at IS NULL ORDER BY sent_at LIMIT 20`).all(ownerId) as Row[]; // prettier-ignore
-	const out = rows.map((r) => {
+	const rows = db().prepare(`SELECT * FROM reminders WHERE owner_id = ? AND status IN ('sent','missed') AND seen_at IS NULL ORDER BY sent_at LIMIT 21`).all(ownerId) as Row[]; // prettier-ignore
+	const out = rows.slice(0, 1).map((r) => {
 		const i = sourceInfo(ownerId, r.source_type, r.source_id);
 		return {
 			id: r.id,
@@ -231,9 +232,11 @@ export function inbox(ownerId: string) {
 			sourceId: r.source_id,
 			late: r.status === 'missed',
 			dueAt: r.due_at,
+			/** more waiting after this one (20 = 20 or more) */
+			more: Math.min(20, rows.length - 1),
 		};
 	});
-	if (rows.length) db().prepare(`UPDATE reminders SET seen_at = ? WHERE id IN (${rows.map(() => '?').join(',')})`).run(nowUtcIso(), ...rows.map((r) => r.id)); // prettier-ignore
+	if (rows[0]) db().prepare(`UPDATE reminders SET seen_at = ? WHERE id = ?`).run(nowUtcIso(), rows[0].id);
 	return out;
 }
 
@@ -249,6 +252,8 @@ export function act(
 	const r = db().prepare(`SELECT * FROM reminders WHERE id = ? AND owner_id = ?`).get(id, ownerId) as Row | undefined; // prettier-ignore
 	if (!r) return notFound() as never;
 	const t = nowUtcIso(now);
+	// #185: a repeating item's chain goes on to the next date before this row is rewritten
+	advanceRepeating(id, ownerId, now);
 	if (action === 'done') {
 		db().prepare(`UPDATE reminders SET status = 'sent', seen_at = COALESCE(seen_at, ?), updated_at = ? WHERE id = ?`).run(t, t, id); // prettier-ignore
 		if (r.source_type === 'planner_item') {

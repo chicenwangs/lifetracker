@@ -174,4 +174,31 @@ describe('repeating items repo, reminders per occurrence, and default reminders'
 		expect(qa.item).toBeTruthy();
 		expect(rem.list(user.id, 'planner_item', qa.item?.id ?? '')).toHaveLength(1);
 	});
+
+	it('snooze before the reminder fires keeps the daily chain (#185); every-2-years reminders advance (#187); a new timezone moves them (#189)', async () => {
+		const at = Date.parse('2026-11-16T00:00:00Z');
+		const mk = (rrule: string) =>
+			items.create(
+				user.id,
+				items.itemCreateSchema.parse({ title: 'R', date: '2026-11-16', time: '10:00', rrule }),
+			);
+		const daily = mk('FREQ=DAILY');
+		const r = rem.add(user.id, 'planner_item', daily.id, { offset: '15min' }, at);
+		rem.act(user.id, r.id, 'snooze10', at);
+		expect(rem.list(user.id, 'planner_item', daily.id).map((x) => x.dueAt)).toContain('2026-11-17T01:45:00Z');
+
+		const two = mk('FREQ=YEARLY;INTERVAL=2');
+		rem.add(user.id, 'planner_item', two.id, { offset: '15min' }, at);
+		await jobs.tick(Date.parse('2026-11-16T01:45:01Z'));
+		expect(rem.list(user.id, 'planner_item', two.id).map((x) => x.dueAt)).toContain('2028-11-16T01:45:00Z');
+
+		const once = items.create(
+			user.id,
+			items.itemCreateSchema.parse({ title: 'O', date: '2026-12-01', time: '10:00' }),
+		);
+		rem.add(user.id, 'planner_item', once.id, { offset: '2h' }, at);
+		usersRepo.setPrefs(user.id, { timezone: 'Asia/Tokyo' });
+		rem.recalcOwner(user.id, at);
+		expect(rem.list(user.id, 'planner_item', once.id)[0]?.dueAt).toBe('2026-11-30T23:00:00Z'); // 08:00 Tokyo
+	});
 });
