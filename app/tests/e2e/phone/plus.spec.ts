@@ -25,6 +25,16 @@ test('Today: + adds on the day you are looking at', async () => {
 	await page.goBack();
 });
 
+test('Add sheet: the "/" options are 48 dp (#229)', async () => {
+	await page.goto('/today');
+	await plus().click();
+	await page.keyboard.type('x /');
+	await expect(page.getByRole('option').first()).toBeVisible();
+	for (const o of await page.getByRole('option').all())
+		await expect.poll(async () => (await o.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(48); // after the sheet's intro
+	await page.goBack();
+});
+
 test("Calendar on another week: + adds on that week's first day", async () => {
 	await page.goto('/week?w=2030-01-14');
 	await plus().click();

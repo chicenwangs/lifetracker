@@ -29,6 +29,7 @@ for (const [path, words] of [
 	test(`${path}: hint once, Got it = gone for good`, async () => {
 		await page.goto(path);
 		await expect(card()).toContainText(words);
+		await expect(card()).toBeInViewport(); // on screen when the page opens, not below the list (#224)
 		await expectTappable(card().getByRole('button', { name: 'Got it' }));
 		await card().getByRole('button', { name: 'Got it' }).click();
 		await expect(card()).toHaveCount(0);

@@ -101,7 +101,7 @@ export async function expectTappable(el: Locator) {
  * running text are exempt (WCAG 2.5.8). Allowlist (targets48-allowlist.json) = known gaps by label. */
 export async function expectTargets48(page: Page) {
 	const small = await page.evaluate(() => {
-		const sel = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=link], [role=tab], [role=checkbox], [role=switch], [role=menuitem], [tabindex]:not([tabindex="-1"])'; // prettier-ignore
+		const sel = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=link], [role=tab], [role=checkbox], [role=switch], [role=menuitem], [role=option], [tabindex]:not([tabindex="-1"])'; // prettier-ignore
 		const hit = (el: Element) => {
 			const r = el.getBoundingClientRect();
 			let w = r.width;

@@ -380,4 +380,10 @@
 	.menu::-webkit-scrollbar {
 		display: none;
 	}
+	/* 48 dp to tap on phone (#229) */
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.mi {
+			min-height: 48px;
+		}
+	}
 </style>

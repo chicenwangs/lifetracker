@@ -1,7 +1,7 @@
 // Back closes the top layer first (G2, #91). Every open sheet, dialog or menu owns one history entry, so the
 // browser Back, the Android Back button (MainActivity: WebView history back) and predictive back all close it.
 // Item peek and Keep note keep their own entries (they have URLs / their own popstate).
-import { pushState, replaceState } from '$app/navigation';
+import { goto, pushState, replaceState } from '$app/navigation';
 import { invalidateAll, refreshing } from './refresh';
 
 type Layer = { id: number; close: () => void; gone: boolean };
@@ -44,7 +44,26 @@ if (typeof window !== 'undefined')
 		'click',
 		(e) => {
 			const a = (e.target as Element | null)?.closest?.('a[href]');
-			if (a && !a.hasAttribute('download') && !(a as HTMLAnchorElement).target) leave();
+			if (!a || a.hasAttribute('download') || (a as HTMLAnchorElement).target) return;
+			leave();
+			// #221: the open layer's entry is the current one. Step back off it first, then follow the link, so one
+			// Back from the new page lands on the page under the layer (a replaced entry would keep its navigation
+			// index and SvelteKit would treat that Back as a shallow state change: new URL, old page).
+			// Item links are the item sheet's (peek.svelte.ts); same-page, modified and other-origin clicks stay as they are.
+			const top = stack[stack.length - 1];
+			const url = new URL((a as HTMLAnchorElement).href);
+			const plain = !e.defaultPrevented && !e.button && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+			if (
+				!top ||
+				!ours(top.id) ||
+				!plain ||
+				url.origin !== location.origin ||
+				url.pathname.startsWith('/item/')
+			)
+				return;
+			e.preventDefault(); // SvelteKit's router skips it; the layer's own click handler still closes it
+			addEventListener('popstate', () => void goto(url.pathname + url.search + url.hash), { once: true });
+			history.back();
 		},
 		true,
 	);

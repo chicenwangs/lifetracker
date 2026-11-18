@@ -780,6 +780,7 @@
 		max-height: 84vh;
 		max-height: 84dvh;
 		overflow: auto;
+		overscroll-behavior: contain; /* #227: scrolling past the end doesn't drag the sheet / page */
 		padding: 18px;
 		display: flex;
 		flex-direction: column;
@@ -805,6 +806,7 @@
 	}
 	.body {
 		resize: vertical;
+		overscroll-behavior: contain;
 		min-height: 120px;
 		font-size: 14px;
 		line-height: 1.5;

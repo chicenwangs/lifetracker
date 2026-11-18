@@ -411,6 +411,15 @@
 			color: var(--ink);
 			text-decoration: none;
 		}
+		/* a 300-character title stays inside its card (#226) */
+		.recent b {
+			overflow: hidden;
+			overflow-wrap: anywhere;
+			display: -webkit-box;
+			-webkit-box-orient: vertical;
+			-webkit-line-clamp: 3;
+			line-clamp: 3;
+		}
 		.recent .hint {
 			margin-top: auto;
 		}
@@ -422,7 +431,7 @@
 		.hits a {
 			display: flex;
 			align-items: center;
-			min-height: 44px;
+			min-height: 48px; /* #231 */
 			padding: 0 12px;
 			border-radius: 10px;
 			background: var(--card);

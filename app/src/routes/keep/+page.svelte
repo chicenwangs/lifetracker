@@ -309,11 +309,12 @@
 		<a href="/keep?scope=trash" class:on={data.scope === 'trash'}>Trash</a>
 	</nav>
 
-	<GestureHint
-		id="keep"
-		text="Swipe a note sideways to archive it. Hold a note to select it; hold and drag to reorder."
-	/>
 	<section class="main">
+		<!-- top of the notes, not a grid child: an unplaced child lands below the notes (#224) -->
+		<GestureHint
+			id="keep"
+			text="Swipe a note sideways to archive it. Hold a note to select it; hold and drag to reorder."
+		/>
 		{#if data.q || data.labelFilter.length}
 			<p class="filters">
 				{#if data.q}Matching "{data.q}"{/if}
@@ -659,6 +660,7 @@
 	.open h3 {
 		margin: 0 0 4px;
 		font-size: 14px;
+		overflow-wrap: anywhere; /* #226: a long unbroken title wraps inside the card */
 	}
 	.open p {
 		margin: 0;

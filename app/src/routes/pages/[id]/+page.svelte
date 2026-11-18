@@ -402,8 +402,8 @@
 		.menu .narrow {
 			display: block;
 		}
-		.menu button {
-			min-height: 48px;
+		.menu-wrap .menu button {
+			min-height: 48px; /* beats the base 32 px rule below (#223) */
 		}
 		.crumbs a {
 			display: inline-flex;

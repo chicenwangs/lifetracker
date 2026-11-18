@@ -28,6 +28,9 @@ test('New binder asks in an in-app text dialog; Back cancels it', async () => {
 
 	await page.getByRole('button', { name: 'New binder' }).click();
 	await expectTappable(dlg.getByRole('button'));
+	await expect
+		.poll(async () => (await dlg.getByRole('textbox').boundingBox())?.height ?? 0)
+		.toBeGreaterThanOrEqual(48); // #230
 	await dlg.getByRole('textbox').fill('Dialog binder');
 	await dlg.getByRole('button', { name: 'Add' }).click();
 	await expect(dlg).toBeHidden();
