@@ -25,6 +25,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(UpdaterPlugin.class);
         registerPlugin(HapticsPlugin.class);
         registerPlugin(ThemeBarsPlugin.class);
+        registerPlugin(SessionPlugin.class);
         super.onCreate(state);
         String themeCookie = CookieManager.getInstance().getCookie(Native.base(this));
         boolean dark = themeCookie != null && themeCookie.contains("lt_theme=light") ? false

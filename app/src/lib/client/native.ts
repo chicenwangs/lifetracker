@@ -10,14 +10,20 @@ type SystemBars = {
 type ThemeBars = {
 	setDark(opts: { dark: boolean }): Promise<void>;
 };
+type Session = { signOut(): Promise<void> };
 type Cap = {
 	isNativePlatform?: () => boolean;
-	Plugins?: { Updater?: Updater; SystemBars?: SystemBars; ThemeBars?: ThemeBars };
+	Plugins?: { Updater?: Updater; SystemBars?: SystemBars; ThemeBars?: ThemeBars; Session?: Session };
 };
 const cap = () => (globalThis as { Capacitor?: Cap }).Capacitor;
 
 export const isApp = () => !!cap()?.isNativePlatform?.();
 export const updater = () => cap()?.Plugins?.Updater;
+/** #201: the Android app drops its alarms, notifications, cached sync and widget data (no-op on the web) */
+export const signOutNative = (): Promise<void> =>
+	cap()
+		?.Plugins?.Session?.signOut()
+		.catch(() => {}) ?? Promise.resolve();
 
 /** #114: status + navigation bars follow the chosen theme (dark icons on light, light icons on dark). */
 export function setSystemBarsDark(dark: boolean): void {
