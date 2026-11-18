@@ -39,6 +39,21 @@ test('toolbar hidden until typing, then docked at the bottom, 48 dp, no Ctrl', a
 	await expect(tools()).toBeHidden();
 });
 
+test('"/" menu and page ⋯ menu rows are 48 dp (#228, #223)', async () => {
+	await page.getByLabel('Page content').click();
+	await page.keyboard.type('/');
+	await expect(page.getByRole('listbox', { name: 'Insert block' })).toBeVisible();
+	await expectTargets48(page);
+	await page.keyboard.press('Escape');
+	await page.keyboard.press('Backspace');
+	await page.getByLabel('Page title').click();
+	await page.locator('.pagev .bar').getByRole('button', { name: 'Page menu' }).click();
+	await expect(page.getByRole('menuitem', { name: 'Pin to header' })).toBeVisible();
+	await expectTargets48(page);
+	await page.goBack(); // Back closes the menu (#91)
+	await expect(page.getByRole('menuitem', { name: 'Pin to header' })).toBeHidden();
+});
+
 test('block ⋯ = sheet with move, duplicate, delete', async () => {
 	await page.getByLabel('Page content').click();
 	await page.keyboard.type('first line');

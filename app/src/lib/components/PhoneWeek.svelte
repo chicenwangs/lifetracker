@@ -79,19 +79,32 @@
 			{#each d.rows as r (r.key)}
 				{@const c = entryColors(r.x)}
 				<div class="rw" use:rowGestures={gestures(r, d.date)}>
-					<svelte:element
-						this={r.href ? 'a' : 'div'}
-						href={r.href}
-						class="row"
-						class:theirs={r.x.theirs}
-						style:--bg={c.bg}
-						style:--fg={c.ink}
-					>
+					<!-- #222: a div, not <a href>: Android WebView's link preview on a long press would take the hold -->
+					{#snippet inner()}
 						<span class="tm">{r.time || 'all day'}</span>
 						<span class="lb">{r.x.busy ? 'Busy' : r.label}</span>
 						{#if r.x.theirs}<span class="who" style:background={r.x.owner?.color}>{r.x.owner?.initial}</span
 							>{/if}
-					</svelte:element>
+					{/snippet}
+					{#if r.href}
+						{@const href = r.href}
+						<div
+							role="link"
+							tabindex="0"
+							onclick={() => openItem(href.slice('/item/'.length))}
+							onkeydown={(e) => e.key === 'Enter' && openItem(href.slice('/item/'.length))}
+							class="row"
+							class:theirs={r.x.theirs}
+							style:--bg={c.bg}
+							style:--fg={c.ink}
+						>
+							{@render inner()}
+						</div>
+					{:else}
+						<div class="row" class:theirs={r.x.theirs} style:--bg={c.bg} style:--fg={c.ink}>
+							{@render inner()}
+						</div>
+					{/if}
 					{#if mine(r)}<button
 							class="more"
 							type="button"
@@ -162,6 +175,9 @@
 		align-items: center;
 	}
 	.row {
+		user-select: none; /* hold lifts the row (#96, #222) */
+		-webkit-touch-callout: none;
+		cursor: pointer;
 		display: flex;
 		gap: 10px;
 		align-items: center;

@@ -75,6 +75,10 @@
 		.keys {
 			display: none;
 		}
+		[role='option'] {
+			min-height: 48px; /* #228 */
+			justify-content: center;
+		}
 	}
 	.none {
 		font-size: 13px;

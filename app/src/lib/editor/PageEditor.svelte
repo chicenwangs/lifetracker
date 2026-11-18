@@ -454,8 +454,9 @@
 		.doc {
 			padding-bottom: 64px; /* last line clears the docked toolbar */
 		}
-		.picker input,
-		.picker button {
+		/* div.picker beats the base 36 / 32 px rules further down (#223) */
+		div.picker input,
+		div.picker button {
 			min-height: 48px;
 		}
 		/* 22 px box, 48 dp to tap */

@@ -137,4 +137,10 @@
 		color: var(--card);
 		border-color: var(--danger);
 	}
+	/* 48 dp on phone (#230; app.css leaves .in out of its input rule) */
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.in {
+			min-height: 48px;
+		}
+	}
 </style>

@@ -44,7 +44,15 @@ if (typeof window !== 'undefined')
 		'click',
 		(e) => {
 			const a = (e.target as Element | null)?.closest?.('a[href]');
-			if (a && !a.hasAttribute('download') && !(a as HTMLAnchorElement).target) leave();
+			if (!a || a.hasAttribute('download') || (a as HTMLAnchorElement).target) return;
+			leave();
+			// #221: the open layer's entry is the current one: the link takes its place, or one Back would land on
+			// that dead entry. SvelteKit reads this in its own click handler, after this capture one.
+			const top = stack[stack.length - 1];
+			if (top && ours(top.id) && !a.hasAttribute('data-sveltekit-replacestate')) {
+				a.setAttribute('data-sveltekit-replacestate', '');
+				setTimeout(() => a.removeAttribute('data-sveltekit-replacestate'));
+			}
 		},
 		true,
 	);

@@ -54,8 +54,14 @@ export function rowGestures(node: HTMLElement, opts: RowGestures) {
 		clearTimeout(timer);
 		mode = null;
 		dx = dy = 0;
+		swallow = false; // a new touch: the old gesture's click (if any) came already (#210)
 		node.classList.remove('lt-lifted');
 	}
+	// a call / system gesture took the touch: the row goes back, nothing fires (#210)
+	const cancel = () => {
+		reset();
+		slide(0, false);
+	};
 	const start = (e: TouchEvent) => {
 		const t = e.touches[0];
 		if (!t || e.touches.length > 1) return;
@@ -127,7 +133,7 @@ export function rowGestures(node: HTMLElement, opts: RowGestures) {
 	node.addEventListener('touchstart', start, { passive: true });
 	node.addEventListener('touchmove', move, { passive: false });
 	node.addEventListener('touchend', end);
-	node.addEventListener('touchcancel', reset);
+	node.addEventListener('touchcancel', cancel);
 	node.addEventListener('click', click, true);
 	node.addEventListener('contextmenu', menu);
 	return {
@@ -140,7 +146,7 @@ export function rowGestures(node: HTMLElement, opts: RowGestures) {
 			node.removeEventListener('touchstart', start);
 			node.removeEventListener('touchmove', move);
 			node.removeEventListener('touchend', end);
-			node.removeEventListener('touchcancel', reset);
+			node.removeEventListener('touchcancel', cancel);
 			node.removeEventListener('click', click, true);
 			node.removeEventListener('contextmenu', menu);
 		},
