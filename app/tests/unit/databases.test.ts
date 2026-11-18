@@ -59,6 +59,13 @@ describe('Databases', () => {
 		expect(() => dbs.patchView(me, d0.viewId, { config: { filters: [{ prop: kg.id, op: 'contains', value: 'x' }] } })).toThrow(/does not fit/);
 	}); // prettier-ignore
 
+	it('#172 a new record past the 500-row window returns its values', () => {
+		const { id } = dbs.create(me, { pageId: null, title: 'W' });
+		const t = dbs.get(me, id).props[0]?.id as string;
+		for (let i = 0; i < 500; i++) dbs.addRecord(me, id);
+		expect(dbs.addRecord(me, id, { [t]: 'Press' }).values).toEqual({ [t]: 'Press' });
+	});
+
 	it('PAGE-015: record opens as a page (same identity every time); title syncs both ways; not in the sidebar', () => {
 		const { id, pageId } = dbs.create(me, { pageId: null, title: 'W' });
 		const t = dbs.get(me, id).props[0]?.id as string;

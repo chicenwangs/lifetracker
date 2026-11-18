@@ -120,6 +120,12 @@ export async function save(
 	try {
 		await pipeline(Readable.fromWeb(body as never), meter, fs.createWriteStream(tmp, { flags: 'wx', mode: 0o600 }));
 		if (!bytes || !kind.magic(head)) throw new ApiFail(400, 'bad_content', "The file's content doesn't match its type.");
+		// #170: the real size against the quota, counting uploads that finished meanwhile; claimed in one write lock
+		db().transaction(() => {
+			const now = (db().prepare(`SELECT coalesce(sum(byte_size), 0) AS n FROM attachments WHERE owner_id = ? AND id <> ? AND ${COUNTS}`).get(ownerId, id) as { n: number }).n;
+			if (now + bytes > quota) throw new ApiFail(413, 'quota', `This file doesn't fit: your files use ${Math.round(now / 1048576)} of ${Math.round(quota / 1048576)} MB. Delete some first.`);
+			db().prepare(`UPDATE attachments SET byte_size = ? WHERE id = ?`).run(bytes, id);
+		}).immediate();
 		await fs.promises.mkdir(join(dir, key.slice(0, 2)), { recursive: true });
 		await moveInto(tmp, pathOf(key));
 		db().prepare(`UPDATE attachments SET status = 'ready', byte_size = ?, sha256 = ? WHERE id = ?`).run(bytes, hash.digest('hex'), id);

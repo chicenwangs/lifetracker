@@ -257,15 +257,13 @@ export function update(
 						link.run(newId('plk'), id, t, bid, now);
 			});
 			// files in the doc are referenced by the page: kept from GC, readable by whoever can read the page
-			let atts = [...new Set(JSON.stringify(p.doc).match(/att_[0-9a-z]{16}/g) ?? [])];
-			if (actor !== ownerId) {
-				// an editor adds their own files and keeps the owner's files this page already had. Never other
-				// owner files: a ref makes the file readable to everyone on the page, the editor included.
-				const had = new Set((db().prepare(`SELECT attachment_id AS a FROM attachment_refs WHERE source_type = 'page_block' AND source_id = ?`).all(id) as { a: string }[]).map((r) => r.a)); // prettier-ignore
-				const ownedBy = db().prepare(`SELECT owner_id AS o FROM attachments WHERE id = ?`);
-				atts = atts.filter((a) => had.has(a) || (ownedBy.get(a) as { o: string } | undefined)?.o === actor);
-			}
-			attachments.syncRefs('page_block', id, ownerId, atts, [ownerId, actor]);
+			// whoever saves adds their own files and keeps every file this page already had (#179: the owner saving
+			// keeps an editor's image). Never other people's files: a ref makes a file readable to everyone on the page.
+			const had = new Set((db().prepare(`SELECT attachment_id AS a FROM attachment_refs WHERE source_type = 'page_block' AND source_id = ?`).all(id) as { a: string }[]).map((r) => r.a)); // prettier-ignore
+			const ownedBy = db().prepare(`SELECT owner_id AS o FROM attachments WHERE id = ?`);
+			const ownerOf = (a: string) => (ownedBy.get(a) as { o: string } | undefined)?.o ?? '';
+			const atts = [...new Set(JSON.stringify(p.doc).match(/att_[0-9a-z]{16}/g) ?? [])].filter((a) => had.has(a) || ownerOf(a) === actor); // prettier-ignore
+			attachments.syncRefs('page_block', id, ownerId, atts, atts.map(ownerOf));
 		}
 		const set: string[] = ['updated_at = @now', 'updated_by = @me', 'revision = revision + 1'];
 		if (p.title !== undefined) set.push('title = @title');
@@ -365,10 +363,12 @@ export function restoreTrashed(ownerId: string, batch: string): number {
 	return txImmediate(() => {
 		const ids = (db().prepare(`SELECT id, parent_page_id FROM pages WHERE owner_id = ? AND deleted_batch = ?`).all(ownerId, batch) as { id: string; parent_page_id: string | null }[]); // prettier-ignore
 		if (!ids.length) notFound();
+		// #180: all back first, then re-home only those whose parent is still gone (rows come in any order)
+		for (const p of ids) db().prepare(`UPDATE pages SET deleted_at = NULL, deleted_batch = NULL WHERE id = ?`).run(p.id);
+		const batchIds = new Set(ids.map((p) => p.id));
 		for (const p of ids) {
-			db().prepare(`UPDATE pages SET deleted_at = NULL, deleted_batch = NULL WHERE id = ?`).run(p.id);
 			const par = p.parent_page_id ? row(ownerId, p.parent_page_id) : undefined;
-			if (p.parent_page_id && (!par || par.deleted_at)) db().prepare(`UPDATE pages SET parent_page_id = NULL WHERE id = ?`).run(p.id);
+			if (p.parent_page_id && (!par || par.deleted_at || (par.archived_at && !batchIds.has(par.id)))) db().prepare(`UPDATE pages SET parent_page_id = NULL WHERE id = ?`).run(p.id);
 		}
 		for (const p of ids) reindex(ownerId, p.id);
 		return ids.length;

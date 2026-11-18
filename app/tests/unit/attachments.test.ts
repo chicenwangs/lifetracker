@@ -54,6 +54,20 @@ describe('attachments', () => {
 		expect(tmpLeft()).toBe(0);
 	});
 
+	it('#170 quota holds against a lying Content-Length and parallel uploads', async () => {
+		freshDb({ UPLOAD_DIR: dir, MAX_UPLOAD_BYTES: '4096', UPLOAD_QUOTA_BYTES: '2048' });
+		const big = Buffer.concat([PNG, Buffer.alloc(800, 1)]); // 908 B
+		const u = usersRepo.createWithCalendar({
+			username: 'q',
+			displayName: 'Q',
+			passwordHash: 'x',
+			role: 'admin',
+		}).id;
+		const all = await Promise.allSettled([1, 2, 3].map(() => save(u, body(big), 'p.png', 1)));
+		expect(all.filter((r) => r.status === 'fulfilled')).toHaveLength(2); // 2 × 908 B fit in 2048, the 3rd doesn't
+		expect(tmpLeft()).toBe(0);
+	});
+
 	it('cleans names: no paths, no control chars', () => {
 		expect(cleanName('..\\..\\etc/passwd')).toBe('passwd');
 		expect(cleanName('a\u0000b"c.txt')).toBe('abc.txt');

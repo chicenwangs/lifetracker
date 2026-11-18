@@ -220,6 +220,10 @@ describe('security audit 2026-11-16 (#36)', () => {
 		expect(() => attachments.readable(editor, onPage)).not.toThrow(); // the page already had it
 		expect(() => attachments.readable(editor, mine)).not.toThrow();
 		denied(() => attachments.readable(editor, secret));
+		// #179: the owner saving the page keeps the editor's file on it
+		const rev2 = pages.get(owner, p.id).revision;
+		pages.update(owner, p.id, { revision: rev2, doc: doc(img(`/api/attachments/${onPage}`), img(`/api/attachments/${mine}`)) }); // prettier-ignore
+		expect(() => attachments.readable(owner, mine)).not.toThrow();
 	});
 
 	it('a viewer can open a record page but not create one', () => {
