@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getCalendar } from '$lib/server/calendar';
 import * as itemsRepo from '$lib/server/repo/items';
 import type { HeatDay } from '$lib/types';
-import { addDays, clipToDay, durationMin, isDate, monthGridRange, todayLocal, weekRange } from '$lib/time';
+import { addDays, clipToDay, isDate, monthGridRange, todayLocal, weekRange } from '$lib/time';
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	const me = locals.user as App.SafeUser;
@@ -14,9 +14,13 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const ownItems = cal.items.filter((i) => !i.theirs);
 	const done = ownItems.filter((i) => i.status === 'done').length;
 	const doing = ownItems.filter((i) => i.status === 'doing').length;
-	const blockedMin = cal.blocks
-		.filter((b) => !b.theirs)
-		.reduce((s, b) => s + Math.max(0, durationMin(b.startAt, b.endAt)), 0);
+	// #160: only the part inside this week (blocks come padded a day each side)
+	let blockedMin = 0;
+	for (const b of cal.blocks.filter((x) => !x.theirs))
+		for (let d = from; d < to; d = addDays(d, 1)) {
+			const c = clipToDay(b.startAt, b.endAt, d, me.timezone);
+			if (c) blockedMin += c.bottom - c.top;
+		}
 
 	// month heatmap: the month this week belongs to (its Thursday, ISO style)
 	const thu = addDays(from, 3);

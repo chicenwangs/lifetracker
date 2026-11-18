@@ -144,6 +144,12 @@ describe('Pages', () => {
 		expect(() => pages.get(me, b.id)).toThrow(/Not found/);
 		pages.restoreTrashed(me, t.batch);
 		expect(pages.get(me, b.id).parentId).toBe(a.id);
+		// #180: a child made before its parent still comes back under it
+		const kid = page('Kid');
+		const mom = page('Mom');
+		pages.move(me, kid.id, mom.id);
+		pages.restoreTrashed(me, pages.trash(me, mom.id).batch);
+		expect(pages.get(me, kid.id).parentId).toBe(mom.id);
 		pages.trash(me, a.id);
 		pages.purgeTrash(Date.now() + 31 * 86_400_000);
 		expect(pages.trashed(me)).toEqual([]);

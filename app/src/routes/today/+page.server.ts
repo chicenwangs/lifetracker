@@ -2,7 +2,7 @@
 // (The "To do today · no time set" list was removed, owner 2026-11-16.)
 import type { PageServerLoad } from './$types';
 import { getCalendar } from '$lib/server/calendar';
-import { addDays, isDate, todayLocal, utcToLocal, weekStartOf } from '$lib/time';
+import { addDays, clipToDay, isDate, todayLocal, weekStartOf } from '$lib/time';
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	const me = locals.user as App.SafeUser;
@@ -12,12 +12,14 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	// week strip (#94): which days of this week have something on them
 	const from = weekStartOf(day, me.region === 'us' ? 7 : 1);
 	const wk = getCalendar(me, from, addDays(from, 7));
-	const busy = [
-		...new Set([
-			...wk.items.flatMap((i) => (i.date ? [i.date] : [])),
-			...wk.blocks.map((b) => utcToLocal(b.startAt, me.timezone).date),
-		]),
-	];
+	// #160: every day a block or a multi-day item touches, not just its first
+	const busy: string[] = [];
+	for (let d = from; d < addDays(from, 7); d = addDays(d, 1))
+		if (
+			wk.items.some((i) => i.date && i.date <= d && (i.endDate ?? i.date) >= d) ||
+			wk.blocks.some((b) => clipToDay(b.startAt, b.endAt, d, me.timezone))
+		)
+			busy.push(d);
 	return {
 		today,
 		day,

@@ -193,11 +193,12 @@ export function addRecord(ownerId: string, dbId: string, values: Record<string, 
 		const t = now();
 		db().prepare(`INSERT INTO database_records (id, database_id, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
 			.run(id, dbId, maxPos(`SELECT max(position) AS m FROM database_records WHERE database_id = ?`, dbId), t, t); // prettier-ignore
-		if (Object.keys(values).length) setValues(ownerId, id, values);
+		// #172: what was just stored, not a re-read through the view's filter / 500-row window
+		const out = Object.keys(values).length ? setValues(ownerId, id, values) : {};
 		return {
 			id,
 			pageId: null,
-			values: get(ownerId, dbId, { limit: 500 }).rows.find((r) => r.id === id)?.values ?? {},
+			values: Object.fromEntries(Object.entries(out).filter(([, v]) => v !== null)),
 		};
 	});
 }
