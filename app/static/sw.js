@@ -3,6 +3,17 @@
 // Sign-out wipes `lt-data-v1` so private data never stays behind.
 const CACHE = 'lt-shell-v2';
 const DATA = 'lt-data-v1';
+// #205: offline copies are a convenience, not an archive: capped in count and age
+const MAX_ENTRIES = 300;
+const MAX_AGE_MS = 14 * 86_400_000;
+const fresh = (res) => {
+	const d = Date.parse(res?.headers.get('date') ?? '');
+	return !!res && (Number.isNaN(d) || Date.now() - d < MAX_AGE_MS);
+};
+async function trim(c) {
+	const keys = await c.keys(); // insertion order: oldest first
+	for (const k of keys.slice(0, Math.max(0, keys.length - MAX_ENTRIES))) await c.delete(k);
+}
 
 self.addEventListener('install', (e) => {
 	self.skipWaiting();
@@ -50,6 +61,8 @@ self.addEventListener('fetch', (e) => {
 		(async () => {
 			try {
 				const res = await fetch(r);
+				// session expired / revoked: what this device kept is no longer this viewer's to see (#205)
+				if (res.status === 401 || res.status === 403 || res.url.includes('/login')) await caches.delete(DATA);
 				if (
 					res.ok &&
 					!u.pathname.startsWith('/login') &&
@@ -61,17 +74,34 @@ self.addEventListener('fetch', (e) => {
 					if (r.mode === 'navigate' && u.pathname === '/today' && !u.search) {
 						void c.put('/today', res.clone());
 					}
+					void trim(c);
 				}
 				return res;
 			} catch {
 				const c = await caches.open(DATA);
-				const hit =
-					(await c.match(r)) ||
-					(await c.match(u.pathname)) ||
-					(r.mode === 'navigate'
-						? (await c.match('/today')) || (await c.match('/')) || (await caches.match('/offline.html'))
-						: null);
+				// /login offline: the sign-in page, never someone's cached Today
+				if (r.mode === 'navigate' && (u.pathname.startsWith('/login') || u.pathname.startsWith('/setup')))
+					return (await caches.match('/offline.html')) || Response.error();
+				const pick = async (...tries) => {
+					for (const t of tries) {
+						const h = await t();
+						if (fresh(h)) return h;
+					}
+					return null;
+				};
+				const hit = await pick(
+					() => c.match(r),
+					() => c.match(u.pathname),
+					// #225: page data is asked for with a changing ?x-sveltekit-invalidated=…; any copy of that page will do
+					() => (u.pathname.endsWith('/__data.json') ? c.match(r, { ignoreSearch: true }) : null),
+					() => (r.mode === 'navigate' ? c.match('/today') : null),
+					() => (r.mode === 'navigate' ? c.match('/') : null),
+				);
 				if (hit) return hit;
+				if (r.mode === 'navigate') {
+					const off = await caches.match('/offline.html');
+					if (off) return off;
+				}
 				throw new Error('offline');
 			}
 		})(),
