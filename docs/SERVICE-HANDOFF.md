@@ -90,11 +90,13 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 3. Data, pick one:
    - **Move the existing DB from Jeremy's PC (keeps everything he did in dev):** stop the dev server, on the PC `sqlite3 app.db "PRAGMA wal_checkpoint(TRUNCATE)"`, copy `app.db` to `/opt/life-tracker/data/app.db`, `sudo chown 1000:1000 data/app.db`, `docker compose restart app`. (Do this instead of step 1–2; the copied DB already has the admin.)
    - **Fresh import from Notion:** copy the seed folder (has `_report.json`) to `data/seed/`, `chown -R 1000:1000 data/seed`, then in the app Settings → Import → Run import.
-4. Settings → Users: new installs start **Invite only**. Make invite codes there, or switch to **Open** while the intended users sign up. (Installs from before 2.0.5 keep the mode they had.)
+4. Settings → Users: new installs start **Invite only**. Make invite codes there, or switch to **Open** while the intended users sign up. (Installs from before 3.0.0 keep the mode they had.)
 
 ## 5. Operations
 
 **Upgrade:** read the release notes → `sudo ./backup.sh` → set `APP_VERSION=X.Y.Z` in `.env` → `docker compose pull app && docker compose up -d app` → watch `docker compose logs -f app` for `[boot] vX.Y.Z` → `curl -s https://planner.jeremyjosh.org/healthz` shows the new version.
+
+**v2.0.4 → v3.0.0:** **migration 0009 + 0010** (forward-only add-column: `users.hints_seen`, `users.default_reminder`). `sudo ./backup.sh` first (that backup is the rollback point), unpack `deploy-v3.0.0.tar.gz` (new `backup.sh`/`restore.sh`), `APP_VERSION=3.0.0` → pull + up. Optional env `UPLOAD_QUOTA_BYTES` (default 2 GB per person). Rollback = `APP_VERSION=2.0.4` **and** `sudo ./restore.sh <that backup>`. Android: install `life-tracker-3.0.0.apk` from the release (older apps update themselves).
 
 **v2.0.3 → v2.0.4:** **no migration**. Normal upgrade with `APP_VERSION=2.0.4`. Rollback = `APP_VERSION=2.0.3`. `/api/native` gains fields (old app versions ignore them).
 
@@ -104,12 +106,12 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 
 **v2.0.0 → v2.0.1:** fixes only, **no migration**. Normal upgrade line above with `APP_VERSION=2.0.1`. Rollback = `APP_VERSION=2.0.0` + `up -d` (no restore needed). Deploy bundle unchanged except `.env.example` version.
 
-**v1.1.0 → v2 (one time, migration release; go straight to the newest 2.0.x, e.g. 2.0.4):**
+**v1.1.0 → v2 (one time, migration release; go straight to the newest release, e.g. 3.0.0):**
 1. `sudo ./backup.sh` and copy `data/backups/app-<ts>.db.gz` off the box. This is the rollback point.
-2. Unpack `deploy-v2.0.4.tar.gz` (or the newest 2.0.x) over `/opt/life-tracker` (new `backup.sh`/`restore.sh` also back up `data/uploads`). Keep your `.env`.
+2. Unpack `deploy-v3.0.0.tar.gz` (or the newest) over `/opt/life-tracker` (new `backup.sh`/`restore.sh` also back up `data/uploads`). Keep your `.env`.
 3. Optional new env (all can stay unset): `VAPID_*` for push, `UPLOAD_DIR`/`MAX_UPLOAD_BYTES`, `JOBS_ENABLED`, `REMINDER_POLL_INTERVAL_MS`. With VAPID keys: allow outbound 443 to the push services (§1).
-4. `APP_VERSION=2.0.4` → pull + up. First boot runs migrations 0003–0008 (seconds), then `[boot] v2.0.4 db ready … jobs=true push=on|off`.
-5. `/healthz` → `"version":"2.0.4"`, `"jobs":true`. Run §8 incl. the v2 lines.
+4. `APP_VERSION=3.0.0` → pull + up. First boot runs migrations 0003–0010 (seconds), then `[boot] v3.0.0 db ready … jobs=true push=on|off`.
+5. `/healthz` → `"version":"3.0.0"`, `"jobs":true`. Run §8 incl. the v2 lines.
 6. Rollback: `APP_VERSION=1.1.0` **and** `sudo ./restore.sh <the backup from step 1>`. v1.1.0 cannot read the v2 schema.
 
 **Roll back:** set `APP_VERSION` back → `docker compose up -d app`. If the newer release ran a DB migration (release notes say "migration"), the old version may not read the new schema: restore the backup taken before the upgrade (`sudo ./restore.sh data/backups/app-<ts>.db.gz`). Migrations are forward-only.

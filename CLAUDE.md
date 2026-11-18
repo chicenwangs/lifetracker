@@ -4,8 +4,8 @@ Caveman rules for Claude Code in this repo.
 
 ## Now
 - Live = **v1.1.0** (planner.jeremyjosh.org, homelab Docker + Cloudflare Tunnel). Do not deploy.
-- **v2.0.4** released (incl. Android app `mobile/`, 7 widgets) (tag + GHCR image + GitHub Release), not deployed. Owner deploys (`docs/SERVICE-HANDOFF.md` §5). v2 phases all DONE (`docs/v2/PHASES.md`).
-- Next work = **Mobile overhaul sprint** (#106). Tracker: `docs/v3/MOBILE-SPRINT.md`. One branch + PR per issue off `main`. v2.1 backlog (`docs/v2/CHAT-HANDOFF.md`) after.
+- **v3.0.0** released 2026-11-18 (mobile overhaul #106 + repeating items + security/QA fixes; migrations 0009, 0010) (tag + GHCR image + GitHub Release), not deployed. Owner deploys (`docs/SERVICE-HANDOFF.md` §5). v2 phases all DONE (`docs/v2/PHASES.md`).
+- Mobile overhaul sprint (#106) DONE (`docs/v3/MOBILE-SPRINT.md`). Next = v2.1 backlog (`docs/v2/CHAT-HANDOFF.md`). One branch + PR per issue off `main`.
 
 ## Docs
 - v2 truth: `docs/v2/PRD.md` → `FEATURES.md` → `DESIGN.md`. Decisions list = PRD §12 (D-xx). Don't guess an open D-xx — ask.

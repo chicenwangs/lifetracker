@@ -1,6 +1,7 @@
 # Life Tracker v2 — release notes
 
-## Unreleased (next 2.0.5) — security hardening + mobile overhaul + repeating items, migration (0009, 0010)
+## v3.0.0 (2026-11-18) — mobile overhaul + repeating items + security hardening, migration (0009, 0010)
+Back up first (`sudo ./backup.sh`). Upgrade steps: SERVICE-HANDOFF §5 "v2.0.4 → v3.0.0".
 - Hardening across push, sign-in, shared pages, upload limits, backups and the Android app (issues #22–#59).
 - **New installs start invite-only.** Existing installs keep their sign-up mode.
 - Settings › Users: **Disable** a member.
@@ -23,6 +24,16 @@
   - Ticking one occurrence detaches that date as done; future ones stay to-do. Edit / delete asks: **This item**, **This and following** or **All items**.
   - Relative reminders fire before each occurrence; a reminder's Done ticks only that occurrence. Settings › Preferences: **Default reminder on new items**.
   - **Migrations 0009 (`users.hints_seen`) + 0010 (`users.default_reminder`)**: forward-only add-column. Back up first.
+- **Fixes after review (#155–#211):**
+  - Repeating items: "this and following" keeps the count and deleted dates · moving a series' date moves its weekday / day of month · no duplicate rows from Undo or a second tick · offline edits keep the scope you picked.
+  - Reminders: notification Done / Snooze / Tomorrow keep a repeating chain going · every-2-years reminders advance · changing timezone moves reminders · missed reminders show one after another, none lost.
+  - Offline: queued changes wait through a sign-in or server error instead of being dropped · offline copies expire (14 days), are capped and wiped when the session ends · Back on a failed note save keeps it on the device · item notes typed offline wait too.
+  - Keep: nested checklists keep saving · Unarchive's Undo works.
+  - Server: upload quota can't be beaten by a wrong size or parallel uploads · new database records show their values · an owner saving a shared page keeps the editor's images · restoring a page tree keeps it a tree · overnight blocks count on both days.
+  - Android: signing out removes alarms, notifications, cached data and widget contents.
+  - Backups: install paths with a quote refused · uploads archive checked before anything stops · a failed restore puts the old DB back.
+- **Phone polish (QA loop #221–#232):** one Back from a page opened in the account menu · hold a Week row lifts it (no link preview) · 48 dp menus, `/` options, dialog fields, search rows · long titles stay in their cards · Keep tip on screen · long notes don't drag the sheet · tour step count · first tap after a swipe works.
+- **Android sign-in:** a wrong password now says so (was "Can't reach Life Tracker").
 
 ## v2.0.4 (2026-11-14) — widgets v2 + phone fixes, no migration
 From v2.0.x: pull the new image. The Android app offers the update by itself.
