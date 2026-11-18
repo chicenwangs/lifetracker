@@ -5,7 +5,7 @@ import { get, post } from './api';
 import { calendarChanged } from './bus.svelte';
 import { openItem } from './peek.svelte';
 import { invalidateAll } from './refresh';
-import { showToast } from './toast.svelte';
+import { showToast, toast } from './toast.svelte';
 
 type Hit = {
 	id: string;
@@ -14,6 +14,7 @@ type Hit = {
 	sourceType?: string;
 	sourceId?: string;
 	late: boolean;
+	more?: number;
 };
 
 async function act(id: string, action: 'done' | 'snooze10' | 'tomorrow') {
@@ -25,11 +26,13 @@ async function act(id: string, action: 'done' | 'snooze10' | 'tomorrow') {
 }
 
 async function check() {
-	if (document.visibilityState !== 'visible') return;
+	// #198: one toast slot, so one reminder at a time, and never over an Undo / error still showing
+	if (document.visibilityState !== 'visible' || toast.current) return;
 	try {
 		const r = await get<{ reminders: Hit[] }>('/api/reminders/inbox');
 		for (const h of r.reminders) {
-			showToast(`⏰ ${h.title}${h.late ? ' (missed)' : ''}`, {
+			if (h.more) setTimeout(check, 16_000);
+			showToast(`⏰ ${h.title}${h.late ? ' (missed)' : ''}${h.more ? ` · ${h.more} more` : ''}`, {
 				ms: 15_000,
 				onclick: () => (h.sourceType === 'planner_item' && h.sourceId ? openItem(h.sourceId) : goto(h.route)),
 				actions: [
