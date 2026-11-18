@@ -1,5 +1,16 @@
 <!-- FR-A1. Real form. Remember me default ON. -->
 <script lang="ts">
+	// enhance: a failed sign-in shows its message in place. A plain POST answered 4xx would make the Android
+	// app show its offline page instead (Capacitor's errorPath on any HTTP error).
+	import { enhance } from '$app/forms';
+	import type { SubmitFunction } from '@sveltejs/kit';
+	// success = a full page load, as before (the app shell starts fresh for the signed-in user)
+	const signedIn: SubmitFunction =
+		() =>
+		async ({ result, update }) => {
+			if (result.type === 'redirect') location.assign(result.location);
+			else await update();
+		};
 	import AuthShell from '$lib/components/AuthShell.svelte';
 	let { data, form } = $props();
 	const remember = $derived(form ? form.remember : true);
@@ -8,7 +19,7 @@
 <svelte:head><title>Sign in · Life Tracker</title></svelte:head>
 
 <AuthShell tab="login">
-	<form method="post">
+	<form method="post" use:enhance={signedIn}>
 		<input type="hidden" name="next" value={data.next} />
 		<div class="field">
 			<label for="u">Username</label>
