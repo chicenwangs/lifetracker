@@ -1,6 +1,17 @@
 <!-- FR-A7 (rev 2026-11-08). Open sign-up: make your own account, then swap share codes in Settings > Sharing.
      Admin can switch sign-ups to invite-only; then an invite code is asked for. -->
 <script lang="ts">
+	// enhance: a failed sign-in shows its message in place. A plain POST answered 4xx would make the Android
+	// app show its offline page instead (Capacitor's errorPath on any HTTP error).
+	import { enhance } from '$app/forms';
+	import type { SubmitFunction } from '@sveltejs/kit';
+	// success = a full page load, as before (the app shell starts fresh for the signed-in user)
+	const signedIn: SubmitFunction =
+		() =>
+		async ({ result, update }) => {
+			if (result.type === 'redirect') location.assign(result.location);
+			else await update();
+		};
 	import AuthShell from '$lib/components/AuthShell.svelte';
 	let { data, form } = $props();
 </script>
@@ -8,7 +19,7 @@
 <svelte:head><title>Create account · Life Tracker</title></svelte:head>
 
 <AuthShell tab="signup">
-	<form method="post">
+	<form method="post" use:enhance={signedIn}>
 		{#if !data.open}
 			<div class="field">
 				<label for="code">Invite code</label>
