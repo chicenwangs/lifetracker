@@ -7,6 +7,8 @@ set -euo pipefail
 umask 077   # backups hold password hashes + all planner data: root-only
 [ "$(id -u)" -eq 0 ] || { echo "run as root (data/ belongs to the container user 1000): sudo $0" >&2; exit 1; }
 LT_DIR=${LT_DIR:-$(cd "$(dirname "$0")" && pwd)}
+# sqlite3's .backup takes a quoted file name: a quote or newline in the path would break it (#206)
+case "$LT_DIR" in *\'*|*\"*|*$'\n'*) echo "refusing: LT_DIR has a quote or newline: $LT_DIR" >&2; exit 1 ;; esac
 KEEP=${LT_KEEP_DAYS:-14}
 DB="$LT_DIR/data/app.db"
 OUT="$LT_DIR/data/backups"
@@ -16,7 +18,7 @@ for p in "$LT_DIR/data" "$OUT"; do [ -L "$p" ] && { echo "refusing: $p is a syml
 mkdir -p "$OUT"
 ts=$(date +%F-%H%M)
 f="$OUT/app-$ts.db"
-sqlite3 "$DB" ".backup '$f'"   # $f has no quotes: built from LT_DIR + date
+sqlite3 "$DB" ".backup '$f'"   # $f has no quotes: LT_DIR checked above + date
 [ "$(sqlite3 "$f" 'PRAGMA integrity_check')" = ok ] || { echo "integrity check failed: $f" >&2; rm -f "$f"; exit 1; }
 gzip "$f"
 # uploads (v2): same timestamp, .tmp left out. Missing folder = nothing uploaded yet.
