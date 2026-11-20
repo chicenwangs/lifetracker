@@ -62,7 +62,14 @@
 		Colours and names for your items and blocks. Quick add with no /type makes it No type. "Counts down" shows
 		days left on the month chip and due list.
 	</p>
-	<div class="meter" role="meter" aria-valuemin="0" aria-valuemax={MAX_TYPES} aria-valuenow={types.length}>
+	<div
+		class="meter"
+		role="meter"
+		aria-label="Item types used"
+		aria-valuemin="0"
+		aria-valuemax={MAX_TYPES}
+		aria-valuenow={types.length}
+	>
 		<span style:width="{(types.length / MAX_TYPES) * 100}%"></span>
 	</div>
 	<span class="hint">{types.length} / {MAX_TYPES} types. "No type" is always there and doesn't count.</span>

@@ -333,6 +333,7 @@
 <input
 	class="sr-only"
 	type="file"
+	aria-label="Insert image or file"
 	bind:this={fileInput}
 	onchange={async (e) => {
 		const f = e.currentTarget.files?.[0];
@@ -601,7 +602,6 @@
 		border-radius: 4px;
 		background: var(--pill);
 		color: var(--pill-ink);
-		color: var(--ink);
 		text-decoration: none;
 	}
 	.doc :global(a.pl.arch) {

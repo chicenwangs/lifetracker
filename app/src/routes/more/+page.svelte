@@ -7,6 +7,7 @@
 		{ href: '/pages', label: 'All pages', value: '' },
 		{ href: '/pages/shared', label: 'Shared with me', value: '' },
 		{ href: '/week', label: 'Week', value: '' },
+		{ href: '/timetable', label: 'Timetable', value: '' },
 		{ href: '/month', label: 'Month', value: month },
 		{ href: '/keep?scope=archive', label: 'Keep archive', value: '' },
 		{ href: '/trash', label: 'Trash', value: '30 days' },

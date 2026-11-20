@@ -252,6 +252,90 @@ describe('quick add: range am/pm + 24h cap (review 2026-11-08)', () => {
 	});
 });
 
+describe('repeat end in quick add (#262)', () => {
+	it('until <date> closes the series and keeps the date out of the title', () => {
+		const r = p('Class every tue 09:00 until 2027-05-18');
+		expect(r.title).toBe('Class');
+		expect(r.date).toBe('2026-11-10'); // next Tuesday, not the end date
+		expect(r.rrule).toBe('FREQ=WEEKLY;BYDAY=TU;UNTIL=2027-05-18');
+		expect(r.ok).toBe(true);
+	});
+	it('until <day word> ends on that weekday after the start', () => {
+		const r = p('Class every mon 09:00 until friday');
+		expect(r.title).toBe('Class');
+		expect(r.date).toBe('2026-11-09');
+		expect(r.rrule).toBe('FREQ=WEEKLY;BYDAY=MO;UNTIL=2026-11-13');
+	});
+	it('for N weeks counts the start week as one', () => {
+		const r = p('Class every tue 09:00 for 4 weeks');
+		expect(r.title).toBe('Class');
+		expect(r.date).toBe('2026-11-10');
+		expect(r.rrule).toBe('FREQ=WEEKLY;BYDAY=TU;UNTIL=2026-12-07'); // 4 Tuesdays: 10, 17, 24 Nov + 1 Dec
+	});
+	it('for 3 days ends on the third day', () => {
+		const r = p('Gym every day 09:00 for 3 days');
+		expect(r.title).toBe('Gym');
+		expect(r.rrule).toBe('FREQ=DAILY;UNTIL=2026-11-08'); // today + 2
+	});
+	it('"until" without a repeat stays in the title', () => {
+		const r = p('wait until tomorrow 09:00');
+		expect(r.title).toBe('wait until');
+		expect(r.date).toBe('2026-11-07');
+		expect(r.rrule).toBeUndefined();
+		expect(r.problems).toHaveLength(0);
+	});
+	it('for without a repeat is a title word, not an error', () => {
+		const r = p('read for 2 weeks 09:00');
+		expect(r.title).toBe('read for 2 weeks');
+		expect(r.ok).toBe(true);
+	});
+	it('an end before the start is a problem', () => {
+		const r = p('Class every tue 09:00 until 2026-11-01');
+		expect(r.problems.join(' ')).toMatch(/before the start date/);
+	});
+	it('bare repeat words stay in ordinary titles (#268)', () => {
+		for (const [text, title] of [
+			['weekly report 09:00', 'weekly report'],
+			['daily standup 09:00', 'daily standup'],
+			['monthly review /calendar', 'monthly review'],
+			['weekly report for the board 09:00', 'weekly report for the board'],
+		] as [string, string][]) {
+			const r = p(text);
+			expect(r.title).toBe(title);
+			expect(r.rrule).toBeUndefined();
+		}
+	});
+	it('a bare weekly repeat is understood with until (#262 break test)', () => {
+		const r = p('Class 2026-11-24 09:00 weekly until 2027-05-18');
+		expect(r.title).toBe('Class');
+		expect(r.date).toBe('2026-11-24');
+		expect(r.rrule).toBe('FREQ=WEEKLY;BYDAY=TU;UNTIL=2027-05-18');
+	});
+	it('an explicit date is stripped from the title with every mon (#262 cosmetic)', () => {
+		const r = p('Timetable probe 2026-11-23 09:00 every mon');
+		expect(r.title).toBe('Timetable probe');
+		expect(r.date).toBe('2026-11-23');
+		expect(r.rrule).toBe('FREQ=WEEKLY;BYDAY=MO');
+	});
+	it('an unrecognised repeat reports a problem (#262 break test)', () => {
+		const r = p('Class every whenever 09:00');
+		expect(r.ok).toBe(false);
+		expect(r.problems.join(' ')).toMatch(/do not understand that repeat/);
+	});
+	it('"until" in a time range is still parsed as a range (#262 break test)', () => {
+		const r = p('work 3pm until 5pm');
+		expect(r.title).toBe('work');
+		expect(r.startMinutes).toBe(900);
+		expect(r.endMinutes).toBe(1020);
+		expect(r.rrule).toBeUndefined();
+	});
+	it('until a day word ends on that weekday (#262 break test)', () => {
+		const r = p('Class every day 09:00 until tomorrow');
+		expect(r.rrule).toBe('FREQ=DAILY;UNTIL=2026-11-07');
+		expect(r.title).toBe('Class');
+	});
+});
+
 describe('problems (shown on Enter only)', () => {
 	it('empty', () => expect(p('').problems[0]).toMatch(/Type something/));
 	it('no title', () => {

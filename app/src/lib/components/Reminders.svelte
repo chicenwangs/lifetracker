@@ -14,7 +14,8 @@
 		tz,
 		relative = true,
 		quick = false,
-	}: { source: 'planner_item' | 'planner_block' | 'keep_note' | 'database_record'; sourceId: string; tz: string; relative?: boolean; quick?: boolean } = $props(); // prettier-ignore
+		repeating = false,
+	}: { source: 'planner_item' | 'planner_block' | 'keep_note' | 'database_record'; sourceId: string; tz: string; relative?: boolean; quick?: boolean; repeating?: boolean } = $props(); // prettier-ignore
 	// svelte-ignore state_referenced_locally
 	let picking = $state(!quick); // starts open unless the quick picks show
 	let list = $state<ReminderDTO[]>([]);
@@ -74,6 +75,7 @@
 			>
 		</div>
 	{:else}<span class="hint">None yet.</span>{/each}
+	{#if repeating}<span class="hint">Repeating item: the next reminder appears when this one fires.</span>{/if}
 	{#if quick}
 		<div class="row quick">
 			<button class="btn sm" type="button" onclick={later}>Later today</button>

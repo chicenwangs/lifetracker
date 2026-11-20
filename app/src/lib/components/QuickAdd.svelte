@@ -118,7 +118,7 @@
 	}
 
 	let prevOverflow = '';
-	async function show() {
+	export async function show() {
 		if (open) return;
 		open = true;
 		problems = [];

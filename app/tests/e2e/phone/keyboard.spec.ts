@@ -40,7 +40,7 @@ test('Add sheet: field and Add stay above the keyboard', async () => {
 	await page.keyboard.type('gym tmr 6pm');
 	await page.setViewportSize({ width: 412, height: KB });
 	await page.waitForTimeout(300);
-	await onScreen(sheet.getByRole('textbox', { name: 'What and when' }));
+	await onScreen(sheet.getByRole('combobox', { name: 'What and when' }));
 	await onScreen(sheet.getByRole('button', { name: 'Add', exact: true }));
 	await page.goBack();
 });

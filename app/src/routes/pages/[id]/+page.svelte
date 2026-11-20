@@ -338,7 +338,7 @@
 		align-items: center;
 		gap: 10px;
 		flex-wrap: wrap;
-		padding: 12px 20px;
+		padding: 12px;
 		border-bottom: 1px solid var(--rule);
 	}
 	.crumbs {
@@ -365,7 +365,7 @@
 	}
 	/* wide column on big screens (owner 2026-11-16: was a narrow strip in the middle) */
 	.body {
-		max-width: 1100px;
+		max-width: 1400px;
 		margin: 0 auto;
 		padding: 32px 56px 48px;
 	}

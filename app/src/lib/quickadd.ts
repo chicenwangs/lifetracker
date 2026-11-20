@@ -350,6 +350,7 @@ type DateHit = {
 	explicit?: boolean; // names a calendar date (16 nov, 16/11, 2026-11-16, the 16th)
 	weekday?: number; // weekday-only hit (mergeable into an explicit date: "mon 16 nov")
 	checkWeekday?: number;
+	repeat?: boolean; // from a repeat phrase: consumed even when an explicit date wins
 };
 type TimeHit = { idx: number[]; start: number; end: number | null };
 const range = (from: number, len: number) => Array.from({ length: len }, (_, k) => from + k);
@@ -400,12 +401,101 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	};
 	const pushDate = (h: DateHit) => dates.push(h);
 
+	/** an explicit date right after "until" (same forms as the main loop) */
+	function dateAt(at: number): { date: string; idx: number[] } | null {
+		const t = low[at] ?? '';
+		let m: RegExpExecArray | null;
+		if (YMD.test(t) && isDate(t)) return { date: t, idx: [at] };
+		if (isToday(t)) return { date: today, idx: [at] };
+		if (isTomorrow(t)) return { date: addDays(today, 1), idx: [at] };
+		if ((m = DM.exec(t))) {
+			let d = Number(m[1]);
+			let mo = Number(m[2]);
+			if (ctx.region === 'us') [d, mo] = [mo, d];
+			if (mo > 12 && d <= 12) [d, mo] = [mo, d];
+			const y = m[3] ? Number(m[3]) : undefined;
+			const date = calendarDate(d, mo, y);
+			if (date) return { date, idx: [at] };
+		}
+		if (DAYNUM.test(t)) {
+			const ofSkip = low[at + 1] === 'of' ? 1 : 0;
+			const mo = monthOfWord(low[at + 1 + ofSkip]);
+			if (mo) {
+				const d = Number(DAYNUM.exec(t)?.[1]);
+				let len = 2 + ofSkip;
+				const yTok = low[at + len];
+				const y = yTok && YEAR.test(yTok) ? Number(yTok) : undefined;
+				if (y !== undefined) len++;
+				const date = calendarDate(d, mo, y);
+				if (date) return { date, idx: range(at, len) };
+			}
+		}
+		const mo = monthOfWord(t);
+		if (mo && DAYNUM.test(low[at + 1] ?? '')) {
+			const d = Number(DAYNUM.exec(low[at + 1] ?? '')?.[1]);
+			let len = 2;
+			const y = low[at + 2] && YEAR.test(low[at + 2] ?? '') ? Number(low[at + 2]) : undefined;
+			if (y !== undefined) len++;
+			const date = calendarDate(d, mo, y);
+			if (date) return { date, idx: range(at, len) };
+		}
+		return null;
+	}
+
+	// #262: `until <date>` / `for N weeks|months` close a repeat instead of becoming the start date
+	let repeatUntil: string | null = null;
+	let repeatUntilWeekday: number | null = null;
+	let repeatFor: { n: number; unit: 'day' | 'week' | 'month' | 'year' } | null = null;
+	const hasRepeat = low.some(
+		(t) =>
+			t === 'every' ||
+			t === 'daily' ||
+			t === 'weekly' ||
+			t === 'monthly' ||
+			t === 'yearly' ||
+			t === 'annually',
+	);
+	for (let i = 0; i < low.length; i++) {
+		const t = low[i] ?? '';
+		if ((t === 'until' || t === 'till' || t === 'til') && hasRepeat && !used.has(i)) {
+			const d = dateAt(i + 1);
+			if (d) {
+				repeatUntil = d.date;
+				used.add(i);
+				d.idx.forEach((k) => used.add(k));
+				i = Math.max(i, ...d.idx);
+			} else if (weekdayOfWord(low[i + 1])) {
+				repeatUntilWeekday = weekdayOfWord(low[i + 1]);
+				used.add(i);
+				used.add(i + 1);
+				i += 1;
+			}
+			continue;
+		}
+		if (t === 'for' && hasRepeat && !used.has(i)) {
+			const n = numberOf(low[i + 1]);
+			const u = low[i + 2] ?? '';
+			if (n !== null && n > 0 && /^(days?|weeks?|wks?|months?|years?|yrs?)$/.test(u)) {
+				repeatFor = {
+					n,
+					unit: u.startsWith('d') ? 'day' : u.startsWith('w') ? 'week' : u.startsWith('m') ? 'month' : 'year',
+				};
+				range(i, 3).forEach((k) => used.add(k));
+				i += 2;
+			}
+		}
+	}
+
+	// a bare repeat word is only a rule when the text actually has an end phrase (#268)
+	const hasRepeatEnd = repeatUntil !== null || repeatUntilWeekday !== null || repeatFor !== null;
+
 	for (let i = 0; i < low.length; i++) {
 		const t = low[i] ?? '';
 		const n1 = low[i + 1];
 		const n2 = low[i + 2];
 		const n3 = low[i + 3];
 		const raw = tokens[i] ?? '';
+		if (used.has(i)) continue;
 
 		// --- /options (raw token, case-insensitive) ---
 		if (raw.startsWith('/') && !/^\/\d/.test(raw)) {
@@ -468,6 +558,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 				rrule = 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR';
 				pushDate({
 					idx: [i, i + 1],
+					repeat: true,
 					resolve: (passed) => {
 						for (let k = 0; k < 7; k++) {
 							const d = addDays(today, k);
@@ -522,6 +613,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 				const len = j - i;
 				pushDate({
 					idx: range(i, len),
+					repeat: true,
 					resolve: (passed) => {
 						for (let k = 0; k < 8; k++) {
 							const d = addDays(today, k);
@@ -533,6 +625,25 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 				i = j - 1;
 				continue;
 			}
+			problems.push('I do not understand that repeat. Try `every day`, `every week`, or `every mon,wed`.');
+			used.add(i);
+			continue;
+		}
+		// bare repeat words are common in class phrasing: "math weekly until May", but never a title word on its own
+		if (
+			hasRepeatEnd &&
+			(t === 'daily' || t === 'weekly' || t === 'monthly' || t === 'yearly' || t === 'annually')
+		) {
+			rrule =
+				t === 'daily'
+					? 'FREQ=DAILY'
+					: t === 'weekly'
+						? 'FREQ=WEEKLY'
+						: t === 'monthly'
+							? 'FREQ=MONTHLY'
+							: 'FREQ=YEARLY';
+			used.add(i);
+			continue;
 		}
 
 		// --- relative phrases ---
@@ -837,11 +948,12 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 		end = ctx.slot.end;
 	}
 
-	// --- date: last valid wins ---
+	// --- date: last valid wins; an explicit date beats a weekday/relative one ---
 	const timePassed = start !== null && start <= ctx.nowMinutes;
 	let date: string | null = null;
-	for (let k = dates.length - 1; k >= 0 && !date; k--) {
-		const h = dates[k];
+	const pool = dates.some((h) => h.explicit) ? dates.filter((h) => h.explicit) : dates;
+	for (let k = pool.length - 1; k >= 0 && !date; k--) {
+		const h = pool[k];
 		const d = h?.resolve(timePassed);
 		if (h && d) {
 			date = d;
@@ -854,10 +966,42 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 			}
 		}
 	}
+	// repeat words are consumed whether or not their weekday wins resolution (#262 cosmetic case)
+	for (const h of dates.filter((h) => h.repeat)) h.idx.forEach((i) => used.add(i));
 	const dateSet = date !== null;
 	date ??= ctx.slot?.date ?? ctx.day ?? today;
 	if (rrule === 'FREQ=WEEKLY') rrule = `FREQ=WEEKLY;BYDAY=${WD_CODES[weekdayOf(date) - 1]}`;
 	else if (rrule === 'FREQ=MONTHLY') rrule = `FREQ=MONTHLY;BYMONTHDAY=${Number(date.slice(8, 10))}`;
+
+	// #262: close the repeat instead of letting the end date become the start date
+	if (repeatUntilWeekday) {
+		let end = date;
+		for (let k = 0; k < 7 && weekdayOf(end) !== repeatUntilWeekday; k++) end = addDays(end, 1);
+		repeatUntil = end;
+	}
+	if (repeatFor) {
+		if (!rrule)
+			problems.push(
+				`\`for ${repeatFor.n} ${repeatFor.unit}s\` needs a repeat, like \`every week for ${repeatFor.n} weeks\`.`,
+			);
+		else {
+			const span =
+				repeatFor.unit === 'day'
+					? addDays(date, repeatFor.n)
+					: repeatFor.unit === 'week'
+						? addDays(date, repeatFor.n * 7)
+						: repeatFor.unit === 'month'
+							? addMonths(date, repeatFor.n)
+							: addMonths(date, repeatFor.n * 12);
+			repeatUntil = addDays(span, -1); // the first day counts as one
+		}
+	}
+	if (repeatUntil) {
+		if (!rrule)
+			problems.push(`\`until ${repeatUntil}\` needs a repeat, like \`every week until ${repeatUntil}\`.`);
+		else if (repeatUntil < date) problems.push('The repeat end is before the start date.');
+		else rrule += `;UNTIL=${repeatUntil}`;
+	}
 
 	// --- little words glued to a day/time: "on fri", "at 6pm", "from 6 to 8" ---
 	for (let i = 0; i < low.length; i++) {
@@ -882,7 +1026,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 			problems.push(
 				target === 'both'
 					? '`/both` also adds a planner block, so it needs a time. Add one like `3pm` or `3pm to 5pm`, or use `/calendar` on its own.'
-					: 'Planner entries need a time. Add one like `3pm` or `3pm to 4pm`, or add `/calendar` to put it on the calendar without a time.',
+					: 'Planner entries need a time — and with no destination set, this is a planner entry. Add one like `3pm` or `3pm to 4pm`, or use `/calendar` to make a calendar event with no time.',
 			);
 		} else {
 			const s0 = start;

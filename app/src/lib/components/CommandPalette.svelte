@@ -8,6 +8,8 @@
 	import { tick } from 'svelte';
 	import { isPhone } from '$lib/client/phone';
 
+	let { onquickadd }: { onquickadd?: () => void } = $props();
+
 	interface Row {
 		group: 'Actions' | 'Pages' | 'Notes' | 'Planner' | 'Recent';
 		label: string;
@@ -23,7 +25,7 @@
 	let input: HTMLInputElement | undefined = $state();
 
 	const ACTIONS: Row[] = [
-		{ group: 'Actions', label: 'Quick add', sub: 'N', run: () => void window.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' })) },
+		{ group: 'Actions', label: 'Quick add', sub: 'N', run: () => onquickadd?.() },
 		{ group: 'Actions', label: 'New note', run: () => goto('/keep?new=1') },
 		{ group: 'Actions', label: 'New page', run: async () => { const r = await post<{ page: { id: string } }>('/api/pages', { parentId: null }); await goto(`/pages/${r.page.id}`); } },
 		{ group: 'Actions', label: 'Go to Home', run: () => goto('/') },

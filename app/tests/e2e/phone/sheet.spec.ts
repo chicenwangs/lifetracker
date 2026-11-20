@@ -129,12 +129,12 @@ test('/ menu in the Add sheet: every option tappable at half and full height (#1
 	await page.keyboard.press('Escape'); // closes the menu only
 	await page.getByRole('button', { name: 'Expand sheet' }).click();
 	await page.waitForTimeout(350);
-	await page.getByRole('textbox', { name: 'What and when' }).press('End');
+	await page.getByRole('combobox', { name: 'What and when' }).press('End');
 	await page.keyboard.type(' /');
 	await expectTappable(sheet.getByRole('option'));
 	// a tap picks the option
 	await sheet.getByRole('option').filter({ hasText: '/both' }).click();
-	await expect(page.getByRole('textbox', { name: 'What and when' })).toHaveValue(/\/both $/);
+	await expect(page.getByRole('combobox', { name: 'What and when' })).toHaveValue(/\/both $/);
 	await page.goBack();
 	await expect(sheet).toBeHidden();
 });

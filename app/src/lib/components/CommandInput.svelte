@@ -167,6 +167,7 @@
 		class="in"
 		autocomplete="off"
 		spellcheck="false"
+		role="combobox"
 		aria-label={label}
 		aria-autocomplete="list"
 		aria-controls={uid}

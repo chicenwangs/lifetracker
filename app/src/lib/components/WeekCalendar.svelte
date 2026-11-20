@@ -631,6 +631,7 @@
 	}
 	.wk :global(.lt-sq) {
 		flex: none;
+		position: relative;
 		width: 15px;
 		height: 15px;
 		padding: 0;
@@ -643,6 +644,12 @@
 		cursor: pointer;
 		background: transparent;
 	}
+	/* 24 px hit box (WCAG 2.5.8): the 15 px square keeps its size, the overlay takes the taps */
+	.wk :global(.lt-sq::before) {
+		content: '';
+		position: absolute;
+		inset: -4.5px;
+	}
 	.wk :global(.lt-sq.on) {
 		background: var(--ink);
 		color: var(--bg, var(--on-ink));
@@ -650,6 +657,7 @@
 	.wk :global(.lt-title) {
 		font-weight: 600;
 		min-width: 0;
+		min-height: 24px;
 		overflow: hidden;
 		/* full name on up to two lines, then … (owner 2026-11-16) */
 		display: -webkit-box;

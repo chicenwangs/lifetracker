@@ -561,6 +561,14 @@
 							<span class="hint">Or focus the block: ↑↓ move 15 min, Shift+↑↓ change the end.</span>
 							<div class="row">
 								<button class="btn sm primary" type="button" onclick={() => renameBlock(p.b.id)}>Save</button>
+								<button
+									class="btn sm"
+									type="button"
+									onclick={() => {
+										menuFor = null;
+										void duplicate('block', p.b.id, { startAt: isoPlus(p.b.startAt, 3_600_000) });
+									}}>Duplicate</button
+								>
 								{#if p.b.itemId}
 									<button class="btn sm" type="button" onclick={() => p.b.itemId && onopenitem(p.b.itemId)}
 										>Open item</button
