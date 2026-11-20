@@ -15,7 +15,6 @@
 	const NAV = [
 		{ href: '/', label: 'Home', match: (p: string) => p === '/' },
 		{ href: '/week', label: 'Week', match: (p: string) => p.startsWith('/week') },
-		{ href: '/timetable', label: 'Timetable', match: (p: string) => p.startsWith('/timetable') },
 		{ href: '/keep', label: 'Keep', match: (p: string) => p.startsWith('/keep') },
 		{
 			href: '/pages',
@@ -43,7 +42,6 @@
 			return (page.data.page as { title?: string } | undefined)?.title || 'Untitled';
 		if (path === '/trash') return 'Trash';
 		if (path === '/month') return 'Month';
-		if (path.startsWith('/timetable')) return 'Timetable';
 		if (path.startsWith('/item/')) return 'Item';
 		if (path === '/more') return 'More';
 		return '';

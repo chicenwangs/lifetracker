@@ -738,10 +738,10 @@ test('v2 P2 Keep: note, checklist nesting, label + binder filters, pin/archive/t
 	await expect(page.getByText('Trash is empty.')).toBeVisible();
 });
 
-test('timetable shows a recurring class across the term (#263)', async () => {
+test('repeat end is editable on the normal row without Custom (#263)', async () => {
 	const t = await today();
 	const made = await api('POST', '/api/items', {
-		title: 'Timetable class',
+		title: 'Repeat end probe',
 		date: plusDay(t, 1),
 		time: '09:00',
 		rrule: 'FREQ=WEEKLY',
@@ -749,18 +749,6 @@ test('timetable shows a recurring class across the term (#263)', async () => {
 	expect(made.s).toBe(201);
 	const id = made.j.item.id as string;
 	try {
-		await page.goto(`/timetable?w=${t}`);
-		await expect(page.getByRole('heading', { name: 'Timetable', level: 1 })).toBeVisible();
-		await expect(page.getByRole('region', { name: 'Recurring classes' })).toContainText('Timetable class');
-		await expect(page.getByRole('region', { name: 'Recurring classes' })).toContainText('Weekly');
-		await expect(page.locator('td .chip', { hasText: 'Timetable class' }).first()).toBeVisible();
-		await expect(page.locator('tbody tr')).toHaveCount(26); // whole term in one scroll
-		await expect(page.getByRole('link', { name: 'Next week' })).toBeVisible();
-		// #263: navigation by week and a jump to the next class, not only a block of eight weeks
-		await page.getByRole('link', { name: 'Next class' }).click();
-		await expect(page).toHaveURL(/#d-\d{4}-\d{2}-\d{2}$/);
-		await expect(page.locator('td .chip', { hasText: 'Timetable class' }).first()).toBeVisible();
-		// #263: the end is editable on the normal row, no Custom… needed
 		await page.goto(`/item/${id}`);
 		await page.getByLabel('Repeat ends').selectOption('until');
 		await page.getByLabel('End date').fill('2027-05-18');
@@ -768,10 +756,6 @@ test('timetable shows a recurring class across the term (#263)', async () => {
 		await expect
 			.poll(async () => ((await api('GET', `/api/items/${id}`)).j.item as { rrule: string }).rrule)
 			.toContain('UNTIL=2027-05-18');
-		// #267: an extreme but valid date must still render, not 500
-		await page.goto('/timetable?w=9999-12-31');
-		await expect(page.getByRole('heading', { name: 'Timetable', level: 1 })).toBeVisible();
-		await expect(page.locator('tbody tr')).toHaveCount(26);
 	} finally {
 		await api('DELETE', `/api/items/${id}`);
 	}
@@ -1146,7 +1130,7 @@ test('v2 P8 a11y: axe finds no serious or critical issues on the main screens (l
 			const p = await ctx.newPage();
 			await p.goto('/');
 			await p.evaluate((s) => document.documentElement.setAttribute('data-theme', s), scheme);
-			for (const url of ['/?desktop=1', '/today', '/week', '/month', '/timetable', '/keep', '/pages', '/pages/shared', '/keep?scope=shared', '/settings/preferences', '/settings/help', '/more']) {
+			for (const url of ['/?desktop=1', '/today', '/week', '/month', '/keep', '/pages', '/pages/shared', '/keep?scope=shared', '/settings/preferences', '/settings/help', '/more']) {
 				await p.goto(url);
 				await p.evaluate((s) => document.documentElement.setAttribute('data-theme', s), scheme);
 				await p.waitForTimeout(700); // let theme transitions finish
