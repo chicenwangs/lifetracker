@@ -293,6 +293,18 @@ describe('repeat end in quick add (#262)', () => {
 		const r = p('Class every tue 09:00 until 2026-11-01');
 		expect(r.problems.join(' ')).toMatch(/before the start date/);
 	});
+	it('bare repeat words stay in ordinary titles (#268)', () => {
+		for (const [text, title] of [
+			['weekly report 09:00', 'weekly report'],
+			['daily standup 09:00', 'daily standup'],
+			['monthly review /calendar', 'monthly review'],
+			['weekly report for the board 09:00', 'weekly report for the board'],
+		] as [string, string][]) {
+			const r = p(text);
+			expect(r.title).toBe(title);
+			expect(r.rrule).toBeUndefined();
+		}
+	});
 	it('a bare weekly repeat is understood with until (#262 break test)', () => {
 		const r = p('Class 2026-11-24 09:00 weekly until 2027-05-18');
 		expect(r.title).toBe('Class');
