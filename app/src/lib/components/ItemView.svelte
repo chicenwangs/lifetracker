@@ -8,7 +8,7 @@
 	import Markdown from './Markdown.svelte';
 	import DayPlanner from './DayPlanner.svelte';
 	import { typeOf, typesState } from '$lib/client/itemtypes.svelte';
-	import { askScope } from '$lib/client/dialog.svelte';
+	import { askScope, type RepeatScope } from '$lib/client/dialog.svelte';
 	import { colorsFor } from '$lib/colors';
 	import {
 		baseItemId,
@@ -226,6 +226,28 @@
 		customRepeat = false;
 		await save({ rrule: rule });
 	}
+	/** #263: a repeat end is visible on the normal row, not only inside Custom… */
+	async function setRepeatEndKind(kind: 'never' | 'until' | 'count') {
+		const p = parseRRule(it?.rrule ?? '');
+		if (!p) return;
+		await save({
+			rrule: formatRRule({
+				...p,
+				until: kind === 'until' ? it?.date || undefined : undefined,
+				count: kind === 'count' ? p.count || 5 : undefined,
+			}),
+		});
+	}
+	async function setRepeatEnd(date: string | null) {
+		const p = parseRRule(it?.rrule ?? '');
+		if (!p) return;
+		await save({ rrule: formatRRule({ ...p, until: date ?? undefined, count: undefined }) });
+	}
+	async function setRepeatCount(n: number) {
+		const p = parseRRule(it?.rrule ?? '');
+		if (!p) return;
+		await save({ rrule: formatRRule({ ...p, count: Math.max(1, Math.min(999, n || 5)), until: undefined }) });
+	}
 
 	// ---------- title: edit in place ----------
 	let editingTitle = $state(false);
@@ -256,10 +278,17 @@
 	let notesEl: HTMLTextAreaElement | undefined = $state();
 	let saveState = $state<'idle' | 'saving' | 'saved'>('idle');
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
+	// #243: notes on a repeating item ask the same scope as every other field, once per edit
+	let notesScope: RepeatScope | null = null;
 	const notes = $derived(it?.notes ?? '');
 
 	async function startNotes(e?: MouseEvent) {
 		if ((e?.target as HTMLElement | undefined)?.closest('a')) return; // let links work
+		if (it?.rrule) {
+			const scope = await askScope(`Edit notes on repeating item "${it.title}"?`, { ok: 'Edit' });
+			if (!scope) return;
+			notesScope = scope;
+		}
 		notesDraft = notes;
 		editingNotes = true;
 		await tick();
@@ -280,8 +309,11 @@
 			return true;
 		}
 		const val = notesDraft.trim() === '' ? null : notesDraft;
+		const body = notesScope ? { notes: val, scope: notesScope } : { notes: val };
 		try {
-			await patch(`/api/items/${it.id}`, { notes: val });
+			const sent = it.id;
+			follow(sent, await patch<{ item: { id: string } }>(`/api/items/${encodeURIComponent(sent)}`, body));
+			if (detached) await load();
 			if (v) v = { ...v, item: { ...v.item, notes: val } };
 			saveState = 'saved';
 			onchanged?.();
@@ -290,7 +322,7 @@
 			if (isOffline(e)) {
 				// #209: offline notes wait on this device like every other edit
 				const path = `/api/items/${it.id}`;
-				enqueueAction({ key: path, method: 'PATCH', path, payload: { notes: val } });
+				enqueueAction({ key: path, method: 'PATCH', path, payload: body });
 				if (v) v = { ...v, item: { ...v.item, notes: val } };
 				saveState = 'saved';
 				showToast('Saved · Waiting to sync');
@@ -312,12 +344,18 @@
 			method: 'PATCH',
 			keepalive: true,
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ notes: notesDraft.trim() === '' ? null : notesDraft }),
+			body: JSON.stringify({
+				notes: notesDraft.trim() === '' ? null : notesDraft,
+				...(notesScope ? { scope: notesScope } : {}),
+			}),
 		});
 	}
 	async function endNotes() {
 		// failed save: stay in the editor so the draft isn't lost
-		if (await flushNotes()) editingNotes = false;
+		if (await flushNotes()) {
+			editingNotes = false;
+			notesScope = null;
+		}
 	}
 	function grow(el: HTMLTextAreaElement | undefined) {
 		if (!el) return;
@@ -481,6 +519,7 @@
 						{@const presets = it.date ? presetsForDate(it.date) : [{ value: '', label: 'Does not repeat' }]}
 						{@const curRRule = it.rrule ?? ''}
 						{@const isCustom = !!curRRule && !presets.some((p) => p.value === curRRule)}
+						{@const curRule = parseRRule(curRRule)}
 						<label class="prop">
 							<span>Repeat</span>
 							<select
@@ -505,6 +544,43 @@
 								<option value="__custom__">Custom…</option>
 							</select>
 						</label>
+						{#if curRule}
+							{@const endKind = curRule.count ? 'count' : curRule.until ? 'until' : 'never'}
+							<label class="prop">
+								<span>Repeat ends</span>
+								<select
+									aria-label="Repeat ends"
+									value={endKind}
+									onchange={(e) => setRepeatEndKind(e.currentTarget.value as 'never' | 'until' | 'count')}
+								>
+									<option value="never">Never</option>
+									<option value="until">On date</option>
+									<option value="count">After N times</option>
+								</select>
+							</label>
+							{#if endKind === 'until'}
+								<label class="prop">
+									<span>End date</span>
+									<input
+										type="date"
+										value={curRule.until ?? ''}
+										min={it.date ?? undefined}
+										onchange={(e) => setRepeatEnd(e.currentTarget.value || null)}
+									/>
+								</label>
+							{:else if endKind === 'count'}
+								<label class="prop">
+									<span>Occurrences</span>
+									<input
+										type="number"
+										min="1"
+										max="999"
+										value={curRule.count ?? 5}
+										onchange={(e) => setRepeatCount(Number(e.currentTarget.value))}
+									/>
+								</label>
+							{/if}
+						{/if}
 					{/if}
 					<label class="prop check" title="Shows as Busy to anyone you share with">
 						<input

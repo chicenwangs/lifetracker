@@ -519,6 +519,13 @@ test('month: double-click a day opens the add box; N palette covers the whole sc
 	expect(sb.height).toBeGreaterThan(600);
 	await page.keyboard.press('Escape');
 	await expect(scrim).toHaveCount(0);
+	// #250: the palette's Quick add action must actually open Quick add
+	await page.keyboard.press('Control+k');
+	const palette = page.getByRole('dialog', { name: 'Search and go' });
+	await expect(palette).toBeVisible();
+	await palette.getByRole('option', { name: /Quick add/ }).click();
+	await expect(page.getByRole('dialog', { name: 'Quick add' })).toBeVisible();
+	await page.keyboard.press('Escape');
 });
 
 test('theme: new account = Auto (D-07); sun/moon = fixed choice; Auto schedule recalculates at once', async () => {
@@ -556,6 +563,8 @@ test('theme: new account = Auto (D-07); sun/moon = fixed choice; Auto schedule r
 
 test('v2 P1: type bar hides a type, new custom type, Ctrl+Z undo, 24 px hit area, Schedule…', async () => {
 	const d = await today();
+	// today's cell can be crowded with seeded + earlier-test events; use a quiet day next month for the chip
+	const rd = `${new Date(Date.parse(d + 'T00:00:00Z') + 35 * 864e5).toISOString().slice(0, 7)}-10`;
 	await page.goto('/');
 	// new type from the type bar
 	await page.getByRole('button', { name: 'New type' }).click();
@@ -564,9 +573,9 @@ test('v2 P1: type bar hides a type, new custom type, Ctrl+Z undo, 24 px hit area
 	await expect(page.getByRole('button', { name: /Bills/, pressed: true })).toBeVisible();
 	await expect(page.locator('.count')).toContainText('6 / 10 types');
 	// quick add with its slug lands as that type
-	const r = await api('POST', '/api/quickadd', { text: `rent ${d} /calendar /bills` });
+	const r = await api('POST', '/api/quickadd', { text: `rent ${rd} /calendar /bills` });
 	expect(r.s).toBe(201);
-	await page.reload();
+	await page.goto(`/?m=${rd.slice(0, 7)}`);
 	const chip = page.locator('.lt-chip', { hasText: 'rent' });
 	await expect(chip).toBeVisible();
 	// hide Bills -> chip gone (only for me), show again -> back
@@ -594,12 +603,12 @@ test('v2 P1: type bar hides a type, new custom type, Ctrl+Z undo, 24 px hit area
 	await expect(page.locator('.lt-chip', { hasText: 'rent paid' })).toHaveCount(0);
 	await expect(page.locator('.lt-chip', { hasText: /^.*rent$/ })).toBeVisible();
 	// Schedule… on a due chip = linked block without dragging
-	await page.goto(`/?d=${d}`);
+	await page.goto(`/?d=${rd}`);
 	await page.getByRole('button', { name: 'Schedule rent' }).click();
 	await page.locator('.sched .pop').getByLabel('Start').fill('20:00');
 	await page.getByRole('button', { name: 'Block time' }).click();
 	await expect(page.locator('.toast')).toContainText('Blocked "rent" 20:00, 60 min');
-	const cal = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 1)}`);
+	const cal = await api('GET', `/api/calendar?from=${rd}&to=${plusDay(rd, 1)}`);
 	expect((cal.j as { blocks: { itemId: string | null }[] }).blocks.some((b) => b.itemId === id)).toBe(true);
 });
 
@@ -667,9 +676,52 @@ test('v2 P2 Keep: note, checklist nesting, label + binder filters, pin/archive/t
 		.click();
 	await expect(page.locator('article.note', { hasText: 'Groceries' })).toHaveCount(0); // delete landed
 	await page.goto('/keep?scope=trash');
+	// #244: Restore must bring the owner's note back instead of 404ing
+	await page
+		.locator('article.note', { hasText: 'Groceries' })
+		.getByRole('button', { name: 'Restore' })
+		.click();
+	await expect(page.getByText('Trash is empty.')).toBeVisible();
+	await page.goto('/keep');
+	await expect(page.locator('article.note', { hasText: 'Groceries' })).toBeVisible();
+	// trash again, then delete forever (needs a confirm)
+	await page
+		.locator('article.note', { hasText: 'Groceries' })
+		.getByRole('button', { name: 'Delete' })
+		.click();
+	await page.goto('/keep?scope=trash');
 	await page.getByRole('button', { name: 'Delete forever' }).click();
 	await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click(); // in-app confirm (#109)
 	await expect(page.getByText('Trash is empty.')).toBeVisible();
+});
+
+test('timetable shows a recurring class across the term (#263)', async () => {
+	const t = await today();
+	const made = await api('POST', '/api/items', {
+		title: 'Timetable class',
+		date: plusDay(t, 1),
+		time: '09:00',
+		rrule: 'FREQ=WEEKLY',
+	});
+	expect(made.s).toBe(201);
+	const id = made.j.item.id as string;
+	try {
+		await page.goto(`/timetable?w=${t}`);
+		await expect(page.getByRole('heading', { name: 'Timetable', level: 1 })).toBeVisible();
+		await expect(page.getByRole('region', { name: 'Recurring classes' })).toContainText('Timetable class');
+		await expect(page.getByRole('region', { name: 'Recurring classes' })).toContainText('Weekly');
+		await expect(page.locator('td .chip', { hasText: 'Timetable class' }).first()).toBeVisible();
+		// #263: the end is editable on the normal row, no Custom… needed
+		await page.goto(`/item/${id}`);
+		await page.getByLabel('Repeat ends').selectOption('until');
+		await page.getByLabel('End date').fill('2027-05-18');
+		await page.getByLabel('End date').press('Tab');
+		await expect
+			.poll(async () => ((await api('GET', `/api/items/${id}`)).j.item as { rrule: string }).rrule)
+			.toContain('UNTIL=2027-05-18');
+	} finally {
+		await api('DELETE', `/api/items/${id}`);
+	}
 });
 
 test('v2 P2 phone: opens on Today, Now card, + Add, Keep quick note, no sideways scroll at 360 px', async ({
@@ -1041,7 +1093,7 @@ test('v2 P8 a11y: axe finds no serious or critical issues on the main screens (l
 			const p = await ctx.newPage();
 			await p.goto('/');
 			await p.evaluate((s) => document.documentElement.setAttribute('data-theme', s), scheme);
-			for (const url of ['/?desktop=1', '/today', '/week', '/month', '/keep', '/pages', '/pages/shared', '/keep?scope=shared', '/settings/preferences', '/settings/help', '/more']) {
+			for (const url of ['/?desktop=1', '/today', '/week', '/month', '/timetable', '/keep', '/pages', '/pages/shared', '/keep?scope=shared', '/settings/preferences', '/settings/help', '/more']) {
 				await p.goto(url);
 				await p.evaluate((s) => document.documentElement.setAttribute('data-theme', s), scheme);
 				await p.waitForTimeout(700); // let theme transitions finish
@@ -1104,10 +1156,12 @@ test('owner test pass 2026-11-16: chips, popups, Keep, Pages undo + dark, pins, 
 }) => {
 	test.setTimeout(120_000);
 	const d = await today();
+	// today's cell gets crowded by earlier tests; put the long-title chip on a quiet day next month
+	const rd = `${new Date(Date.parse(d + 'T00:00:00Z') + 35 * 864e5).toISOString().slice(0, 7)}-10`;
 	// calendar chip: name on two lines, X drawn on the chip colour (visible in dark), one pop per tick (#70 #71 #77)
 	const long = 'Owner test a really long calendar title that wraps';
-	expect((await api('POST', '/api/items', { title: long, date: d })).s).toBe(201);
-	await page.goto('/?desktop=1');
+	expect((await api('POST', '/api/items', { title: long, date: rd })).s).toBe(201);
+	await page.goto(`/?m=${rd.slice(0, 7)}&desktop=1`);
 	await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
 	const chip = page.locator('.lt-chip', { hasText: 'Owner test a really long' });
 	await expect(chip).toBeVisible();

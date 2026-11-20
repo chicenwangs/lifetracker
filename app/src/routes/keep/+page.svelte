@@ -508,12 +508,12 @@
 	/* desktop: tree left, title + list right · phone (wireframe MKeep): title, search, chip row, notes */
 	.keep {
 		display: grid;
-		grid-template-columns: 220px minmax(0, 1fr);
+		grid-template-columns: 240px minmax(0, 1fr);
 		grid-template-areas: 'side top' 'side main';
 		grid-template-rows: auto 1fr;
 		gap: 12px 24px;
 		padding: 8px 24px 40px;
-		max-width: 1440px;
+		max-width: none;
 		margin: 0 auto;
 		align-items: start;
 	}

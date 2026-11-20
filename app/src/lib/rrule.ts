@@ -1,6 +1,6 @@
 // Repeating items (RFC 5545 RRULE subset, #72). Pure, shared client + server.
 // All dates are owner-local 'YYYY-MM-DD' (never new Date('YYYY-MM-DD')).
-import { addDays, isDate, makeDate, weekdayOf } from './time';
+import { addDays, isDate, makeDate, prettyDate, weekdayOf } from './time';
 
 export const FREQS = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const;
 export type Freq = (typeof FREQS)[number];
@@ -189,7 +189,7 @@ export function describeRRule(raw: string | null | undefined): string {
 	} else {
 		base = r.interval === 1 ? 'Yearly' : `Every ${r.interval} years`;
 	}
-	if (r.until) base += ` · until ${r.until}`;
+	if (r.until) base += ` · until ${prettyDate(r.until).split(' ').slice(1).join(' ')}`;
 	else if (r.count) base += ` · ${r.count} times`;
 	return base;
 }

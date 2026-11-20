@@ -8,6 +8,10 @@
 		'#0F766E': 'Teal',
 		'#6D28D9': 'Violet',
 		'#B45309': 'Amber',
+		'#1D4ED8': 'Blue',
+		'#BE123C': 'Rose',
+		'#4D7C0F': 'Olive',
+		'#0E7490': 'Cyan',
 	};
 </script>
 

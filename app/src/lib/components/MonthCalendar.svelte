@@ -197,6 +197,8 @@
 			eventContent: content,
 			eventOrder: 'start,title',
 			dayHeaderFormat: { weekday: 'short' },
+			// #245: FullCalendar puts aria-expanded/aria-controls on the "+N more" anchor; role=button makes them valid
+			moreLinkDidMount: (a) => a.el.setAttribute('role', 'button'),
 			dayCellClassNames: (a) => {
 				const d = a.date;
 				const s = makeDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
@@ -507,6 +509,7 @@
 	}
 	.grid :global(.lt-sq) {
 		flex: none;
+		position: relative;
 		width: 16px;
 		height: 16px;
 		padding: 0;
@@ -519,6 +522,12 @@
 		cursor: pointer;
 		background: transparent;
 	}
+	/* 24 px hit box (WCAG 2.5.8): the 16 px square keeps its size, the overlay takes the taps */
+	.grid :global(.lt-sq::before) {
+		content: '';
+		position: absolute;
+		inset: -4px;
+	}
 	.grid :global(.lt-sq.on) {
 		background: var(--ink);
 		color: var(--bg, var(--on-ink));
@@ -526,6 +535,7 @@
 	.grid :global(.lt-title) {
 		flex: 1;
 		min-width: 0;
+		min-height: 24px;
 		overflow: hidden;
 		/* full name on up to two lines, then … (owner 2026-11-16) */
 		display: -webkit-box;

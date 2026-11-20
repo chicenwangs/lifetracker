@@ -6,7 +6,7 @@ import { newId } from './crypto';
 import { bad, notFound } from './http';
 import { itemRef, offsetMs, parseOffset, type Unit } from '$lib/remind';
 import { baseItemId, expandRRule, parseExdates } from '$lib/rrule';
-import { addDays, isoPlus, localToUtc, nowUtcIso, todayLocal, utcToLocal } from '$lib/time';
+import { addDays, diffDays, isoPlus, localToUtc, nowUtcIso, todayLocal, utcToLocal } from '$lib/time';
 import type { ReminderDTO } from '$lib/types';
 import * as itemsRepo from './repo/items';
 
@@ -180,22 +180,51 @@ export function recalc(ownerId: string, type: Source, sourceId: string, now = Da
 	}
 }
 
-/** After a relative reminder on a repeating item fires (#72), schedule the next occurrence if one exists. */
+/** After a reminder on a repeating item fires (#72, #261), schedule the next occurrence if one exists. */
 export function advanceRepeating(id: string, ownerId: string, now = Date.now()): void {
 	const r = db().prepare(`SELECT * FROM reminders WHERE id = ? AND owner_id = ?`).get(id, ownerId) as Row | undefined; // prettier-ignore
-	if (!r || r.rule_kind !== 'relative' || !r.rel_value || !r.rel_unit) return;
+	if (!r) return;
 	const info = sourceInfo(ownerId, r.source_type, r.source_id);
 	if (!info?.live || !info.repeat) return;
-	const after = Math.max(now, r.due_at ? Date.parse(r.due_at) + 1000 : now);
-	const nextDue = nextRepeatDue(info.repeat, offsetMs(r.rel_value, r.rel_unit), after);
+	const rep = info.repeat;
+	let nextDue: string | null;
+	if (r.rule_kind === 'relative') {
+		if (!r.rel_value || !r.rel_unit) return;
+		const after = Math.max(now, r.due_at ? Date.parse(r.due_at) + 1000 : now);
+		nextDue = nextRepeatDue(rep, offsetMs(r.rel_value, r.rel_unit), after);
+	} else {
+		if (!r.due_at) return;
+		// #261: an exact-time reminder keeps its distance from the occurrence, not its calendar date
+		const local = utcToLocal(r.due_at, rep.tz);
+		const occ = expandRRule(rep.date, rep.rrule, rep.exdates, local.date, addDays(local.date, 36_600))[0];
+		if (!occ) return;
+		const offset = diffDays(occ, local.date);
+		// start near "now", not at the old occurrence: a long-overdue reminder must not scan years of days
+		let cursor = addDays(todayLocal(rep.tz, now), -offset);
+		for (let k = 0; ; k++) {
+			const next = expandRRule(rep.date, rep.rrule, rep.exdates, cursor, addDays(cursor, 36_600))[0];
+			if (!next || k >= 1000) return;
+			const due = localToUtc(addDays(next, offset), local.time, rep.tz);
+			if (Date.parse(due) > now) {
+				nextDue = due;
+				break;
+			}
+			cursor = addDays(cursor, 1);
+		}
+	}
 	if (!nextDue) return;
 	const dup = db().prepare(`SELECT 1 FROM reminders WHERE source_type = ? AND source_id = ? AND due_at = ? AND status IN ('scheduled','processing')`).get(r.source_type, r.source_id, nextDue); // prettier-ignore
 	if (dup) return;
 	const newRemId = newId('rem');
 	const t = nowUtcIso(now);
-	db()
-		.prepare(`INSERT INTO reminders (id, owner_id, source_type, source_id, rule_kind, rel_value, rel_unit, at_time, due_at, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'relative', ?, ?, NULL, ?, 'scheduled', ?, ?)`)
-		.run(newRemId, ownerId, r.source_type, r.source_id, r.rel_value, r.rel_unit, nextDue, t, t); // prettier-ignore
+	if (r.rule_kind === 'relative')
+		db()
+			.prepare(`INSERT INTO reminders (id, owner_id, source_type, source_id, rule_kind, rel_value, rel_unit, at_time, due_at, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'relative', ?, ?, NULL, ?, 'scheduled', ?, ?)`)
+			.run(newRemId, ownerId, r.source_type, r.source_id, r.rel_value, r.rel_unit, nextDue, t, t); // prettier-ignore
+	else
+		db()
+			.prepare(`INSERT INTO reminders (id, owner_id, source_type, source_id, rule_kind, rel_value, rel_unit, at_time, due_at, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'absolute', NULL, NULL, ?, ?, 'scheduled', ?, ?)`)
+			.run(newRemId, ownerId, r.source_type, r.source_id, nextDue, nextDue, t, t); // prettier-ignore
 }
 
 /** Android app: scheduled reminders due in the next `ms`, for local alarms. Kinds the owner turned off are left out. */

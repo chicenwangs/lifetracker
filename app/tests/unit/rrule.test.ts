@@ -175,6 +175,43 @@ describe('repeating items repo, reminders per occurrence, and default reminders'
 		expect(rem.list(user.id, 'planner_item', qa.item?.id ?? '')).toHaveLength(1);
 	});
 
+	it('advances exact-time reminders on a repeating item (#261)', async () => {
+		const at = Date.parse('2026-11-16T00:00:00Z');
+		const yearly = items.create(
+			user.id,
+			items.itemCreateSchema.parse({
+				title: 'Renew passport',
+				date: '2026-11-16',
+				time: '10:00',
+				rrule: 'FREQ=YEARLY',
+			}),
+		);
+		const r = rem.add(user.id, 'planner_item', yearly.id, { at: '2026-11-16T01:00:00Z' }, at);
+		expect(r.dueAt).toBe('2026-11-16T01:00:00Z');
+
+		await jobs.tick(Date.parse('2026-11-16T01:00:01Z'));
+		expect(rem.list(user.id, 'planner_item', yearly.id).map((x) => [x.dueAt, x.status])).toEqual([
+			['2026-11-16T01:00:00Z', 'sent'],
+			['2027-11-16T01:00:00Z', 'scheduled'],
+		]);
+	});
+
+	it('does not schedule past the end of a counted series (#261 break test)', async () => {
+		const at = Date.parse('2026-11-16T00:00:00Z');
+		const once = items.create(
+			user.id,
+			items.itemCreateSchema.parse({
+				title: 'One-off in a series',
+				date: '2026-11-16',
+				time: '10:00',
+				rrule: 'FREQ=YEARLY;COUNT=1',
+			}),
+		);
+		rem.add(user.id, 'planner_item', once.id, { at: '2026-11-16T01:00:00Z' }, at);
+		await jobs.tick(Date.parse('2026-11-16T01:00:01Z'));
+		expect(rem.list(user.id, 'planner_item', once.id)).toHaveLength(1);
+	});
+
 	it('snooze before the reminder fires keeps the daily chain (#185); every-2-years reminders advance (#187); a new timezone moves them (#189)', async () => {
 		const at = Date.parse('2026-11-16T00:00:00Z');
 		const mk = (rrule: string) =>

@@ -177,8 +177,8 @@
 	.wrap {
 		display: flex;
 		gap: 24px;
-		padding: 8px 32px 40px;
-		max-width: 1440px;
+		padding: 8px 24px 40px;
+		max-width: none;
 		margin: 0 auto;
 		align-items: flex-start;
 	}

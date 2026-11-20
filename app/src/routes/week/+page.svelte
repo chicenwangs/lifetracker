@@ -267,6 +267,7 @@
 			<div class="view" role="group" aria-label="View">
 				<a href="/?m={data.from.slice(0, 7)}">Month</a>
 				<span class="on">Week</span>
+				<a href="/timetable?w={data.from}">Timetable</a>
 			</div>
 		</div>
 		<div class="types"><TypeBar /></div>

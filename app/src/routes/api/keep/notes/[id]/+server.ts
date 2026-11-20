@@ -18,8 +18,13 @@ export const GET = api((e) => {
 export const PATCH = api(async (e) => {
 	const u = me(e);
 	const id = e.params.id ?? '';
-	const owner = need('note', u.id, id, 'edit');
 	const p = await body(e, keep.noteSchema);
+	// #244: level() hides trashed rows, so restoring the owner's own note must not go through need()
+	let owner: string;
+	if (p.trashed === false) {
+		keep.get(u.id, id); // 404 unless this is the owner's note
+		owner = u.id;
+	} else owner = need('note', u.id, id, 'edit');
 	const note = keep.update(owner, id, owner === u.id ? p : { title: p.title, body: p.body, type: p.type, items: p.items, revision: p.revision, editedAt: p.editedAt }); // prettier-ignore
 	recalcOwner(owner);
 	return json({ note: owner === u.id ? note : { ...note, labels: [], binders: [] } });

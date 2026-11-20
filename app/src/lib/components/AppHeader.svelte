@@ -15,6 +15,7 @@
 	const NAV = [
 		{ href: '/', label: 'Home', match: (p: string) => p === '/' },
 		{ href: '/week', label: 'Week', match: (p: string) => p.startsWith('/week') },
+		{ href: '/timetable', label: 'Timetable', match: (p: string) => p.startsWith('/timetable') },
 		{ href: '/keep', label: 'Keep', match: (p: string) => p.startsWith('/keep') },
 		{
 			href: '/pages',
@@ -42,6 +43,7 @@
 			return (page.data.page as { title?: string } | undefined)?.title || 'Untitled';
 		if (path === '/trash') return 'Trash';
 		if (path === '/month') return 'Month';
+		if (path.startsWith('/timetable')) return 'Timetable';
 		if (path.startsWith('/item/')) return 'Item';
 		if (path === '/more') return 'More';
 		return '';
@@ -67,6 +69,7 @@
 	afterNavigate(() => (phone = isPhone()));
 	let help = $state(false);
 	let cmdk: CommandPalette | undefined = $state();
+	let qa: QuickAdd | undefined = $state();
 	const mod = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 	const KEYS = $derived([
 		[`${mod}+K`, 'Search pages, notes, planner; jump anywhere'],
@@ -148,7 +151,7 @@
 				aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg
 			><span class="stext">Search</span> <kbd>{mod}+K</kbd></button
 		>
-		<QuickAdd tz={user.timezone} />
+		<QuickAdd bind:this={qa} tz={user.timezone} />
 		<button
 			class="theme"
 			type="button"
@@ -235,7 +238,7 @@
 		</div>
 	</div>
 </header>
-<CommandPalette bind:this={cmdk} />
+<CommandPalette bind:this={cmdk} onquickadd={() => qa?.show()} />
 {#if acct}<AccountSheet {user} onclose={() => (acct = false)} />{/if}
 {#if help}
 	<div class="scrim" role="presentation" onclick={() => (help = false)}></div>
@@ -374,6 +377,7 @@
 	}
 	nav {
 		display: flex;
+		align-items: center;
 		gap: 4px;
 	}
 	nav a {

@@ -206,7 +206,12 @@
 	<header class="day">
 		<!-- date line over the title; tap it for any day (#94) -->
 		<h1>
-			<button class="pickday" type="button" aria-label="{prettyDate(data.day)}. Pick a day" onclick={pick}>
+			<button
+				class="pickday"
+				type="button"
+				aria-label="{isToday ? 'Today, ' : ''}{prettyDate(data.day)}. Pick a day"
+				onclick={pick}
+			>
 				<span class="sub">{prettyDate(data.day)} ▾</span>{isToday
 					? 'Today'
 					: prettyDate(data.day).split(' ').slice(0, 3).join(' ')}
