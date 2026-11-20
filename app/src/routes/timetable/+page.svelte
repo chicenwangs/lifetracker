@@ -8,8 +8,8 @@
 	let { data } = $props();
 	const days = $derived(data.weeks[0]?.days ?? []);
 	const span = $derived(data.weeks.length * 7);
-	// the eight-week window is driven by ?w=, so prev/next keep the same weekday column layout
-	const shift = (n: number) => `/timetable?w=${addDays(data.from, span * n)}`;
+	const week = (n: number) => `/timetable?w=${addDays(data.from, 7 * n)}`;
+	const jump = (d: string | null) => (d ? `/timetable?w=${d}#d-${d}` : null);
 	const empty = $derived(!data.weeks.some((w) => w.days.some((d) => d.items.length)));
 </script>
 
@@ -19,12 +19,14 @@
 	<header>
 		<div>
 			<h1>Timetable</h1>
-			<p class="hint">Your classes across the next eight weeks. Tap any class to open it.</p>
+			<p class="hint">Your classes across a {span / 7}-week term. Tap any class to open it.</p>
 		</div>
 		<nav aria-label="Timetable periods">
-			<a class="btn sm" href={shift(-1)} aria-label="Previous eight weeks">‹</a>
+			<a class="btn sm" href={week(-1)} aria-label="Previous week">‹</a>
 			<a class="btn sm" href="/timetable?w={data.today}">This week</a>
-			<a class="btn sm" href={shift(1)} aria-label="Next eight weeks">›</a>
+			<a class="btn sm" href={week(1)} aria-label="Next week">›</a>
+			{#if data.prevClass}<a class="btn sm" href={jump(data.prevClass)}>Previous class</a>{/if}
+			{#if data.nextClass}<a class="btn sm" href={jump(data.nextClass)}>Next class</a>{/if}
 		</nav>
 	</header>
 
@@ -57,7 +59,7 @@
 					<tr>
 						<th scope="row">{Number(w.start.slice(8))}/{Number(w.start.slice(5, 7))}</th>
 						{#each w.days as d (d.date)}
-							<td class:today={d.date === data.today}>
+							<td id="d-{d.date}" class:today={d.date === data.today}>
 								{#each d.items as it (it.id)}
 									{@const c = colorsFor(it.type)}
 									<button
@@ -83,7 +85,7 @@
 
 	{#if empty}
 		<p class="empty card">
-			No classes in these eight weeks yet. Add one from quick add, like
+			No classes in this term yet. Add one from quick add, like
 			<code>Math every tue 09:00 until 2027-05-18</code>.
 		</p>
 	{/if}

@@ -409,6 +409,49 @@ test('item opens as centre peek: blur, rename in place, notes, linked block, hov
 	await expect(home).toBeAttached();
 });
 
+test('notes on a repeating item send the chosen scope (#243)', async () => {
+	const d = plusDay(await today(), 1);
+	const made = await api('POST', '/api/items', {
+		title: 'Scope notes probe',
+		date: d,
+		time: '09:00',
+		rrule: 'FREQ=DAILY;COUNT=3',
+	});
+	expect(made.s).toBe(201);
+	const id = made.j.item.id as string;
+	try {
+		await page.goto(`/item/${id}`);
+		// #251: items have the same click/keyboard copy path as blocks
+		await page.getByRole('button', { name: 'Duplicate' }).click();
+		await expect(page.locator('.toast')).toContainText('Copy "Scope notes probe"');
+		const dupCal = await api('GET', `/api/calendar?from=${d}&to=${plusDay(d, 1)}`);
+		const copy = (dupCal.j.items as { id: string; title: string }[]).find(
+			(i) => i.title === 'Scope notes probe' && i.id !== id,
+		);
+		if (copy) await api('DELETE', `/api/items/${copy.id}`);
+		await page.getByRole('button', { name: 'Click to write. Markdown works.' }).click();
+		await page.getByRole('radio', { name: 'This item' }).check();
+		await page.getByRole('button', { name: 'Edit', exact: true }).click();
+		const textarea = page.locator('#iv-notes');
+		await expect(textarea).toBeVisible();
+		const sent = page.waitForRequest(
+			(r) => r.method() === 'PATCH' && r.url().includes(`/api/items/`) && !!r.postData()?.includes('notes'),
+		);
+		await textarea.fill('only on this date');
+		await textarea.press('Escape');
+		const req = await sent;
+		expect(JSON.parse(req.postData() as string)).toMatchObject({ scope: 'this', notes: 'only on this date' });
+		// the next occurrence still has no note: the whole series was not rewritten
+		const cal = await api('GET', `/api/calendar?from=${plusDay(d, 1)}&to=${plusDay(d, 2)}`);
+		const next = (cal.j.items as { seriesId?: string; notes?: string | null }[]).find(
+			(i) => i.seriesId === id,
+		);
+		expect(next?.notes ?? null).toBeNull();
+	} finally {
+		await api('DELETE', `/api/items/${id}`);
+	}
+});
+
 test('open sign-up + swap share codes: partner calendar read-only, hidden types Busy, overlap switch', async ({
 	browser,
 }) => {
@@ -710,6 +753,12 @@ test('timetable shows a recurring class across the term (#263)', async () => {
 		await expect(page.getByRole('heading', { name: 'Timetable', level: 1 })).toBeVisible();
 		await expect(page.getByRole('region', { name: 'Recurring classes' })).toContainText('Timetable class');
 		await expect(page.getByRole('region', { name: 'Recurring classes' })).toContainText('Weekly');
+		await expect(page.locator('td .chip', { hasText: 'Timetable class' }).first()).toBeVisible();
+		await expect(page.locator('tbody tr')).toHaveCount(26); // whole term in one scroll
+		await expect(page.getByRole('link', { name: 'Next week' })).toBeVisible();
+		// #263: navigation by week and a jump to the next class, not only a block of eight weeks
+		await page.getByRole('link', { name: 'Next class' }).click();
+		await expect(page).toHaveURL(/#d-\d{4}-\d{2}-\d{2}$/);
 		await expect(page.locator('td .chip', { hasText: 'Timetable class' }).first()).toBeVisible();
 		// #263: the end is editable on the normal row, no Custom… needed
 		await page.goto(`/item/${id}`);

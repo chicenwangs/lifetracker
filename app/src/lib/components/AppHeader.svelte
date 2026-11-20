@@ -75,7 +75,7 @@
 		[`${mod}+K`, 'Search pages, notes, planner; jump anywhere'],
 		['N', 'Quick add'],
 		[`${mod}+Z`, 'Undo your last change (outside text fields)'],
-		['Alt + drag', 'Copy an item or block instead of moving it'],
+		['Alt + drag', 'Copy an item or block instead of moving it (or use Duplicate in its menu)'],
 		['/', 'In quick add: pick a type or where it goes'],
 		['↑ ↓ on a block', 'Move 15 min (Shift: change the end)'],
 		['Enter on a block', 'Rename, set start / end, delete'],

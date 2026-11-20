@@ -22,12 +22,13 @@
 		type Freq,
 		type WdCode,
 	} from '$lib/rrule';
-	import { addDays, examCountdown, prettyDate, utcToLocal, weekdayOf } from '$lib/time';
+	import { addDays, examCountdown, prettyDate, todayLocal, utcToLocal, weekdayOf } from '$lib/time';
 	import type { BlockDTO, ItemDTO, ItemType } from '$lib/types';
 	import { get, patch, post } from '$lib/client/api';
 	import { enqueueAction, isOffline } from '$lib/client/offline';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { removeItem } from '$lib/client/remove';
+	import { duplicate } from '$lib/client/altdrag';
 	import { isPhone } from '$lib/client/phone';
 
 	interface View {
@@ -370,6 +371,12 @@
 		if (ok) ondeleted?.(parent);
 	}
 
+	/** #251: the item equivalent of Alt-drag copy, reachable by click or keyboard. */
+	function duplicateItem() {
+		if (!it) return;
+		void duplicate('item', baseItemId(it.id), { date: it.date ?? todayLocal(v?.tz ?? 'Asia/Kuala_Lumpur') });
+	}
+
 	const fmtZ = (z: string | null) => (z ? prettyDate(z.slice(0, 10)) : '—');
 	const fmtBlock = (b: BlockDTO) => {
 		if (!v) return { date: '', text: '' };
@@ -698,12 +705,13 @@
 
 			<aside class="side" aria-label="Item details">
 				<div class="card box delbox">
+					<button class="btn sm" type="button" onclick={duplicateItem}>Duplicate</button>
 					<button class="btn danger sm" type="button" onclick={del}>Delete item</button>
 					<a href="/trash" class="hint">Trash</a>
 				</div>
 
 				<div class="card box">
-					<Reminders source="planner_item" sourceId={baseItemId(it.id)} tz={v.tz} />
+					<Reminders source="planner_item" sourceId={baseItemId(it.id)} tz={v.tz} repeating={!!it.rrule} />
 				</div>
 
 				<div class="card box hist">
@@ -1090,7 +1098,8 @@
 	.delbox {
 		flex-direction: row;
 		align-items: center;
-		justify-content: space-between;
+		justify-content: flex-start;
+		flex-wrap: wrap;
 	}
 	dl {
 		margin: 0;

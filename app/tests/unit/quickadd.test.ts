@@ -293,6 +293,23 @@ describe('repeat end in quick add (#262)', () => {
 		const r = p('Class every tue 09:00 until 2026-11-01');
 		expect(r.problems.join(' ')).toMatch(/before the start date/);
 	});
+	it('a bare weekly repeat is understood with until (#262 break test)', () => {
+		const r = p('Class 2026-11-24 09:00 weekly until 2027-05-18');
+		expect(r.title).toBe('Class');
+		expect(r.date).toBe('2026-11-24');
+		expect(r.rrule).toBe('FREQ=WEEKLY;BYDAY=TU;UNTIL=2027-05-18');
+	});
+	it('an explicit date is stripped from the title with every mon (#262 cosmetic)', () => {
+		const r = p('Timetable probe 2026-11-23 09:00 every mon');
+		expect(r.title).toBe('Timetable probe');
+		expect(r.date).toBe('2026-11-23');
+		expect(r.rrule).toBe('FREQ=WEEKLY;BYDAY=MO');
+	});
+	it('an unrecognised repeat reports a problem (#262 break test)', () => {
+		const r = p('Class every whenever 09:00');
+		expect(r.ok).toBe(false);
+		expect(r.problems.join(' ')).toMatch(/do not understand that repeat/);
+	});
 	it('"until" in a time range is still parsed as a range (#262 break test)', () => {
 		const r = p('work 3pm until 5pm');
 		expect(r.title).toBe('work');

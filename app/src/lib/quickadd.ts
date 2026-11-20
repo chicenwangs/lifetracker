@@ -350,6 +350,7 @@ type DateHit = {
 	explicit?: boolean; // names a calendar date (16 nov, 16/11, 2026-11-16, the 16th)
 	weekday?: number; // weekday-only hit (mergeable into an explicit date: "mon 16 nov")
 	checkWeekday?: number;
+	repeat?: boolean; // from a repeat phrase: consumed even when an explicit date wins
 };
 type TimeHit = { idx: number[]; start: number; end: number | null };
 const range = (from: number, len: number) => Array.from({ length: len }, (_, k) => from + k);
@@ -445,10 +446,18 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	let repeatUntil: string | null = null;
 	let repeatUntilWeekday: number | null = null;
 	let repeatFor: { n: number; unit: 'day' | 'week' | 'month' | 'year' } | null = null;
-	const hasEvery = low.includes('every');
+	const hasRepeat = low.some(
+		(t) =>
+			t === 'every' ||
+			t === 'daily' ||
+			t === 'weekly' ||
+			t === 'monthly' ||
+			t === 'yearly' ||
+			t === 'annually',
+	);
 	for (let i = 0; i < low.length; i++) {
 		const t = low[i] ?? '';
-		if ((t === 'until' || t === 'till' || t === 'til') && hasEvery && !used.has(i)) {
+		if ((t === 'until' || t === 'till' || t === 'til') && hasRepeat && !used.has(i)) {
 			const d = dateAt(i + 1);
 			if (d) {
 				repeatUntil = d.date;
@@ -463,7 +472,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 			}
 			continue;
 		}
-		if (t === 'for' && hasEvery && !used.has(i)) {
+		if (t === 'for' && hasRepeat && !used.has(i)) {
 			const n = numberOf(low[i + 1]);
 			const u = low[i + 2] ?? '';
 			if (n !== null && n > 0 && /^(days?|weeks?|wks?|months?|years?|yrs?)$/.test(u)) {
@@ -546,6 +555,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 				rrule = 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR';
 				pushDate({
 					idx: [i, i + 1],
+					repeat: true,
 					resolve: (passed) => {
 						for (let k = 0; k < 7; k++) {
 							const d = addDays(today, k);
@@ -600,6 +610,7 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 				const len = j - i;
 				pushDate({
 					idx: range(i, len),
+					repeat: true,
 					resolve: (passed) => {
 						for (let k = 0; k < 8; k++) {
 							const d = addDays(today, k);
@@ -611,6 +622,22 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 				i = j - 1;
 				continue;
 			}
+			problems.push('I do not understand that repeat. Try `every day`, `every week`, or `every mon,wed`.');
+			used.add(i);
+			continue;
+		}
+		// bare repeat words are common in class phrasing: "math weekly until May"
+		if (t === 'daily' || t === 'weekly' || t === 'monthly' || t === 'yearly' || t === 'annually') {
+			rrule =
+				t === 'daily'
+					? 'FREQ=DAILY'
+					: t === 'weekly'
+						? 'FREQ=WEEKLY'
+						: t === 'monthly'
+							? 'FREQ=MONTHLY'
+							: 'FREQ=YEARLY';
+			used.add(i);
+			continue;
 		}
 
 		// --- relative phrases ---
@@ -933,6 +960,8 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 			}
 		}
 	}
+	// repeat words are consumed whether or not their weekday wins resolution (#262 cosmetic case)
+	for (const h of dates.filter((h) => h.repeat)) h.idx.forEach((i) => used.add(i));
 	const dateSet = date !== null;
 	date ??= ctx.slot?.date ?? ctx.day ?? today;
 	if (rrule === 'FREQ=WEEKLY') rrule = `FREQ=WEEKLY;BYDAY=${WD_CODES[weekdayOf(date) - 1]}`;
