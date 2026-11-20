@@ -8,19 +8,27 @@ import { addDays, isDate, todayLocal, weekStartOf } from '$lib/time';
 
 const WEEKS = 26;
 const CHUNK_DAYS = 56;
+const MIN_FROM = '0001-01-01';
+const MAX_FROM = addDays('9999-12-30', -(WEEKS * 7)); // leave one day for getCalendar's exclusive end (#267)
 
 export const load: PageServerLoad = ({ locals, url }) => {
 	const me = locals.user as App.SafeUser;
 	const today = todayLocal(me.timezone);
 	const ws = me.region === 'us' ? 7 : 1;
 	const q = url.searchParams.get('w');
-	const from = weekStartOf(q && isDate(q) ? q : today, ws);
+	const rawFrom = weekStartOf(q && isDate(q) ? q : today, ws);
+	const from = rawFrom < MIN_FROM ? MIN_FROM : rawFrom > MAX_FROM ? MAX_FROM : rawFrom;
 	const to = addDays(from, WEEKS * 7);
 
 	const found = new Map<string, ItemDTO>();
-	for (let d = from; d < to; d = addDays(d, CHUNK_DAYS))
-		for (const i of getCalendar(me, d, addDays(d, CHUNK_DAYS) > to ? to : addDays(d, CHUNK_DAYS)).items)
-			found.set(i.id, i);
+	let d = from;
+	while (d < to) {
+		const step = addDays(d, CHUNK_DAYS);
+		const end = !isDate(step) || step > to ? to : step;
+		for (const i of getCalendar(me, d, end).items) found.set(i.id, i);
+		if (end === to) break;
+		d = end;
+	}
 	const items = [...found.values()];
 
 	const byDate = new Map<string, ItemDTO[]>();

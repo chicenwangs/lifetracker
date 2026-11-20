@@ -768,6 +768,10 @@ test('timetable shows a recurring class across the term (#263)', async () => {
 		await expect
 			.poll(async () => ((await api('GET', `/api/items/${id}`)).j.item as { rrule: string }).rrule)
 			.toContain('UNTIL=2027-05-18');
+		// #267: an extreme but valid date must still render, not 500
+		await page.goto('/timetable?w=9999-12-31');
+		await expect(page.getByRole('heading', { name: 'Timetable', level: 1 })).toBeVisible();
+		await expect(page.locator('tbody tr')).toHaveCount(26);
 	} finally {
 		await api('DELETE', `/api/items/${id}`);
 	}

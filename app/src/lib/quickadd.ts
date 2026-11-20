@@ -486,6 +486,9 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 		}
 	}
 
+	// a bare repeat word is only a rule when the text actually has an end phrase (#268)
+	const hasRepeatEnd = repeatUntil !== null || repeatUntilWeekday !== null || repeatFor !== null;
+
 	for (let i = 0; i < low.length; i++) {
 		const t = low[i] ?? '';
 		const n1 = low[i + 1];
@@ -626,8 +629,11 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 			used.add(i);
 			continue;
 		}
-		// bare repeat words are common in class phrasing: "math weekly until May"
-		if (t === 'daily' || t === 'weekly' || t === 'monthly' || t === 'yearly' || t === 'annually') {
+		// bare repeat words are common in class phrasing: "math weekly until May", but never a title word on its own
+		if (
+			hasRepeatEnd &&
+			(t === 'daily' || t === 'weekly' || t === 'monthly' || t === 'yearly' || t === 'annually')
+		) {
 			rrule =
 				t === 'daily'
 					? 'FREQ=DAILY'
