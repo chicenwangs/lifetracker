@@ -1,5 +1,12 @@
 # Life Tracker v2 — release notes
 
+## v3.1.1 (2026-11-20) — remove the mistaken timetable page, no migration
+Back up first (`sudo ./backup.sh`), then set `APP_VERSION=3.1.1` in `.env` and run `docker compose pull app && docker compose up -d app`. Rollback is `APP_VERSION=3.1.0` plus `up -d`; no database migration and no restore needed. `/healthz` should report `3.1.1`.
+
+- Removed the separate read-only `/timetable` page and its header, Week and More links (#270). The repeating-item rules and the item sheet already show the same event repeating; no other feature depends on the page.
+- Kept the useful parts of the same QA work: repeat-end row (Never / On date / After N), plain-language rule text, quick add `until <date>` and `for N weeks|months`, Keep restore, palette quick add, Duplicate actions, accessibility and layout fixes.
+- Verified: 386 unit tests, 28 desktop e2e, 246 phone e2e, local desktop + Android smoke checks. No deployment or live data was touched by the release pipeline.
+
 ## v3.1.0 (2026-11-20) — QA-loop fixes, timetable, accessibility, no migration
 Back up first (`sudo ./backup.sh`), then set `APP_VERSION=3.1.0` in `.env` and run `docker compose pull app && docker compose up -d app`. Rollback is `APP_VERSION=3.0.0` plus `up -d`; no database migration and no restore needed. `/healthz` should report `3.1.0`.
 
