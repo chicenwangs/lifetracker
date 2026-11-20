@@ -1,5 +1,15 @@
 # Life Tracker v2 — release notes
 
+## v3.1.0 (2026-11-20) — QA-loop fixes, timetable, accessibility, no migration
+Back up first (`sudo ./backup.sh`), then set `APP_VERSION=3.1.0` in `.env` and run `docker compose pull app && docker compose up -d app`. Rollback is `APP_VERSION=3.0.0` plus `up -d`; no database migration and no restore needed. `/healthz` should report `3.1.0`.
+
+- Repeating items: notes edits now ask This / Following / All; exact-time reminders advance with the series (#243, #261).
+- Quick add understands `until <date>` and `for N weeks|months`, writes `UNTIL`, and strips those words from the title; ordinary titles like "weekly report" stay intact (#262, #268).
+- Repeat row exposes Never / On date / After N, and a read-only `/timetable` screen shows a 26-week class term with week and class jumps (#263). Far-future dates no longer 500 (#267).
+- Keep Trash restore works for the owner (#244). Ctrl+K → Quick add works; blocks and items have a click/keyboard Duplicate action (#250, #251).
+- Accessibility and layout: combobox/meter/label names, dark link contrast, 24 px calendar targets, eight colour names, full-width Pages and Keep, aligned separators, clearer no-time error (#245–#249, #252–#260).
+- Verified: 386 unit tests, 28 desktop e2e (axe light/dark), 246 phone e2e, two full desktop + Android runs, and a two-pass security/bug audit.
+
 ## v3.0.0 (2026-11-18) — mobile overhaul + repeating items + security hardening, migration (0009, 0010)
 Back up first (`sudo ./backup.sh`). Upgrade steps: SERVICE-HANDOFF §5 "v2.0.4 → v3.0.0".
 - Hardening across push, sign-in, shared pages, upload limits, backups and the Android app (issues #22–#59).
