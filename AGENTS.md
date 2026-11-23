@@ -6,7 +6,8 @@ Read this first. One page of truth; deeper docs at the end. Caveman style: short
 
 - Self-hosted Notion replacement for one household (owner + partner, 2–5 users). Calendar + day planner + notes (Keep) + wiki (Pages, databases, graph) + reminders + sharing.
 - Repo `github.com/chicenwangs/lifetracker` (private). Local: `C:\Users\jeremy josh\Desktop\life-tracker`. Branch `main`.
-- Live: **v3.0.0** at `https://planner.jeremyjosh.org` (homelab Docker Compose + Cloudflare Tunnel). Verified 2026-11-19: `/healthz` → `{"ok":true,"db":true,"version":"3.0.0","jobs":true}`. `app/package.json` = 3.0.0. **Owner deploys. Agents never deploy and never touch live data.**
+- Latest release: **v3.1.1** (tag, GHCR image, GitHub Release, APK; 2026-11-20). `app/package.json` = 3.1.1. 3.1.2 (bug-fix patch) is in progress on `main`, not released.
+- Live: `https://planner.jeremyjosh.org` (homelab Docker Compose + Cloudflare Tunnel). Last verified 2026-11-19: `/healthz` → `{"ok":true,"db":true,"version":"3.0.0","jobs":true}`. Not re-checked since v3.1.x. **Owner deploys. Agents never deploy and never touch live data.**
 - Android app ships per release (`life-tracker-X.Y.Z.apk`), Capacitor 8 shell in `mobile/`.
 
 ## Run it
@@ -76,7 +77,7 @@ Routes that exist (2026-11): `/`, `/today`, `/week`, `/month`, `/item/[id]`, `/k
 
 - Unit: `cd app; npm run test:unit`. E2E: `npm run test:e2e` (26 desktop) / `npm run test:e2e:phone` (phone + landscape, ~246). E2E uses its own temp DB (`E2E_DIR`, port 4173) — no need to stop a dev server on another port, but both share `.svelte-kit`, so do not run two Vite servers on the same checkout.
 - Emulator: AVD `lt_pixel7` (`%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe -avd lt_pixel7`), `adb` in `%LOCALAPPDATA%\Android\Sdk\platform-tools\`. Start the dev server on **4174** against `data/qa/app.db`, then `adb reverse tcp:4174 tcp:4174`.
-- Debug APK `mobile/android/app/build/outputs/apk/debug/app-debug.apk` embeds `http://localhost:4174` (cleartext). `adb install -r` it; the installed release app is older and will offer a v3.0.0 update instead.
+- Debug APK `mobile/android/app/build/outputs/apk/debug/app-debug.apk` embeds `http://localhost:4174` (cleartext). `adb install -r` it; the installed release app is older and will offer the newest release as an update instead.
 - WebView inspection works on the debug build: `adb shell cat /proc/net/unix | findstr webview_devtools`, `adb forward tcp:9223 localabstract:webview_devtools_remote_<pid>`, then `http://127.0.0.1:9223/json` → CDP WebSocket (Node 22 has global `WebSocket`). That is how to read `document.body.innerText`, click, and screenshot without OCR. `adb shell uiautomator dump` shows only an empty `<WebView>` node — not useful here.
 - Emulator is slow: allow seconds between action and assertion; a `System UI isn't responding` dialog means the host is starved, tap Wait.
 - Clean up test rows you create (or use a throwaway copy of `data/qa/app.db`).

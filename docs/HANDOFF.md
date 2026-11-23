@@ -4,11 +4,11 @@ Caveman doc. Read `AGENTS.md` first (one page), then this. Repo `github.com/chic
 
 ## Now
 
-- **Live = v3.0.0** — `https://planner.jeremyjosh.org` (homelab Docker Compose + Cloudflare Tunnel). Verified 2026-11-19: `/healthz` → `version":"3.0.0"`, `jobs:true`. Owner deploys; agents never deploy and never touch live data.
-- Code = v3.0.0 (`app/package.json`). Android APK `life-tracker-3.0.0.apk` on the release; installed phones self-update.
+- **Latest release = v3.1.1** (2026-11-20; v3.1.0 same day). `app/package.json` = 3.1.1. 3.1.2 patch in progress on `main`, not released. Android APK `life-tracker-3.1.1.apk` on the release; installed phones self-update.
+- Live = `https://planner.jeremyjosh.org` (homelab Docker Compose + Cloudflare Tunnel). Last verified 2026-11-19: `/healthz` → `version":"3.0.0"`, `jobs:true`; not re-checked since v3.1.x. Owner deploys; agents never deploy and never touch live data.
 - **371 unit** (29 files) · **desktop e2e 25 passed + 1 skipped** (26) · **phone e2e 246**. Run 2026-11-19 — `docs/v3/QA-RUN-2026-11-19.md`.
 - Mobile overhaul (#106) done. v3.0.0 shipped repeating items, reminder actions, Android widgets/updater, offline, security + QA fixes.
-- Next = v2.1 backlog (`docs/v2/CHAT-HANDOFF.md` §v2.1) and the open review items (`docs/REVIEW.md`). One branch + PR per issue off `main`.
+- Next = open GitHub issues (`gh issue list --state open`). v2.1 backlog (`docs/v2/CHAT-HANDOFF.md` §v2.1) and `docs/REVIEW.md` Open items are parked. One branch + PR per issue off `main`.
 
 Release history and per-phase test counts: `docs/v2/PHASES.md` (v3 row = mobile overhaul, migrations 0009/0010). Release notes: `docs/v2/RELEASE-NOTES.md`. What the app does now, newest first: `docs/BUILD-NOTES.md`.
 

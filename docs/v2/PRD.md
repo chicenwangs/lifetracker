@@ -6,10 +6,10 @@ Set: **PRD.md** (what) → **FEATURES.md** (behaviour) → **DESIGN.md** (how). 
 
 ## 0. State now
 
-- **Next release = v2.0.0 (big bang).** See PHASES.md.
-- **Live:** `https://planner.jeremyjosh.org`, **v1.1.0**, homelab Docker + Cloudflare Tunnel (P2b done). Ops contract = repo `docs/SERVICE-HANDOFF.md`.
+- **Latest release = v3.1.1** (2026-11-20; v3.1.0 same day, v3.0.0 2026-11-18, v2.0.0 2026-11-14). Release table = PHASES.md. 3.1.2 patch in progress, not released.
+- **Live:** `https://planner.jeremyjosh.org`, homelab Docker + Cloudflare Tunnel. Last verified 2026-11-19 at v3.0.0. Ops contract = repo `docs/SERVICE-HANDOFF.md`.
 - **Rule: every v1.1.0 feature stays** (core loop tested 1 week). Parity list = RELEASE-PARITY.md.
-- Live app = Life Planner only: auth + open sign-up (admin can set invite-only), Home (month 2/3 + planner 1/3), Week, item peek, N quick add, trash, view-only calendar sharing by `LT-` code, light/dark theme ("gradient C").
+- v1.1.0 baseline (what the parity list covers) = Life Planner only: auth + open sign-up (admin can set invite-only), Home (month 2/3 + planner 1/3), Week, item peek, N quick add, trash, view-only calendar sharing by `LT-` code, light/dark theme ("gradient C").
 - Test counts disagree across old docs (237 / 258 / 260). **Truth = CI.** Don't quote a number without checking.
 - Dormant data in DB (no UI): goals, courses, places, lists, list_items, people, person_facts, ideas, workout_split/logs. Keep it. See D-22.
 
@@ -32,7 +32,7 @@ Rules:
 
 Supersedes old docs: "phone = afterthought", "Places/Lists/People/Ideas/Workouts = separate services", "Keep/Pages excluded".
 
-Non-goals: microservices, native iOS/Android, spreadsheet engine/macros, social/public publishing by default, AI features, Workouts module, auto calendar-view switching by time.
+Non-goals: microservices, native iOS (the Android shell in `mobile/` shipped from v2.0.3), spreadsheet engine/macros, social/public publishing by default, AI features, Workouts module, auto calendar-view switching by time.
 
 ## 2. Users
 
@@ -44,7 +44,7 @@ Non-goals: microservices, native iOS/Android, spreadsheet engine/macros, social/
 
 ## 3. Navigation
 
-- Desktop header: app mark · **Home · Week · Keep · Pages** · 0–3 pinned Pages · quick add · theme · avatar.
+- Desktop header: app mark · **Home · Week · Keep · Pages** · 0–3 pinned Pages · Search (Ctrl+K) · quick add · ? shortcuts · theme · avatar.
 - Pages link always there (fix: v1.0 header had no way into Pages when 0 pins).
 - Pins: per user (all devices), max 3 hard cap, reorder, unpin ≠ delete, title follows Page, lost access → pin gone/unavailable, no leak.
 
@@ -80,7 +80,7 @@ Own route + layout. No Pages tree. Note in 1 click, no title/label needed. Refer
 - K-8 Search title/body/checklist text + filters (label, binder, type, has-attachment, pinned, archived/trash). Permission-filtered.
 - K-9 Reminders on notes via shared reminder system (§8).
 - K-10 Later: share note view/edit, live co-edit (D-05), offline edit + sync (D-06), Google Keep Takeout import with report, export, backup.
-- Out (native-only): widgets, OS share sheet, device-only mode, geofence reminders, Apple Reminders.
+- Android shell shipped (`mobile/`): 6 widgets, share into a new Keep note (#117), reminder alarms. Out: iOS, device-only mode, geofence reminders, Apple Reminders.
 
 ## 7. Pages
 
@@ -101,7 +101,7 @@ Own route + layout. No Pages tree. Note in 1 click, no title/label needed. Refer
 
 ## 8. Reminders + push
 
-- One shared reminder system for planner items/blocks, Keep notes, page to-dos, dated DB records.
+- One shared reminder system for planner items/blocks, Keep notes, dated DB records. Page to-dos cut (v2.1).
 - Commands (exact): `/remind 1w` `/remind 3d` `/remind 2d` `/remind 1d` `/remind 2h` = that long **before the item's time**, not before now. Many per item. Bad value = clear error.
 - Reschedule item → relative reminders recalc. Delete item → reminders stop. Restore → recalc.
 - Channels: in-app + browser Web Push (needs permission, HTTPS, subscription). Deny = app still works. Never claim "delivered" without proof.
@@ -112,8 +112,8 @@ Own route + layout. No Pages tree. Note in 1 click, no title/label needed. Refer
 
 - **Phone = glance + capture, not planning.** Plan week/day on PC. Phone answers "what now, what next" and grabs notes fast. (Owner, 2026-11-12.)
 - Opens on **Today**: Now card, scrollable timeline wheel centred on now ("To do today" list removed, owner 2026-11-16).
-- Bottom bar (5, Material/HIG pattern): Today · Week · **+ Add** (centre) · Keep · More. Add sheet has two tabs: Plan it / Quick note.
-- More = pinned pages, All pages, Month, Trash, Settings, Help. Week/Month read-first on phone.
+- Bottom bar (5, Material/HIG pattern): Today · Calendar · **+ Add** (centre) · Keep · Pages (#88, v3.0.0). Add sheet has two tabs: Plan it / Quick note. Calendar tab has a Week | Month switch.
+- Avatar opens the account sheet: Settings, Shared with me, Keep archive, Trash, Help + tour (the old More tab).
 - Own phone layout, same data/account. Not a shrunk desktop.
 - Everything touch-doable. Drag always has a tap/menu alternative. No hover-only.
 - Installable PWA, standalone, icons. Offline shell. Offline status shown. Never fake success offline.
@@ -160,7 +160,7 @@ Nobody guesses these. Block the feature until closed. Rec = suggestion only.
 | D-18 | Pages delete/trash + retention (archive part closed 2026-11-12, PG-1b) | PG-1 | trash 30 d |
 | D-19 | DB property type change with bad values | PG-8 | warn, keep raw value |
 | D-20 | Pins: custom label/icon? | §3 | no, use page title |
-| D-21 | ~~Mobile nav~~ **CLOSED 2026-11-12:** bottom bar Today · Week · + Add · Keep · More; opens on Today | §9 | — |
+| D-21 | ~~Mobile nav~~ **CLOSED 2026-11-12:** bottom bar was Today · Week · + Add · Keep · More; **now** Today · Calendar · + Add · Keep · Pages, More → account sheet (#88, v3.0.0); opens on Today | §9 | — |
 | D-22 | Dormant data (lists, date ideas, people facts, places, ideas, workouts) → import into Keep/Pages? | migration | yes, one-time importer, later |
 | D-23 | Outbound calls (link previews, Web Push) — changes "no outbound calls" ops contract | K-3, §8 | push yes; previews server-side, SSRF-guarded, opt-in |
 | D-24 | Type cap = 10 total incl. 5 defaults, or 10 custom on top? | PL-6 | 10 total (as drawn) |

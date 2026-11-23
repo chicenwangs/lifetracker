@@ -2,7 +2,7 @@
 
 You run this service. You do not need the source code or its history. Everything to deploy, operate, upgrade, roll back and recover it is here plus the files in `deploy/` (also attached to every GitHub Release).
 
-**State 2026-11-19:** live = **v3.0.0** (verified `/healthz` → `"version":"3.0.0"`, `jobs:true`). v3 adds the Android app, repeating items, reminder actions and offline; migrations 0009 + 0010 (§5).
+**State:** latest release = **v3.1.1** (2026-11-20). Live last verified 2026-11-19 at **v3.0.0** (`/healthz` → `"version":"3.0.0"`, `jobs:true`); not re-checked since. v3 adds the Android app, repeating items, reminder actions and offline; migrations 0009 + 0010 (§5). v3.1.x adds no migration.
 
 Owner: Jeremy (`chicenwangs`). Target: Ubuntu homelab, Docker Compose, public at `https://planner.jeremyjosh.org` through a Cloudflare Tunnel. Learning goal: run it the way a company ops team would.
 
@@ -25,7 +25,7 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | Tags | `1.0.0` (exact, use this), `1.0` (moving minor), `sha-<short>` (exact commit). No `latest`. |
 | Versioning | SemVer. PATCH = fixes, MINOR = features, MAJOR = breaking (read the release notes). |
 | Release page | `github.com/chicenwangs/lifetracker/releases`: notes + this file + `deploy-vX.Y.Z.tar.gz` (flat: `compose.yaml`, `.env.example`, `tunnel.env.example`, `backup.sh`, `restore.sh`, this file). |
-| How a release is made | Dev pushes tag `vX.Y.Z` → GitHub Actions runs lint, type check, unit + e2e tests → builds the image → pushes to GHCR → creates the Release. A red pipeline = no image. |
+| How a release is made | Dev pushes tag `vX.Y.Z` → GitHub Actions runs lint, type check, unit, desktop + phone e2e tests (and a CI Android build) → builds the image → pushes to GHCR → creates the Release. A red pipeline = no image. |
 | Contents | Built app, prod `node_modules`, SQL migrations, `scripts/reset-password.mjs`. **No personal data, no secrets.** |
 
 ## 3. Runtime contract
@@ -52,11 +52,11 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | `SETUP_TOKEN` | first run only | Random string, 20+ chars (shorter = app won't start). `/setup` (create admin) needs it. Sign-up stays closed until setup is done. Remove after setup + restart. |
 | `ADDRESS_HEADER` | behind tunnel | `CF-Connecting-IP`. Real client IP for rate limits/lockout. With it set, any request **without** that header gets `400` (except `/healthz`). **Required** when `ORIGIN` is https (app refuses to start without it). Leave unset for a LAN test (http ORIGIN) without the tunnel. |
 | `TUNNEL_TOKEN` | tunnel | From Cloudflare Zero Trust. Goes in **`tunnel.env`** (not `.env`), so only `cloudflared` gets it, never the app. |
-| `CLOUDFLARED_VERSION` | tunnel | Dated tag, e.g. `2025.11.1`. Unset = `latest` (don't, in Stage C). |
+| `CLOUDFLARED_VERSION` | tunnel | Dated tag, e.g. `2026.10.7`. Unset = the dated default in `compose.yaml` (`2026.10.7`), never `latest`. Pin your own to upgrade cloudflared. |
 | `TZ`, `PORT`, `HOST` | defaults ok | `Asia/Kuala_Lumpur`, `3000`, `0.0.0.0`. |
 | `DATABASE_PATH`, `SEED_DIR` | set by compose | `/app/data/app.db`, `/app/data/seed`. Do not change. |
 | `UPLOAD_DIR` | v2, optional | Empty = `/app/data/uploads`. Must be on the data volume (temp files are written inside it, so rename never crosses filesystems). |
-| `MAX_UPLOAD_BYTES` | v2, optional | Default `26214400` (25 MB, D-12). Allowed types: png jpg gif webp pdf zip docx xlsx pptx doc xls ppt txt md csv. |
+| `MAX_UPLOAD_BYTES` | v2, optional | Default `26214400` (25 MB, D-12). Allowed types: png jpg jpeg gif webp pdf zip docx xlsx pptx doc xls ppt txt md csv. |
 | `UPLOAD_QUOTA_BYTES` | optional | Default `2147483648` (2 GB). Total of one person's files. Over it = upload refused with a clear message. |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | v2, optional | Both or neither (boot fails on one). Make once: `docker compose run --rm app npx web-push generate-vapid-keys`. Keep the private one in the password manager. Unset = push off; reminders still show inside the app. Changing them breaks every device's push until it re-subscribes. |
 | `VAPID_SUBJECT` | with VAPID | `mailto:you@example.com` (push services contact this if something is wrong). |
@@ -98,6 +98,10 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 
 **Upgrade:** read the release notes → `sudo ./backup.sh` → set `APP_VERSION=X.Y.Z` in `.env` → `docker compose pull app && docker compose up -d app` → watch `docker compose logs -f app` for `[boot] vX.Y.Z` → `curl -s https://planner.jeremyjosh.org/healthz` shows the new version.
 
+**v3.1.0 → v3.1.1:** **no migration**. Normal upgrade with `APP_VERSION=3.1.1`. Rollback = `APP_VERSION=3.1.0` + `up -d` (no restore needed). Removes the `/timetable` page. `/healthz` → `"version":"3.1.1"`.
+
+**v3.0.0 → v3.1.0:** **no migration**. Normal upgrade with `APP_VERSION=3.1.0`. Rollback = `APP_VERSION=3.0.0` + `up -d` (no restore needed). QA-loop fixes (repeat end, Keep restore, accessibility). `/healthz` → `"version":"3.1.0"`. Going from v3.0.0 straight to 3.1.1 is fine too.
+
 **v2.0.4 → v3.0.0:** **migration 0009 + 0010** (forward-only add-column: `users.hints_seen`, `users.default_reminder`). `sudo ./backup.sh` first (that backup is the rollback point), unpack `deploy-v3.0.0.tar.gz` (new `backup.sh`/`restore.sh`), `APP_VERSION=3.0.0` → pull + up. Optional env `UPLOAD_QUOTA_BYTES` (default 2 GB per person). Rollback = `APP_VERSION=2.0.4` **and** `sudo ./restore.sh <that backup>`. Android: install `life-tracker-3.0.0.apk` from the release (older apps update themselves).
 
 **v2.0.3 → v2.0.4:** **no migration**. Normal upgrade with `APP_VERSION=2.0.4`. Rollback = `APP_VERSION=2.0.3`. `/api/native` gains fields (old app versions ignore them).
@@ -108,12 +112,12 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 
 **v2.0.0 → v2.0.1:** fixes only, **no migration**. Normal upgrade line above with `APP_VERSION=2.0.1`. Rollback = `APP_VERSION=2.0.0` + `up -d` (no restore needed). Deploy bundle unchanged except `.env.example` version.
 
-**v1.1.0 → v2 (one time, migration release; go straight to the newest release, e.g. 3.0.0):**
+**v1.1.0 → v2 (one time, migration release; go straight to the newest release, e.g. 3.1.1):**
 1. `sudo ./backup.sh` and copy `data/backups/app-<ts>.db.gz` off the box. This is the rollback point.
-2. Unpack `deploy-v3.0.0.tar.gz` (or the newest) over `/opt/life-tracker` (new `backup.sh`/`restore.sh` also back up `data/uploads`). Keep your `.env`.
+2. Unpack `deploy-v3.1.1.tar.gz` (or the newest) over `/opt/life-tracker` (new `backup.sh`/`restore.sh` also back up `data/uploads`). Keep your `.env`.
 3. Optional new env (all can stay unset): `VAPID_*` for push, `UPLOAD_DIR`/`MAX_UPLOAD_BYTES`, `JOBS_ENABLED`, `REMINDER_POLL_INTERVAL_MS`. With VAPID keys: allow outbound 443 to the push services (§1).
-4. `APP_VERSION=3.0.0` → pull + up. First boot runs migrations 0003–0010 (seconds), then `[boot] v3.0.0 db ready … jobs=true push=on|off`.
-5. `/healthz` → `"version":"3.0.0"`, `"jobs":true`. Run §8 incl. the v2 lines.
+4. `APP_VERSION=3.1.1` → pull + up. First boot runs migrations 0003–0010 (seconds), then `[boot] v3.1.1 db ready … jobs=true push=on|off`.
+5. `/healthz` → `"version":"3.1.1"`, `"jobs":true`. Run §8 incl. the v2 lines.
 6. Rollback: `APP_VERSION=1.1.0` **and** `sudo ./restore.sh <the backup from step 1>`. v1.1.0 cannot read the v2 schema.
 
 **Roll back:** set `APP_VERSION` back → `docker compose up -d app`. If the newer release ran a DB migration (release notes say "migration"), the old version may not read the new schema: restore the backup taken before the upgrade (`sudo ./restore.sh data/backups/app-<ts>.db.gz`). Migrations are forward-only.
@@ -139,7 +143,7 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 - Secrets live only in `.env` / `tunnel.env` (chmod 600) and the password manager. Never in git, images, or chat logs.
 - No published port in Stage C. With `ADDRESS_HEADER` set, a request whose header is missing or not a single IP gets 400. A client that reaches the port directly **can** still fake a valid IP in that header and dodge per-IP limits, so the port must stay closed and nothing else should share the compose network.
 - Container: non-root uid 1000, read-only rootfs, all capabilities dropped, `no-new-privileges`.
-- App: argon2id passwords, HttpOnly + Secure + SameSite=Lax `__Host-` session cookie, CSP (`self` only), Origin check on every non-GET, X-Frame-Options DENY, login lockout (5 tries per user+IP, 30 per IP, 50 per username, all per 15 min; IPv6 counted per /64), password change limited to 5 wrong tries, open sign-up capped at 5 per IP and 20 overall per 15 min, 50k items/blocks, 20 open share codes (50 made per day), 500 waiting reminders, 10 push devices, 2 GB of files per account, push only to browser push services with a 10 s send timeout, share-by-username capped at 10 unknown names per 15 min, HSTS + COOP/CORP same-origin headers, compose memory/CPU/process limits on both containers, share and invite codes stored as HMAC only, shared calendars filtered server-side (hidden items reach other users only as "Busy" with no title).
+- App: argon2id passwords, HttpOnly + Secure + SameSite=Lax `__Host-` session cookie, CSP (`self` only), Origin check on every non-GET, X-Frame-Options DENY, login lockout (5 tries per user+IP, 30 per IP, 50 per username, all per 15 min; IPv6 counted per /64), password change limited to 5 wrong tries, open sign-up capped at 5 per IP and 20 overall per 15 min, 50k items/blocks, 20 open share codes (50 made per day), 500 waiting reminders, 10 push devices, 2 GB of files per account, push only to browser push services with a 10 s send timeout, share-by-username capped at 10 unknown names per 15 min, HSTS + COOP/CORP same-origin headers, compose limits (app: 1 GB memory, 2 CPUs, 256 processes; cloudflared: 256 MB memory, 128 processes, no CPU cap), share and invite codes stored as HMAC only, shared calendars filtered server-side (hidden items reach other users only as "Busy" with no title).
 - Files: the app makes `app.db` mode 600; `backup.sh`/`restore.sh` use umask 077. Run once after creating it: `sudo chmod 700 data`.
 - A stranger can lock one username for 15 min with 50 wrong tries. Fix for the owner: `reset-password` (§5, clears it) or wait.
 - Accepted for now (from the 2026-11-08 security review): two low SvelteKit advisories fixed only in Kit 3 (enhanced-form redirect to a foreign URL, prerender cache-control XSS; the app has neither foreign redirects nor prerendered pages). `/healthz` shows the version (ops needs it). One `APP_SECRET` keys all HMACs (codes are random 60-bit, no practical clash). GitHub Actions pinned by major tag, not SHA.

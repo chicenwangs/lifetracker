@@ -57,7 +57,7 @@ docs/adr/
 **users (add columns, same pattern as existing `theme`, `plan_mode`, `overlap_on`):**
 `theme_mode TEXT CHECK in('light','dark','auto')` (migrate from `users.theme`, keep each user's current look) · `theme_light_start TEXT DEFAULT '07:00'` · `theme_dark_start TEXT DEFAULT '17:00'` · `tour_state TEXT CHECK in('new','skipped','done')` (migration sets existing users `'done'`; later sign-ups default `'new'`; anyone can restart from Help). Reuse existing `users.timezone`. Planner defaults (SYSTEM-AUDIT): `region TEXT CHECK in('my','us') DEFAULT 'my'` · `qa_target TEXT CHECK in('timeline','calendar') DEFAULT 'timeline'` · `block_min INT CHECK in(15,30,45,60,90) DEFAULT 60` · `visible_hours TEXT DEFAULT '7-24'` (cookie `lt_hours` becomes first-paint cache only; PATCH on roll release). New accounts `theme_mode='auto'`. No separate prefs table.
 
-**item_types** `id (ity_), owner_id CASCADE, key TEXT, name TEXT, bg TEXT, ink TEXT, slug TEXT, position_key, builtin INT, share_default INT, created/updated_at`. UNIQUE(owner,key), UNIQUE(owner, slug COLLATE NOCASE). Max 10 per owner (service + count check in txn). Built-ins seeded per user on migration with keys `work exam event hobby dating` (labels Work, Deadline, Event, Hobby, Date) so old data maps 1:1. `ink` computed from bg (white/navy, best contrast ≥4.5:1) and stored. Flags: `counts_down INT DEFAULT 0` (seed: exam=1), `is_default INT DEFAULT 0` (seed: event=1) with partial UNIQUE(owner_id) WHERE is_default=1. Code rule: no string compare on type names anywhere — `time.ts` countdown reads `counts_down`; quick add default reads `is_default`; remove `TYPES`/`SHARE_KINDS` constants (`schema.ts`, `types.ts`, `seed.ts`, `MonthCalendar`, sharing page) in favour of the user's `item_types` from page data.
+**item_types** `id (ity_), owner_id CASCADE, key TEXT, name TEXT, bg TEXT, ink TEXT, slug TEXT, position_key, builtin INT, share_default INT, created/updated_at`. UNIQUE(owner,key), UNIQUE(owner, slug COLLATE NOCASE). Max 10 per owner (service + count check in txn). Built-ins seeded per user on migration with keys `work exam event hobby dating` (labels Work, Deadline, Event, Hobby, Date) so old data maps 1:1. `ink` computed from bg (white/navy, best contrast ≥4.5:1) and stored. Flags: `counts_down INT DEFAULT 0` (seed: exam=1), `is_default INT DEFAULT 0` (seed: event=1) with partial UNIQUE(owner_id) WHERE is_default=1 (dormant since 2026-11-16: no /type = No type, nothing reads it). Code rule: no string compare on type names anywhere — `time.ts` countdown reads `counts_down`; quick add has no default type; remove `TYPES`/`SHARE_KINDS` constants (`schema.ts`, `types.ts`, `seed.ts`, `MonthCalendar`, sharing page) in favour of the user's `item_types` from page data.
 Migration: `items.type` / `blocks.type` CHECK(IN 5 names) → **table rebuild** to `type_key TEXT NULL` (FK-free, validated in service against owner's item_types; NULL = No type). Copy values lower-cased. `share_keys.visible_types` / `grants.visible_types` JSON keep keys (`work`…, plus custom keys, `none`, `blocks`). Partner view renders a custom type it doesn't know as Busy colour + name only if visible. Delete type = txn: move items/blocks to target key, delete row, undo snapshot.
 Per-user hidden-type filter: `users.hidden_types JSON` (client-side filter of the calendar feed; server still sends all own rows).
 Phone first-use gesture hints dismissed: `users.hints_seen JSON` (#104, migration 0009). Not while `tour_state = new`.
@@ -67,7 +67,7 @@ API: `GET/POST /api/item-types`, `PATCH/DELETE /api/item-types/:id {moveTo}`, `P
 
 **pages** `id, owner_id, parent_page_id → pages ON DELETE SET NULL, title DEFAULT 'Untitled', icon, cover_attachment_id → attachments ON DELETE SET NULL, position_key, archived_at, archived_batch, last_opened_at, deleted_at, deleted_batch, created/updated_at, created_by/updated_by → users SET NULL, revision INT`. Idx (owner,parent,position_key), (owner,updated_at), (owner,archived_at), (owner,last_opened_at). Archive = set `archived_at` + `archived_batch` on page + all descendants in one txn (recursive CTE); restore by batch. Sidebar/pins/search queries add `archived_at IS NULL`; graph and link resolution do not. Pin rows for archived pages deleted in the same txn. `last_opened_at` written at most once per hour per page (no write storm). Suggestions = `last_opened_at < now-90d AND archived_at IS NULL`, computed on request, dismissals stored per user (`page_archive_dismissed(user_id, page_id, until)`). Parent same owner. Cycle check walks ancestors in service (recursive CTE). Soft-deleting a parent soft-deletes subtree in same batch (D-18).
 
-**page_blocks** `id, page_id CASCADE, parent_block_id CASCADE, block_type, position_key, content_json (json_valid), schema_version, created/updated_at/by`. Idx (page,position_key), (parent). No bytes, no auth data in JSON.
+**page_blocks** `id, page_id CASCADE, parent_block_id CASCADE, block_type, position (REAL, doc index, rewritten on save), content_json (json_valid), schema_version, created/updated_at/by`. Idx (page,position), (parent). No bytes, no auth data in JSON.
 
 **page_links** (projection of link blocks, rebuildable) `id, source_page_id CASCADE, target_page_id CASCADE, source_block_id CASCADE, created_at`. UNIQUE(source_block_id, target_page_id). `source_block_id` NOT NULL (v1.0 allowed NULL → SQLite treats NULLs distinct → dup rows). Hierarchy NOT stored here (it's `pages.parent_page_id`).
 
@@ -87,7 +87,7 @@ API: `GET/POST /api/item-types`, `PATCH/DELETE /api/item-types/:id {moveTo}`, `P
 **attachments** `id, owner_id CASCADE, storage_key UNIQUE, original_name, mime_type, byte_size, sha256, status in(uploading,ready,quarantined,failed), created_at, deleted_at`.
 **attachment_refs** `id, attachment_id → attachments CASCADE, owner_id CASCADE, source_type in(keep_note,page_block,page_cover), source_id, created_at, UNIQUE(attachment,source_type,source_id)`. (v1.0 had `RESTRICT` on attachment_id → user delete cascades attachments, refs block it → user delete fails. Now CASCADE; "don't delete referenced file" enforced in service.) Polymorphic source → service validates existence + write access; source delete removes refs in same txn.
 
-**reminders** `id, owner_id CASCADE, source_type in(planner_item,planner_block,keep_note,page_block,database_record), source_id, rule_kind in(relative,absolute), rel_value, rel_unit in(minute,hour,day,week), due_at, status in(scheduled,processing,sent,failed,cancelled,missed), attempts, last_error, claimed_at, sent_at, created/updated_at`. Idx (status,due_at), (source_type,source_id). UNIQUE(source_type,source_id,due_at) = no dup (FEATURES §9).
+**reminders** `id, owner_id CASCADE, source_type in(planner_item,planner_block,keep_note,database_record), source_id, rule_kind in(relative,absolute), rel_value, rel_unit in(minute,hour,day,week), due_at, status in(scheduled,processing,sent,failed,cancelled,missed), attempts, last_error, claimed_at, sent_at, created/updated_at`. Idx (status,due_at), (source_type,source_id). UNIQUE(source_type,source_id,due_at) = no dup (FEATURES §9).
 
 **push_subscriptions** `id, user_id CASCADE, endpoint_hash UNIQUE, endpoint, p256dh, auth, user_agent, created_at, last_success_at, revoked_at`. Endpoint + keys = secrets: never logged.
 
@@ -165,7 +165,7 @@ Migration order: users cols → attachments → pages → page_blocks → page_l
 - Download `GET /api/attachments/:id`: auth → ready, not deleted → requester can read ≥1 referencing source → stream with `Content-Type` from allowlist, `Content-Disposition` (RFC 5987 safe name; `attachment` for non-image), `nosniff`, `Cache-Control: private, no-store`. Images inline only for raster allowlist; SVG/HTML always download.
 - Names: normalise, strip control chars/path bits. No user-controlled paths.
 - GC: unreferenced past grace (D-12) → delete file + row.
-- Uploads per user quota (e.g. 1 GB) + count cap, mirrors existing per-account caps.
+- Uploads per user quota: bytes only, `UPLOAD_QUOTA_BYTES` default 2 GiB (`env.ts`; checked in `attachments.ts` before the write, 413 `quota`). No file-count cap.
 
 ## 13. Reminders + push
 
@@ -174,7 +174,7 @@ Migration order: users cols → attachments → pages → page_blocks → page_l
 - Parser: pure shared fn (client preview, server truth). `1w|3d|2d|1d|2h` → (value,unit). `minute` unit reserved for D-15.
 - Resolve: timed item → local date+time in owner tz → UTC − offset. Block → start_at − offset. All-day → D-13. Source reschedule → recalc in same txn. Source delete → `cancelled`; restore → recalc.
 - Web Push: VAPID keys in env (never DB/git). Library `web-push` (maintained). 404/410 → revoke sub. Accepted by push service ≠ shown; UI says "sent".
-- Service worker shows notification, click → open route (re-checks access on load). Payload = title + route only, no private body.
+- Service worker shows notification, click → open route (re-checks access on load). Payload = `title`, generic `body` ("Reminder" / "Missed reminder", no private text), `route`, `reminderId`, `sourceType`, `sourceId` (ADR-006).
 
 ## 14. Access + sharing
 
@@ -217,11 +217,11 @@ Backup = SQLite online backup + uploads tar + secrets kept separately. Restore =
 
 ## 17. PWA + offline
 
-- Phone layout = separate Svelte components under `lib/components/mobile/` (Today, BottomBar, AddSheet, ItemSheet), picked by CSS breakpoint 700 px + SSR hint; same API (`/api/calendar?from&to` for one day). No new endpoints for Today.
+- Phone layout = separate Svelte components at the root of `lib/components/` (`MobileBar`, `MobileAdd`, `PhoneWeek`, `AccountSheet`, `BottomSheet`, `ActionSheet`; Today is `routes/today`; the item sheet is `ItemPeek` / `ItemView` in a sheet), picked by `PHONE_MQ` in `lib/client/phone.ts` (width < 700 px, or a coarse pointer under 500 px tall) + SSR hint; same API (`/api/calendar?from&to` for one day). No new endpoints for Today.
 
-- SvelteKit `service-worker.ts` + manifest. Cache versioned static assets + shell only. **Never cache authed API responses** in Cache Storage.
-- Offline Keep: IndexedDB store of chosen notes + op queue `{opId, resourceId, baseRevision, payload, createdAt, state}`. Online → send in order → ack removes → 409 kept for user (D-06) → 403/404 surfaced, local copy wiped per offline privacy rule. Logout wipes IndexedDB.
-- Offline Pages = later.
+- Shipped (ADR-009): `static/sw.js` + manifest. Shell cache (hashed build files, `/offline.html`) plus a **data cache** `lt-data-v1` of last-seen navigations, `__data.json` and GET `/api/*` (300 entries, 14 days), wiped on sign-out and on 401/403. (The first draft said "never cache authed API responses"; that changed in #105 / #205.)
+- Offline queues in **localStorage** (`lib/client/offline.ts`), not IndexedDB (ADR-009): Keep notes (409 → "(offline copy)" note, D-06) and planner adds / ticks / edits (server wins when its `updatedAt` is later than the op's `editedAt`). 403/404 dropped. Sign-out wipes them.
+- Offline Pages = later (read-only from the data cache).
 - Push/PWA feature-detected; unsupported → explain, no dead "Enable" button.
 
 ## 18. API (new; existing ones unchanged)
@@ -229,7 +229,7 @@ Backup = SQLite online backup + uploads tar + secrets kept separately. Restore =
 | Area | Endpoints |
 |---|---|
 | Keep | `GET/POST /api/keep/notes` · `GET/PATCH/DELETE /api/keep/notes/:id` · `POST …/:id/{restore,archive,pin,duplicate}` · `DELETE …/:id/permanent` · `POST /api/keep/notes/reorder` · CRUD `/api/keep/labels`, `/api/keep/binders` · `PUT /api/keep/notes/:id/{labels,binders}` · checklist `POST/PATCH/DELETE /api/keep/notes/:id/items[/:itemId]` |
-| Pages | `GET/POST /api/pages` · `GET/PATCH/DELETE /api/pages/:id` · `POST /api/pages/:id/{move,restore}` · `POST /api/pages/:id/blocks` · `PATCH/DELETE /api/pages/:id/blocks/:bid` · `POST /api/pages/:id/blocks/reorder` · `GET /api/graph` · `GET /api/pages/:id/graph` · `GET/PUT /api/page-shortcuts` |
+| Pages | `GET/POST /api/pages` · `GET/PATCH/DELETE /api/pages/:id` · `POST /api/pages/:id/{archive,move,restore}` · `GET /api/pages/find` · `GET /api/pages/trash` · `GET /api/graph` · `GET/PUT /api/page-shortcuts`. No per-block routes: `PATCH /api/pages/:id` saves title, icon and the whole doc in one call (replace-all, ADR-003) |
 | DB | `GET/POST /api/databases` · `GET/PATCH/DELETE /api/databases/:id` · props `GET/POST /api/databases/:id/properties`, `PATCH/DELETE /api/database-properties/:id` · records `GET/POST /api/databases/:id/records`, `PATCH/DELETE /api/database-records/:id`, `PATCH …/:id/values` · views CRUD `/api/databases/:id/views` |
 | Shared | `POST /api/attachments` (multipart stream) · `GET/DELETE /api/attachments/:id` · `POST /api/reminders`, `PATCH/DELETE /api/reminders/:id` · `GET/POST /api/undo` · `POST /api/push/subscribe`, `DELETE /api/push/subscribe/:id` · `GET /api/search?q&kind` · `PATCH /api/me/prefs` (+ theme_mode, starts) |
 

@@ -25,7 +25,7 @@ Tokens: `--ease` cubic-bezier(.2,.8,.2,1) · `--t-fast` 120 ms · `--t` 220 ms (
 | 17 | Doherty threshold | Answer in < 400 ms | Status change was already optimistic on web | Widget ticks change on screen before the server replies | Skeletons for slow loads: not needed yet |
 | 18 | Postel's law | Accept messy input | Quick add parses free text | — | — |
 | 19 | Jakob's law | Work like apps people know | — | **Android edge-swipe back closes a Keep note** (was: jumped to Today) · Keep widget works like Google Keep's (scroll, tap, + bottom-right) · no blue browser tap flash | — |
-| 20 | Frequency of use | Most-used = fastest to reach | Today is home, + in the middle | Widgets for the daily things: Today, Now/Next, To do, Quick add, Keep | — |
+| 20 | Frequency of use | Most-used = fastest to reach | Today is home, + in the middle | Widgets for the daily things: Today, Now/Next, Quick add, Keep | — |
 
 ## Fixed from the owner's notes (same pass)
 - Tick invisible on Today: `StatusSquare` set its own `color`, so the default ink (`currentColor`) became the "on" colour → fill, border and tick all the box colour. Fill now = ink, only the tick = on-colour.
@@ -40,7 +40,6 @@ Tokens: `--ease` cubic-bezier(.2,.8,.2,1) · `--t-fast` 120 ms · `--t` 220 ms (
 | Keep notes | 3×3 | Recent notes, pinned first, scroll like Google Keep | note → open · + (bottom-right) → new note |
 | Now and next | 4×1 | Glance: what's on, time left (bar), what's next | → Today |
 | Quick add | 3×1 | Capture fast | + Plan → quick add · + Note → new note |
-| To do today | 3×2 | Today's untimed tasks, tick them | square → done · row → item |
 | Countdowns | 3×2 | Exams and deadlines: days left | → item |
 | Week ahead | 4×3 | 7 days × first 3 things | day → that day's Today |
 Ideas from: Google Keep (scroll + bottom-right +), Google Calendar / TickTick (agenda, ticks in widget), Todoist (to-do list widget), Structured / Things (now + next), countdown apps (days-left tiles).

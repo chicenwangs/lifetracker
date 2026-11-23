@@ -15,7 +15,7 @@ Caveman doc. Capacitor 8 shell. The app = the server's own pages (`server.url` i
 - Version = `app/package.json` (2.0.3 → versionCode 20003). Updater compares the release tag with it.
 
 ## Files
-- `android/app/src/main/java/.../` — `MainActivity` (back, downloads, deep links, permission), `Native` (GET/PATCH + cache), `SyncWorker`, `Reminders` (+ `Boot`), `Widgets` (7 providers + renderers), `WidgetAction` (list taps: open / tick), `Theme`, `Updater` + `UpdaterPlugin` (`window.Capacitor.Plugins.Updater`).
+- `android/app/src/main/java/.../` — `MainActivity` (back, downloads, deep links, permission), `Native` (GET/PATCH + cache), `SyncWorker`, `Reminders` (+ `Boot`), `Widgets` (6 providers + renderers), `WidgetAction` (list taps: open / tick), `Theme`, `Updater` + `UpdaterPlugin` (`window.Capacitor.Plugins.Updater`).
 - `res/layout/widget_list.xml` (shared frame) + `item_*.xml` (rows), `widget_now.xml`, `widget_quick.xml`, `xml/widget_*_info.xml`, `drawable/w*.xml`.
 - `src/test/.../WidgetShotsTest.java`: draws every widget light + dark → CI artifact `widget-shots` (look at it after widget changes).
 - Server URL is in two places: `capacitor.config.json` and `res/values/strings.xml` (`server_url`). Change both.

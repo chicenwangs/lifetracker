@@ -18,12 +18,12 @@ Tags: **KEEP** = existing, don't break · **CORE** = first release of that featu
 9. Dates/times shown in user tz. Storage rules = DESIGN.
 10. Retry never duplicates (verify first if unsure). Errors: what failed + next step. No stack/SQL/paths.
 11. Leaving with pending save: try finish; failed → warn before discard.
-13. **Naming:** type `Exam` shows as **Deadline**; items dated today with no time = **"No time set today"** on Home/phone; Week side panel keeps live name **"Not scheduled"** (any day, drop-back to unschedule). Month/Week toggle stays in the calendar header (live). All v1.1.0 features retained — see RELEASE-PARITY.md. Every drag has a button path (Schedule…, ↑↓, menu Move) per WCAG 2.5.7; every hit target ≥ 24×24 (2.5.8). See UX-AUDIT.md.
+13. **Naming:** type `Exam` shows as **Deadline**; items due on the shown day show as **"Due today"** (or "Due <date>") above the Home planner (`DueTodayChips`); phone Today has no such list (removed 2026-11-16); Week side panel keeps live name **"Not scheduled"** (any day, drop-back to unschedule). Month/Week toggle stays in the calendar header (live). All v1.1.0 features retained — see RELEASE-PARITY.md. Every drag has a button path (Schedule…, ↑↓, menu Move) per WCAG 2.5.7; every hit target ≥ 24×24 (2.5.8). See UX-AUDIT.md.
 12. **No visible scrollbars** (owner 2026-11-12): page and every inner scroller hide the bar (`scrollbar-width:none` + `::-webkit-scrollbar{display:none}`); scrolling still works by wheel, touch, keys. Horizontal rows = native-feel carousel: scroll-snap, next card peeks, edge fade, no arrows needed. Scrollable areas stay keyboard-focusable. Phone Recent pages shows 5.
 
 ## 2. Header + pins
 
-Order: mark · Home · Week · Keep · Pages · pins (0–3) · quick add · theme · avatar. No blank slots. No overflow at desktop widths.
+Order: mark · Home · Week · Keep · Pages · pins (0–3) · Search (Ctrl+K) · quick add · ? shortcuts · theme · avatar. No blank slots. No overflow at desktop widths.
 Pins (CORE): "Pin to header" in page menu. Max 3 enforced server-side; 4th → disabled or "replace which?". Reorder persists per user across devices. Unpin never touches page. Title follows page (custom label = D-20). Access lost → removed/unavailable, no leak.
 Tests: 0 pins → Home Week Keep Pages only · 1–3 pins after Pages · 4th fails · unpin keeps page · order syncs.
 
@@ -124,7 +124,7 @@ Layout: left tree (collapsible) + editor. Page header: title, menu, pin, copy li
 | PG-REL | LATER | Relations (both ends navigable when reciprocal). Formulas/rollups not shown until specced. |
 | PG-LINK | CORE | Search accessible pages, insert by id, shows current title, marked internal. Rename/move keeps working. Gone/denied → "unavailable", no cached content. |
 | PG-SEARCH | CORE | Titles + text, shows where, opens page, permission-filtered (no titles/snippets leak). DB prop filtering = views, not search. |
-| PG-GRAPH | CORE read-only (M5) / EXT filters | Nodes = accessible pages + page-backed records, titled; click opens. **Archived pages included by default** (dashed outline, italic label, legend entry) with a "Archived pages (n)" toggle. Edges: parent-child, internal link; DB relation later. Pan, zoom, fit, select (title + context), drag = layout only. Filters: relation type, area, local graph (EXT). Inaccessible pages never drawn, no counts leak. Too big → local subset/filter. Keyboard-accessible node list. |
+| PG-GRAPH | CORE read-only (M5) / EXT filters | Nodes = accessible pages + page-backed records, titled; click opens. **Archived pages included by default** (grey node, label ends "· archived"; legend swatch is dashed; italic only in the list view) with a "Archived pages (n)" toggle. Edges: parent-child, internal link; DB relation later. Pan, zoom, fit, select (title + context), drag = layout only. Filters: relation type, area, local graph (EXT). Inaccessible pages never drawn, no counts leak. Too big → local subset/filter. Keyboard-accessible node list. |
 | PG-PIN | CORE | See §2. |
 | PG-TEMPLATE | LATER | Templates = plain content. Workout tracker buildable by hand without them. |
 
@@ -169,7 +169,7 @@ Purpose: phone = **glance + capture**. Not for planning the week. Planning = PC.
   - Header: date, ‹ › day step, "Today" jump. Swipe left/right = day step.
   - **Now card:** current block (title, type colour, time left) or "Free until HH:MM".
   - No "To do today" list (removed, owner 2026-11-16). Hold a timeline row ~0.5 s = delete with Undo.
-  - **Timeline wheel:** fixed-height scroll area, snap per block, opens centred on now; scroll up = earlier, down = later. Rows shrink slightly away from centre. "Back to now" chip when scrolled away. No "Show past" link.
+  - **Timeline wheel:** fixed-height scroll area, snap per block, opens centred on now; scroll up = earlier, down = later. Rows shrink slightly away from centre. No "Back to now" chip (removed 2026-11-14), no "Show past" link.
   - Partner overlap: shown only if overlap on; striped + badge, read-only.
   - Empty: "Nothing planned. + Add something" button.
 - **+ Add:** opens N quick add as full-width bottom sheet. Same grammar + the N palette's live slots (Type · Title · Goes to · Day · Time · Remind); `/` list opens upward above the keyboard. Keyboard up on open. Batch add stays.

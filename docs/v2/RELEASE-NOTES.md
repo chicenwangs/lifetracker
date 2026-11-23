@@ -4,15 +4,15 @@
 Back up first (`sudo ./backup.sh`), then set `APP_VERSION=3.1.1` in `.env` and run `docker compose pull app && docker compose up -d app`. Rollback is `APP_VERSION=3.1.0` plus `up -d`; no database migration and no restore needed. `/healthz` should report `3.1.1`.
 
 - Removed the separate read-only `/timetable` page and its header, Week and More links (#270). The repeating-item rules and the item sheet already show the same event repeating; no other feature depends on the page.
-- Kept the useful parts of the same QA work: repeat-end row (Never / On date / After N), plain-language rule text, quick add `until <date>` and `for N weeks|months`, Keep restore, palette quick add, Duplicate actions, accessibility and layout fixes.
+- Kept the useful parts of the same QA work: repeat-end row (Never / On date / After N times), plain-language rule text, quick add `until <date>` and `for N weeks|months`, Keep restore, palette quick add, Duplicate actions, accessibility and layout fixes.
 - Verified: 386 unit tests, 28 desktop e2e, 246 phone e2e, local desktop + Android smoke checks. No deployment or live data was touched by the release pipeline.
 
 ## v3.1.0 (2026-11-20) — QA-loop fixes, timetable, accessibility, no migration
 Back up first (`sudo ./backup.sh`), then set `APP_VERSION=3.1.0` in `.env` and run `docker compose pull app && docker compose up -d app`. Rollback is `APP_VERSION=3.0.0` plus `up -d`; no database migration and no restore needed. `/healthz` should report `3.1.0`.
 
 - Repeating items: notes edits now ask This / Following / All; exact-time reminders advance with the series (#243, #261).
-- Quick add understands `until <date>` and `for N weeks|months`, writes `UNTIL`, and strips those words from the title; ordinary titles like "weekly report" stay intact (#262, #268).
-- Repeat row exposes Never / On date / After N, and a read-only `/timetable` screen shows a 26-week class term with week and class jumps (#263). Far-future dates no longer 500 (#267).
+- Quick add understands `until <date>` and `for N weeks|months`, writes `UNTIL`, and strips those words from the title; ordinary titles like "weekly report" stay intact (#262, #268). Full grammar: BUILD-NOTES § Quick add (N).
+- Repeat row exposes Never / On date / After N times, and a read-only `/timetable` screen shows a 26-week class term with week and class jumps (#263). Far-future dates no longer 500 (#267).
 - Keep Trash restore works for the owner (#244). Ctrl+K → Quick add works; blocks and items have a click/keyboard Duplicate action (#250, #251).
 - Accessibility and layout: combobox/meter/label names, dark link contrast, 24 px calendar targets, eight colour names, full-width Pages and Keep, aligned separators, clearer no-time error (#245–#249, #252–#260).
 - Verified: 386 unit tests, 28 desktop e2e (axe light/dark), 246 phone e2e, two full desktop + Android runs, and a two-pass security/bug audit.
@@ -126,7 +126,7 @@ Caveman doc. From v1.1.0. **Migration release** (0003–0008, forward-only). Bac
 - Still one replica (the reminder runner must not run twice).
 
 ## Not in v2.0 (→ v2.1)
-Live co-edit (a clash shows "changed elsewhere", text kept) · Google Keep Takeout import/export · board/calendar/list/gallery database views · 2-hop local graph · reminders on page to-dos · swipe gestures.
+Live co-edit (a clash shows "changed elsewhere", text kept) · Google Keep Takeout import/export · board/calendar/list/gallery database views · 2-hop local graph · reminders on page to-dos · swipe gestures (shipped in v3.0.0).
 
 ## Known limits / not verified
 - Web Push tested on Edge (spike) only; Chrome/Android/iOS and from the homelab through the tunnel = check after deploy.

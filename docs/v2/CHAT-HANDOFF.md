@@ -1,4 +1,4 @@
-> **Superseded 2026-11-19.** This is the v2.0.4 snapshot (2026-11-14). Live is now **v3.0.0** (deployed, verified 2026-11-19). For a new chat read `AGENTS.md` → `docs/HANDOFF.md` instead. The §v2.1 backlog at the bottom is still the next-work list.
+> **Superseded 2026-11-19.** This is the v2.0.4 snapshot (2026-11-14). Latest release is **v3.1.1** (live last verified 2026-11-19 at v3.0.0). For a new chat read `AGENTS.md` → `docs/HANDOFF.md` instead. The §v2.1 backlog at the bottom is parked; next work = open GitHub issues.
 
 # Life Tracker — chat handoff (2026-11-14, v2.0.4)
 
@@ -96,7 +96,7 @@ SemVer: PATCH = fixes, MINOR = features, MAJOR = breaking. Never `latest` in pro
 - **Owner call (don't guess):** Home due row says "Due today"; FEATURES §1.13 + wireframe Main say "No time set today", but the list also holds timed items (v1 FR-H12). Rename + show only untimed items, or keep v1?
 - Not verified: Web Push on Chrome/Android/iPhone and through the tunnel (Edge only) · uploads in the real read-only container · migration on a copy of the live backup (owner skipped; CI rehearsal `tests/unit/rehearsal.test.ts` covers a built v1.1.0 DB) · backup.sh / restore.sh in Docker.
 - Android app (`mobile/`, v2.0.3): built in CI only (no Android SDK on the dev PC); not tried on a real phone yet.
-- v2.1 backlog: live co-edit (ADR-008) · Keep Google Takeout import/export · DB board/calendar/list/gallery views · 2-hop local graph · reminders on page to-dos · swipe gestures · offline queue → IndexedDB · Pages block drag handles + multi-select · Keep grid/list toggle · graph archived nodes dashed (now grey + "· archived") · `npm run dev` graph worker blocked by CSP (`blob:`; prod fine).
+- v2.1 backlog: live co-edit (ADR-008) · Keep Google Takeout import/export · DB board/calendar/list/gallery views · 2-hop local graph · reminders on page to-dos · ~~swipe gestures~~ (shipped v3.0.0) · offline queue → IndexedDB · Pages block drag handles + multi-select · Keep grid/list toggle · graph archived nodes dashed (now grey + "· archived") · `npm run dev` graph worker blocked by CSP (`blob:`; prod fine).
 
 ## 6. Docs map (truth order)
 - `CLAUDE.md` (repo rules) → `docs/v2/PRD.md` (decisions D-xx §12, all closed) → `FEATURES.md` → `DESIGN.md`.

@@ -5,7 +5,8 @@ Status: **GO with conditions** (2026-11-13). Spike S-4 `spikes/s4-push`, **6/6 c
 ## Decision
 - **Jobs:** in-process runner, started after migrations, stopped on SIGTERM before the DB closes. One replica (ADR-001), so no leader election. Claim due rows in a txn, send outside it, mark the result. One row = one send.
 - **Push:** standard Web Push with VAPID, library `web-push` (tested 4.0.0). Keys in env, never in DB or git. No push env = push off, app still runs.
-- **Payload = title + route only.** Clicking opens the route as a normal page load, so auth and access checks run again.
+- **Payload** (`pushTo` in `lib/server/jobs.ts`, handler in `static/sw.js`): `title`, `body` (generic text only: "Reminder" or "Missed reminder", never note or item text), `route`, `reminderId`, `sourceType`, `sourceId`. The ids let the notification actions (Done / Snooze / Tomorrow, #112) act on one reminder. Clicking opens the route as a normal page load, so auth and access checks run again.
+  - Spike (below) only sent title + route; the extra fields came in v3.0.0.
 
 ## What the spike proved (Edge on Windows, push service = Microsoft WNS)
 | Check | Result |
