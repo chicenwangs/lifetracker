@@ -1242,6 +1242,9 @@ test('checklist Tab with nothing to indent moves focus on, does not trap (#281)'
 	const items = ['a', 'b'].map((id) => ({ id, text: id, checked: false, parentId: null }));
 	const n = await api('POST', '/api/keep/notes', { type: 'checklist', title: 'Tab trap', items });
 	await page.goto(`/keep?note=${n.j.note.id}`);
+	const grip = page.locator('.grip').first(); // desktop: not a Tab stop, hidden from screen readers (#285)
+	await expect(grip).toHaveAttribute('tabindex', '-1');
+	await expect(grip).toHaveAttribute('aria-hidden', 'true');
 	await page.locator('#ci-0').focus();
 	await page.keyboard.press('Tab'); // first item: no sibling above, cannot indent
 	expect(await page.evaluate(() => document.activeElement?.id)).not.toBe('ci-0');
