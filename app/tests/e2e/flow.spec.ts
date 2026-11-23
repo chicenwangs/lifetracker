@@ -1369,6 +1369,24 @@ test('desktop hit targets are at least 24 px: repeat controls, new label, breadc
 	expect(await small('.arch')).toEqual([]);
 });
 
+test('tour: Quick add step spotlights the + Add opener and Help states the step count (#280)', async () => {
+	await page.goto('/settings/help');
+	await expect(page.getByText('7 short steps (8 on a phone)')).toBeVisible();
+	await page.getByRole('button', { name: 'Restart the tour' }).click();
+	const next = page.locator('.tcard').getByRole('button', { name: 'Next', exact: true });
+	await expect(page.locator('.tcard')).toContainText('1 of 7');
+	for (let i = 0; i < 3; i++) await next.click();
+	await expect(page.locator('.tcard')).toContainText('Quick add');
+	const opener = (await page.locator('.hdr .opener').boundingBox())!;
+	await expect // the hole animates to its target
+		.poll(async () => {
+			const h = (await page.locator('.hole').boundingBox())!;
+			return h.x <= opener.x && h.x + h.width >= opener.x + opener.width;
+		})
+		.toBe(true);
+	await page.locator('.tcard').getByRole('button', { name: 'Skip tour' }).click();
+});
+
 test('tinted note stays readable in dark and a title-only card target is 24 px (#299)', async () => {
 	const n = await api('POST', '/api/keep/notes', {
 		type: 'text',
