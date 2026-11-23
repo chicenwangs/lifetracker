@@ -8,8 +8,8 @@
 	import BottomSheet from './BottomSheet.svelte';
 	import { page } from '$app/state';
 	import { tick } from 'svelte';
-	import { patch, post } from '$lib/client/api';
-	import { enqueue, isOffline } from '$lib/client/offline';
+	import { get, patch, post } from '$lib/client/api';
+	import { enqueue, isOffline, noteQueued } from '$lib/client/offline';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import type { BinderDTO, ChecklistItem, LabelDTO, NoteDTO } from '$lib/types';
 
@@ -125,6 +125,23 @@
 		})();
 		await saving;
 	}
+	// the queue sent our text (back online): not "Offline" any more; pick up the new revision so the next edit isn't a clash (#286)
+	$effect(() => {
+		if (saveState !== 'offline') return;
+		const key = id ?? localKey;
+		const sent = async () => {
+			if (saveState !== 'offline' || noteQueued(key)) return;
+			saveState = 'saved';
+			if (!id) return;
+			try {
+				revision = (await get<{ note: NoteDTO }>(`/api/keep/notes/${id}`)).note.revision;
+			} catch {
+				/* the next save reports it */
+			}
+		};
+		addEventListener('lt:queue', sent);
+		return () => removeEventListener('lt:queue', sent);
+	});
 	async function close() {
 		await flush();
 		if (
