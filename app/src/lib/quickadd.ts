@@ -356,6 +356,12 @@ type TimeHit = { idx: number[]; start: number; end: number | null };
 const range = (from: number, len: number) => Array.from({ length: len }, (_, k) => from + k);
 const snap = (min: number) => Math.round(min / 15) * 15;
 
+/** Cut to at most n UTF-16 units without splitting a surrogate pair (#306). */
+export function clip(s: string, n: number): string {
+	const hi = s.charCodeAt(n - 1);
+	return s.length > n && hi >= 0xd800 && hi <= 0xdbff ? s.slice(0, n - 1) : s.slice(0, n);
+}
+
 export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	const tokens = text.trim().split(/\s+/).filter(Boolean);
 	const low = tokens.map(norm);
@@ -1061,12 +1067,12 @@ export function parseQuickAdd(text: string, ctx: QAContext): QAParse {
 	if (date < today) warnings.push('Date is in the past.');
 	else if (date === today && timePassed) warnings.push('Time already passed today.');
 
-	const title = tokens
+	let title = tokens
 		.filter((_, i) => !used.has(i))
 		.join(' ')
 		.replace(/^[\s,;:\-–—]+|[\s,;:\-–—]+$/g, '')
-		.trim()
-		.slice(0, 300);
+		.trim();
+	title = clip(title, 300);
 	if (!tokens.length) problems.unshift('Type something to add, like `gym tmr 6pm to 8pm`.');
 	else if (!title)
 		problems.push(
