@@ -35,6 +35,15 @@ test('Today: + really creates the item on the shown day (#290)', async () => {
 	await page.goBack();
 });
 
+test('Add: an expired /remind is reported in the toast (#291)', async () => {
+	await page.goto('/today?d=2019-01-01');
+	await plus().click();
+	await page.keyboard.type('remind291 probe 9am /calendar /remind 1d');
+	await page.getByRole('dialog', { name: 'Add' }).getByRole('button', { name: 'Add', exact: true }).click();
+	await expect(page.locator('.toast')).toContainText('already passed');
+	await page.goBack();
+});
+
 test('Add sheet: the "/" options are 48 dp (#229)', async () => {
 	await page.goto('/today');
 	await plus().click();
