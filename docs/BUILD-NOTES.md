@@ -21,7 +21,7 @@ Newest first. Latest release = v3.1.1 (2026-11-20; v3.1.0 same day, v3.0.0 2026-
 - Push: only browser push hosts (`pushHostOk`, port 443), 10 s send timeout, 10 devices per user, test send 5 per 15 min, endpoint can't be taken by another account without its keys. Stuck reminders count as a try (crash can't loop). 500 waiting reminders per owner.
 - Sign-in: `safeNext` re-checks the parsed path (`/.//x` → `//x`). Username-wide login limit charged before the argon2 await (parallel IPs). Password change serialised per user. New installs: setup writes `signup_open=0` (old installs keep theirs). Invite code checked before the username. Admin Disable (null hash + all sessions gone).
 - Shared content: link marks only `target=_blank`, `rel` from noopener/noreferrer/nofollow, no `class`. Database block id must be `pdb_…`. Option colours `[a-z0-9-]` (and DbCell falls back). An editor keeps only the owner's files the page already had. Record page creation needs edit. Share-by-username: 10 unknown names per 15 min.
-- Limits: chunked writes without Content-Length → 411. `UPLOAD_QUOTA_BYTES` (2 GB). Share codes: 50 made per day, purged 30 days past expiry. Compose memory/CPU/pids limits; cloudflared read-only, caps dropped, dated tag default.
+- Limits: chunked writes without Content-Length → 411. `UPLOAD_QUOTA_BYTES` (2 GB). Share codes: 50 made per day, purged 30 days past expiry. Compose limits (app: memory + 2 CPUs + pids; cloudflared: memory + pids, no CPU cap); cloudflared read-only, caps dropped, dated tag default (2026.10.7).
 - Headers: HSTS (https only), COOP + CORP same-origin.
 - Ops: release APK job — npm runs without the signing key or token. backup/restore refuse symlinks under `data/`; restore extracts only plain files under `uploads/`, not as their owner. Optional `age` encryption (`LT_AGE_RECIPIENT` / `LT_AGE_IDENTITY`).
 - Android: `allowBackup=false`, widget tick only for ids it showed, updater only GitHub release URLs, reminder hides title on a private lock screen, `//` paths refused.
@@ -45,7 +45,7 @@ Newest first. Latest release = v3.1.1 (2026-11-20; v3.1.0 same day, v3.0.0 2026-
 - Native: `SyncWorker` (15 min + on leaving the app) → widgets + exact alarms per reminder (no Firebase; web push can't work in a WebView). Boot / app update resets alarms.
 - Widgets: Timeline (now on, 6 rows, `+` → `/today?add` opens quick add) · Keep (notes, `+` → `/keep?new`). Signed out / never synced = says so.
 - In-app update: newest GitHub Release APK; same signing key required by Android. Settings › Help shows version + Check for updates (only inside the app, `lib/client/native.ts`). Notifications page explains alarms inside the app.
-- CI: `ci.yml` `apk` = debug build on every PR; `release.yml` `apk` = signed release APK on the release. Key made on the dev PC (`~/.lifetracker-android/`), secrets set by the owner (auto mode blocked `gh secret set`).
+- CI: `ci.yml` `apk` = unsigned release build (`assembleRelease`) + debug unit tests on every PR; `release.yml` `apk` = signed release APK on the release. Key made on the dev PC (`~/.lifetracker-android/`), secrets set by the owner (auto mode blocked `gh secret set`).
 - minSdk 26 (java.time). Icons + splash from `app/static/icon-*.png`.
 - Also: Today past rows lost the time dimming too (axe); e2e reminder test used "today 3 pm" → 2 days out (failed after 3 pm).
 - Not checked: any real phone or emulator (no Android SDK here). CI compile only.

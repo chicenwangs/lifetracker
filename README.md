@@ -98,7 +98,7 @@ Edit `.env`:
 - `SETUP_TOKEN` — a long random value used only to create the first account.
 - `TZ` — your timezone, for example `Asia/Kuala_Lumpur`.
 
-For a local network test, leave `ADDRESS_HEADER` empty and uncomment the `ports:` line in `compose.yaml`. Behind Cloudflare Tunnel, put `TUNNEL_TOKEN` in `tunnel.env`, keep the port commented, set `ADDRESS_HEADER=CF-Connecting-IP`, and run:
+For a local network test, leave `ADDRESS_HEADER` empty and uncomment the `ports:` line in `compose.yaml`. Behind Cloudflare Tunnel, create `tunnel.env` (`cp tunnel.env.example tunnel.env && chmod 600 tunnel.env`; compose fails if the file is missing), put `TUNNEL_TOKEN` in it, keep the port commented, set `ADDRESS_HEADER=CF-Connecting-IP`, and run:
 
 ```bash
 docker compose --profile tunnel up -d
