@@ -2,6 +2,7 @@
 // source whenever it changes AND again just before sending, so a moved item never fires at its old time.
 import { z } from 'zod';
 import { handle } from './db';
+import { zIsoZ } from './validate';
 import { newId } from './crypto';
 import { bad, notFound } from './http';
 import { itemRef, offsetMs, parseOffset, type Unit } from '$lib/remind';
@@ -115,10 +116,7 @@ export const addSchema = z
 		/** relative: one of 1w 3d 2d 1d 2h 15min before the item's time */
 		offset: z.string().max(10).optional(),
 		/** absolute: a UTC Z instant */
-		at: z
-			.string()
-			.regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/)
-			.optional(),
+		at: zIsoZ.optional(), // real instant only (#287): Feb 30 / 99:99 would store an unrenderable dueAt
 	})
 	.strict()
 	.refine((p) => !!p.offset !== !!p.at, 'give an offset or a time');
