@@ -465,12 +465,66 @@ test('repeat occurrence view follows a detached row and recovers after Undo (#27
 		await expect(sq).toHaveAttribute('aria-label', /Not started/);
 		await sq.click();
 		await expect(sq).toHaveAttribute('aria-label', /In progress/);
-		expect(page.url()).not.toContain('@'); // the address is the detached row now
+		await expect(page).not.toHaveURL(/@/); // the address is the detached row now
 		await page.keyboard.press('Control+z');
 		await expect(sq).toHaveAttribute('aria-label', /Not started/); // not the deleted row
 		expect(decodeURIComponent(page.url())).toContain(`${id}@2031-07-08`);
 		await sq.click(); // acts on a live row: no 404
 		await expect(sq).toHaveAttribute('aria-label', /In progress/);
+	} finally {
+		await api('DELETE', `/api/items/${id}`);
+	}
+});
+
+test('"This and following" edit keeps the item page; Undo moves the sheet back (#362, #278)', async () => {
+	const made = await api('POST', '/api/items', {
+		title: 'Split probe',
+		date: '2031-07-01',
+		rrule: 'FREQ=WEEKLY;COUNT=6',
+	});
+	const id = made.j.item.id as string;
+	try {
+		await page.goto(`/item/${id}@2031-07-08`);
+		await page.locator('.title-btn').click();
+		await page.locator('#iv-title').fill('Split probe 2');
+		await page.locator('#iv-title').press('Enter');
+		await page.getByLabel('This and following').check();
+		await page.getByRole('button', { name: 'Save', exact: true }).click();
+		await expect(page.getByRole('heading', { level: 1, name: /Split probe 2/ })).toBeVisible();
+		await page.waitForLoadState('networkidle'); // the refresh after Save re-runs the route load
+		await expect(page.getByText('Not found')).toHaveCount(0); // #362
+		await expect(page).not.toHaveURL(/@/);
+		await page.mouse.click(5, 300); // a non-field area
+		await page.keyboard.press('Control+z');
+		await expect(page.getByRole('heading', { level: 1, name: 'Split probe', exact: true })).toBeVisible(); // #278: the sheet follows the restored series
+		await expect(page.getByText('Not found')).toHaveCount(0);
+	} finally {
+		await api('DELETE', `/api/items/${id}`);
+	}
+});
+
+test('Undo after a reload on the split row moves the sheet back (#278)', async () => {
+	const made = await api('POST', '/api/items', {
+		title: 'Reload probe',
+		date: '2031-07-01',
+		rrule: 'FREQ=WEEKLY;COUNT=6',
+	});
+	const id = made.j.item.id as string;
+	try {
+		await page.goto(`/item/${id}@2031-07-08`);
+		await page.locator('.title-btn').click();
+		await page.locator('#iv-title').fill('Reload probe 2');
+		await page.locator('#iv-title').press('Enter');
+		await page.getByLabel('This and following').check();
+		await page.getByRole('button', { name: 'Save', exact: true }).click();
+		await expect(page.getByRole('heading', { level: 1, name: /Reload probe 2/ })).toBeVisible();
+		await expect(page).not.toHaveURL(/@/);
+		await page.reload();
+		await expect(page.getByRole('heading', { level: 1, name: /Reload probe 2/ })).toBeVisible();
+		await page.mouse.click(5, 300);
+		await page.keyboard.press('Control+z');
+		await expect(page.getByRole('heading', { level: 1, name: 'Reload probe', exact: true })).toBeVisible();
+		await expect(page.getByText('Not found')).toHaveCount(0);
 	} finally {
 		await api('DELETE', `/api/items/${id}`);
 	}
@@ -1242,6 +1296,9 @@ test('checklist Tab with nothing to indent moves focus on, does not trap (#281)'
 	const items = ['a', 'b'].map((id) => ({ id, text: id, checked: false, parentId: null }));
 	const n = await api('POST', '/api/keep/notes', { type: 'checklist', title: 'Tab trap', items });
 	await page.goto(`/keep?note=${n.j.note.id}`);
+	const grip = page.locator('.grip').first(); // desktop: not a Tab stop, hidden from screen readers (#285)
+	await expect(grip).toHaveAttribute('tabindex', '-1');
+	await expect(grip).toHaveAttribute('aria-hidden', 'true');
 	await page.locator('#ci-0').focus();
 	await page.keyboard.press('Tab'); // first item: no sibling above, cannot indent
 	expect(await page.evaluate(() => document.activeElement?.id)).not.toBe('ci-0');
@@ -1367,6 +1424,14 @@ test('desktop hit targets are at least 24 px: repeat controls, new label, breadc
 	await page.keyboard.press('Control+k');
 	await expect(page.getByRole('dialog', { name: 'Search and go' })).toBeVisible();
 	expect(await small('.arch')).toEqual([]);
+});
+
+test('Help: Quick add section teaches the repeat grammar (#303)', async () => {
+	await page.goto('/settings/help');
+	const sec = page.locator('section.desk', { has: page.getByRole('heading', { name: 'Quick add (N)' }) });
+	await expect(sec).toContainText('every');
+	await expect(sec).toContainText('until');
+	await expect(sec).toContainText('for N days|weeks|months|years');
 });
 
 test('tour: Quick add step spotlights the + Add opener and Help states the step count (#280)', async () => {

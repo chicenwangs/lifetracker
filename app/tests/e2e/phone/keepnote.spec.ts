@@ -80,3 +80,32 @@ test('Back button closes the note', async () => {
 	await note().getByRole('button', { name: 'Back', exact: true }).click();
 	await expect(note()).toBeHidden();
 });
+
+// #285: reorder / indent a checklist row by tap, not only by dragging the grip
+test('checklist row: grip is a named button; tap → Move down / Indent; Back closes the sheet', async () => {
+	const title = `Grip ${test.info().project.name}`;
+	await page.evaluate(async (t) => {
+		await fetch('/api/keep/notes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: t, type: 'checklist', items: ['milk', 'eggs', 'tea'].map((text) => ({ text, checked: false, parentId: null })) }) }); // prettier-ignore
+	}, title);
+	await page.goto('/keep');
+	await page.locator('article.note', { hasText: title }).getByText(title).click();
+	const dlg = page.getByRole('dialog', { name: title, exact: true });
+	const texts = () =>
+		dlg.getByPlaceholder('List item').evaluateAll((l) => l.map((i) => (i as HTMLInputElement).value));
+	const grip = dlg.getByRole('button', { name: 'Move or indent milk' });
+	await expectTappable(grip);
+	const b = (await grip.boundingBox())!;
+	expect(Math.min(b.width, b.height)).toBeGreaterThanOrEqual(48);
+	await grip.click();
+	const sheet = page.getByRole('dialog', { name: 'Actions for milk' });
+	await expect(sheet.getByRole('button', { name: 'Move down' })).toBeVisible();
+	await page.goBack();
+	await expect(sheet).toBeHidden();
+	await expect(dlg).toBeVisible(); // Back closed only the sheet
+	await grip.click();
+	await sheet.getByRole('button', { name: 'Move down' }).click();
+	await expect.poll(texts).toEqual(['eggs', 'milk', 'tea']);
+	await dlg.getByRole('button', { name: 'Move or indent milk' }).click();
+	await sheet.getByRole('button', { name: 'Indent' }).click();
+	await expect(dlg.locator('li').nth(1)).toHaveCSS('padding-left', '22px');
+});

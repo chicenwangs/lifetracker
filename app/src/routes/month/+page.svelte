@@ -55,6 +55,12 @@
 	const mine = (t: ItemDTO | BlockDTO) => t.editable && !t.theirs;
 	const refresh = () => invalidateAll();
 	let acting = $state<ItemDTO | BlockDTO | null>(null);
+	// closures over a plain value: ActionSheet closes (acting = null) before run() fires (#324)
+	const actionsFor = (a: ItemDTO | BlockDTO) => [
+		{ label: a.status === 'done' ? 'Not done' : 'Done', run: () => toggleDone(a, refresh) },
+		...(itemIdOf(a) ? [{ label: 'Move…', run: () => openItem(itemIdOf(a) as string) }] : []),
+		{ label: 'Delete', danger: true, run: () => deleteRow(a, refresh) },
+	];
 	const heads = $derived(cells.slice(0, 7).map((c) => new Date(c.date + 'T12:00:00Z').toLocaleDateString('en', { weekday: 'narrow', timeZone: 'UTC' }))); // prettier-ignore
 </script>
 
@@ -139,16 +145,7 @@
 		{/each}
 		<a class="btn sm" href="/today?d={sel}">Open in Today</a>
 		{#if acting}
-			{@const a = acting}
-			<ActionSheet
-				title={labelOf(a)}
-				actions={[
-					{ label: a.status === 'done' ? 'Not done' : 'Done', run: () => toggleDone(a, refresh) },
-					...(itemIdOf(a) ? [{ label: 'Move…', run: () => openItem(itemIdOf(a) as string) }] : []),
-					{ label: 'Delete', danger: true, run: () => deleteRow(a, refresh) },
-				]}
-				onclose={() => (acting = null)}
-			/>
+			<ActionSheet title={labelOf(acting)} actions={actionsFor(acting)} onclose={() => (acting = null)} />
 		{/if}
 	</section>
 </main>

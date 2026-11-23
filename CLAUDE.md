@@ -9,7 +9,7 @@ Caveman rules for Claude Code in this repo. Read `AGENTS.md` first (one page of 
 - Last migration = 0010 (v3.1.x added none). Migrations 0009, 0010 shipped in v3.0.0.
 - Mobile overhaul (#106) DONE (`docs/v3/MOBILE-SPRINT.md`). Next = open GitHub issues (`gh issue list --state open`). v2.1 backlog (`docs/v2/CHAT-HANDOFF.md`) + `docs/REVIEW.md` Open items are parked. One branch + PR per issue off `main`.
 - Tests at this commit: 371 unit · desktop e2e 25 (+1 skipped near midnight) · phone e2e 246 (`docs/v3/QA-RUN-2026-11-19.md`).
-- Known bugs before you touch anything: `AGENTS.md` §Known issues (Keep trash restore 404, graph sigma console error, Android desktop-word hints).
+- Known bugs before you touch anything: `AGENTS.md` §Known issues (graph sigma console error at phone width).
 
 ## Docs
 
@@ -39,7 +39,7 @@ Caveman rules for Claude Code in this repo. Read `AGENTS.md` first (one page of 
 - Row swipe right = done, left = delete (Keep: archive). Always Undo.
 - One shared bottom sheet (`BottomSheet.svelte`). Back closes the top layer first: new sheet / dialog / menu root gets `use:backCloses` (`lib/client/layers.ts`).
 - `invalidateAll` only from `$lib/client/refresh` (lint rule): Back drops a refresh in flight, layers redo it.
-- No "Click" / "Ctrl" / "Esc" / "PC view" text on phone — the Android shell still violates this (see AGENTS.md).
+- No "Click" / "Ctrl" / "Esc" / "PC view" text on phone. Phone e2e `noDesktopHints` checks it.
 - Test in the phone projects (`npm run test:e2e:phone`, `tests/e2e/phone/`).
 
 ## Done per phase

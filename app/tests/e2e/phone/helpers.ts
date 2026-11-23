@@ -123,7 +123,8 @@ export async function expectTargets48(page: Page) {
 			const own = hit(el);
 			const lab = el.closest('label');
 			const box = lab ? hit(lab) : own;
-			if (Math.max(own.w, box.w) >= 48 && Math.max(own.h, box.h) >= 48) continue;
+			// round like the label below: sub-pixel layout (e.g. 47.99 on Linux CI fonts) is 48 dp
+			if (Math.round(Math.max(own.w, box.w)) >= 48 && Math.round(Math.max(own.h, box.h)) >= 48) continue;
 			const label = (el.getAttribute('aria-label') || el.innerText || el.getAttribute('title') || el.getAttribute('name') || el.tagName).trim().slice(0, 40); // prettier-ignore
 			out.push(`${label} (${Math.round(own.w)}×${Math.round(own.h)})`);
 		}
