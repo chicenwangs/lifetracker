@@ -80,12 +80,12 @@ The published APK points at the project's hosted instance. To use the Android ap
 You need Docker Engine with the Compose plugin. The image is private unless access has been granted.
 
 ```bash
-mkdir -p /opt/life-tracker && cd /opt/life-tracker
+sudo mkdir -p /opt/life-tracker && sudo chown $USER /opt/life-tracker && cd /opt/life-tracker
 curl -L -o deploy.tar.gz \
   https://github.com/chicenwangs/lifetracker/releases/download/v3.1.1/deploy-v3.1.1.tar.gz
 tar -xzf deploy.tar.gz
 cp .env.example .env && chmod 600 .env
-mkdir -p data && chmod 700 data
+mkdir -p data && sudo chown -R 1000:1000 data && sudo chmod 700 data   # the container runs as uid 1000
 ```
 
 If the repository is private, authenticate with GitHub first (`gh auth login`) and use `gh release download v3.1.1 -p 'deploy-*.tar.gz'` instead of the `curl` line above.
