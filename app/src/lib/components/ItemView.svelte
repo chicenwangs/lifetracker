@@ -186,11 +186,12 @@
 		try {
 			const r = await patch<{ item: { id: string }; undo?: UndoRef }>(`/api/items/${encodeURIComponent(it.id)}`, body); // prettier-ignore
 			follow(it.id, r);
-			await changed();
 			const u = r.undo; // #293: touch has no Ctrl+Z
+			// toast before the refetch: a message raised meanwhile (e.g. a refused end date) must not be overwritten
 			showToast('Saved', {
 				undo: u ? async () => void ((await undoLast(u.id)) && (await changed())) : undefined,
 			});
+			await changed();
 		} catch (e) {
 			if (isOffline(e)) {
 				Object.assign(it, p);

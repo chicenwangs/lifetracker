@@ -38,7 +38,7 @@ test('toast sits above the bar; bar and Undo stay tappable', async () => {
 	const undo = toast.getByRole('button', { name: 'Undo' });
 	await expectTappable(undo);
 	const u = (await undo.boundingBox())!;
-	expect(Math.min(u.width, u.height)).toBeGreaterThanOrEqual(48);
+	expect(Math.round(Math.min(u.width, u.height))).toBeGreaterThanOrEqual(48); // sub-pixel layout gave 47.99997 in CI
 	await undo.click();
 	await expect(
 		page.getByRole('group', { name: `Toast item one ${test.info().project.name}`, exact: true }),

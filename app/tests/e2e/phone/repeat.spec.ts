@@ -79,6 +79,7 @@ test('Repeat ends "On date" keeps the series; an end before the start is refused
 	await page.goto(`/item/${id}`);
 	await page.getByLabel('Repeat ends').selectOption('until');
 	await expect.poll(rule).toBe('FREQ=DAILY;UNTIL=2031-02-03'); // start + 30 days
+	await expect(page.locator('.toast')).toContainText('Saved'); // one toast slot: this save's toast first
 	await page.getByLabel('End date').fill('2030-12-01');
 	await page.getByLabel('End date').press('Tab');
 	await expect(page.locator('.toast')).toContainText('on or after the start');
