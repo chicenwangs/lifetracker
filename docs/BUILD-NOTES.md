@@ -98,8 +98,8 @@ Newest first. Latest release = v3.1.1 (2026-11-20; v3.1.0 same day, v3.0.0 2026-
 ## v2 P8 — Phone rest, PWA, offline, tour, help, a11y (2026-11-14)
 
 - Phone (< 700 px): Week = read-first agenda (`PhoneWeek`, 7 day cards, tap day → Today, tap item → item); Month = `/month` compact 6×7 grid with type-colour dots, tap day → Today. More lists Month, Week, Pages, Shared with me, Keep archive, Trash, Settings, Help. Settings + Login already fit 360 px (checked).
-- PWA: real `manifest.webmanifest` (standalone, 192/512 + maskable PNGs, apple-touch-icon; PNGs rendered from `favicon.svg`), `theme-color`. `sw.js` registered on every load: caches hashed build files + `/offline.html` only; push handlers unchanged.
-- Offline (ADR-009, D-06): badge while offline; API calls fail with "You're offline. Not saved."; Keep note edits queue on the device and send when back (clash = "(offline copy)" note). Sign-out wipes the queue.
+- PWA: real `manifest.webmanifest` (standalone, 192/512 + maskable PNGs, apple-touch-icon; PNGs rendered from `favicon.svg`), `theme-color`. `sw.js` registered on every load: caches hashed build files + `/offline.html` (P8; since v3.0.0 also a data cache of last-seen pages and GET `/api`, see ADR-009); push handlers unchanged.
+- Offline (ADR-009, D-06): badge while offline; API calls fail with "You're offline. Not saved."; Keep note edits queue on the device and send when back (clash = "(offline copy)" note). Sign-out wipes the queue. (v3.0.0 added planner ops to the queue: ADR-009.)
 - Tour (`Tour.svelte`): first sign-in when `tour_state = new` (existing users were set `done` in P1). 7 steps, skips any step whose target isn't on screen (PC vs phone), resize repositions, Esc/Skip saves `skipped`, Finish saves `done`. Settings › Help: Restart the tour + short guides.
 - a11y: axe (`@axe-core/playwright`, dev only) has 0 serious/critical issues on 10 screens × light/dark × PC/phone. Fixed: logo SVG without a name, planner block = focusable group (it holds buttons), active pill text in dark mode, FullCalendar other-month days faded to 0.3.
 - Perf: Home load < 1.5 s asserted in e2e (local preview server).
