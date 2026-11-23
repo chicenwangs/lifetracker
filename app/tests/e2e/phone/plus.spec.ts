@@ -25,6 +25,16 @@ test('Today: + adds on the day you are looking at', async () => {
 	await page.goBack();
 });
 
+test('Today: + really creates the item on the shown day (#290)', async () => {
+	await page.goto('/today?d=2030-02-20');
+	await plus().click();
+	await page.keyboard.type('day290 probe /calendar');
+	const res = page.waitForResponse((r) => r.url().endsWith('/api/quickadd') && r.status() === 201);
+	await page.getByRole('dialog', { name: 'Add' }).getByRole('button', { name: 'Add', exact: true }).click();
+	expect((await (await res).json()).item.date).toBe('2030-02-20');
+	await page.goBack();
+});
+
 test('Add sheet: the "/" options are 48 dp (#229)', async () => {
 	await page.goto('/today');
 	await plus().click();

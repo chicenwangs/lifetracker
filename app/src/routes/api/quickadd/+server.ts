@@ -19,9 +19,15 @@ const slotSchema = z
 
 export const POST = api(async (e) => {
 	const u = me(e);
-	const { text, slot } = await body(
+	const { text, slot, day } = await body(
 		e,
-		z.object({ text: z.string().max(500), slot: slotSchema.optional() }).strict(),
+		z
+			.object({
+				text: z.string().max(500),
+				slot: slotSchema.optional(),
+				day: z.string().refine(isDate, 'bad date').optional(), // phone: day on screen = default day
+			})
+			.strict(),
 	);
-	return json(quickAdd(u, text, Date.now(), slot), { status: 201 });
+	return json(quickAdd(u, text, Date.now(), slot, day), { status: 201 });
 });

@@ -36,7 +36,7 @@
 		if (!parsed.ok) return void (problem = (parsed.problems[0] ?? '').replace(/`/g, ''));
 		busy = true;
 		try {
-			await post('/api/quickadd', { text: addSheet.text });
+			await post('/api/quickadd', { text: addSheet.text, day: addSheet.day ?? undefined });
 			buzz('success');
 			showToast(`Added "${parsed.title}"`);
 			addSheet.text = ''; // batch add: sheet stays open
@@ -48,7 +48,7 @@
 					key: `qa_${Date.now()}_${Math.random().toString(36).slice(2)}`,
 					method: 'POST',
 					path: '/api/quickadd',
-					payload: { text: addSheet.text },
+					payload: { text: addSheet.text, day: addSheet.day ?? undefined },
 				});
 				buzz('success');
 				showToast(`Added "${parsed.title}" · Waiting to sync`);
