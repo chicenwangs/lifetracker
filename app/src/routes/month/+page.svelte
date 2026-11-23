@@ -219,6 +219,8 @@
 	}
 	.tt {
 		font-weight: 600;
+		min-width: 0;
+		overflow-wrap: anywhere;
 	}
 	.agenda .btn {
 		align-self: flex-start;
