@@ -211,7 +211,8 @@ export function update(ownerId: string, id: string, p: NoteInput): NoteDTO {
 	return txImmediate(() => {
 		const cur = own(ownerId, id);
 		if (p.editedAt !== undefined) {
-			if (cur.updated_at > p.editedAt) return get(ownerId, id);
+			if (cur.updated_at > p.editedAt)
+				throw new ApiFail(409, 'conflict', 'This note changed somewhere else. Reload it to see the latest.'); // never a silent 200: the client keeps the offline text as a copy (#304)
 		} else if (p.revision !== undefined && p.revision !== cur.revision)
 			throw new ApiFail(409, 'conflict', 'This note changed somewhere else. Reload it to see the latest.');
 		const now = nowUtcIso();
