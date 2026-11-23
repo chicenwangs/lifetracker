@@ -73,7 +73,7 @@
 				class="row"
 				class:on={ri === current}
 				aria-current={ri === current ? 'true' : undefined}
-				aria-label="Week {ri + 1}: {hrs(weekSum(r))}{weekOpen(r)
+				aria-label="W{ri + 1} {r.map((d) => Number(d.date.slice(8))).join(' ')}: {hrs(weekSum(r))}{weekOpen(r)
 					? `, ${weekOpen(r)} all-day not blocked`
 					: ''}{ri === current ? ' (shown)' : ''}"
 				onclick={() => r[0] && ongo(r[0].date)}

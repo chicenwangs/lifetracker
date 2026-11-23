@@ -99,8 +99,9 @@ describe('FullCalendar mapping', () => {
 		});
 	});
 	it('pretty', () => {
-		expect(t.prettyTime('14:00')).toBe('2pm');
-		expect(t.prettyTime('00:30')).toBe('12:30am');
+		expect(t.prettyTime('14:00', true)).toBe('2pm');
+		expect(t.prettyTime('14:00')).toBe('14:00'); // 24 h region
+		expect(t.prettyTime('00:30', true)).toBe('12:30am');
 		expect(t.prettyDate('2026-11-06')).toBe('Fri 6 Nov 2026');
 	});
 });

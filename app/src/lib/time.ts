@@ -186,14 +186,15 @@ export function examCountdown(
 
 /** minutes -> clock text in the user's region: 24 h "14:30" (default) or 12 h "2:30pm" */
 export function clock(min: number, h12 = false): string {
-	return h12 ? prettyTime(hhmm(((min % 1440) + 1440) % 1440)) : hhmm(min);
+	return h12 ? prettyTime(hhmm(((min % 1440) + 1440) % 1440), true) : hhmm(min);
 }
 
 export function prettyDate(date: string): string {
 	const [y, m, d] = parts(date);
 	return `${WD[weekdayOf(date) - 1]} ${d} ${MONTHS[m - 1]} ${y}`;
 }
-export function prettyTime(time: string): string {
+export function prettyTime(time: string, twelve = false): string {
+	if (!twelve) return time; // 24 h regions (my) keep "14:30"; only region us reads "2:30pm"
 	const min = minutesOf(time);
 	const h = Math.floor(min / 60) % 24; // 24:00 = 12am
 	const mm = min % 60;
