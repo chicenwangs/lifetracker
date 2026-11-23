@@ -23,7 +23,16 @@
 		type WdCode,
 	} from '$lib/rrule';
 	import { addDays, examCountdown, prettyDate, todayLocal, utcToLocal, weekdayOf } from '$lib/time';
-	import type { BlockDTO, ItemDTO, ItemType } from '$lib/types';
+	import {
+		nextStatus,
+		type BlockDTO,
+		type ItemDTO,
+		type ItemType,
+		type Status,
+		type UndoRef,
+	} from '$lib/types';
+	import { cycleRow } from '$lib/client/rowOps';
+	import { undoLast } from '$lib/client/undo.svelte';
 	import { get, patch, post } from '$lib/client/api';
 	import { enqueueAction, isOffline } from '$lib/client/offline';
 	import { showError, showToast } from '$lib/client/toast.svelte';
@@ -146,8 +155,13 @@
 			body = { ...p, scope };
 		}
 		try {
-			follow(it.id, await patch<{ item: { id: string } }>(`/api/items/${encodeURIComponent(it.id)}`, body));
+			const r = await patch<{ item: { id: string }; undo?: UndoRef }>(`/api/items/${encodeURIComponent(it.id)}`, body); // prettier-ignore
+			follow(it.id, r);
 			await changed();
+			const u = r.undo; // #293: touch has no Ctrl+Z
+			showToast('Saved', {
+				undo: u ? async () => void ((await undoLast(u.id)) && (await changed())) : undefined,
+			});
 		} catch (e) {
 			if (isOffline(e)) {
 				Object.assign(it, p);
@@ -164,13 +178,9 @@
 			await load();
 		}
 	}
-	async function cycle(itemId: string) {
-		try {
-			follow(itemId, await post<{ item: { id: string } }>(`/api/items/${encodeURIComponent(itemId)}/cycle`));
-			await changed();
-		} catch (e) {
-			showError(e);
-		}
+	async function cycle(itemId: string, cur: Status, name: string) {
+		const r = await cycleRow('items', itemId, cur, name, changed, (got) => follow(itemId, got));
+		if (r === 'queued' && it && it.id === itemId) it.status = nextStatus(cur); // shown now, sent on reconnect
 	}
 	async function cycleBlock(blockId: string) {
 		try {
@@ -437,7 +447,12 @@
 		<div class="cols">
 			<section class="main" aria-label="Item">
 				<div class="kick" style:color={c.edge}>
-					<StatusSquare status={it.status} size={22} ink={c.edge} oncycle={() => cycle(it.id)} />
+					<StatusSquare
+						status={it.status}
+						size={22}
+						ink={c.edge}
+						oncycle={() => cycle(it.id, it.status, it.title)}
+					/>
 					<span>{(it.type ?? 'None').toUpperCase()} · {STATUS_WORD[it.status].toUpperCase()}</span>
 					{#if cd}
 						<span class="count" class:soon={cd.days <= 3}>{cd.long}</span>
@@ -694,7 +709,11 @@
 						{#each v.steps as s (s.id)}
 							{@const sc = colorsFor(s.type)}
 							<div class="step">
-								<StatusSquare status={s.status} ink={sc.edge} oncycle={() => cycle(s.id)} />
+								<StatusSquare
+									status={s.status}
+									ink={sc.edge}
+									oncycle={() => cycle(s.id, s.status, s.title)}
+								/>
 								<a href="/item/{s.id}" class:done={s.status === 'done'}>{s.title}</a>
 								<span class="muted">{s.date ? prettyDate(s.date) : ''}</span>
 							</div>
