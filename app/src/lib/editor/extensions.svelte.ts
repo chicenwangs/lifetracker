@@ -138,13 +138,13 @@ export const Slash = Extension.create<{ items: (q: string) => SlashItem[] }>({
 				items: ({ query }) => items(query),
 				command: ({ editor, range, props }) => props.run(editor, range),
 				render: () => {
-					const s = $state({ items: [] as SlashItem[], index: 0, x: 0, y: 0 });
+					const s = $state({ items: [] as SlashItem[], index: 0, x: 0, y: 0, top: 0 });
 					let host: HTMLElement | undefined;
 					let comp: ReturnType<typeof mount> | undefined;
 					let pick: ((i: SlashItem) => void) | undefined;
 					const sync = (p: { items: SlashItem[]; command: (i: SlashItem) => void; clientRect?: (() => DOMRect | null) | null }) => {
 						const r = p.clientRect?.();
-						Object.assign(s, { items: p.items, index: 0, x: r?.left ?? 0, y: r?.bottom ?? 0 });
+						Object.assign(s, { items: p.items, index: 0, x: r?.left ?? 0, y: r?.bottom ?? 0, top: r?.top ?? 0 });
 						pick = p.command;
 					};
 					return {

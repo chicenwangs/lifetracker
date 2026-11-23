@@ -186,11 +186,12 @@
 		try {
 			const r = await patch<{ item: { id: string }; undo?: UndoRef }>(`/api/items/${encodeURIComponent(it.id)}`, body); // prettier-ignore
 			follow(it.id, r);
-			await changed();
 			const u = r.undo; // #293: touch has no Ctrl+Z
+			// toast before the refetch: a message raised meanwhile (e.g. a refused end date) must not be overwritten
 			showToast('Saved', {
 				undo: u ? async () => void ((await undoLast(u.id)) && (await changed())) : undefined,
 			});
+			await changed();
 		} catch (e) {
 			if (isOffline(e)) {
 				Object.assign(it, p);
@@ -384,6 +385,14 @@
 	// a save still waiting on its 700 ms timer must not be dropped when the view closes or the page unloads
 	onDestroy(() => {
 		if (saveTimer) void flushNotes();
+	});
+	// sign-out: the layout waits (max 2 s) for this save before it drops the session (#288)
+	$effect(() => {
+		const h = (e: Event) => {
+			if (saveTimer) (e as CustomEvent<{ wait: (p: Promise<unknown>) => void }>).detail.wait(flushNotes());
+		};
+		addEventListener('lt:signout', h);
+		return () => removeEventListener('lt:signout', h);
 	});
 	function onUnload() {
 		if (!saveTimer || !it) return;

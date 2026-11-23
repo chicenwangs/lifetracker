@@ -62,6 +62,8 @@ const writeActions = (q: ActionOp[]) => {
 };
 
 export const queued = () => read().length + readActions().length;
+/** is this note's edit still waiting to sync (#286) */
+export const noteQueued = (key: string) => read().some((o) => o.key === key);
 export const isOffline = (e: unknown) => e instanceof ApiError && e.code === 'offline';
 /** worth retrying later: no network, session expired, or the server failed (only a clear 4xx drops an op) */
 const keepForLater = (e: unknown) =>

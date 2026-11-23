@@ -4,7 +4,7 @@
 	import GestureHint from '$lib/components/GestureHint.svelte';
 	import { shown } from '$lib/client/itemtypes.svelte';
 	import { entryColors } from '$lib/client/partner';
-	import { addDays, prettyDate, utcToLocal, weekStartOf } from '$lib/time';
+	import { addDays, clipToDay, hhmm, prettyDate, weekStartOf } from '$lib/time';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { openItem } from '$lib/client/peek.svelte';
@@ -31,7 +31,7 @@
 				inMonth: d.startsWith(data.ym),
 				things: [
 					...shown(data.cal.items).filter((i) => i.date && i.date <= d && (i.endDate ?? i.date) >= d),
-					...shown(data.cal.blocks).filter((b) => utcToLocal(b.startAt, tz).date === d),
+					...shown(data.cal.blocks).filter((b) => clipToDay(b.startAt, b.endAt, d, tz)),
 				],
 			});
 		return out;
@@ -42,8 +42,9 @@
 		if (d && cells.some((c) => c.date === d)) return d;
 		return data.today.startsWith(data.ym) ? data.today : `${data.ym}-01`;
 	});
+	// a block that began the day before shows from 00:00 on the selected day
 	const timeOf = (t: ItemDTO | BlockDTO) =>
-		'startAt' in t ? utcToLocal(t.startAt, tz).time : ((t as ItemDTO).time ?? '');
+		'startAt' in t ? hhmm(clipToDay(t.startAt, t.endAt, sel, tz)?.top ?? 0) : ((t as ItemDTO).time ?? '');
 	const agenda = $derived(
 		(cells.find((c) => c.date === sel)?.things ?? []).toSorted((a, b) => timeOf(a).localeCompare(timeOf(b))),
 	);
@@ -262,9 +263,9 @@
 	.cell.today .n {
 		background: var(--accent);
 		color: #00003d;
-		border-radius: 50%;
-		width: 24px;
-		height: 24px;
+		border-radius: 999px;
+		min-width: 24px; /* grows with the text size (200 % font) instead of overlapping the dots */
+		min-height: 24px;
 		display: grid;
 		place-items: center;
 	}

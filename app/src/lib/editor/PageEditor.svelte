@@ -3,6 +3,7 @@
 <script lang="ts">
 	import { askText } from '$lib/client/dialog.svelte';
 	import { backCloses } from '$lib/client/layers';
+	import { modal } from '$lib/client/modal';
 	import { isPhone } from '$lib/client/phone';
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
 	import { onMount } from 'svelte';
@@ -359,6 +360,7 @@
 	<div class="scrim" role="presentation" onclick={() => (picker = null)}></div>
 	<div
 		use:backCloses={() => (picker = null)}
+		use:modal={() => (picker = null)}
 		class="picker card"
 		role="dialog"
 		aria-modal="true"
@@ -636,6 +638,9 @@
 		translate: -50% 0;
 		z-index: 91;
 		width: min(420px, 92vw);
+		/* vh shrinks with the on-screen keyboard: the rows scroll instead of hiding below it (#282) */
+		max-height: calc(100vh - 20vh - 8px);
+		overflow-y: auto;
 		padding: 12px;
 		display: flex;
 		flex-direction: column;

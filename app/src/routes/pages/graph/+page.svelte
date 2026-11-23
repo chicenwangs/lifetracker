@@ -229,7 +229,10 @@
 					>
 				</div>
 				<p class="hint legend">
-					Click a page to select, double-click to open. Dragging only moves it on screen.
+					<span class="desk">Click a page to select, double-click to open.</span><span class="touch"
+						>Tap a page to select it, then use Open page.</span
+					>
+					Dragging only moves it on screen.
 				</p>
 			</div>
 			{#if list}
@@ -359,7 +362,16 @@
 	.list a {
 		color: var(--ink);
 	}
+	.touch {
+		display: none;
+	}
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.desk {
+			display: none;
+		}
+		.touch {
+			display: inline;
+		}
 		.list a {
 			display: flex;
 			align-items: center;

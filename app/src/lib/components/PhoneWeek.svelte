@@ -3,7 +3,7 @@
 <script lang="ts">
 	import { shown } from '$lib/client/itemtypes.svelte';
 	import { entryColors } from '$lib/client/partner';
-	import { addDays, prettyDate, utcToLocal } from '$lib/time';
+	import { addDays, clipToDay, hhmm, prettyDate } from '$lib/time';
 	import type { BlockDTO, CalendarPayload, ItemDTO } from '$lib/types';
 	import ActionSheet from './ActionSheet.svelte';
 	import { askText } from '$lib/client/dialog.svelte';
@@ -29,9 +29,9 @@
 				if (i.date && i.date <= d && (i.endDate ?? i.date) >= d)
 					rows.push({ key: i.id, time: i.date === d ? (i.time ?? '') : '', label: i.title, href: i.editable && !i.theirs ? `/item/${i.id}` : null, x: i }); // prettier-ignore
 			for (const b of shown(cal.blocks)) {
-				const s = utcToLocal(b.startAt, tz);
-				if (s.date === d)
-					rows.push({ key: b.id, time: s.time, label: b.label, href: b.itemId && !b.theirs ? `/item/${b.itemId}` : null, x: b }); // prettier-ignore
+				const c = clipToDay(b.startAt, b.endAt, d, tz); // a block over midnight shows on both days
+				if (c)
+					rows.push({ key: b.id, time: hhmm(c.top), label: b.label, href: b.itemId && !b.theirs ? `/item/${b.itemId}` : null, x: b }); // prettier-ignore
 			}
 			rows.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
 			out.push({ date: d, rows });

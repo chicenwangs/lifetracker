@@ -2,6 +2,7 @@
      Only this page/note: subpages, linked pages and other notes are never included (D-01, D-02). No public links (D-04). -->
 <script lang="ts">
 	import { backCloses } from '$lib/client/layers';
+	import { modal } from '$lib/client/modal';
 	import { onMount } from 'svelte';
 	import { apiFetch, get, post } from '$lib/client/api';
 	import { showError } from '$lib/client/toast.svelte';
@@ -40,7 +41,14 @@
 </script>
 
 <div class="scrim" role="presentation" onclick={onclose}></div>
-<div use:backCloses={onclose} class="dlg card" role="dialog" aria-modal="true" aria-label="Share {name}">
+<div
+	use:backCloses={onclose}
+	use:modal={onclose}
+	class="dlg card"
+	role="dialog"
+	aria-modal="true"
+	aria-label="Share {name}"
+>
 	<h2>Share "{name || 'Untitled'}"</h2>
 	<p class="hint">
 		Only this {kind}.{kind === 'page'
@@ -80,7 +88,6 @@
 	</ul>
 	<div class="row end"><button class="btn sm" type="button" onclick={onclose}>Done</button></div>
 </div>
-<svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
 <style>
 	.scrim {
