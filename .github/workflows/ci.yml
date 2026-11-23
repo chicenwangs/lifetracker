@@ -75,6 +75,13 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          cache: gradle
+      # Robolectric fetches android-all jars from Maven Central at test time; cache them (CI hit 429 rate limits)
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: m2-${{ hashFiles('mobile/android/**/*.gradle') }}
+          restore-keys: m2-
       - run: npm ci
       - run: npx cap sync android
       - run: chmod +x android/gradlew && cd android && ./gradlew --no-daemon assembleRelease testDebugUnitTest
