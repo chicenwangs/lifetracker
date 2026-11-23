@@ -1,5 +1,5 @@
 # Life Tracker planner — production compose. Pulls a released image; never builds on the server.
-# Files next to this one: .env (from .env.example), data/ (SQLite + seed + backups). See SERVICE-HANDOFF.md.
+# Files next to this one: .env (from .env.example), data/ (SQLite + seed + backups; must be owned by uid 1000:1000, the container user). See SERVICE-HANDOFF.md.
 name: life-tracker
 
 services:
