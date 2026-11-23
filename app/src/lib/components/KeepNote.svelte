@@ -988,6 +988,7 @@
 	.newl {
 		font-size: 12px;
 		width: 90px;
+		min-height: 24px;
 	}
 	.bar {
 		display: flex;

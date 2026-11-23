@@ -351,6 +351,9 @@
 		color: var(--quiet);
 	}
 	.crumbs a {
+		display: inline-flex;
+		align-items: center;
+		min-height: 24px;
 		color: var(--quiet);
 	}
 	.crumbs .here {

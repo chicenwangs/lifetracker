@@ -259,6 +259,7 @@
 		color: var(--ink);
 	}
 	.arch {
+		min-height: 24px;
 		font-size: 12px;
 		display: flex;
 		gap: 6px;
