@@ -163,7 +163,7 @@
 	}
 	.tabs button {
 		flex: 1;
-		min-height: 40px;
+		min-height: 48px;
 		border-radius: 999px;
 		border: 1.5px solid var(--border);
 		background: transparent;

@@ -119,6 +119,17 @@
 		width: 100%;
 		flex: 1;
 	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		input:not([type='checkbox']),
+		select {
+			min-height: 48px;
+		}
+		input[type='checkbox'] {
+			width: 24px;
+			height: 24px;
+			margin: 12px;
+		}
+	}
 	select {
 		width: auto;
 		flex: none;

@@ -727,6 +727,27 @@
 	.foot {
 		margin-top: 6px;
 	}
+	/* phone: 48 dp hit areas (#285) */
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.dbtitle,
+		.tabs button,
+		.tabs .soft,
+		.soft,
+		.pill,
+		.types button,
+		.th,
+		.mini,
+		.panel input:not([type='checkbox']),
+		.panel select,
+		.pmenu input,
+		.pmenu select {
+			min-height: 48px;
+		}
+		.mini,
+		.th {
+			min-width: 48px;
+		}
+	}
 	@media (max-width: 700px) {
 		/* MDb: one card per record */
 		thead {

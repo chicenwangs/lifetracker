@@ -506,12 +506,14 @@
 									onclick={() => (it.open = it.open === false)}>{it.open === false ? '▸' : '▾'}</button
 								>
 							{:else}<span class="mini sp"></span>{/if}
-							<input
-								type="checkbox"
-								bind:checked={it.checked}
-								onchange={changed}
-								aria-label="Done: {it.text || 'item'}"
-							/>
+							<label class="tick"
+								><input
+									type="checkbox"
+									bind:checked={it.checked}
+									onchange={changed}
+									aria-label="Done: {it.text || 'item'}"
+								/></label
+							>
 							<input
 								id="ci-{i}"
 								class="it"
@@ -877,7 +879,13 @@
 		}
 		.grip {
 			opacity: 0.6;
-			min-height: 40px;
+			width: 48px;
+			min-height: 48px;
+		}
+		.tick {
+			display: grid;
+			place-items: center;
+			min-width: 48px;
 		}
 		.it {
 			font-size: 16px;
