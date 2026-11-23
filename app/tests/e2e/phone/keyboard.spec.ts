@@ -59,3 +59,41 @@ test('Keep note: the note fits above the keyboard', async () => {
 	await onScreen(note);
 	await page.goBack();
 });
+
+test('Pages: "/" menu and link picker stay above the keyboard (#282)', async () => {
+	const post = (title: string) =>
+		page.evaluate(async (t) => {
+			const r = await fetch('/api/pages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: t }) }); // prettier-ignore
+			return ((await r.json()) as { page: { id: string } }).page.id;
+		}, title);
+	const id = await post('Keyboard page');
+	for (const n of ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight']) await post(`Kb ${n}`);
+	await page.goto(`/pages/${id}`);
+	await page.getByLabel('Page content').click();
+	await page.setViewportSize({ width: 412, height: KB });
+	await page.waitForTimeout(300);
+	await page.keyboard.type('/');
+	const menu = page.getByRole('listbox', { name: 'Insert block' });
+	await expect(menu).toBeVisible();
+	await onScreen(menu);
+	await menu.getByRole('option', { name: /Link to page/ }).click();
+	const picker = page.getByRole('dialog', { name: 'Link to page' });
+	await expect(picker.getByRole('button').nth(5)).toBeVisible();
+	await onScreen(picker);
+});
+
+test('Add sheet: Back closes the "/" menu first, then the sheet (#282)', async () => {
+	await page.goto('/today');
+	await bottomBar(page).getByRole('button', { name: 'Add' }).click();
+	const sheet = page.getByRole('dialog', { name: 'Add' });
+	const field = sheet.getByRole('combobox', { name: 'What and when' });
+	await field.focus();
+	await page.keyboard.type('/');
+	await expect(page.getByRole('option').first()).toBeVisible();
+	await page.goBack();
+	await expect(page.getByRole('option')).toHaveCount(0);
+	await expect(sheet).toBeVisible();
+	await expect(field).toHaveValue('/');
+	await page.goBack();
+	await expect(sheet).toBeHidden();
+});

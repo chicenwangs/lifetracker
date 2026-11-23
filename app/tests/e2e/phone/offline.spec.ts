@@ -92,3 +92,19 @@ test('conflict rule: server wins when server copy changed later; latest edit win
 	expect(res.afterStale).toBe('Server version');
 	expect(res.afterFresh).toBe('Fresh offline edit');
 });
+
+test('Keep note: Offline status clears once the queued text is synced (#286)', async () => {
+	const title = `Stale status ${test.info().project.name}`;
+	await page.evaluate(async (t) => {
+		await fetch('/api/keep/notes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: t, body: 'hello' }) }); // prettier-ignore
+	}, title);
+	await page.goto('/keep');
+	await page.locator('article.note', { hasText: title }).getByText(title).click();
+	const note = page.getByRole('dialog', { name: title, exact: true });
+	const status = note.getByRole('status');
+	await page.context().setOffline(true);
+	await note.getByRole('textbox').nth(1).fill('typed offline');
+	await expect(status).toContainText('Offline');
+	await page.context().setOffline(false);
+	await expect(status).toHaveText('Saved', { timeout: 15_000 });
+});

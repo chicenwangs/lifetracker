@@ -31,6 +31,7 @@
 	const scope = $derived(page.url.searchParams.get('scope'));
 	const deep = $derived(!(TAB_ROOTS.includes(path) && !scope));
 	const title = $derived.by(() => {
+		if (page.error) return page.status === 404 ? 'Not found' : 'Error'; // the error screen has its own H1 (#286)
 		if (path.startsWith('/settings')) return SECTIONS.find((x) => x.href === path)?.label ?? 'Settings';
 		if (path === '/keep')
 			return scope === 'archive' ? 'Keep archive' : scope === 'shared' ? 'Shared notes' : 'Keep';

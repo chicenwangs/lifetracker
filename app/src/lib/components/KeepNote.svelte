@@ -8,8 +8,8 @@
 	import BottomSheet from './BottomSheet.svelte';
 	import { page } from '$app/state';
 	import { tick } from 'svelte';
-	import { patch, post } from '$lib/client/api';
-	import { enqueue, isOffline } from '$lib/client/offline';
+	import { get, patch, post } from '$lib/client/api';
+	import { enqueue, isOffline, noteQueued } from '$lib/client/offline';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import type { BinderDTO, ChecklistItem, LabelDTO, NoteDTO } from '$lib/types';
 
@@ -55,6 +55,7 @@
 	let noteLabels = $state<string[]>(start?.labels ?? []);
 	let noteBinders = $state<string[]>(start?.binders ?? []);
 	let images = $state(start?.images ?? []);
+	let brokenImgs = $state<string[]>([]); // previews that failed to load: filename card (#312)
 	let saveState = $state<'idle' | 'saving' | 'saved' | 'failed' | 'offline'>('idle');
 	const localKey = `new_${Math.random().toString(36).slice(2)}`; // a note made offline has no id yet
 	const newNoteId = `kn_${crypto.randomUUID().replaceAll('-', '').slice(0, 26)}`; // same id on every create attempt: no duplicate (#308 #309)
@@ -125,6 +126,23 @@
 		})();
 		await saving;
 	}
+	// the queue sent our text (back online): not "Offline" any more; pick up the new revision so the next edit isn't a clash (#286)
+	$effect(() => {
+		if (saveState !== 'offline') return;
+		const key = id ?? localKey;
+		const sent = async () => {
+			if (saveState !== 'offline' || noteQueued(key)) return;
+			saveState = 'saved';
+			if (!id) return;
+			try {
+				revision = (await get<{ note: NoteDTO }>(`/api/keep/notes/${id}`)).note.revision;
+			} catch {
+				/* the next save reports it */
+			}
+		};
+		addEventListener('lt:queue', sent);
+		return () => removeEventListener('lt:queue', sent);
+	});
 	async function close() {
 		await flush();
 		if (
@@ -579,8 +597,18 @@
 		<div class="imgs">
 			{#each images as im (im.id)}
 				<figure>
-					<a href={im.url} target="_blank" rel="noopener"><img src={im.url} alt={im.name} loading="lazy" /></a
-					>
+					{#if brokenImgs.includes(im.id)}
+						<span class="gone" title="Image unavailable">{im.name} · unavailable</span>
+					{:else}
+						<a href={im.url} target="_blank" rel="noopener"
+							><img
+								src={im.url}
+								alt={im.name}
+								loading="lazy"
+								onerror={() => (brokenImgs = [...brokenImgs, im.id])}
+							/></a
+						>
+					{/if}
 					{#if !shared}<button
 							class="mini"
 							type="button"
@@ -999,6 +1027,15 @@
 	figure {
 		margin: 0;
 		position: relative;
+	}
+	figure .gone {
+		display: block;
+		max-width: 180px;
+		padding: 12px 36px 12px 12px;
+		border: 1.5px dashed var(--rule);
+		border-radius: 8px;
+		font-size: 13px;
+		overflow-wrap: anywhere;
 	}
 	figure img {
 		max-width: 180px;

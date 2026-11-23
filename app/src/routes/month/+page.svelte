@@ -262,9 +262,9 @@
 	.cell.today .n {
 		background: var(--accent);
 		color: #00003d;
-		border-radius: 50%;
-		width: 24px;
-		height: 24px;
+		border-radius: 999px;
+		min-width: 24px; /* grows with the text size (200 % font) instead of overlapping the dots */
+		min-height: 24px;
 		display: grid;
 		place-items: center;
 	}
