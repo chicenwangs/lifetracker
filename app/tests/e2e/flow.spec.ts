@@ -761,6 +761,29 @@ test('repeat end is editable on the normal row without Custom (#263)', async () 
 	}
 });
 
+test('repeat "On date" keeps the series; an end before the start is refused (#296)', async () => {
+	const made = await api('POST', '/api/items', {
+		title: 'Repeat ondate probe',
+		date: '2028-01-03',
+		rrule: 'FREQ=WEEKLY;BYDAY=MO;COUNT=6',
+	});
+	const id = made.j.item.id as string;
+	try {
+		await page.goto(`/item/${id}`);
+		await page.getByLabel('Repeat ends').selectOption('until');
+		await expect
+			.poll(async () => ((await api('GET', `/api/items/${id}`)).j.item as { rrule: string }).rrule)
+			.toBe('FREQ=WEEKLY;BYDAY=MO;UNTIL=2028-02-02'); // start + 30 days, not the start itself
+		await page.getByLabel('End date').fill('2027-12-01');
+		await page.getByLabel('End date').press('Tab');
+		await expect(page.locator('.toast')).toContainText('on or after the start');
+		expect(((await api('GET', `/api/items/${id}`)).j.item as { rrule: string }).rrule).toContain('UNTIL=2028-02-02'); // prettier-ignore
+		expect((await api('PATCH', `/api/items/${id}`, { rrule: 'FREQ=DAILY;UNTIL=2027-12-01' })).s).toBe(400);
+	} finally {
+		await api('DELETE', `/api/items/${id}`);
+	}
+});
+
 test('v2 P2 phone: opens on Today, Now card, + Add, Keep quick note, no sideways scroll at 360 px', async ({
 	browser,
 }) => {

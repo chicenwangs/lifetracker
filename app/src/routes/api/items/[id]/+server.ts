@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { api, body, me } from '$lib/server/http';
 import * as items from '$lib/server/repo/items';
 import { undoable } from '$lib/server/undo';
-import { recalcOwner } from '$lib/server/reminders';
+import { recalcOwner, splitSeries } from '$lib/server/reminders';
 
 export const GET = api((e) => {
 	const u = me(e);
@@ -31,6 +31,7 @@ export const PATCH = api(async (e) => {
 			created: result.id !== cur.id ? [{ t: 'items' as const, id: result.id }] : [],
 		};
 	});
+	if (p.scope === 'following' && r.result.id !== cur.id) splitSeries(u.id, cur.id, r.result.id); // #296
 	recalcOwner(u.id);
 	return json({ item: items.withCounts([r.result])[0], undo: r.undo });
 });
