@@ -1190,6 +1190,57 @@ test('v2 P8 a11y: axe finds no serious or critical issues on the main screens (l
 	expect(bad).toEqual([]);
 });
 
+test('modals keep focus and Escape: share over note, palette, shortcuts, account menu (#279)', async () => {
+	const n = await api('POST', '/api/keep/notes', { type: 'text', title: 'Esc note', body: 'x' });
+	await page.goto(`/keep?note=${n.j.note.id}`);
+	const inside = (sel: string) => page.evaluate((s) => !!document.activeElement?.closest(s), sel);
+	await expect(page.locator('.note[role=dialog]')).toBeVisible();
+	await page.getByRole('button', { name: 'Share…' }).click();
+	await expect(page.locator('.dlg[role=dialog]')).toBeVisible();
+	for (let i = 0; i < 12; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside('.dlg[role=dialog]')).toBe(true);
+	}
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.dlg[role=dialog]')).toHaveCount(0);
+	await expect(page.locator('.note[role=dialog]')).toBeVisible();
+	for (let i = 0; i < 40; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside('.note[role=dialog]')).toBe(true);
+	}
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.note[role=dialog]')).toHaveCount(0);
+	// palette: Tab stays in, Escape works from the archived checkbox
+	await page.goto('/week');
+	await page.waitForLoadState('networkidle'); // hydrated: the Ctrl+K listener is on
+	await page.keyboard.press('Control+k');
+	const pal = page.getByRole('dialog', { name: 'Search and go' });
+	await expect(pal).toBeVisible();
+	for (let i = 0; i < 8; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside('[aria-label="Search and go"]')).toBe(true);
+	}
+	await pal.getByLabel('Include archived').focus();
+	await page.keyboard.press('Escape');
+	await expect(pal).toHaveCount(0);
+	// shortcuts: focus moves in, Tab stays
+	await page.keyboard.press('?');
+	const keys = page.getByRole('dialog', { name: 'Shortcuts' });
+	await expect(keys).toBeVisible();
+	expect(await inside('[aria-labelledby="keys-h"]')).toBe(true);
+	for (let i = 0; i < 4; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside('[aria-labelledby="keys-h"]')).toBe(true);
+	}
+	await page.keyboard.press('Escape');
+	await expect(keys).toHaveCount(0);
+	// account menu closes on Escape
+	await page.getByRole('button', { name: 'Account menu' }).click();
+	await expect(page.locator('header .menu')).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(page.locator('header .menu')).toHaveCount(0);
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)

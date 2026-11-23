@@ -1,6 +1,7 @@
 <!-- Ctrl+K / Cmd+K (UX-AUDIT #9, UX-4): search pages, notes, planner items + jump to actions. Mine only. -->
 <script lang="ts">
 	import { backCloses, leave } from '$lib/client/layers';
+	import { modal } from '$lib/client/modal';
 	import { goto } from '$app/navigation';
 	import { get, post } from '$lib/client/api';
 	import { openItem } from '$lib/client/peek.svelte';
@@ -153,6 +154,7 @@
 	<div class="scrim" role="presentation" onclick={() => (open = false)}></div>
 	<div
 		use:backCloses={() => (open = false)}
+		use:modal={() => (open = false)}
 		class="pal card"
 		role="dialog"
 		aria-modal="true"

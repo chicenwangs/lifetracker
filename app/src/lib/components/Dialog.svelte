@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { answer, dialog } from '$lib/client/dialog.svelte';
 	import { backCloses } from '$lib/client/layers';
+	import { modal } from '$lib/client/modal';
 
 	let value = $state('');
 	let scope = $state<'this' | 'following' | 'all'>('this');
@@ -24,6 +25,7 @@
 		aria-labelledby="dlg-t"
 		tabindex="-1"
 		use:backCloses={cancel}
+		use:modal={cancel}
 		onkeydown={(e) => {
 			if (e.key === 'Escape') {
 				e.preventDefault();
