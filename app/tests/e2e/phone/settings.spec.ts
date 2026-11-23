@@ -53,3 +53,10 @@ test('row opens the section; top bar has its name; Back returns to the list', as
 	await expect(fresh).toHaveURL(/\/settings$/);
 	await fresh.close();
 });
+
+test('Preferences: no hidden-header-button or mouse wording on phone (#301)', async () => {
+	await page.goto('/settings/preferences');
+	await expect(page.getByRole('heading', { name: 'Planner defaults' })).toBeVisible();
+	const text = await page.getByRole('main').innerText();
+	expect(text).not.toMatch(/sun \/ moon|click/i);
+});

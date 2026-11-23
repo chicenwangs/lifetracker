@@ -137,8 +137,9 @@
 			>
 		</div>
 		<span class="hint"
-			>{schedulePreview(themeState.light, themeState.dark)}. Used when Theme is Auto. The sun / moon button in
-			the header picks a fixed Light or Dark.</span
+			>{schedulePreview(themeState.light, themeState.dark)}. Used when Theme is Auto.<span class="desk">
+				The sun / moon button in the header picks a fixed Light or Dark.</span
+			></span
 		>
 	</fieldset>
 	<label class="field">
@@ -166,8 +167,9 @@
 			<option value="calendar">Calendar (item)</option>
 		</select>
 		<span class="hint"
-			>When you don't type /calendar, /both or /planner. Double-clicking a month day still adds to the
-			calendar.</span
+			>When you don't type /calendar, /both or /planner.<span class="desk">
+				Double-clicking a month day still adds to the calendar.</span
+			></span
 		>
 	</label>
 	<label class="field">
@@ -244,6 +246,12 @@
 </section>
 
 <style>
+	/* mouse and header-button wording: not on a phone (#301) */
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.desk {
+			display: none;
+		}
+	}
 	.pins {
 		list-style: none;
 		margin: 0;
