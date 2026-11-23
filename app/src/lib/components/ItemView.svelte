@@ -26,6 +26,7 @@
 	import type { BlockDTO, ItemDTO, ItemType } from '$lib/types';
 	import { get, patch, post } from '$lib/client/api';
 	import { enqueueAction, isOffline } from '$lib/client/offline';
+	import { backCloses } from '$lib/client/layers';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { removeItem } from '$lib/client/remove';
 	import { duplicate } from '$lib/client/altdrag';
@@ -600,7 +601,12 @@
 				</div>
 				{#if customRepeat && it.date}
 					{@const nth = nthWeekdayOfDate(it.date)}
-					<div class="card box cust-rep" role="region" aria-label="Custom repeat">
+					<div
+						class="card box cust-rep"
+						role="region"
+						aria-label="Custom repeat"
+						use:backCloses={() => (customRepeat = false)}
+					>
 						<div class="crow">
 							<span>Repeat every</span>
 							<input type="number" min="1" max="99" aria-label="Repeat interval" bind:value={cInterval} />
