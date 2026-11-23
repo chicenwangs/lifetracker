@@ -20,7 +20,7 @@
 	import { leavingPage } from '$lib/client/layers';
 	import Tour from '$lib/components/Tour.svelte';
 	import { patch } from '$lib/client/api';
-	import { flushQueue, queued, wipe } from '$lib/client/offline';
+	import { flushQueue, markSignOut, queued, settleSignOut } from '$lib/client/offline';
 	import { showToast } from '$lib/client/toast.svelte';
 	import { dropPush, resyncPush } from '$lib/client/push';
 	import { signOutNative } from '$lib/client/native';
@@ -66,6 +66,7 @@
 	onMount(() => {
 		navigator.serviceWorker?.register('/sw.js', { scope: '/' }).catch(() => {});
 		if (data.user && navigator.serviceWorker) void resyncPush().catch(() => {});
+		settleSignOut(!!data.user);
 		online = navigator.onLine;
 		waiting = queued();
 		if (online) void back();
@@ -75,7 +76,7 @@
 		const out = (e: SubmitEvent) => {
 			const f = e.target as HTMLFormElement;
 			if (!f.action?.endsWith('/logout') || f.dataset.out) return;
-			wipe();
+			markSignOut();
 			// a signed-out phone must not keep showing private reminder titles: drop its push first (max 2 s)
 			e.preventDefault();
 			f.dataset.out = '1';
