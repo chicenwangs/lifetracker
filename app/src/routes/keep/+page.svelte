@@ -629,6 +629,9 @@
 	}
 	.note.tinted {
 		color: #00003d;
+		--ink: #00003d;
+		--quiet: #43436b;
+		--card: rgb(255 255 255 / 0.6);
 	}
 	.note.sel {
 		outline: 3px solid var(--accent);
@@ -640,6 +643,7 @@
 		background: none;
 		border: 0;
 		padding: 0;
+		min-height: 24px; /* #299: a title-only card is one 18 px line */
 		color: inherit;
 		font: inherit;
 		cursor: pointer;
