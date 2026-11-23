@@ -2,6 +2,7 @@
      A new note is only created once it has content; an empty one is simply dropped on close. -->
 <script lang="ts">
 	import { askConfirm } from '$lib/client/dialog.svelte';
+	import { modal } from '$lib/client/modal';
 	import Reminders from './Reminders.svelte';
 	import ShareDialog from './ShareDialog.svelte';
 	import ActionSheet from './ActionSheet.svelte';
@@ -55,6 +56,7 @@
 	let noteLabels = $state<string[]>(start?.labels ?? []);
 	let noteBinders = $state<string[]>(start?.binders ?? []);
 	let images = $state(start?.images ?? []);
+	let brokenImgs = $state<string[]>([]); // previews that failed to load: filename card (#312)
 	let saveState = $state<'idle' | 'saving' | 'saved' | 'failed' | 'offline'>('idle');
 	const localKey = `new_${Math.random().toString(36).slice(2)}`; // a note made offline has no id yet
 	const newNoteId = `kn_${crypto.randomUUID().replaceAll('-', '').slice(0, 26)}`; // same id on every create attempt: no duplicate (#308 #309)
@@ -431,6 +433,7 @@
 	class="note card"
 	role="dialog"
 	aria-modal="true"
+	use:modal={close}
 	aria-label={title || 'Note'}
 	style:--note-bg={color ?? 'var(--card)'}
 	class:tinted={!!color}
@@ -596,8 +599,18 @@
 		<div class="imgs">
 			{#each images as im (im.id)}
 				<figure>
-					<a href={im.url} target="_blank" rel="noopener"><img src={im.url} alt={im.name} loading="lazy" /></a
-					>
+					{#if brokenImgs.includes(im.id)}
+						<span class="gone" title="Image unavailable">{im.name} · unavailable</span>
+					{:else}
+						<a href={im.url} target="_blank" rel="noopener"
+							><img
+								src={im.url}
+								alt={im.name}
+								loading="lazy"
+								onerror={() => (brokenImgs = [...brokenImgs, im.id])}
+							/></a
+						>
+					{/if}
 					{#if !shared}<button
 							class="mini"
 							type="button"
@@ -773,10 +786,7 @@
 		/>
 	</BottomSheet>
 {/if}
-<svelte:window
-	onkeydown={(e) => e.key === 'Escape' && close()}
-	onbeforeunload={(e) => (dirty || saving) && e.preventDefault()}
-/>
+<svelte:window onbeforeunload={(e) => (dirty || saving) && e.preventDefault()} />
 
 <style>
 	.plain {
@@ -1016,6 +1026,15 @@
 	figure {
 		margin: 0;
 		position: relative;
+	}
+	figure .gone {
+		display: block;
+		max-width: 180px;
+		padding: 12px 36px 12px 12px;
+		border: 1.5px dashed var(--rule);
+		border-radius: 8px;
+		font-size: 13px;
+		overflow-wrap: anywhere;
 	}
 	figure img {
 		max-width: 180px;

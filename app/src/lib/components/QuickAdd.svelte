@@ -20,6 +20,7 @@
 	import { parseQuickAdd, type QATarget } from '$lib/quickadd';
 	import { addDays, nowLocalMinutes, prettyDate, prettyTime, todayLocal } from '$lib/time';
 	import { del, get, post } from '$lib/client/api';
+	import { enqueueAction, isOffline } from '$lib/client/offline';
 	import { calendarBus, calendarChanged } from '$lib/client/bus.svelte';
 	import type { BlockDTO, ItemType } from '$lib/types';
 
@@ -178,7 +179,16 @@
 			calendarChanged();
 			scrollLog();
 		} catch (e) {
-			problems = [e instanceof Error ? e.message : 'Could not add that. Try again.'];
+			if (isOffline(e)) {
+				// kept on this device, sent when back online (#277)
+				enqueueAction({ key: `qa_${Date.now()}_${Math.random().toString(36).slice(2)}`, method: 'POST', path: '/api/quickadd', payload: { text: sent } }); // prettier-ignore
+				history.push(sent);
+				log.push({ kind: 'me', text: sent });
+				log.push({ kind: 'info', text: `Added "${p.title}" · Waiting to sync` });
+				if (text.trim() === sent) text = '';
+				problems = [];
+				scrollLog();
+			} else problems = [e instanceof Error ? e.message : 'Could not add that. Try again.'];
 		} finally {
 			busy = false;
 		}

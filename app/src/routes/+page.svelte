@@ -9,7 +9,7 @@
 	import MonthCalendar from '$lib/components/MonthCalendar.svelte';
 	import DayPlanner from '$lib/components/DayPlanner.svelte';
 	import DueTodayChips from '$lib/components/DueTodayChips.svelte';
-	import { patch, post } from '$lib/client/api';
+	import { patch } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { calendarBus } from '$lib/client/bus.svelte';
 	import { nextStatus, type ItemDTO, type Status } from '$lib/types';
@@ -17,6 +17,7 @@
 	import { without } from '$lib/client/obj';
 	import { openItem } from '$lib/client/peek.svelte';
 	import { removeItem } from '$lib/client/remove';
+	import { cycleRow } from '$lib/client/rowOps';
 
 	let { data } = $props();
 	let planner: DayPlanner | undefined = $state();
@@ -62,25 +63,19 @@
 	async function cycleItem(id: string) {
 		const cur = monthItems.find((i) => i.id === id) ?? data.due.find((i) => i.id === id);
 		if (cur) statusOver[id] = nextStatus(cur.status);
-		try {
-			await post(`/api/items/${id}/cycle`);
-			await refresh();
-		} catch (e) {
+		if (!cur) return;
+		// shared tick path: offline it queues the change and says "Waiting to sync" (#277)
+		if ((await cycleRow('items', id, cur.status, cur.title, refresh)) === 'failed')
 			statusOver = without(statusOver, id);
-			showError(e);
-		}
 	}
 
 	async function cycleBlock(id: string) {
 		const cur = plannerBlocks.find((b) => b.id === id); // with overrides: fast clicks keep advancing
 		if (cur) statusOver[id] = nextStatus(cur.status);
-		try {
-			await post(`/api/blocks/${id}/cycle`);
-			await refresh();
-		} catch (e) {
+		if (!cur) return;
+		// shared tick path: offline it queues the change and says "Waiting to sync" (#277)
+		if ((await cycleRow('blocks', id, cur.status, cur.label, refresh)) === 'failed')
 			statusOver = without(statusOver, id);
-			showError(e);
-		}
 	}
 
 	async function moveItem(id: string, date: string, endDate: string | null) {

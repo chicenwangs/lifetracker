@@ -609,20 +609,22 @@ test('theme: new account = Auto (D-07); sun/moon = fixed choice; Auto schedule r
 	await expect(btn).not.toHaveClass(/auto/);
 	// Auto with a light window that covers now -> light; one that excludes now -> dark (no reload)
 	await page.goto('/settings/preferences');
+	// one save at a time: fill() on a time input already fires change, and a late "Saved" toast would cover the
+	// D-08 error below (one toast slot; an extra dispatchEvent('change') used to save twice, seen in CI)
+	const saved = () =>
+		page.waitForResponse((r) => r.url().endsWith('/api/me/prefs') && r.request().method() === 'PATCH');
+	let done = saved();
 	await page.getByRole('radio', { name: 'Auto' }).check();
+	await done;
+	done = saved();
 	await page.getByLabel('Light from').fill('00:00');
-	await page.getByLabel('Light from').dispatchEvent('change');
+	await done;
+	done = saved();
 	await page.getByLabel('Dark from').fill('23:59');
-	// wait for the dark time to reach the server, else the D-08 check below races it (seen in CI)
-	const darkSaved = page.waitForResponse(
-		(r) => r.url().endsWith('/api/me/prefs') && r.request().method() === 'PATCH',
-	);
-	await page.getByLabel('Dark from').dispatchEvent('change');
-	await darkSaved;
+	await done;
 	await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 	// D-08: same start time refused
 	await page.getByLabel('Light from').fill('23:59');
-	await page.getByLabel('Light from').dispatchEvent('change');
 	await expect(page.locator('.toast')).toContainText('different start times');
 	await page.getByRole('radio', { name: 'Dark', exact: true }).check();
 	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -798,6 +800,7 @@ test('repeat "On date" keeps the series; an end before the start is refused (#29
 		await expect
 			.poll(async () => ((await api('GET', `/api/items/${id}`)).j.item as { rrule: string }).rrule)
 			.toBe('FREQ=WEEKLY;BYDAY=MO;UNTIL=2028-02-02'); // start + 30 days, not the start itself
+		await expect(page.locator('.toast')).toContainText('Saved'); // one toast slot: this save's toast first
 		await page.getByLabel('End date').fill('2027-12-01');
 		await page.getByLabel('End date').press('Tab');
 		await expect(page.locator('.toast')).toContainText('on or after the start');
@@ -1206,6 +1209,57 @@ test('checklist Tab with nothing to indent moves focus on, does not trap (#281)'
 	expect(await page.evaluate(() => document.activeElement?.id)).not.toBe('ci-1');
 });
 
+test('modals keep focus and Escape: share over note, palette, shortcuts, account menu (#279)', async () => {
+	const n = await api('POST', '/api/keep/notes', { type: 'text', title: 'Esc note', body: 'x' });
+	await page.goto(`/keep?note=${n.j.note.id}`);
+	const inside = (sel: string) => page.evaluate((s) => !!document.activeElement?.closest(s), sel);
+	await expect(page.locator('.note[role=dialog]')).toBeVisible();
+	await page.getByRole('button', { name: 'Share…' }).click();
+	await expect(page.locator('.dlg[role=dialog]')).toBeVisible();
+	for (let i = 0; i < 12; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside('.dlg[role=dialog]')).toBe(true);
+	}
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.dlg[role=dialog]')).toHaveCount(0);
+	await expect(page.locator('.note[role=dialog]')).toBeVisible();
+	for (let i = 0; i < 40; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside('.note[role=dialog]')).toBe(true);
+	}
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.note[role=dialog]')).toHaveCount(0);
+	// palette: Tab stays in, Escape works from the archived checkbox
+	await page.goto('/week');
+	await page.waitForLoadState('networkidle'); // hydrated: the Ctrl+K listener is on
+	await page.keyboard.press('Control+k');
+	const pal = page.getByRole('dialog', { name: 'Search and go' });
+	await expect(pal).toBeVisible();
+	for (let i = 0; i < 8; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside('[aria-label="Search and go"]')).toBe(true);
+	}
+	await pal.getByLabel('Include archived').focus();
+	await page.keyboard.press('Escape');
+	await expect(pal).toHaveCount(0);
+	// shortcuts: focus moves in, Tab stays
+	await page.keyboard.press('?');
+	const keys = page.getByRole('dialog', { name: 'Shortcuts' });
+	await expect(keys).toBeVisible();
+	expect(await inside('[aria-labelledby="keys-h"]')).toBe(true);
+	for (let i = 0; i < 4; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside('[aria-labelledby="keys-h"]')).toBe(true);
+	}
+	await page.keyboard.press('Escape');
+	await expect(keys).toHaveCount(0);
+	// account menu closes on Escape
+	await page.getByRole('button', { name: 'Account menu' }).click();
+	await expect(page.locator('header .menu')).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(page.locator('header .menu')).toHaveCount(0);
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)
@@ -1389,6 +1443,32 @@ test('owner test pass 2026-11-16: chips, popups, Keep, Pages undo + dark, pins, 
 	await ph.getByRole('button', { name: 'Add', exact: true }).click();
 	await ph.keyboard.type('gym tmr 6pm /');
 	await expect(ph.getByRole('dialog', { name: 'Add' }).locator('.menu.up')).toBeVisible();
+	await ctx.close();
+});
+
+// #277: on Home, a tick and a quick add made offline wait in the queue instead of being dropped
+test('Home offline: tick and quick add are queued as Waiting to sync', async ({ browser }) => {
+	const ctx = await browser.newContext({ storageState: await page.context().storageState(), serviceWorkers: 'block' }); // prettier-ignore
+	const h = await ctx.newPage();
+	const T = 'Offline home tick';
+	await h.goto('/');
+	await h.evaluate(async (title) => {
+		const d = new Date();
+		const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+		await fetch('/api/items', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title, date, time: '09:00' }) }); // prettier-ignore
+	}, T);
+	await h.goto('/', { waitUntil: 'networkidle' });
+	await ctx.setOffline(true);
+	await h.locator('.lt-chip', { hasText: T }).locator('.lt-sq').click();
+	await expect(h.getByText(/Waiting to sync/).first()).toBeVisible();
+	expect(await h.evaluate(() => localStorage.getItem('lt_action_queue'))).toContain('"status":"doing"');
+	await h.locator('body').click({ position: { x: 5, y: 500 } });
+	await h.keyboard.press('n');
+	await expect(h.getByRole('dialog', { name: 'Quick add' })).toBeVisible();
+	await h.keyboard.type('offline quick 15:00 ');
+	await h.keyboard.press('Enter');
+	await expect(h.getByText(/Added .offline quick. · Waiting to sync/)).toBeVisible();
+	expect(await h.evaluate(() => localStorage.getItem('lt_action_queue'))).toContain('/api/quickadd');
 	await ctx.close();
 });
 
