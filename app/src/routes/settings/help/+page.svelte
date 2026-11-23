@@ -38,7 +38,7 @@
 	}
 	const GUIDES = [
 		{ h: 'Home and Week', p: ['Month on the left, the day planner on the right. Click a day to plan it.', 'Drag on empty planner time, type a title. Drag edges to resize. No mouse? Every block has Start / End in its menu, and due items have Schedule….', 'Alt-drag copies a block. Ctrl+Z undoes the last change.'] },
-		{ h: 'Quick add (N)', p: ['"dentist fri 3pm", "exam 12 dec /deadline", "gym 7-8am /planner".', '/calendar puts it on the calendar, /planner blocks time, /both does both. /remind 1d 2h adds reminders.'] },
+		{ h: 'Quick add (N)', p: ['"dentist fri 3pm", "exam 12 dec /deadline", "gym 7-8am /planner".', '/calendar puts it on the calendar, /planner blocks time, /both does both. /remind 1d 2h adds reminders.', 'Repeat: "gym every week", "class every mon,wed until 20 dec", "gym every day for 2 weeks". End with until <date> or for N days|weeks|months|years.'] },
 		{ h: 'Keep', p: ['Notes and checklists (nest 4 deep). Labels and binders to sort them; pin, archive, Trash for 30 days.', 'Share… on a note gives one person view or edit. Offline edits wait on this device and send when you are back.'] },
 		{ h: 'Pages', p: ['Type / for blocks: headings, lists, to-dos, tables, images, files, a database, a link to another page.', 'Ctrl+K finds pages, notes and items. Graph shows how pages link. Share… on a page gives one person view or edit (only that page).'] },
 		{ h: 'Reminders', p: ['/remind 1w 3d 2d 1d 2h 15min in quick add, or on an item or note. They show inside the app; turn on push in Notifications to get them when it is closed.'] },
@@ -51,6 +51,7 @@
 		{ h: 'Calendar', p: ['Week | Month at the top. Swipe sideways for the week or month before or after.', 'Month: tap a day to see its plans below. Week: hold a row and drag it onto another day, or use ⋯ › Move.'] },
 		{ h: 'Keep', p: ['Swipe a note sideways to archive it (Undo on the toast). Hold a note to select it, then tap more; hold and drag to reorder.', 'In a note: + adds a checklist or an image, the colour dot sets its colour, ⋮ has share, labels, archive and delete. The bell sets a reminder.'] },
 		{ h: 'Pages', p: ['Search and Recent at the top, then all your pages. + makes a new page.', 'While you type, the tools sit just above the keyboard. ⋯ there moves, copies or deletes the block you are in. Type / for blocks.'] },
+		{ h: 'Quick add', p: ['Repeat: "gym every week", "class every mon,wed until 20 dec", "gym every day for 2 weeks". End with until <date> or for N days|weeks|months|years.'] },
 		{ h: 'Reminders', p: ['/remind 1d 2h in quick add, or the bell in a note. Turn on push in Notifications to get them when the app is closed.'] },
 	]; // prettier-ignore
 </script>

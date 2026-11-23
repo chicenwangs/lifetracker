@@ -1372,6 +1372,14 @@ test('desktop hit targets are at least 24 px: repeat controls, new label, breadc
 	expect(await small('.arch')).toEqual([]);
 });
 
+test('Help: Quick add section teaches the repeat grammar (#303)', async () => {
+	await page.goto('/settings/help');
+	const sec = page.locator('section.desk', { has: page.getByRole('heading', { name: 'Quick add (N)' }) });
+	await expect(sec).toContainText('every');
+	await expect(sec).toContainText('until');
+	await expect(sec).toContainText('for N days|weeks|months|years');
+});
+
 test('tour: Quick add step spotlights the + Add opener and Help states the step count (#280)', async () => {
 	await page.goto('/settings/help');
 	await expect(page.getByText('7 short steps (8 on a phone)')).toBeVisible();
