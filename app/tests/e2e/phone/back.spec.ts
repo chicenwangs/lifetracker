@@ -89,3 +89,17 @@ test('Back closes the page menu', async () => {
 	await expect(menu).toBeHidden();
 	expect(path()).toBe(`/pages/${r.page.id}`);
 });
+
+test('Back closes the Custom repeat panel, not the item (#294)', async () => {
+	const r = (await post('/api/items', { title: 'Back custom', date: '2031-03-03' })) as {
+		item: { id: string };
+	};
+	await page.goto('/today');
+	await page.goto(`/item/${r.item.id}`);
+	await page.getByLabel('Repeat', { exact: true }).selectOption('__custom__');
+	const panel = page.getByRole('region', { name: 'Custom repeat' });
+	await expect(panel).toBeVisible();
+	await page.goBack();
+	await expect(panel).toBeHidden();
+	expect(path()).toBe(`/item/${r.item.id}`);
+});

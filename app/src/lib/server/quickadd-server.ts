@@ -20,8 +20,14 @@ export function quickContext(me: App.SafeUser, now: number = Date.now()): QACont
 	};
 }
 
-export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(), slot?: QASlot) {
-	const r = parseQuickAdd(text, { ...quickContext(me, now), slot });
+export function quickAdd(
+	me: App.SafeUser,
+	text: string,
+	now: number = Date.now(),
+	slot?: QASlot,
+	day?: string,
+) {
+	const r = parseQuickAdd(text, { ...quickContext(me, now), slot, day });
 	if (!r.ok) bad((r.problems[0] ?? 'Could not add that.').replace(/`/g, ''));
 	const made = undoable(me.id, `Add "${r.title}"`, [], () => {
 		let item: ReturnType<typeof items.withCounts>[number] | null = null;

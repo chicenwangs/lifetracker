@@ -36,9 +36,14 @@
 		if (!parsed.ok) return void (problem = (parsed.problems[0] ?? '').replace(/`/g, ''));
 		busy = true;
 		try {
-			await post('/api/quickadd', { text: addSheet.text });
+			const r = await post<{ warnings?: string[] }>('/api/quickadd', {
+				text: addSheet.text,
+				day: addSheet.day ?? undefined,
+			});
 			buzz('success');
-			showToast(`Added "${parsed.title}"`);
+			showToast(`Added "${parsed.title}"` + (r.warnings?.length ? ` · ${r.warnings.join(' · ')}` : ''), {
+				ms: r.warnings?.length ? 8000 : undefined,
+			});
 			addSheet.text = ''; // batch add: sheet stays open
 			problem = '';
 			calendarChanged();
@@ -48,7 +53,7 @@
 					key: `qa_${Date.now()}_${Math.random().toString(36).slice(2)}`,
 					method: 'POST',
 					path: '/api/quickadd',
-					payload: { text: addSheet.text },
+					payload: { text: addSheet.text, day: addSheet.day ?? undefined },
 				});
 				buzz('success');
 				showToast(`Added "${parsed.title}" · Waiting to sync`);

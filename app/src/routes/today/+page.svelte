@@ -327,7 +327,9 @@
 			{:else}
 				<div class="empty">
 					<p>Nothing planned.</p>
-					<button class="btn primary" type="button" onclick={() => openAdd('')}>+ Add something</button>
+					<button class="btn primary" type="button" onclick={() => openAdd('', 'plan', { day: data.day })}
+						>+ Add something</button
+					>
 				</div>
 			{/if}
 		</section>

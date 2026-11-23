@@ -424,6 +424,10 @@ describe('quickAdd server', () => {
 		expect(clip('B'.repeat(198) + e, 200)).toBe('B'.repeat(198) + e);
 		expect(quickAdd(me, 'B'.repeat(199) + e + 'Z tomorrow 3pm', NOW).block?.label).toBe('B'.repeat(199));
 	});
+	it('phone: day on screen is the default day (#290)', () => {
+		expect(quickAdd(me, 'probe /calendar', NOW, undefined, '2019-01-01').item?.date).toBe('2019-01-01');
+		expect(quickAdd(me, 'probe /calendar tmr', NOW, undefined, '2019-01-01').item?.date).toBe('2026-11-07');
+	});
 	it('timeline drag with no /type = no type (grey); typed type kept', () => {
 		const slot = { date: '2026-11-09', start: 600, end: 660 };
 		expect(quickAdd(me, 'focus', NOW, slot).block).toMatchObject({ type: null, itemType: null });
