@@ -1,19 +1,8 @@
 <!-- Pages index. Desktop: pick a page on the left. Phone: the tree above is "All pages". -->
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { invalidateAll } from '$lib/client/refresh';
-	import { post } from '$lib/client/api';
-	import { showError } from '$lib/client/toast.svelte';
+	import { createPage } from '$lib/client/newPage';
 	let { data } = $props();
-	async function create() {
-		try {
-			const r = await post<{ page: { id: string } }>('/api/pages', { parentId: null });
-			await invalidateAll();
-			await goto(`/pages/${r.page.id}`);
-		} catch (e) {
-			showError(e);
-		}
-	}
+	const create = () => createPage(null);
 </script>
 
 <svelte:head><title>Pages · Life Tracker</title></svelte:head>
