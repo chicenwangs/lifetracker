@@ -161,7 +161,7 @@ Newest first. Latest release = v3.1.1 (2026-11-20; v3.1.0 same day, v3.0.0 2026-
 - Autosave 600 ms + on close; failed save keeps the text with Retry; `revision` refuses stale writes (409). Undo for Keep = toast Undo (archive, trash, pin); Ctrl+Z journal still covers planner only.
 - Order = REAL `position` (midpoint insert), not DESIGN's text `position_key`: same behaviour, less code. Rebalance not needed at this scale.
 - Not built (EXT/later): drawings, link previews (D-23 off), file (non-image) cards, grid/list toggle, background images (D-11 later), swipe-to-archive (menu action instead).
-- **Phone** (< 700 px): bottom bar Today · Week · + Add · Keep · More. `/` opens `/today` on a phone (`/?desktop=1` = desktop Home). Today: day step + swipe, Now card (current block/timed item + time left, else "Free until"), timeline wheel (snap, centred on now, past dimmed, Back to now). + Add sheet: Plan it (same grammar, batch) / Quick note. Item opens as a bottom sheet. Header hides nav + Add on a phone.
+- **Phone** (< 700 px): bottom bar Today · Calendar · + Add · Keep · Pages (avatar = account sheet; was More). `/` opens `/today` on a phone (`/?desktop=1` = desktop Home). Today: day step + swipe, Now card (current block/timed item + time left, else "Free until"), timeline wheel (snap, centred on now, past dimmed; no Back to now chip). + Add sheet: Plan it (same grammar, batch) / Quick note. Item opens as a bottom sheet. Header hides nav + Add on a phone.
 
 ## v2 P1 — foundations (2026-11-13)
 
