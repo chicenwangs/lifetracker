@@ -73,9 +73,6 @@
 				class="row"
 				class:on={ri === current}
 				aria-current={ri === current ? 'true' : undefined}
-				aria-label="Week {ri + 1}: {hrs(weekSum(r))}{weekOpen(r)
-					? `, ${weekOpen(r)} all-day not blocked`
-					: ''}{ri === current ? ' (shown)' : ''}"
 				onclick={() => r[0] && ongo(r[0].date)}
 			>
 				<span class="wn">W{ri + 1}</span>
@@ -90,6 +87,13 @@
 						{#if d.unblocked}<i class="dot" aria-hidden="true"></i>{/if}
 					</span>
 				{/each}
+				<!-- not aria-label: the name must contain the visible W1 + day numbers (label-in-name) -->
+				<span class="sr-only"
+					>Week {ri + 1}: {hrs(weekSum(r))}{weekOpen(r) ? `, ${weekOpen(r)} all-day not blocked` : ''}{ri ===
+					current
+						? ' (shown)'
+						: ''}</span
+				>
 			</button>
 		{/each}
 	</div>

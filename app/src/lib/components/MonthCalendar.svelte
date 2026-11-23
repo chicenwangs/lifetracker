@@ -208,6 +208,8 @@
 			dayCellDidMount: (a) => {
 				const d = a.date;
 				const s = makeDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+				// #284: the cell's name was the day number only, not its visible chips; the day link inside names it
+				a.el.removeAttribute('aria-labelledby');
 				if (a.el.dataset.ltDbl) return; // one listener per cell, even if FullCalendar re-mounts it
 				a.el.dataset.ltDbl = '1';
 				a.el.addEventListener('dblclick', (ev) => {

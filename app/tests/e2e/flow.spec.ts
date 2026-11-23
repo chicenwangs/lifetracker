@@ -1193,6 +1193,26 @@ test('v2 P8 a11y: axe finds no serious or critical issues on the main screens (l
 	expect(bad).toEqual([]);
 });
 
+test('accessible names contain visible text, external links are underlined and 24 px (#284)', async () => {
+	await api('POST', '/api/keep/notes', {
+		type: 'text',
+		title: 'Penang food',
+		body: 'Char kuey teow\nCendol',
+	});
+	const pg = (await api('POST', '/api/pages', { title: 'Links' })).j.page.id;
+	const link = { type: 'text', text: 'example', marks: [{ type: 'link', attrs: { href: 'https://example.com', target: '_blank' } }] }; // prettier-ignore
+	await api('PATCH', `/api/pages/${pg}`, { doc: { type: 'doc', content: [{ type: 'paragraph', content: [link] }] } }); // prettier-ignore
+	for (const url of ['/', '/week', '/keep', `/pages/${pg}`]) {
+		await page.goto(url);
+		await page.waitForLoadState('networkidle');
+		const r = await new AxeBuilder({ page })
+			.withRules(['label-content-name-mismatch', 'target-size'])
+			.analyze();
+		expect(r.violations.map((v) => `${url} ${v.id} ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]); // prettier-ignore
+	}
+	await expect(page.locator('.pm a[target=_blank]')).toHaveCSS('text-decoration-line', 'underline');
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)

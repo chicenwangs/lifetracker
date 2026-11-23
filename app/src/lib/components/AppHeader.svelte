@@ -135,7 +135,7 @@
 		<button
 			class="search"
 			type="button"
-			aria-label="Search"
+			aria-label={phone ? 'Search' : `Search ${mod}+K`}
 			title={phone ? undefined : 'Search  Ctrl+K'}
 			onclick={() => cmdk?.show()}
 			><svg

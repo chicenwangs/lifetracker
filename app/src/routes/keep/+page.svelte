@@ -401,8 +401,9 @@
 					class="open"
 					onclick={() => (selecting ? pick(n) : data.scope === 'trash' ? null : show(n))}
 					disabled={data.scope === 'trash'}
-					aria-label="Open note {n.title || n.body.slice(0, 40)}"
 				>
+					<!-- not aria-label: the name must contain the visible title and text (label-in-name) -->
+					<span class="sr-only">Open note </span>
 					{#if n.images[0]}<img src={n.images[0].url} alt="" loading="lazy" />{/if}
 					{#if n.title}<h3>{n.title}</h3>{/if}
 					{#if n.type === 'checklist'}
