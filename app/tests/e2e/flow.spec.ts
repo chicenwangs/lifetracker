@@ -1376,6 +1376,32 @@ test('owner test pass 2026-11-16: chips, popups, Keep, Pages undo + dark, pins, 
 	await ctx.close();
 });
 
+// #277: on Home, a tick and a quick add made offline wait in the queue instead of being dropped
+test('Home offline: tick and quick add are queued as Waiting to sync', async ({ browser }) => {
+	const ctx = await browser.newContext({ storageState: await page.context().storageState(), serviceWorkers: 'block' }); // prettier-ignore
+	const h = await ctx.newPage();
+	const T = 'Offline home tick';
+	await h.goto('/');
+	await h.evaluate(async (title) => {
+		const d = new Date();
+		const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+		await fetch('/api/items', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title, date, time: '09:00' }) }); // prettier-ignore
+	}, T);
+	await h.goto('/', { waitUntil: 'networkidle' });
+	await ctx.setOffline(true);
+	await h.locator('.lt-chip', { hasText: T }).locator('.lt-sq').click();
+	await expect(h.getByText(/Waiting to sync/).first()).toBeVisible();
+	expect(await h.evaluate(() => localStorage.getItem('lt_action_queue'))).toContain('"status":"doing"');
+	await h.locator('body').click({ position: { x: 5, y: 500 } });
+	await h.keyboard.press('n');
+	await expect(h.getByRole('dialog', { name: 'Quick add' })).toBeVisible();
+	await h.keyboard.type('offline quick 15:00 ');
+	await h.keyboard.press('Enter');
+	await expect(h.getByText(/Added .offline quick. · Waiting to sync/)).toBeVisible();
+	expect(await h.evaluate(() => localStorage.getItem('lt_action_queue'))).toContain('/api/quickadd');
+	await ctx.close();
+});
+
 test('reset-password script works', async ({ browser }) => {
 	execFileSync('node', ['scripts/reset-password.mjs', 'jeremy'], {
 		input: 'reset pass phrase 1\n',
