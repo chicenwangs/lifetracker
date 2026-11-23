@@ -144,3 +144,23 @@ export const wipe = () => {
 	writeActions([]);
 	if (typeof caches !== 'undefined') void caches.delete('lt-data-v1').catch(() => {});
 };
+
+// #313: the wipe waits for a *successful* sign-out. The submit only marks it; the next page that loads signed out
+// (after /logout redirected) wipes. A failed sign-out (offline) leaves the user signed in: the mark goes, the queue stays.
+const OUT_KEY = 'lt_signing_out';
+export const markSignOut = () => {
+	try {
+		localStorage.setItem(OUT_KEY, '1');
+	} catch {
+		/* private mode */
+	}
+};
+export const settleSignOut = (signedIn: boolean) => {
+	try {
+		if (localStorage.getItem(OUT_KEY) === null) return;
+		localStorage.removeItem(OUT_KEY);
+	} catch {
+		return;
+	}
+	if (!signedIn) wipe();
+};

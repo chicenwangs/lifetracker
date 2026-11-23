@@ -1,6 +1,13 @@
 // #181: a queued offline op is kept when the server fails or the session expired; only a clear 4xx drops it.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { enqueue, enqueueAction, flushQueue, queued } from '../../src/lib/client/offline';
+import {
+	enqueue,
+	enqueueAction,
+	flushQueue,
+	markSignOut,
+	queued,
+	settleSignOut,
+} from '../../src/lib/client/offline';
 
 const store = new Map<string, string>();
 beforeEach(() => {
@@ -51,6 +58,25 @@ describe('stale note edit', () => {
 		const r = await flushQueue();
 		expect(r).toMatchObject({ sent: 0, copies: 1 });
 		expect(calls[1]).toContain('(offline copy)');
+		expect(queued()).toBe(0);
+	});
+});
+
+// #313: a sign-out that never reached the server must not wipe the queue
+describe('sign-out wipe', () => {
+	const add = () => enqueueAction({ key: 'a', method: 'POST', path: '/api/items', payload: { title: 'x' } });
+	it('keeps the queue when still signed in after the sign-out attempt', () => {
+		add();
+		markSignOut();
+		settleSignOut(true);
+		expect(queued()).toBe(1);
+		settleSignOut(false); // mark is gone: a later signed-out load (session expiry) does not wipe either
+		expect(queued()).toBe(1);
+	});
+	it('wipes once the next page loads signed out', () => {
+		add();
+		markSignOut();
+		settleSignOut(false);
 		expect(queued()).toBe(0);
 	});
 });
