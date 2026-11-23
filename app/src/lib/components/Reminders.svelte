@@ -25,7 +25,7 @@
 	const load = async () => (list = (await get<{ reminders: ReminderDTO[] }>(`/api/reminders?source=${source}&id=${sourceId}`)).reminders); // prettier-ignore
 	onMount(() => void load().catch(showError));
 	const fmt = (z: string | null) =>
-		z ? new Intl.DateTimeFormat(undefined, { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(z)) : '—'; // prettier-ignore
+		z && !Number.isNaN(Date.parse(z)) ? new Intl.DateTimeFormat(undefined, { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(z)) : '—'; // prettier-ignore
 	async function add(body: Record<string, string>) {
 		err = '';
 		try {

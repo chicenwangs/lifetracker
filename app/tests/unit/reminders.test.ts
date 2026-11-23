@@ -49,6 +49,12 @@ describe('reminders', () => {
 		expect(() => add(i.id, '1d')).toThrow(/already a reminder/);
 	});
 
+	it('#287: an impossible absolute time is rejected', () => {
+		for (const at of ['2026-02-30T99:99:99Z', '2030-02-30T10:00:00Z', '2030-13-01T10:00:00Z'])
+			expect(rem.addSchema.safeParse({ at }).success).toBe(false);
+		expect(rem.addSchema.safeParse({ at: '2030-02-20T10:00:00Z' }).success).toBe(true);
+	});
+
 	it('D-13: all-day item counts from 09:00 on its date', () => {
 		expect(add(item('2026-11-20', null).id, '1d').dueAt).toBe('2026-11-19T01:00:00Z'); // 09:00 KL day before
 	});
