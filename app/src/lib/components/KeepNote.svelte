@@ -57,6 +57,7 @@
 	let images = $state(start?.images ?? []);
 	let saveState = $state<'idle' | 'saving' | 'saved' | 'failed' | 'offline'>('idle');
 	const localKey = `new_${Math.random().toString(36).slice(2)}`; // a note made offline has no id yet
+	const newNoteId = `kn_${crypto.randomUUID().replaceAll('-', '').slice(0, 26)}`; // same id on every create attempt: no duplicate (#308 #309)
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let dirty = false;
 	let saving: Promise<void> | null = null;
@@ -96,7 +97,7 @@
 			try {
 				const r = id
 					? await patch<{ note: NoteDTO }>(`/api/keep/notes/${id}`, { ...payload(), revision })
-					: await post<{ note: NoteDTO }>('/api/keep/notes', payload());
+					: await post<{ note: NoteDTO }>('/api/keep/notes', { ...payload(), id: newNoteId });
 				id = r.note.id;
 				revision = r.note.revision;
 				// server ids for new checklist rows, kept in place so typing isn't disturbed; children follow (#171)
@@ -111,7 +112,7 @@
 			} catch (e) {
 				if (isOffline(e)) {
 					// D-06: kept on this device, sent when back online (clash = both copies kept)
-					enqueue({ key: id ?? localKey, noteId: id, revision, payload: payload() });
+					enqueue({ key: id ?? localKey, noteId: id, revision, payload: id ? payload() : { ...payload(), id: newNoteId } }); // prettier-ignore
 					saveState = 'offline';
 					return;
 				}
@@ -142,7 +143,7 @@
 			if (dirty || saveState === 'failed')
 				void flush().then(() => {
 					if (saveState !== 'failed') return;
-					enqueue({ key: id ?? localKey, noteId: id, revision, payload: payload() });
+					enqueue({ key: id ?? localKey, noteId: id, revision, payload: id ? payload() : { ...payload(), id: newNoteId } }); // prettier-ignore
 					showToast('Note not saved yet · kept on this device, tries again later');
 				});
 		};

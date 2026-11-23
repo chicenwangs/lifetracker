@@ -99,6 +99,11 @@ const zItem = z.object({ id: z.string().max(40).optional(), text: z.string().max
 const zIds = z.array(z.string().max(40)).max(200);
 export const noteSchema = z
 	.object({
+		/** create only: client-chosen id, so a repeated create (lost reply, Retry, queue replay) returns the same note (#308 #309) */
+		id: z
+			.string()
+			.regex(/^kn_[0-9a-z]{8,40}$/)
+			.optional(),
 		type: z.enum(['text', 'checklist']),
 		title: z.string().max(300),
 		body: z.string().max(20_000),
@@ -196,7 +201,12 @@ export function create(ownerId: string, p: NoteInput): NoteDTO {
 		!p.title?.trim() && !p.body?.trim() && !p.items?.some((i) => i.text.trim()) && !p.images?.length;
 	if (empty) bad('Empty notes are not saved.', 'empty');
 	return txImmediate(() => {
-		const id = newId('kn');
+		if (p.id) {
+			const dup = db().prepare(`SELECT owner_id FROM keep_notes WHERE id = ?`).get(p.id) as
+				{ owner_id: string } | undefined;
+			if (dup?.owner_id === ownerId) return update(ownerId, p.id, { ...p, id: undefined }); // already created: same note, latest text (#308 #309)
+		}
+		const id = p.id && !db().prepare(`SELECT 1 FROM keep_notes WHERE id = ?`).get(p.id) ? p.id : newId('kn');
 		const now = nowUtcIso();
 		db()
 			.prepare(`INSERT INTO keep_notes (id, owner_id, note_type, title, body, color, pinned, position, archived_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
