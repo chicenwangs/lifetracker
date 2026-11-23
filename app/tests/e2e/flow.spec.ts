@@ -1337,6 +1337,38 @@ test('database view: filter + sort add without errors, valid tablist and names, 
 	expect(errors).toEqual([]);
 });
 
+test('desktop hit targets are at least 24 px: repeat controls, new label, breadcrumb, palette checkbox (#283)', async () => {
+	const small = (sel: string) =>
+		page.evaluate((s) => {
+			const bad: string[] = [];
+			for (const el of document.querySelectorAll<HTMLElement>(s)) {
+				const r = el.getBoundingClientRect();
+				if (r.width && (r.height < 23.9 || r.width < 23.9)) bad.push(`${s} ${el.getAttribute('aria-label') ?? el.className} ${r.width}x${r.height}`); // prettier-ignore
+			}
+			return bad;
+		}, sel);
+	const d = await today();
+	const made = await api('POST', '/api/items', { title: 'Targets', date: d, rrule: 'FREQ=WEEKLY;COUNT=6' });
+	await page.goto(`/item/${made.j.item.id}`);
+	await page.getByLabel('Repeat', { exact: true }).selectOption('__custom__');
+	await expect(page.locator('.cust-rep')).toBeVisible();
+	expect(await small('.cust-rep select, .cust-rep input, select[aria-label="Repeat ends"], .kick')).toEqual(
+		[],
+	);
+	const n = await api('POST', '/api/keep/notes', { type: 'text', title: 'Lbl', body: 'x' });
+	await page.goto(`/keep?note=${n.j.note.id}`);
+	await expect(page.locator('.newl')).toBeVisible();
+	expect(await small('.newl')).toEqual([]);
+	const parent = (await api('POST', '/api/pages', { title: 'Parent' })).j.page.id;
+	const child = (await api('POST', '/api/pages', { title: 'Child', parentId: parent })).j.page.id;
+	await page.goto(`/pages/${child}`);
+	await expect(page.locator('.crumbs a').first()).toBeVisible();
+	expect(await small('.crumbs a')).toEqual([]);
+	await page.keyboard.press('Control+k');
+	await expect(page.getByRole('dialog', { name: 'Search and go' })).toBeVisible();
+	expect(await small('.arch')).toEqual([]);
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)

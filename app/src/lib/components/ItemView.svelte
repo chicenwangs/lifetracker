@@ -943,7 +943,7 @@
 		font-size: max(var(--fs-min), 11px);
 		font-weight: 700;
 		letter-spacing: 0.06em;
-		min-height: 22px;
+		min-height: 24px;
 	}
 	.count {
 		letter-spacing: 0;
@@ -1232,6 +1232,9 @@
 		gap: 8px;
 		flex-wrap: wrap;
 		font-size: 13px;
+	}
+	.crow input {
+		min-height: 24px; /* #283 */
 	}
 	.crow input[type='number'] {
 		width: 64px;

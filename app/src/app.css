@@ -206,6 +206,9 @@ textarea {
 	font: inherit;
 	color: inherit;
 }
+select {
+	min-height: 24px; /* #283: desktop hit-area floor for bare selects */
+}
 h1,
 h2,
 h3 {
