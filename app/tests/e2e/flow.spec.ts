@@ -1369,6 +1369,33 @@ test('desktop hit targets are at least 24 px: repeat controls, new label, breadc
 	expect(await small('.arch')).toEqual([]);
 });
 
+test('tinted note stays readable in dark and a title-only card target is 24 px (#299)', async () => {
+	const n = await api('POST', '/api/keep/notes', {
+		type: 'text',
+		title: 'Tinted',
+		body: 'x',
+		color: '#FAEDB8',
+	});
+	await api('POST', '/api/keep/notes', { type: 'text', title: 'Short', body: '' });
+	const dark = () => page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'));
+	await page.goto('/keep');
+	await dark();
+	await page.waitForTimeout(700); // theme transition
+	const list = await new AxeBuilder({ page })
+		.include('main')
+		.withRules(['color-contrast', 'target-size'])
+		.analyze();
+	expect(list.violations.map((v) => `${v.id} ${v.nodes.map((x) => x.target.join(' ')).join(' | ')}`)).toEqual([]); // prettier-ignore
+	await page.goto(`/keep?note=${n.j.note.id}`);
+	await dark();
+	await page.waitForTimeout(700);
+	const dlg = await new AxeBuilder({ page })
+		.include('.note[role=dialog]')
+		.withRules(['color-contrast'])
+		.analyze();
+	expect(dlg.violations.map((v) => `${v.id} ${v.nodes.map((x) => x.target.join(' ')).join(' | ')}`)).toEqual([]); // prettier-ignore
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)

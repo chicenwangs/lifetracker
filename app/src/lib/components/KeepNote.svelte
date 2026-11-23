@@ -822,6 +822,10 @@
 	}
 	.note.tinted {
 		color: #00003d;
+		/* #299: palette colours stay light in dark theme, so hints and controls inside take light-theme tokens */
+		--ink: #00003d;
+		--quiet: #43436b;
+		--card: rgb(255 255 255 / 0.6);
 	}
 	.title,
 	.body,
