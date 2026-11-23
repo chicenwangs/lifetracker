@@ -37,11 +37,11 @@ npm run dev                    # http://localhost:5173, migrations run on boot
 ```
 First run: `/setup` → admin `jeremy` → `npm run db:seed -- --owner jeremy` (counts must match `..\data\seed\_report.json`). Locked out: `npm run reset-password -- jeremy`.
 Re-import after new Notion export: `python ..\scripts\transform_notion.py` → `npm run db:seed -- --owner jeremy` (new ids only; app edits kept).
-Checks before a release: `npm run lint && npm run check && npm run test:unit && npm run test:e2e` (CI runs the same).
+Checks before a release: `npm run lint && npm run check && npm run test:unit && npm run test:e2e && npm run test:e2e:phone` (the CI `test` job runs the same five; CI also builds the Docker image and the unsigned Android APK).
 
 ## Release (how an image gets made)
 
-1. Main is green in GitHub Actions (`ci.yml`: lint, svelte-check, unit, e2e, Docker build).
+1. Main is green in GitHub Actions (`ci.yml`: lint, svelte-check, unit, desktop e2e, phone e2e, Docker build, Android unsigned release build).
 2. Bump `app/package.json` `version`, commit "release: vX.Y.Z" with notes in the message.
 3. `git tag vX.Y.Z && git push origin vX.Y.Z`.
 4. `release.yml`: runs CI again → builds `app/Dockerfile` → pushes `ghcr.io/chicenwangs/lifetracker:X.Y.Z`, `:X.Y`, `:sha-<short>` → creates the GitHub Release (auto notes + `SERVICE-HANDOFF.md` + flat `deploy-vX.Y.Z.tar.gz` of `deploy/`). Only plain `vX.Y.Z` tags publish; `v1.1.0-rc1` does nothing.

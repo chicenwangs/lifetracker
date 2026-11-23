@@ -21,7 +21,7 @@ Newest first. Latest release = v3.1.1 (2026-11-20; v3.1.0 same day, v3.0.0 2026-
 - Push: only browser push hosts (`pushHostOk`, port 443), 10 s send timeout, 10 devices per user, test send 5 per 15 min, endpoint can't be taken by another account without its keys. Stuck reminders count as a try (crash can't loop). 500 waiting reminders per owner.
 - Sign-in: `safeNext` re-checks the parsed path (`/.//x` → `//x`). Username-wide login limit charged before the argon2 await (parallel IPs). Password change serialised per user. New installs: setup writes `signup_open=0` (old installs keep theirs). Invite code checked before the username. Admin Disable (null hash + all sessions gone).
 - Shared content: link marks only `target=_blank`, `rel` from noopener/noreferrer/nofollow, no `class`. Database block id must be `pdb_…`. Option colours `[a-z0-9-]` (and DbCell falls back). An editor keeps only the owner's files the page already had. Record page creation needs edit. Share-by-username: 10 unknown names per 15 min.
-- Limits: chunked writes without Content-Length → 411. `UPLOAD_QUOTA_BYTES` (2 GB). Share codes: 50 made per day, purged 30 days past expiry. Compose memory/CPU/pids limits; cloudflared read-only, caps dropped, dated tag default.
+- Limits: chunked writes without Content-Length → 411. `UPLOAD_QUOTA_BYTES` (2 GB). Share codes: 50 made per day, purged 30 days past expiry. Compose limits (app: memory + 2 CPUs + pids; cloudflared: memory + pids, no CPU cap); cloudflared read-only, caps dropped, dated tag default (2026.10.7).
 - Headers: HSTS (https only), COOP + CORP same-origin.
 - Ops: release APK job — npm runs without the signing key or token. backup/restore refuse symlinks under `data/`; restore extracts only plain files under `uploads/`, not as their owner. Optional `age` encryption (`LT_AGE_RECIPIENT` / `LT_AGE_IDENTITY`).
 - Android: `allowBackup=false`, widget tick only for ids it showed, updater only GitHub release URLs, reminder hides title on a private lock screen, `//` paths refused.
@@ -45,7 +45,7 @@ Newest first. Latest release = v3.1.1 (2026-11-20; v3.1.0 same day, v3.0.0 2026-
 - Native: `SyncWorker` (15 min + on leaving the app) → widgets + exact alarms per reminder (no Firebase; web push can't work in a WebView). Boot / app update resets alarms.
 - Widgets: Timeline (now on, 6 rows, `+` → `/today?add` opens quick add) · Keep (notes, `+` → `/keep?new`). Signed out / never synced = says so.
 - In-app update: newest GitHub Release APK; same signing key required by Android. Settings › Help shows version + Check for updates (only inside the app, `lib/client/native.ts`). Notifications page explains alarms inside the app.
-- CI: `ci.yml` `apk` = debug build on every PR; `release.yml` `apk` = signed release APK on the release. Key made on the dev PC (`~/.lifetracker-android/`), secrets set by the owner (auto mode blocked `gh secret set`).
+- CI: `ci.yml` `apk` = unsigned release build (`assembleRelease`) + debug unit tests on every PR; `release.yml` `apk` = signed release APK on the release. Key made on the dev PC (`~/.lifetracker-android/`), secrets set by the owner (auto mode blocked `gh secret set`).
 - minSdk 26 (java.time). Icons + splash from `app/static/icon-*.png`.
 - Also: Today past rows lost the time dimming too (axe); e2e reminder test used "today 3 pm" → 2 days out (failed after 3 pm).
 - Not checked: any real phone or emulator (no Android SDK here). CI compile only.
@@ -98,8 +98,8 @@ Newest first. Latest release = v3.1.1 (2026-11-20; v3.1.0 same day, v3.0.0 2026-
 ## v2 P8 — Phone rest, PWA, offline, tour, help, a11y (2026-11-14)
 
 - Phone (< 700 px): Week = read-first agenda (`PhoneWeek`, 7 day cards, tap day → Today, tap item → item); Month = `/month` compact 6×7 grid with type-colour dots, tap day → Today. More lists Month, Week, Pages, Shared with me, Keep archive, Trash, Settings, Help. Settings + Login already fit 360 px (checked).
-- PWA: real `manifest.webmanifest` (standalone, 192/512 + maskable PNGs, apple-touch-icon; PNGs rendered from `favicon.svg`), `theme-color`. `sw.js` registered on every load: caches hashed build files + `/offline.html` only; push handlers unchanged.
-- Offline (ADR-009, D-06): badge while offline; API calls fail with "You're offline. Not saved."; Keep note edits queue on the device and send when back (clash = "(offline copy)" note). Sign-out wipes the queue.
+- PWA: real `manifest.webmanifest` (standalone, 192/512 + maskable PNGs, apple-touch-icon; PNGs rendered from `favicon.svg`), `theme-color`. `sw.js` registered on every load: caches hashed build files + `/offline.html` (P8; since v3.0.0 also a data cache of last-seen pages and GET `/api`, see ADR-009); push handlers unchanged.
+- Offline (ADR-009, D-06): badge while offline; API calls fail with "You're offline. Not saved."; Keep note edits queue on the device and send when back (clash = "(offline copy)" note). Sign-out wipes the queue. (v3.0.0 added planner ops to the queue: ADR-009.)
 - Tour (`Tour.svelte`): first sign-in when `tour_state = new` (existing users were set `done` in P1). 7 steps, skips any step whose target isn't on screen (PC vs phone), resize repositions, Esc/Skip saves `skipped`, Finish saves `done`. Settings › Help: Restart the tour + short guides.
 - a11y: axe (`@axe-core/playwright`, dev only) has 0 serious/critical issues on 10 screens × light/dark × PC/phone. Fixed: logo SVG without a name, planner block = focusable group (it holds buttons), active pill text in dark mode, FullCalendar other-month days faded to 0.3.
 - Perf: Home load < 1.5 s asserted in e2e (local preview server).
@@ -161,7 +161,7 @@ Newest first. Latest release = v3.1.1 (2026-11-20; v3.1.0 same day, v3.0.0 2026-
 - Autosave 600 ms + on close; failed save keeps the text with Retry; `revision` refuses stale writes (409). Undo for Keep = toast Undo (archive, trash, pin); Ctrl+Z journal still covers planner only.
 - Order = REAL `position` (midpoint insert), not DESIGN's text `position_key`: same behaviour, less code. Rebalance not needed at this scale.
 - Not built (EXT/later): drawings, link previews (D-23 off), file (non-image) cards, grid/list toggle, background images (D-11 later), swipe-to-archive (menu action instead).
-- **Phone** (< 700 px): bottom bar Today · Week · + Add · Keep · More. `/` opens `/today` on a phone (`/?desktop=1` = desktop Home). Today: day step + swipe, Now card (current block/timed item + time left, else "Free until"), timeline wheel (snap, centred on now, past dimmed, Back to now). + Add sheet: Plan it (same grammar, batch) / Quick note. Item opens as a bottom sheet. Header hides nav + Add on a phone.
+- **Phone** (< 700 px): bottom bar Today · Calendar · + Add · Keep · Pages (avatar = account sheet; was More). `/` opens `/today` on a phone (`/?desktop=1` = desktop Home). Today: day step + swipe, Now card (current block/timed item + time left, else "Free until"), timeline wheel (snap, centred on now, past dimmed; no Back to now chip). + Add sheet: Plan it (same grammar, batch) / Quick note. Item opens as a bottom sheet. Header hides nav + Add on a phone.
 
 ## v2 P1 — foundations (2026-11-13)
 

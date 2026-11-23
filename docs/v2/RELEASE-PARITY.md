@@ -38,12 +38,12 @@ Rule (owner): **every live feature stays.** Core loop tested 1 week. New design 
 | Settings › Users (admin): Open / Invite only, invite codes, accounts | ✗ | **added** |
 | Settings › Import from Notion: target user, seed counts, run | ✗ | **added** |
 | Login (remember me), Sign up (open / invite code), Setup (token) | phone login only | **added** desktop auth board |
-| Dark theme default | light only drawn | not drawn (cosmetic, THEME.md exact) — ask if wanted |
+| Dark theme default | light only drawn | D-07 closed: new accounts = Auto (`theme_mode` default `auto`); existing users keep theirs |
 
 ## Changed on purpose (not dropped)
 - "Exam" label → **Deadline** (data unchanged).
 - Week title "Week of 9 Nov" (live shows range); heatmap keeps "Week N of M".
-- "Not scheduled" (desktop, live name kept) vs "No time set" (phone + Home list).
+- "Not scheduled" (desktop, live name kept) vs "Due today" (Home list; the phone no-time list was removed).
 - Undo toast moves centre (new global undo); old bottom toast behaviour folded in.
 
 ## Unreleased on main (PR #4) — keep in mind
