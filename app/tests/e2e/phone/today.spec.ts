@@ -65,3 +65,24 @@ test('title opens a date picker (tap path to any day)', async () => {
 	await page.locator('input[type=date]').fill('2030-03-01');
 	await expect.poll(day).toBe('2030-03-01');
 });
+
+test('tapping a status square shows an Undo snackbar (#310)', async () => {
+	const T = `Tick undo ${test.info().project.name}`;
+	await page.evaluate(
+		(title) =>
+			fetch('/api/items', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ title, date: '2030-02-04', time: '09:00' }),
+			}),
+		T,
+	);
+	await page.goto('/today?d=2030-02-04');
+	const row = page.locator('.ent', { hasText: T });
+	await row.locator('button.sq').click();
+	await expect(row.locator('button.sq')).toHaveAttribute('aria-label', /In progress/);
+	const toast = page.locator('.toast');
+	await expect(toast).toContainText(`Started: "${T}"`);
+	await toast.getByRole('button', { name: 'Undo' }).click();
+	await expect(row.locator('button.sq')).toHaveAttribute('aria-label', /Not started/);
+});

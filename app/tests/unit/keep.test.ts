@@ -42,6 +42,17 @@ describe('Keep', () => {
 		expect(keep.get(me, a.id).body).toBe('ONLINE-C');
 	});
 
+	it('#308 #309: a repeated create with the same client id returns the same note', () => {
+		const id = 'kn_abcdefgh12345678';
+		const a = keep.create(me, { id, body: 'once' });
+		const b = keep.create(me, { id, body: 'once' });
+		expect(a.id).toBe(id);
+		expect(b.id).toBe(id);
+		expect(keep.list(me, { scope: 'active' })).toHaveLength(1);
+		const c = keep.create(other, { id, body: 'theirs' }); // another user's id is never reused or exposed
+		expect(c.id).not.toBe(id);
+	});
+
 	it('stale revision -> 409, text not overwritten', () => {
 		const a = note();
 		keep.update(me, a.id, { body: 'newer' });
