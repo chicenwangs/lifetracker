@@ -70,6 +70,12 @@
 		const d = await askText('Move to which day? (YYYY-MM-DD)', { value: date, ok: 'Move' });
 		if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) return moveRow(r.x, { days: daysBetween(date, d) }, refresh);
 	}
+	// closures over a plain value: ActionSheet closes (acting = null) before run() fires (#324)
+	const actionsFor = (a: { r: Row; date: string }) => [
+		{ label: a.r.x.status === 'done' ? 'Not done' : 'Done', run: () => toggleDone(a.r.x, refresh) },
+		{ label: 'Move…', run: () => pickDay(a.r, a.date) },
+		{ label: 'Delete', danger: true, run: () => deleteRow(a.r.x, refresh) },
+	];
 </script>
 
 <div class="pweek">
@@ -117,16 +123,7 @@
 	{/each}
 </div>
 {#if acting}
-	{@const a = acting}
-	<ActionSheet
-		title={a.r.label}
-		actions={[
-			{ label: a.r.x.status === 'done' ? 'Not done' : 'Done', run: () => toggleDone(a.r.x, refresh) },
-			{ label: 'Move…', run: () => pickDay(a.r, a.date) },
-			{ label: 'Delete', danger: true, run: () => deleteRow(a.r.x, refresh) },
-		]}
-		onclose={() => (acting = null)}
-	/>
+	<ActionSheet title={acting.r.label} actions={actionsFor(acting)} onclose={() => (acting = null)} />
 {/if}
 
 <style>
