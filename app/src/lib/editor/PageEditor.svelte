@@ -241,7 +241,8 @@
 		const on = () => (typing = true);
 		const off = (e: Event) => {
 			const to = (e as FocusEvent).relatedTarget as HTMLElement | null;
-			if (!to?.closest('.tools')) typing = false;
+			// microtask: removing the focused editor fires focusout inside Svelte's teardown, where state writes throw (#297)
+			if (!to?.closest('.tools')) queueMicrotask(() => (typing = false));
 		};
 		dom?.addEventListener('focusin', on);
 		dom?.addEventListener('focusout', off);
