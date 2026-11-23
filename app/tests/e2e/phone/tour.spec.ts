@@ -36,3 +36,14 @@ test('restart from Help: phone steps, no desktop words, Finish ends it', async (
 	expect(seen).toEqual(['Welcome to Life Tracker', 'Today', 'Add', 'Your plans', 'Calendar', 'Keep', 'Pages', "You're set"]); // prettier-ignore
 	await expect(page.getByRole('button', { name: 'Skip tour' })).toHaveCount(0);
 });
+
+test('Back closes the tour and leaves the page behind it alone (#300)', async () => {
+	await page.goto('/settings/help');
+	await page.getByRole('button', { name: 'Restart the tour' }).click();
+	const tour = page.getByRole('dialog', { name: 'Welcome to Life Tracker' });
+	await expect(tour).toBeVisible();
+	const url = page.url();
+	await page.goBack();
+	await expect(tour).toHaveCount(0);
+	expect(page.url()).toBe(url);
+});

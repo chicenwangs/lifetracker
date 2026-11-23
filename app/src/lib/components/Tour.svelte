@@ -4,6 +4,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { isPhone } from '$lib/client/phone';
+	import { backCloses } from '$lib/client/layers';
 
 	let { onend }: { onend: (state: 'done' | 'skipped') => void } = $props();
 	type Step = { title: string; text: string; at?: string[] };
@@ -97,6 +98,7 @@
 	aria-labelledby="tour-h"
 	tabindex="-1"
 	bind:this={card}
+	use:backCloses={() => onend('skipped')}
 	style:top="{pos.top}px"
 	style:left="{pos.left}px"
 	onkeydown={(e) => e.key === 'Escape' && onend('skipped')}
