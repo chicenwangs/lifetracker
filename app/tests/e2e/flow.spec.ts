@@ -476,7 +476,7 @@ test('repeat occurrence view follows a detached row and recovers after Undo (#27
 	}
 });
 
-test('"This and following" edit keeps the item page (#362)', async () => {
+test('"This and following" edit keeps the item page; Undo moves the sheet back (#362, #278)', async () => {
 	const made = await api('POST', '/api/items', {
 		title: 'Split probe',
 		date: '2031-07-01',
@@ -494,6 +494,10 @@ test('"This and following" edit keeps the item page (#362)', async () => {
 		await page.waitForLoadState('networkidle'); // the refresh after Save re-runs the route load
 		await expect(page.getByText('Not found')).toHaveCount(0); // #362
 		await expect(page).not.toHaveURL(/@/);
+		await page.mouse.click(5, 300); // a non-field area
+		await page.keyboard.press('Control+z');
+		await expect(page.getByRole('heading', { level: 1, name: 'Split probe', exact: true })).toBeVisible(); // #278: the sheet follows the restored series
+		await expect(page.getByText('Not found')).toHaveCount(0);
 	} finally {
 		await api('DELETE', `/api/items/${id}`);
 	}
