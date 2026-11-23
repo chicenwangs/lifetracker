@@ -2,6 +2,7 @@
      A new note is only created once it has content; an empty one is simply dropped on close. -->
 <script lang="ts">
 	import { askConfirm } from '$lib/client/dialog.svelte';
+	import { modal } from '$lib/client/modal';
 	import Reminders from './Reminders.svelte';
 	import ShareDialog from './ShareDialog.svelte';
 	import ActionSheet from './ActionSheet.svelte';
@@ -431,6 +432,7 @@
 	class="note card"
 	role="dialog"
 	aria-modal="true"
+	use:modal={close}
 	aria-label={title || 'Note'}
 	style:--note-bg={color ?? 'var(--card)'}
 	class:tinted={!!color}
@@ -784,10 +786,7 @@
 		/>
 	</BottomSheet>
 {/if}
-<svelte:window
-	onkeydown={(e) => e.key === 'Escape' && close()}
-	onbeforeunload={(e) => (dirty || saving) && e.preventDefault()}
-/>
+<svelte:window onbeforeunload={(e) => (dirty || saving) && e.preventDefault()} />
 
 <style>
 	.plain {

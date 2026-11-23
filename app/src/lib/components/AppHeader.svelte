@@ -1,6 +1,7 @@
 <!-- FR-H15. Nav shows only built pages. -->
 <script lang="ts">
 	import { backCloses } from '$lib/client/layers';
+	import { modal } from '$lib/client/modal';
 	import { SECTIONS } from '$lib/settings-sections';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
@@ -243,6 +244,7 @@
 	<div class="scrim" role="presentation" onclick={() => (help = false)}></div>
 	<div
 		use:backCloses={() => (help = false)}
+		use:modal={() => (help = false)}
 		class="sheet card"
 		role="dialog"
 		aria-modal="true"
@@ -260,7 +262,7 @@
 <svelte:window
 	onclick={(e) => menu && !(e.target as HTMLElement).closest('.acct') && (menu = false)}
 	onkeydown={(e) => {
-		if (e.key === 'Escape' && help) help = false;
+		if (e.key === 'Escape' && menu) menu = false;
 		else if (e.key === '?' && !typingIn(e.target) && !e.ctrlKey && !e.metaKey) help = !help;
 	}}
 />
