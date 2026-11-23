@@ -1,5 +1,7 @@
 # Life Tracker — REQUIREMENTS
 
+> **Superseded 2026-11-19.** v1 spec, kept for history. Current truth: `AGENTS.md`, `docs/HANDOFF.md`, `docs/v2/FEATURES.md`. v1 is what shipped as 1.x; v2/v3 extended it.
+
 Caveman doc. Short. Dense. For Claude when coding later.
 Owner: Jeremy (chicenwangs). Rev 2.1, 2026-11-06 (10-agent review + 10-agent audit, see REVIEW.md). Status: planning done. Code not started.
 

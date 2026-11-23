@@ -2,6 +2,8 @@
 
 You run this service. You do not need the source code or its history. Everything to deploy, operate, upgrade, roll back and recover it is here plus the files in `deploy/` (also attached to every GitHub Release).
 
+**State 2026-11-19:** live = **v3.0.0** (verified `/healthz` → `"version":"3.0.0"`, `jobs:true`). v3 adds the Android app, repeating items, reminder actions and offline; migrations 0009 + 0010 (§5).
+
 Owner: Jeremy (`chicenwangs`). Target: Ubuntu homelab, Docker Compose, public at `https://planner.jeremyjosh.org` through a Cloudflare Tunnel. Learning goal: run it the way a company ops team would.
 
 ## 1. What it is

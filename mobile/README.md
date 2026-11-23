@@ -27,6 +27,40 @@ Caveman doc. Capacitor 8 shell. The app = the server's own pages (`server.url` i
 - Repo secrets (once): `ANDROID_KEYSTORE_B64` (base64 of `release.p12`), `ANDROID_KEYSTORE_PASSWORD`. Missing = release still ships, just without an APK (warning in the run).
 - Local build (needs JDK 21 + Android SDK): `npm ci && npx cap sync android && cd android && ./gradlew assembleDebug`.
 
+## Local emulator (dev) — verified 2026-11-17
+Debug APK on the emulator, pointed at a local dev server. Checked end to end: boot → install (4.4 MB) → sign-in page in the WebView → login → Today (phone layout, week strip, Now card, blocks) → reminder sheet (Done / Snooze 10 min / Tomorrow, #112) → bottom bar Today · Calendar · + · Keep · Pages.
+Not checked on the emulator yet: gestures, sheets, offline, widgets, shortcuts, notification actions.
+
+| Thing | Value |
+|---|---|
+| Emulator | AVD `lt_pixel7`, Android 16 / API 36 → `emulator-5554` |
+| Server | `mobile-dev` in `.claude/launch.json`: `127.0.0.1:5176`, `data/phone-dev.db` (seed: `cd app && npm run db:seed:phone`; login in `data/TEST-LOGIN.txt`) |
+| Tunnel | `adb reverse tcp:5176 tcp:5176` |
+| APK | `mobile/android/app/build/outputs/apk/debug/app-debug.apk` |
+| JDK | `JAVA_HOME=C:\Program Files\Java\jdk-24` worked (Android Studio `jbr` also fine, QA loop uses it) |
+
+**Why localhost + adb reverse, not 10.0.2.2:** service worker, offline queue and push need a secure context. `http://localhost` is one; `http://10.0.2.2` is not → SW silently doesn't register. `adb reverse` makes the emulator's `localhost:5176` = PC's `5176`.
+
+Steps:
+1. Server: start `mobile-dev` (or in `app/`: `$env:ORIGIN='http://localhost:5176'; $env:DATABASE_PATH='../data/phone-dev.db'; npm run dev -- --host 127.0.0.1 --port 5176 --strictPort`).
+2. Emulator: boot `lt_pixel7`, wait for `adb shell getprop sys.boot_completed` = 1.
+3. `adb reverse tcp:5176 tcp:5176`
+4. Build pointed at local (temporarily — see rules): `server.url` → `http://localhost:5176`, then `cd mobile && npx cap sync android && cd android && .\gradlew assembleDebug`.
+5. `adb install -r <APK>` and open Life Tracker.
+
+Rules:
+- **Don't commit the local URL.** Swap `server.url` only for the build, then put it back + `npx cap sync android` (same as `qa/qa-night.ps1` §3). The installed APK keeps the local URL baked in, so restoring the file doesn't break the session.
+- **Cleartext http:** only via `android/app/src/debug/AndroidManifest.xml` (debug builds). Never add `usesCleartextTraffic` to `src/main` — it would ship in release.
+- `res/values/strings.xml` `server_url` is not swapped → widgets / alarms / `SyncWorker` still talk to prod. Local check covers the WebView only.
+- One emulator, one package: the QA loop (`docs/v3/QA-LOOP.md`, port 4174) reinstalls the same app pointed at 4174. Run one or the other, not both.
+
+| Problem | Fix |
+|---|---|
+| App shows "Can't reach Life Tracker" | tunnel gone (adb restarted / emulator rebooted) → `adb reverse tcp:5176 tcp:5176` before assuming a bug |
+| SW / offline / push not working | URL is `10.0.2.2` or an IP → must be `http://localhost:5176` |
+| Page loads but is the QA data / other server | QA loop replaced the APK → rebuild + reinstall |
+| Every POST 403 | server `ORIGIN` ≠ `http://localhost:5176` |
+
 ## Limits
 - shortcut: widget "now" uses the phone's clock and timezone; server day uses the account timezone. Same zone = fine.
 - Alarms only cover reminders the phone has synced (every 15 min, next 48 h). One made on the PC 5 min before it's due may be missed by the phone; it still shows in-app.

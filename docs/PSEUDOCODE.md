@@ -1,5 +1,7 @@
 # Life Tracker — PSEUDOCODE (core flows)
 
+> **Superseded 2026-11-19.** v1 flows, kept for history. Current truth: `AGENTS.md`, `docs/HANDOFF.md`, `docs/v2/FEATURES.md`.
+
 Caveman doc. Big picture logic. Per-file pseudocode lives as comments inside each file. FR ids → REQUIREMENTS.md. Rules → TECHNICAL.md.
 
 ## 0. Layers

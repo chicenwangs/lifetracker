@@ -1,7 +1,7 @@
 # Build notes — what the app does now
 
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
-v1.1.0 part below is from 2026-11-08; v2 sections are added per phase (branch `v2`, not released yet).
+Newest first. v3.0.0 (2026-11-18) is released and live; sections below it cover v2 phases, then the v1.1.0 state from 2026-11-08. Read `AGENTS.md` for current bugs.
 
 ## Owner test pass (2026-11-16, 3-day test list, issues #61–#86)
 
