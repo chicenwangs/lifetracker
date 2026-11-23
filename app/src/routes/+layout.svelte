@@ -81,9 +81,15 @@
 			e.preventDefault();
 			f.dataset.out = '1';
 			const late = new Promise((r) => setTimeout(r, 2000));
-			void Promise.race([Promise.all([dropPush().catch(() => {}), signOutNative()]), late]).then(() =>
-				f.requestSubmit(),
+			// open editors save what they still hold before the session goes (#288)
+			const saves: Promise<unknown>[] = [];
+			dispatchEvent(
+				new CustomEvent('lt:signout', { detail: { wait: (p: Promise<unknown>) => saves.push(p) } }),
 			);
+			void Promise.race([
+				Promise.all([dropPush().catch(() => {}), signOutNative(), ...saves.map((p) => p.catch(() => {}))]),
+				late,
+			]).then(() => f.requestSubmit());
 		};
 		// keyboard opened (the page shrank, interactive-widget=resizes-content): keep the field you type in on screen (#118)
 		const keep = () => {
