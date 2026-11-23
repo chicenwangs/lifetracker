@@ -359,6 +359,13 @@
 	.list a {
 		color: var(--ink);
 	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.list a {
+			display: flex;
+			align-items: center;
+			min-height: 48px;
+		}
+	}
 	.list a.arch {
 		font-style: italic;
 		opacity: 0.75;
