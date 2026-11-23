@@ -1,6 +1,6 @@
 // POST /api/quickadd. Server re-parses = truth (FR-Q2).
 // default (planner) -> block only · /calendar -> item only · /both -> item + linked block (one transaction).
-import { parseQuickAdd, type QAContext, type QASlot } from '$lib/quickadd';
+import { clip, parseQuickAdd, type QAContext, type QASlot } from '$lib/quickadd';
 import * as items from './repo/items';
 import * as blocks from './repo/blocks';
 import { undoable } from './undo';
@@ -20,8 +20,14 @@ export function quickContext(me: App.SafeUser, now: number = Date.now()): QACont
 	};
 }
 
-export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(), slot?: QASlot) {
-	const r = parseQuickAdd(text, { ...quickContext(me, now), slot });
+export function quickAdd(
+	me: App.SafeUser,
+	text: string,
+	now: number = Date.now(),
+	slot?: QASlot,
+	day?: string,
+) {
+	const r = parseQuickAdd(text, { ...quickContext(me, now), slot, day });
 	if (!r.ok) bad((r.problems[0] ?? 'Could not add that.').replace(/`/g, ''));
 	const made = undoable(me.id, `Add "${r.title}"`, [], () => {
 		let item: ReturnType<typeof items.withCounts>[number] | null = null;
@@ -43,7 +49,7 @@ export function quickAdd(me: App.SafeUser, text: string, now: number = Date.now(
 			const b = blocks.create(
 				me.id,
 				blocks.blockCreateSchema.parse({
-					label: item ? undefined : r.title.slice(0, 200),
+					label: item ? undefined : clip(r.title, 200),
 					type: item ? null : r.type,
 					itemId: item?.id ?? null,
 					startAt: localToUtc(r.date, r.startMinutes, me.timezone),

@@ -3,6 +3,7 @@ import {
 	activeOptionToken,
 	ghostHint,
 	optionsFor,
+	clip,
 	parseQuickAdd,
 	withTarget,
 	type QAContext,
@@ -415,6 +416,17 @@ describe('quickAdd server', () => {
 			startAt: '2026-11-07T10:00:00Z',
 			endAt: '2026-11-07T11:00:00Z',
 		});
+	});
+	it('emoji at the title / label cap is never split (#306)', () => {
+		const e = '\u{1F600}';
+		expect(p('B'.repeat(299) + e + 'Z /calendar tomorrow').title).toBe('B'.repeat(299));
+		expect(clip('B'.repeat(199) + e + 'Z', 200)).toBe('B'.repeat(199));
+		expect(clip('B'.repeat(198) + e, 200)).toBe('B'.repeat(198) + e);
+		expect(quickAdd(me, 'B'.repeat(199) + e + 'Z tomorrow 3pm', NOW).block?.label).toBe('B'.repeat(199));
+	});
+	it('phone: day on screen is the default day (#290)', () => {
+		expect(quickAdd(me, 'probe /calendar', NOW, undefined, '2019-01-01').item?.date).toBe('2019-01-01');
+		expect(quickAdd(me, 'probe /calendar tmr', NOW, undefined, '2019-01-01').item?.date).toBe('2026-11-07');
 	});
 	it('timeline drag with no /type = no type (grey); typed type kept', () => {
 		const slot = { date: '2026-11-09', start: 600, end: 660 };

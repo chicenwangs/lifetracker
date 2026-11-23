@@ -84,3 +84,50 @@ test('Repeat ends "On date" keeps the series; an end before the start is refused
 	await expect(page.locator('.toast')).toContainText('on or after the start');
 	expect(await rule()).toBe('FREQ=DAILY;UNTIL=2031-02-03');
 });
+
+test('Item sheet: tick and edit show an Undo snackbar; an offline tick waits to sync (#293)', async () => {
+	const mk = (body: object) =>
+		page.evaluate(async (b) => {
+			const r = await fetch('/api/items', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }); // prettier-ignore
+			return ((await r.json()) as { item: { id: string } }).item.id;
+		}, body);
+	const get = (id: string) =>
+		page.evaluate(async (i) => {
+			const r = await fetch(`/api/items/${i}`);
+			return ((await r.json()) as { item: { status: string; private: boolean } }).item;
+		}, id);
+	const toast = page.locator('.toast');
+
+	// tick one date of a repeating item, then Undo
+	const rep = await mk({ title: `${T} tick`, date: '2031-05-05', rrule: 'FREQ=DAILY;COUNT=4' });
+	await page.goto(`/item/${rep}@2031-05-05`);
+	await page.locator('button.sq').first().click();
+	await expect(toast).toContainText('Started');
+	await toast.getByRole('button', { name: 'Undo' }).click();
+	await expect
+		.poll(() =>
+			page.evaluate(async (t) => {
+				const r = await fetch('/api/calendar?from=2031-05-05&to=2031-05-06');
+				const j = (await r.json()) as { items: { title: string; status: string }[] };
+				return j.items.filter((x) => x.title === `${t} tick`).map((x) => x.status);
+			}, T),
+		)
+		.toEqual(['todo']); // the detached row is gone again
+
+	// edit a plain item, then Undo
+	const one = await mk({ title: `${T} edit`, date: '2031-05-06' });
+	await page.goto(`/item/${one}`);
+	await page.getByLabel('Keep secret').check();
+	await expect(toast).toContainText('Saved');
+	expect((await get(one)).private).toBe(true);
+	await toast.getByRole('button', { name: 'Undo' }).click();
+	await expect.poll(async () => (await get(one)).private).toBe(false);
+
+	// offline tick: queued, not an error
+	await page.context().setOffline(true);
+	await page.locator('button.sq').first().click();
+	await expect(toast).toContainText('Waiting to sync');
+	await expect(page.locator('button.sq').first()).toHaveAttribute('aria-label', /In progress/);
+	await page.context().setOffline(false);
+	await expect.poll(async () => (await get(one)).status).toBe('doing');
+});
