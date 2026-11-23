@@ -99,7 +99,7 @@
 					<span class="n">{Number(c.date.slice(8))}</span>
 					<span class="dots">
 						{#each c.things.slice(0, 3) as t (t.id)}<i style:background={entryColors(t).bg}></i>{/each}
-						{#if c.things.length > 3}<b>+{c.things.length - 3}</b>{/if}
+						{#if c.things.length > 3}<b aria-hidden="true" data-n="+{c.things.length - 3}"></b>{/if}
 					</span>
 				</a>
 			{/each}
@@ -284,5 +284,9 @@
 	.dots b {
 		font-size: max(var(--fs-min), 9px);
 		font-weight: 600;
+	}
+	/* the count is drawn, not text: the link name (aria-label) already says it (#298) */
+	.dots b::after {
+		content: attr(data-n);
 	}
 </style>

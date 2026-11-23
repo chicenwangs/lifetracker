@@ -107,10 +107,11 @@
 	};
 	const shortDate = (d: string) => prettyDate(d).replace(/ \d{4}$/, '');
 
+	const h12 = $derived(page.data.user?.region === 'us');
 	function timeLabel(p = parsed): string {
 		if (!p.time) return p.target === 'calendar' ? 'All day' : 'add a time';
-		const s = prettyTime(p.time);
-		return p.endTime ? `${s} – ${prettyTime(p.endTime)}${p.endNextDay ? ' (+1 day)' : ''}` : s;
+		const s = prettyTime(p.time, h12);
+		return p.endTime ? `${s} – ${prettyTime(p.endTime, h12)}${p.endNextDay ? ' (+1 day)' : ''}` : s;
 	}
 	/** split "use `/x` here" into text + code parts (no {@html}) */
 	function segs(s: string): { code: boolean; t: string }[] {
