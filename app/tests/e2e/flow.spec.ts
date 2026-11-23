@@ -609,20 +609,22 @@ test('theme: new account = Auto (D-07); sun/moon = fixed choice; Auto schedule r
 	await expect(btn).not.toHaveClass(/auto/);
 	// Auto with a light window that covers now -> light; one that excludes now -> dark (no reload)
 	await page.goto('/settings/preferences');
+	// one save at a time: fill() on a time input already fires change, and a late "Saved" toast would cover the
+	// D-08 error below (one toast slot; an extra dispatchEvent('change') used to save twice, seen in CI)
+	const saved = () =>
+		page.waitForResponse((r) => r.url().endsWith('/api/me/prefs') && r.request().method() === 'PATCH');
+	let done = saved();
 	await page.getByRole('radio', { name: 'Auto' }).check();
+	await done;
+	done = saved();
 	await page.getByLabel('Light from').fill('00:00');
-	await page.getByLabel('Light from').dispatchEvent('change');
+	await done;
+	done = saved();
 	await page.getByLabel('Dark from').fill('23:59');
-	// wait for the dark time to reach the server, else the D-08 check below races it (seen in CI)
-	const darkSaved = page.waitForResponse(
-		(r) => r.url().endsWith('/api/me/prefs') && r.request().method() === 'PATCH',
-	);
-	await page.getByLabel('Dark from').dispatchEvent('change');
-	await darkSaved;
+	await done;
 	await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 	// D-08: same start time refused
 	await page.getByLabel('Light from').fill('23:59');
-	await page.getByLabel('Light from').dispatchEvent('change');
 	await expect(page.locator('.toast')).toContainText('different start times');
 	await page.getByRole('radio', { name: 'Dark', exact: true }).check();
 	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
@@ -798,6 +800,7 @@ test('repeat "On date" keeps the series; an end before the start is refused (#29
 		await expect
 			.poll(async () => ((await api('GET', `/api/items/${id}`)).j.item as { rrule: string }).rrule)
 			.toBe('FREQ=WEEKLY;BYDAY=MO;UNTIL=2028-02-02'); // start + 30 days, not the start itself
+		await expect(page.locator('.toast')).toContainText('Saved'); // one toast slot: this save's toast first
 		await page.getByLabel('End date').fill('2027-12-01');
 		await page.getByLabel('End date').press('Tab');
 		await expect(page.locator('.toast')).toContainText('on or after the start');
