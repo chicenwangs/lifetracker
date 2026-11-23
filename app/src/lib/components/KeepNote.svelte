@@ -289,7 +289,9 @@
 	let uploading = $state(0);
 	async function addImages(files: FileList | null) {
 		if (!files?.length) return;
-		limits ??= await fetch('/api/attachments').then((r) => r.json());
+		limits ??= await fetch('/api/attachments')
+			.then((r) => r.json())
+			.catch(() => null); // offline: skip the size pre-check, the upload below reports it (#311)
 		for (const f of Array.from(files)) {
 			const ext = (/\.([a-z0-9]+)$/i.exec(f.name)?.[1] ?? '').toLowerCase();
 			if (!['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
@@ -314,7 +316,8 @@
 				images = [...images, j.attachment];
 				changed();
 			} catch (e) {
-				showError(e); // note itself is kept; pick the file again to retry
+				// note itself is kept; pick the file again to retry
+				showError(e instanceof TypeError ? new Error('Upload failed: no connection. The note is safe, pick the image again.') : e); // prettier-ignore
 			} finally {
 				uploading--;
 			}
