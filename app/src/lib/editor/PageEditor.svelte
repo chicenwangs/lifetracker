@@ -636,6 +636,9 @@
 		translate: -50% 0;
 		z-index: 91;
 		width: min(420px, 92vw);
+		/* vh shrinks with the on-screen keyboard: the rows scroll instead of hiding below it (#282) */
+		max-height: calc(100vh - 20vh - 8px);
+		overflow-y: auto;
 		padding: 12px;
 		display: flex;
 		flex-direction: column;

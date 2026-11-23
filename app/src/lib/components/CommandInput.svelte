@@ -4,6 +4,7 @@
   Enter (no menu) -> onenter. Esc (no menu) -> onescape. onkey runs first for extra keys (return true = handled).
 -->
 <script lang="ts">
+	import { backCloses } from '$lib/client/layers';
 	import {
 		activeOptionToken,
 		ghostHint,
@@ -193,6 +194,7 @@
 			role="listbox"
 			popover="manual"
 			use:topLayer
+			use:backCloses={() => (menuHidden = true)}
 			style:left="{menuLeft}px"
 			style:top={menuUp ? null : `${menuY}px`}
 			style:bottom={menuUp ? `${menuY}px` : null}
