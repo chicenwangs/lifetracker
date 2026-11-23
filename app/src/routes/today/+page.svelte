@@ -445,6 +445,8 @@
 	.t {
 		min-height: 48px;
 		flex: 1;
+		min-width: 0;
+		overflow-wrap: anywhere;
 		text-align: left;
 		background: none;
 		border: 0;
@@ -509,6 +511,7 @@
 	}
 	.box {
 		flex: 1;
+		min-width: 0;
 		display: flex;
 		align-items: center;
 		gap: 8px;
