@@ -1,3 +1,5 @@
+> **Superseded 2026-11-19.** This is the v2.0.4 snapshot (2026-11-14). Live is now **v3.0.0** (deployed, verified 2026-11-19). For a new chat read `AGENTS.md` → `docs/HANDOFF.md` instead. The §v2.1 backlog at the bottom is still the next-work list.
+
 # Life Tracker — chat handoff (2026-11-14, v2.0.4)
 
 Paste this into a new chat. It is the full context. Caveman style.

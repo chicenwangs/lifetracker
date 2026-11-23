@@ -9,6 +9,7 @@ One branch + one PR per issue, off `main`, into `main`. Desktop stays as it is.
 - Phone e2e: `npm run test:e2e:phone` (projects `phone` 412×915, `phone-landscape` 915×412). Tests in `tests/e2e/phone/`.
 - Helpers (`tests/e2e/phone/helpers.ts`): `swipe`, `longPress` (real CDP touch), `expectTappable` (tap lands; catches clipping), `expectTargets48` (+ `targets48-allowlist.json`), `noDesktopHints`.
 - Shots: preview running, then (in `app/`) `node scripts/phone-shots.mjs [--out test-results/phone-after]`. Baseline = `test-results/phone-baseline/` (gitignored, 2026-11-16); e2e artifacts go to `test-results/run/`, so a test run keeps it. Landscape Add sheet = desktop layout until #110, so its shot shows the screen under it.
+- Real Android app on the emulator (same seeded db, port 5176, `adb reverse`): `mobile/README.md` § Local emulator. Verified 2026-11-17 (launch, login, Today, #112 reminder sheet, tab bar). "Needs real phone" rows still need a phone.
 - `test.fixme` in `smoke.spec.ts` = checks waiting on an issue. Turn them on when it lands.
 
 ## Status

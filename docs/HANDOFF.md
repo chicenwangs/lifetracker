@@ -1,68 +1,102 @@
-# HANDOFF — read first in a new chat
+# HANDOFF — current state (2026-11-19)
 
-Caveman doc. State as of 2026-11-08. Repo `github.com/chicenwangs/lifetracker` (private), branch `main`. PC copy `Desktop\life-tracker`.
+Caveman doc. Read `AGENTS.md` first (one page), then this. Repo `github.com/chicenwangs/lifetracker` (private), branch `main`, PC copy `Desktop\life-tracker`.
 
-## State
+## Now
 
-- **2026-11-18: v3.0.0 released** (mobile overhaul #106, repeating items, security + QA fixes; migrations 0009, 0010).
-- **2026-11-14: v2.0.4 released** (widgets v2, phone fixes, no migration).
-- **2026-11-14: v2.0.3 released** (Android app, no migration).
-- **2026-11-14: v2.0.2 released** (phone + push fixes, no migration).
-- **2026-11-14: v2.0.1 released** (v2.0.0 + UI fixes, no migration). Full context for a new chat: `v2/CHAT-HANDOFF.md`.
-- **2026-11-14: v2.0.0 built** (phases P0–P9 on branch `v2`, PRs #5–#14). What it does: `BUILD-NOTES.md` v2 sections. Release notes: `v2/RELEASE-NOTES.md`. Upgrade + rollback: `SERVICE-HANDOFF.md` §5. Tests 340 unit + 25 e2e. Lines below = v1 history.
+- **Live = v3.0.0** — `https://planner.jeremyjosh.org` (homelab Docker Compose + Cloudflare Tunnel). Verified 2026-11-19: `/healthz` → `version":"3.0.0"`, `jobs:true`. Owner deploys; agents never deploy and never touch live data.
+- Code = v3.0.0 (`app/package.json`). Android APK `life-tracker-3.0.0.apk` on the release; installed phones self-update.
+- **371 unit** (29 files) · **desktop e2e 25 passed + 1 skipped** (26) · **phone e2e 246**. Run 2026-11-19 — `docs/v3/QA-RUN-2026-11-19.md`.
+- Mobile overhaul (#106) done. v3.0.0 shipped repeating items, reminder actions, Android widgets/updater, offline, security + QA fixes.
+- Next = v2.1 backlog (`docs/v2/CHAT-HANDOFF.md` §v2.1) and the open review items (`docs/REVIEW.md`). One branch + PR per issue off `main`.
 
-- P1 built and in daily use on Jeremy's PC (Stage A, localhost:5173). Real Notion data imported.
-- Since P1: UX rounds 1–5, Goals + Courses removed, open sign-up, calendar sharing by code (view-only). Details: `BUILD-NOTES.md`.
-- P2a done (2026-11-08): service shipped (image via GitHub Actions → GHCR, deploy bundle on GitHub Release), whole-app bug review + security review (10 agents each) fixed. Ops contract = `SERVICE-HANDOFF.md`. Tag `v1.0.0` not pushed yet.
-- Tests: 258 unit (`npm run test:unit`), 14 e2e (`npm run test:e2e`). Lint, prettier, svelte-check clean. CI green.
-- When docs disagree: BUILD-NOTES > TECHNICAL > REQUIREMENTS. TECHNICAL top banner lists the overrides.
-- Read order for coding: README → this → BUILD-NOTES → REQUIREMENTS → TECHNICAL.
+Release history and per-phase test counts: `docs/v2/PHASES.md` (v3 row = mobile overhaul, migrations 0009/0010). Release notes: `docs/v2/RELEASE-NOTES.md`. What the app does now, newest first: `docs/BUILD-NOTES.md`.
+
+## Run / test
+
+```powershell
+cd app
+npm run dev                # 5173, uses app/.env (real data — do not test on it)
+npm run check              # svelte-check
+npm run lint               # prettier --check + eslint
+npm run test:unit          # vitest
+npm run test:e2e           # 26 desktop tests, own temp DB on 4173
+npm run test:e2e:phone     # phone + phone-landscape, 246 tests
+```
+
+Against the throwaway QA DB instead of real data:
+
+```powershell
+cd app
+$env:DATABASE_PATH='../data/qa/app.db'; $env:ORIGIN='http://localhost:4174'
+npm run dev -- --host 127.0.0.1 --port 4174 --strictPort
+```
+
+Login: `phone` / `dyzw_qid3LlYwGbj` (`data/qa/TEST-LOGIN.txt`). `data/` is gitignored and never pushed.
 
 ## Env facts (bit us before)
 
-- Node 22 only. Node 24 breaks native deps.
+- Node 22 only. Node 24 breaks the native deps.
 - `better-sqlite3` pinned 12.11.1 (13.x has no Windows prebuilds). SvelteKit pinned 2.x.
-- Env via `$env/dynamic/private` (dev reads `app/.env`). Scripts (`db:seed`, `reset-password`) read `.env` themselves.
-- `drizzle/0000_init.sql` hand-patched (COALESCE index, username NOCASE). Recheck after `db:generate`.
+- Env via `$env/dynamic/private`; dev reads `app/.env`, scripts (`db:seed`, `reset-password`) read `.env` themselves.
+- `drizzle/0000_init.sql` is hand-patched (COALESCE index, username NOCASE) — recheck after `db:generate`.
+- Migrations 0000–0010, forward-only; boot runs them. Dormant tables stay.
 - Cloud sessions push via GitHub app as `Claude <noreply@anthropic.com>`.
 - e2e in the cloud container: `PW_CHROME=/usr/bin/google-chrome npx playwright test`.
+- E2E and a dev server share `.svelte-kit` — do not run two Vite servers on the same checkout. Different ports are fine; the same checkout is not.
 
-## Code map
+## Architecture
 
-| Area | Files |
+| Layer | Where |
 |---|---|
-| Boot/guard | `hooks.server.ts`, `lib/server/{env,db,purge}.ts` |
-| Auth + sign-up | `lib/server/{auth,crypto,ratelimit,setup,invites}.ts`, routes `login signup setup logout`, `AuthShell`, `AppIcon` |
-| Data | `lib/server/repo/{users,calendars,sessions,items,blocks,sharekeys,grants,meta}.ts`, `lib/server/{calendar,access,seed,search,quickadd-server,http,validate}.ts` |
-| Shared | `lib/{time,quickadd,types,colors,hours,planner-layout,planahead}.ts`, `lib/client/{api,toast,bus,peek,prefs,hours,remove,partner}` |
-| UI | `MonthCalendar`, `WeekCalendar`, `WeekMap`, `DayPlanner`, `DraftBlock`, `RollHandle`, `QuickAdd`, `CommandInput`, `SlotCommand`, `TimelinePreview`, `ItemPeek`, `ItemView`, `OverlapToggle`, `AppHeader`, `StatusSquare`, `UndoToast`, `Markdown` |
-| Pages | `/` `/week` `/item/[id]` `/trash` `/settings/{account,preferences,sessions,sharing,users}` |
-| API | `/api/{calendar,items,blocks,trash,unscheduled,quickadd,me/prefs,share-keys,share-keys/redeem,grants}` |
+| Pages | `app/src/routes/**/+page.svelte`, `+layout.svelte` (shell, mobile bottom bar, tour, offline badge) |
+| API | `app/src/routes/api/**/+server.ts` → repo layer |
+| Server | `lib/server/` — `env`, `db`, `auth`, `http`, `access`, `calendar`, `search`, `reminders`, `push`, `attachments`, `quickadd-server`, `purge`, `seed`, `repo/*` |
+| Shared (pure) | `lib/time.ts`, `lib/quickadd.ts` (one parser for client preview + server), `planner-layout.ts`, `planahead.ts`, `colors.ts`, `hours.ts` |
+| Client | `lib/client/` — `api`, `toast`, `bus`, `peek`, `layers` (Back stack), `offline` (queue), `prefs`, `mobile.svelte.ts`, `refresh` (only `invalidateAll` caller) |
+| Editor | Tiptap (`lib/components/pages/*`, block storage ADR-003) |
+| Android | `mobile/` — Capacitor 8; Java in `android/app/src/main/java/io/github/chicenwangs/lifetracker/` (`MainActivity`, `Updater(Plugin)`, `SessionPlugin`, `ThemeBarsPlugin`, `HapticsPlugin`, `Widgets`, `WidgetAction`, `Reminders`, `SyncWorker`, `Native`, `Theme`) |
 
-Parked module stubs removed in P2a (tables kept). `/settings/import` = admin Notion import from `SEED_DIR`. Later: calendar feed, `/search`.
+| Route | What |
+|---|---|
+| `/` `/today` | day planner + timeline, Now card, week strip, day picker |
+| `/week` `/month` | agenda views, swipe, month chips with counts |
+| `/item/[id]` | item detail, steps, time blocks, reminders |
+| `/keep` | notes, binders, labels, checklist, pin, archive, `?scope=trash` |
+| `/pages` `/pages/[id]` | tree, Tiptap editor, `/` menu, internal links, images/files |
+| `/pages/graph` | sigma graph + list fallback |
+| `/pages/{archive,shared,trash}` | page lifecycle + shares |
+| `/settings/*` | account, preferences, notifications, sharing, sessions, users, types, import, help |
+| `/more` `/trash` | phone browse menu, deleted items/blocks (30 days) |
+| `/login` `/signup` `/setup` | auth (invite/open, `SETUP_TOKEN` for first admin) |
 
-Dormant (data kept, no code uses it): DB tables `goals`, `courses`, column `items.course_id`. A drop migration needs an `items` rebuild (FK).
+API (`app/src/routes/api/`): `attachments blocks calendar database-properties database-records databases database-views graph items item-types keep me native pages page-shortcuts push quickadd reminders search shares trash undo unscheduled`.
 
-## Next (plan rev 2026-11-08b)
+## Rules that keep it correct
 
-Ship as a service first, users after. No new modules. Domain `planner.jeremyjosh.org`.
+- Repo layer owns SQL + scoping; routes never build SQL; never trust client user/owner ids.
+- One access check for every shared object: `level()` / `need()` in `lib/server/repo/shares.ts`. It returns null for soft-deleted rows — that is why Keep restore is broken (below).
+- Item `date`/`time` owner-local; blocks and `*_at` UTC. Never `new Date('YYYY-MM-DD')` for a day key.
+- No behaviour keyed on a type *name* — use `item_types` flags.
+- New setting default = old behaviour. Undo journal for every mutation.
+- Phone: layout < 700 px or coarse pointer ≤ 500 px height; 48 dp targets; one bottom sheet; Back closes the top layer; no desktop wording.
+- Docs: `AGENTS.md` → this → `BUILD-NOTES.md` → `v2/PRD`/`FEATURES`/`DESIGN`. When docs disagree: code > BUILD-NOTES > TECHNICAL > REQUIREMENTS.
 
-**P2a, this repo (dev chat): make it a deployable service — DONE**
-1. Strip parked module stubs (places/lists/people/ideas/workouts routes, APIs, nav). Keep their tables + import.
-2. Self-host Inter (no outside calls at runtime).
-3. Prod readiness: image builds and runs from a clean checkout, migrations on boot, `/healthz`, env checked at start, logs to stdout, graceful stop, Secure cookie + real client IP behind the tunnel (`ADDRESS_HEADER=CF-Connecting-IP`), `/setup` only with `SETUP_TOKEN`.
-4. CI (GitHub Actions): lint, unit, e2e, build image, push `ghcr.io/chicenwangs/lifetracker:<version>` + `:sha-<short>`. Release = git tag `vX.Y.Z`.
-5. Ops scripts verified in the container: backup, restore, reset-password.
-6. Write `docs/SERVICE-HANDOFF.md`: the service contract for someone with no dev context (what it is, image + tags, port, env vars, volume, health check, first run, backup/restore, upgrade/rollback, logs, known limits, acceptance checks).
+## Known issues (2026-11-19, docs-only pass found these)
 
-**P2b, separate deploy chat: deploy like an ops team** (inputs: SERVICE-HANDOFF + DEPLOYMENT only)
-Homelab Docker → backups + restore drill → Cloudflare Tunnel `planner.jeremyjosh.org`, no LAN port → monitoring/uptime check.
+1. **Keep note Restore from Trash = 404.** `PATCH /api/keep/notes/:id {trashed:false}` fails because `level()` hides `deleted_at` rows and `need()` runs first. `/keep?scope=trash` Restore → "Not found". Blocks (`/trash`) and pages (`/pages/trash`) restore fine. Repro + fix direction in `docs/v3/QA-RUN-2026-11-19.md`.
+2. `/pages/graph` logs an unhandled `Sigma: Container has no width` at phone width (graph still renders).
+3. Android shell shows desktop hints (`Search Ctrl+K`, `+ Add N`) — phone copy sweep not applied to native.
+4. Theme e2e test is invalid between 23:59 and 00:00 (it sets Light 00:00 / Dark 23:59).
+5. Offline testing on `vite dev` can show a stale service-worker cache (old rows, dead hydration). Use a built server.
 
-**P2c: involve users**
-Neina signs up on her device, swap share codes, switch sign-up to Invite only. Test core loop + sharing ~1 week, log issues, fix here, ship a new tag, deploy chat rolls it out. P2 acceptance in REQUIREMENTS §6.
+## Product decisions worth keeping
 
-Out of this app: Places, Lists, People, Ideas, Workouts (own services on own subdomains, e.g. `places.jeremyjosh.org`). Later (P3): search, calendar feed, edit grants, planner lanes.
+- Out of this app: Places, Lists, People, Ideas, Workouts — their own services/subdomains; their data was folded into Keep via Settings › Account. Dormant tables `goals`, `courses`, `items.course_id` stay until a rebuild migration.
+- Sharing is view/edit, never live co-edit (409 keeps text, ADR-008). Calendar sharing is by swap code, view-only.
+- Keep and Pages are separate products on purpose: Keep = quick notes; Pages = long-form wiki + databases.
+- Group/trip features stay in Keep binders; no new module.
 
-## Open owner decisions (REVIEW.md "Open")
+## Open owner decisions
 
-Type oddities to retype, duplicate places to merge, 4 stale "doing" items, movies in Date ideas, missing place data.
+`docs/REVIEW.md` §Open — mostly Notion-import data cleanups (type oddities, duplicate places, stale "doing" items, movies in Date ideas). Do not bulk-close without the owner.
