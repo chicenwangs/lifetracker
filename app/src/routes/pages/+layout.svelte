@@ -4,6 +4,7 @@
 	import { invalidateAll } from '$lib/client/refresh';
 	import { page } from '$app/state';
 	import { post } from '$lib/client/api';
+	import { createPage } from '$lib/client/newPage';
 	import { showError } from '$lib/client/toast.svelte';
 	import type { PageNode } from '$lib/types';
 
@@ -22,14 +23,8 @@
 		}
 	});
 	async function create(parentId: string | null) {
-		try {
-			const r = await post<{ page: { id: string } }>('/api/pages', { parentId });
-			if (parentId) open[parentId] = true;
-			await invalidateAll();
-			await goto(`/pages/${r.page.id}`);
-		} catch (e) {
-			showError(e);
-		}
+		if (parentId) open[parentId] = true;
+		await createPage(parentId);
 	}
 	async function createDb() {
 		try {
