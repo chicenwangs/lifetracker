@@ -182,8 +182,9 @@ export function recalc(ownerId: string, type: Source, sourceId: string, now = Da
 
 /**
  * #296: "this and following" splits a series in two. Relative reminders ("1d before") are copied to the new
- * half so later dates still remind; exact-time ones due from the new start on move there.
- * shortcut: an exact time before the new start stays on the old half, fine until reminders get a per-occurrence link.
+ * half so later dates still remind. Exact-time ones stay on the old half (they fire at their own instant, and
+ * the reminders table is not in the undo journal, so moving them would be lost when the split is undone).
+ * shortcut: an exact-time reminder does not repeat into the new half, fine until reminders join the undo journal.
  */
 export function splitSeries(ownerId: string, oldId: string, toId: string, now = Date.now()): void {
 	const rows = db().prepare(`SELECT * FROM reminders WHERE owner_id = ? AND source_type = 'planner_item' AND source_id = ? AND status = 'scheduled'`).all(ownerId, oldId) as Row[]; // prettier-ignore
@@ -191,11 +192,8 @@ export function splitSeries(ownerId: string, oldId: string, toId: string, now = 
 	if (!rows.length || !fresh) return;
 	const t = nowUtcIso(now);
 	for (const r of rows) {
-		if (r.rule_kind === 'relative') {
-			db().prepare(`INSERT INTO reminders (id, owner_id, source_type, source_id, rule_kind, rel_value, rel_unit, at_time, due_at, status, created_at, updated_at) VALUES (?, ?, 'planner_item', ?, 'relative', ?, ?, NULL, ?, 'scheduled', ?, ?)`).run(newId('rem'), ownerId, toId, r.rel_value, r.rel_unit, r.due_at, t, t); // prettier-ignore
-		} else if (r.due_at && utcToLocal(r.due_at, fresh.tz).date >= fresh.date) {
-			db().prepare(`UPDATE reminders SET source_id = ?, updated_at = ? WHERE id = ?`).run(toId, t, r.id); // prettier-ignore
-		}
+		if (r.rule_kind !== 'relative') continue;
+		db().prepare(`INSERT INTO reminders (id, owner_id, source_type, source_id, rule_kind, rel_value, rel_unit, at_time, due_at, status, created_at, updated_at) VALUES (?, ?, 'planner_item', ?, 'relative', ?, ?, NULL, ?, 'scheduled', ?, ?)`).run(newId('rem'), ownerId, toId, r.rel_value, r.rel_unit, r.due_at, t, t); // prettier-ignore
 	}
 	recalc(ownerId, 'planner_item', oldId, now);
 	recalc(ownerId, 'planner_item', toId, now);
