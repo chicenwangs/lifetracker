@@ -53,7 +53,7 @@ Routes that exist (2026-11): `/`, `/today`, `/week`, `/month`, `/item/[id]`, `/k
 - Quick add grammar (one input): `title  tomorrow 3pm to 4pm /type /calendar|/both /remind 2h`. No time → planner refuses and says so; `/calendar` = all-day item. Batch add keeps the sheet open. Shared parser `quickadd.ts` powers every entry point.
 - Theme: Auto (Light 07:00–16:59, Dark 17:00–06:59, editable) or fixed via the sun/moon button. `--pill`/`--pill-ink` must be paired in both themes.
 - Undo: every mutation posts to the undo journal; Ctrl+Z (and the toast Undo) replays the inverse. Page editor keeps its own history.
-- Access: single check `level()`/`need()` in `lib/server/repo/shares.ts` for item/page/note/database-record. Trashed rows return "not found" there — see Known issues.
+- Access: single check `level()`/`need()` in `lib/server/repo/shares.ts` for item/page/note/database-record. Trashed rows return "not found" there — restore paths must not go through it.
 - Phone layout = width < 700 px, or coarse pointer with max-height 500 px. One shared bottom sheet (`BottomSheet.svelte`); Back closes the top layer (`use:backCloses`); hit areas ≥ 48 dp on phone, ≥ 24 px desktop; no "Click/Ctrl/PC" copy on phone; swipes move between peers, long-press selects.
 - Offline: service worker shell + offline badge; Keep edits and quick adds queue in `lib/client/offline.ts`; the Android app adds a real `offline.html` fallback.
 - Android extras: 6 widgets (Timeline, Keep, Now&Next, Quick, Countdown, Week), exact-alarm reminders (no FCM), in-app updater that polls GitHub Releases, theme-matched status bars, sign-out clears alarms/cache.
@@ -65,13 +65,11 @@ Routes that exist (2026-11): `/`, `/today`, `/week`, `/month`, `/item/[id]`, `/k
 - Docs drift was fixed 2026-11-19 (live version, test counts, tree, handoff). If a doc disagrees with code, code wins, then update the doc.
 - Backlog lives in `docs/v2/CHAT-HANDOFF.md` §"v2.1" and open review items in `docs/REVIEW.md`.
 
-## Known issues (verified, not fixed — docs-only pass)
+## Known issues (re-verified 2026-11-23, QA pass of release/3.1.2)
 
-1. **Keep note Restore from Trash is broken.** `PATCH /api/keep/notes/:id {trashed:false}` returns 404 `Not found`, because `level()` returns null for rows with `deleted_at` set, so the trash-screen button can never reach the note. Repro: trash a note, open `/keep?scope=trash`, click Restore → toast "Not found". Blocks (`/trash`) and pages (`/pages/trash`) restore fine. Fix direction: bypass `level()` for restore, or allow owner access to own trashed rows.
-2. `/pages/graph` throws an unhandled `Sigma: Container has no width` error in the browser console (dev, phone-width view). Graph still renders; console is not clean.
-3. Android app still shows desktop keyboard hints (`Search Ctrl+K`, `+ Add N`) — UX-AUDIT #22 copy sweep not applied to the native shell.
-4. Theme e2e test is a midnight hazard: it sets Light 00:00 / Dark 23:59 and asserts light; it failed at 00:00 and passed at 00:01. Run e2e outside that minute.
-5. Dev server + service worker can serve a stale cached page (old data, no hydration) when the server is down. Do not judge offline behaviour on `vite dev`; build and run the server.
+1. `/pages/graph` throws an unhandled `Sigma: Container has no width` error in the browser console (dev, phone-width view). Graph still renders; console is not clean.
+2. Theme e2e test is a midnight hazard: it sets Light 00:00 / Dark 23:59 and asserts light; it failed at 00:00 and passed at 00:01. Run e2e outside that minute.
+3. Dev server + service worker can serve a stale cached page (old data, no hydration) when the server is down. Do not judge offline behaviour on `vite dev`; build and run the server.
 
 ## Testing recipe (localhost + Android emulator)
 

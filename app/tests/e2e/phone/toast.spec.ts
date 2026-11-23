@@ -1,6 +1,6 @@
 // Undo toast on phone (#111): sits above the bottom bar, bar stays usable, 48 dp Undo, swipe sideways to dismiss.
 import { expect, test, type Page } from '@playwright/test';
-import { bottomBar, expectTappable, signIn, swipe } from './helpers';
+import { bottomBar, expectTappable, noDesktopHints, signIn, swipe } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 let page: Page;
@@ -49,4 +49,14 @@ test('swipe the toast sideways to dismiss it', async () => {
 	const toast = await deleteOne(`Toast item two ${test.info().project.name}`);
 	await swipe(page, toast.locator('span').first(), 'right', 160);
 	await expect(toast).toBeHidden();
+});
+
+// #363: the "Undid: …" centre note carried a Ctrl+Z chip on phone
+test('Undid note has no desktop key hint on phone', async () => {
+	const title = `Undid note ${test.info().project.name}`;
+	await deleteOne(title);
+	await page.keyboard.press('Control+z'); // undo the delete: an external keyboard still works
+	const note = page.getByRole('status').filter({ hasText: 'Undid:' });
+	await expect(note).toBeVisible();
+	await noDesktopHints(page);
 });

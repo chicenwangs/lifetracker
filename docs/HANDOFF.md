@@ -82,13 +82,11 @@ API (`app/src/routes/api/`): `attachments blocks calendar database-properties da
 - Phone: layout < 700 px or coarse pointer ≤ 500 px height; 48 dp targets; one bottom sheet; Back closes the top layer; no desktop wording.
 - Docs: `AGENTS.md` → this → `BUILD-NOTES.md` → `v2/PRD`/`FEATURES`/`DESIGN`. When docs disagree: code > BUILD-NOTES > TECHNICAL > REQUIREMENTS.
 
-## Known issues (2026-11-19, docs-only pass found these)
+## Known issues (re-verified 2026-11-23, QA pass of release/3.1.2)
 
-1. **Keep note Restore from Trash = 404.** `PATCH /api/keep/notes/:id {trashed:false}` fails because `level()` hides `deleted_at` rows and `need()` runs first. `/keep?scope=trash` Restore → "Not found". Blocks (`/trash`) and pages (`/pages/trash`) restore fine. Repro + fix direction in `docs/v3/QA-RUN-2026-11-19.md`.
-2. `/pages/graph` logs an unhandled `Sigma: Container has no width` at phone width (graph still renders).
-3. Android shell shows desktop hints (`Search Ctrl+K`, `+ Add N`) — phone copy sweep not applied to native.
-4. Theme e2e test is invalid between 23:59 and 00:00 (it sets Light 00:00 / Dark 23:59).
-5. Offline testing on `vite dev` can show a stale service-worker cache (old rows, dead hydration). Use a built server.
+1. `/pages/graph` logs an unhandled `Sigma: Container has no width` at phone width (graph still renders).
+2. Theme e2e test is invalid between 23:59 and 00:00 (it sets Light 00:00 / Dark 23:59).
+3. Offline testing on `vite dev` can show a stale service-worker cache (old rows, dead hydration). Use a built server.
 
 ## Product decisions worth keeping
 

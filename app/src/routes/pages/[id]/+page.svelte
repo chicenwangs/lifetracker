@@ -64,10 +64,11 @@
 	async function pin() {
 		try {
 			const cur = (await get<{ pins: { id: string }[] }>('/api/page-shortcuts')).pins.map((p) => p.id);
-			const next = pg.pinned ? cur.filter((x) => x !== pg.id) : [...cur, pg.id];
+			const was = pg.pinned; // read before invalidateAll swaps pg
+			const next = was ? cur.filter((x) => x !== pg.id) : [...cur, pg.id];
 			await apiFetch('PUT', '/api/page-shortcuts', { ids: next });
 			await invalidateAll();
-			showToast(pg.pinned ? 'Unpinned from header' : 'Pinned to header');
+			showToast(was ? 'Unpinned from header' : 'Pinned to header');
 		} catch (e) {
 			showError(e); // 4th pin: "You can pin 3 pages. Unpin one first."
 		}

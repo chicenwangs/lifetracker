@@ -1,9 +1,32 @@
 <!-- Item = one big markdown page (FR-I1..I5). Used as the centre peek and as the /item/[id] page.
      Title edits in place. Properties edit inline. Right column: Delete · History · Time blocks
      (the real day timeline: this item's blocks in its colour, others muted; drag empty time = linked block). -->
+<script lang="ts" module>
+	/** #278: split/detached row id -> the row the user came from. In sessionStorage: survives the page route
+	 *  remounting the view and a reload; storage may throw (private mode), then the view just stays */
+	const cameFromKey = (id: string) => `lt.cameFrom.${id}`;
+	function setCameFrom(id: string, from: string) {
+		try {
+			sessionStorage.setItem(cameFromKey(id), from);
+		} catch {
+			/* no storage: no fallback */
+		}
+	}
+	function takeCameFrom(id: string): string | null {
+		try {
+			const from = sessionStorage.getItem(cameFromKey(id));
+			sessionStorage.removeItem(cameFromKey(id));
+			return from;
+		} catch {
+			return null;
+		}
+	}
+</script>
+
 <script lang="ts">
 	import Reminders from './Reminders.svelte';
 	import { onDestroy, onMount, tick, untrack } from 'svelte';
+	import { goto } from '$app/navigation';
 	import StatusSquare from './StatusSquare.svelte';
 	import Markdown from './Markdown.svelte';
 	import DayPlanner from './DayPlanner.svelte';
@@ -87,13 +110,18 @@
 	function follow(sent: string, got: { item?: { id: string } } | undefined) {
 		if (got?.item && sent === it?.id && got.item.id !== sent) {
 			detached = got.item.id;
+			setCameFrom(got.item.id, sent);
 			showAt(got.item.id);
 		}
 	}
 	/** #278: the address follows the row on screen, so a reload or a copied link shows the same item */
+	let nav: Promise<unknown> = Promise.resolve(); // a refresh must not supersede the address change
 	function showAt(itemId: string) {
+		const url = `/item/${encodeURIComponent(itemId)}`;
 		try {
-			history.replaceState(history.state, '', `/item/${encodeURIComponent(itemId)}`);
+			// the page route must move through the router: with a raw replaceState invalidateAll re-runs the old URL's load (#362)
+			if (peek) history.replaceState(history.state, '', url);
+			else nav = goto(url, { replaceState: true, noScroll: true, keepFocus: true }).catch(() => {});
 		} catch {
 			/* sandboxed frame: the URL stays, the view still works */
 		}
@@ -116,9 +144,11 @@
 			failed = false;
 		} catch (e) {
 			if (n !== loadSeq) return;
-			if (detached) {
-				// #278: Undo deleted the row this sheet followed: fall back to the series date it came from
+			const back = takeCameFrom(viewId);
+			if (back) {
+				// #278: Undo deleted the row this sheet followed: fall back to the row it came from
 				detached = null;
+				if (!peek) return void showAt(back); // the page route reloads with it
 				showAt(id);
 				return load(quiet);
 			}
@@ -140,6 +170,7 @@
 		}
 	}
 	async function changed() {
+		await nav;
 		await Promise.all([load(), loadDay()]);
 		onchanged?.();
 	}
@@ -365,6 +396,7 @@
 			if (detached) await load();
 			if (v) v = { ...v, item: { ...v.item, notes: val } };
 			saveState = 'saved';
+			await nav;
 			onchanged?.();
 			return true;
 		} catch (e) {

@@ -8,8 +8,9 @@
 	import ActionSheet from './ActionSheet.svelte';
 	import BottomSheet from './BottomSheet.svelte';
 	import { page } from '$app/state';
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { get, patch, post } from '$lib/client/api';
+	import { isPhone } from '$lib/client/phone';
 	import { enqueue, isOffline, noteQueued } from '$lib/client/offline';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import type { BinderDTO, ChecklistItem, LabelDTO, NoteDTO } from '$lib/types';
@@ -252,15 +253,35 @@
 	// ---------- drag a row by its handle (mouse + touch, Keep-style) ----------
 	// up/down = reorder among its siblings, sideways ≥ 40 px = indent / outdent. Keys: Alt+↑/↓, Tab/Shift+Tab.
 	let drag = $state<{ id: string; x0: number; y0: number } | null>(null);
+	let phone = $state(false); // desktop keeps the grip out of the Tab order and the a11y tree (#281); after mount so hydration agrees
+	onMount(() => (phone = isPhone()));
+	let dragged = false; // a real drag must not also count as a tap on the grip
+	let moving = $state<string | null>(null); // row id whose Move / Indent sheet is open (phone tap path, #285)
+	// closures over the plain id: the sheet clears `moving` before run() fires (#324)
+	const rowActions = (id: string) => {
+		const at = () => items.findIndex((x) => x.id === id);
+		return [
+			{ label: 'Move up', run: () => moveItem(at(), -1) },
+			{ label: 'Move down', run: () => moveItem(at(), 1) },
+			{ label: 'Indent', run: () => indent(at(), 1) },
+			{ label: 'Outdent', run: () => indent(at(), -1) },
+		];
+	};
+	function gripTap(id: string) {
+		if (dragged) dragged = false;
+		else if (phone) moving = id;
+	}
 	function grab(e: PointerEvent, i: number) {
 		const id = items[i]?.id;
 		if (!id) return;
+		dragged = false;
 		e.preventDefault();
 		(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
 		drag = { id, x0: e.clientX, y0: e.clientY };
 	}
 	function dragMove(e: PointerEvent) {
 		if (!drag) return;
+		if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 8) dragged = true;
 		const i = items.findIndex((x) => x.id === drag?.id);
 		const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
 		const over = el?.closest<HTMLElement>('li[data-i]');
@@ -509,14 +530,18 @@
 							class:done={it.checked}
 							class:dragging={drag?.id === it.id}
 						>
-							<span
+							<button
 								class="grip"
-								role="presentation"
+								type="button"
+								aria-label="Move or indent {it.text || 'item'}"
+								tabindex={phone ? 0 : -1}
+								aria-hidden={phone ? undefined : 'true'}
 								title="Drag to move · sideways to indent"
+								onclick={() => gripTap(it.id)}
 								onpointerdown={(e) => grab(e, i)}
 								onpointermove={dragMove}
 								onpointerup={drop}
-								onpointercancel={() => (drag = null)}>⋮⋮</span
+								onpointercancel={() => (drag = null)}>⋮⋮</button
 							>
 							{#if hasKids(it.id)}
 								<button
@@ -725,6 +750,13 @@
 		</div>
 	{/if}
 </div>
+{#if moving}
+	<ActionSheet
+		title={items.find((x) => x.id === moving)?.text || 'item'}
+		actions={rowActions(moving)}
+		onclose={() => (moving = null)}
+	/>
+{/if}
 {#if sheet === 'add'}
 	<ActionSheet
 		title="Add"
@@ -880,6 +912,11 @@
 		opacity: 1;
 	}
 	.grip {
+		border: 0;
+		background: none;
+		color: inherit;
+		padding: 0;
+		font-family: inherit;
 		flex: none;
 		width: 24px;
 		min-height: 28px;

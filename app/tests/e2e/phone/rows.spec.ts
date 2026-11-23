@@ -90,3 +90,22 @@ test('Week: hold a row and drop it on another day', async () => {
 	await f.done();
 	await expect.poll(async () => (await item(id)).date).toBe('2030-04-11');
 });
+
+// #324: ActionSheet closes (clearing the page's `acting`) before run() fires; run must not read the cleared value.
+for (const [name, url] of [
+	['Week', '/week?w=2030-04-08'],
+	['Month', `/month?m=2030-04&d=${DAY}`],
+] as const)
+	test(`${name}: ⋯ → Done ticks the row and shows Undo (#324)`, async () => {
+		const errors: string[] = [];
+		const onErr = (e: Error) => errors.push(e.message);
+		page.on('pageerror', onErr);
+		const id = await make(`Row tick ${name} ${P}`, DAY, '12:00');
+		await page.goto(url);
+		await page.getByRole('button', { name: `Actions for Row tick ${name} ${P}` }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Done', exact: true }).click();
+		await expect.poll(async () => (await item(id)).status).toBe('done');
+		await expect(page.locator('.toast').getByRole('button', { name: 'Undo' })).toBeVisible();
+		page.off('pageerror', onErr);
+		expect(errors).toEqual([]);
+	});

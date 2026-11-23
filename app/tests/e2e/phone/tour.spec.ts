@@ -47,3 +47,11 @@ test('Back closes the tour and leaves the page behind it alone (#300)', async ()
 	await expect(tour).toHaveCount(0);
 	expect(page.url()).toBe(url);
 });
+
+test('Help: Quick add section teaches the repeat grammar (#303)', async () => {
+	await page.goto('/settings/help');
+	const sec = page.locator('section.ph', { has: page.getByRole('heading', { name: 'Quick add' }) });
+	await expect(sec).toContainText('every');
+	await expect(sec).toContainText('until');
+	await expect(sec).toContainText('for N days|weeks|months|years');
+});
