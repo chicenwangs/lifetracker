@@ -1190,6 +1190,22 @@ test('v2 P8 a11y: axe finds no serious or critical issues on the main screens (l
 	expect(bad).toEqual([]);
 });
 
+test('checklist Tab with nothing to indent moves focus on, does not trap (#281)', async () => {
+	const items = ['a', 'b'].map((id) => ({ id, text: id, checked: false, parentId: null }));
+	const n = await api('POST', '/api/keep/notes', { type: 'checklist', title: 'Tab trap', items });
+	await page.goto(`/keep?note=${n.j.note.id}`);
+	await page.locator('#ci-0').focus();
+	await page.keyboard.press('Tab'); // first item: no sibling above, cannot indent
+	expect(await page.evaluate(() => document.activeElement?.id)).not.toBe('ci-0');
+	await page.locator('#ci-1').focus();
+	await page.keyboard.press('Tab'); // second item indents under the first
+	expect(await page.evaluate(() => document.activeElement?.id)).toBe('ci-1');
+	await page.keyboard.press('Shift+Tab'); // outdent
+	expect(await page.evaluate(() => document.activeElement?.id)).toBe('ci-1');
+	await page.keyboard.press('Shift+Tab'); // top level: leaves the field
+	expect(await page.evaluate(() => document.activeElement?.id)).not.toBe('ci-1');
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)

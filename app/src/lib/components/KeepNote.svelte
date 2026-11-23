@@ -203,22 +203,23 @@
 	}
 	function indent(i: number, dir: 1 | -1) {
 		const it = items[i];
-		if (!it) return;
+		if (!it) return false;
 		if (dir === 1) {
 			// becomes a child of the item above at the same level
 			let k = i - 1;
 			while (k >= 0 && depthOf(k) > depthOf(i)) k--;
-			if (k < 0 || depthOf(k) !== depthOf(i)) return;
+			if (k < 0 || depthOf(k) !== depthOf(i)) return false;
 			let maxSub = 0;
 			for (let j = i; j < subtree(i)[1]; j++) maxSub = Math.max(maxSub, depthOf(j) - depthOf(i) + 1);
 			if (depthOf(i) + maxSub > 4)
-				return showToast('Checklists nest 4 levels deep at most.', { kind: 'error' });
+				return (showToast('Checklists nest 4 levels deep at most.', { kind: 'error' }), true);
 			it.parentId = items[k]?.id ?? null;
 		} else {
-			if (!it.parentId) return;
+			if (!it.parentId) return false;
 			it.parentId = items.find((x) => x.id === it.parentId)?.parentId ?? null;
 		}
 		changed();
+		return true; // false = nothing to indent: Tab moves focus on instead of trapping it (#281)
 	}
 	function moveItem(i: number, dir: -1 | 1) {
 		const [a, b] = subtree(i);
@@ -547,8 +548,7 @@
 										e.preventDefault();
 										addItem(i);
 									} else if (e.key === 'Tab') {
-										e.preventDefault();
-										indent(i, e.shiftKey ? -1 : 1);
+										if (indent(i, e.shiftKey ? -1 : 1)) e.preventDefault();
 									} else if (e.key === 'Backspace' && !it.text && items.length > 1) {
 										e.preventDefault();
 										removeItem(i);
