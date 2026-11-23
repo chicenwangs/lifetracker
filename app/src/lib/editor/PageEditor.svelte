@@ -599,6 +599,11 @@
 		max-width: 100%;
 		border-radius: 8px;
 	}
+	/* external links: underline = not colour alone; padding lifts the hit area to 24 px (#284) */
+	.doc :global(.pm a:not(.pl)) {
+		text-decoration: underline;
+		padding: 3px 0;
+	}
 	.doc :global(a.pl) {
 		padding: 0 4px;
 		border-radius: 4px;

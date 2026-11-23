@@ -206,7 +206,7 @@
 			},
 			dateClick: (a) => onpick(a.dateStr),
 			dayCellDidMount: (a) => {
-				a.el.removeAttribute('aria-labelledby'); // the cell's name = its visible text, not just the date (#298)
+				a.el.removeAttribute('aria-labelledby'); // the cell's name = its visible text, not just the date (#298, #284)
 				const d = a.date;
 				const s = makeDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
 				if (a.el.dataset.ltDbl) return; // one listener per cell, even if FullCalendar re-mounts it
