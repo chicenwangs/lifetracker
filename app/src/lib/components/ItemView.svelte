@@ -2,8 +2,25 @@
      Title edits in place. Properties edit inline. Right column: Delete · History · Time blocks
      (the real day timeline: this item's blocks in its colour, others muted; drag empty time = linked block). -->
 <script lang="ts" module>
-	/** #278: split/detached row id -> the row the user came from; survives the page route remounting the view */
-	const cameFrom: Record<string, string> = {};
+	/** #278: split/detached row id -> the row the user came from. In sessionStorage: survives the page route
+	 *  remounting the view and a reload; storage may throw (private mode), then the view just stays */
+	const cameFromKey = (id: string) => `lt.cameFrom.${id}`;
+	function setCameFrom(id: string, from: string) {
+		try {
+			sessionStorage.setItem(cameFromKey(id), from);
+		} catch {
+			/* no storage: no fallback */
+		}
+	}
+	function takeCameFrom(id: string): string | null {
+		try {
+			const from = sessionStorage.getItem(cameFromKey(id));
+			sessionStorage.removeItem(cameFromKey(id));
+			return from;
+		} catch {
+			return null;
+		}
+	}
 </script>
 
 <script lang="ts">
@@ -93,7 +110,7 @@
 	function follow(sent: string, got: { item?: { id: string } } | undefined) {
 		if (got?.item && sent === it?.id && got.item.id !== sent) {
 			detached = got.item.id;
-			cameFrom[got.item.id] = sent;
+			setCameFrom(got.item.id, sent);
 			showAt(got.item.id);
 		}
 	}
@@ -127,10 +144,9 @@
 			failed = false;
 		} catch (e) {
 			if (n !== loadSeq) return;
-			const back = cameFrom[viewId];
+			const back = takeCameFrom(viewId);
 			if (back) {
 				// #278: Undo deleted the row this sheet followed: fall back to the row it came from
-				cameFrom[viewId] = '';
 				detached = null;
 				if (!peek) return void showAt(back); // the page route reloads with it
 				showAt(id);
