@@ -1,7 +1,7 @@
 # Life Tracker v2 — build phases
 
 Caveman doc. 2026-11-13. Entry point for Claude Code. One phase per session/PR. **No deploy until P10.**
-Release plan (owner): live stays on **v1.1.0** while all of v2 is built on branch `v2`. When every phase is green → one big release **v2.0.0** → deploy.
+Release plan (owner, history): live stayed on **v1.1.0** while all of v2 was built on branch `v2`, then one big release **v2.0.0**. Done 2026-11-14. Releases since: see Status table (newest = v3.1.1).
 
 ## Read order (every session)
 1. `CLAUDE.md` (root) — rules.
@@ -73,6 +73,8 @@ Close now in one go so phases don't stall. Owner ticks or overrides; Claude Code
 | P8 | **DONE** · phone Week agenda + Month grid + More, PWA manifest/icons/service worker (shell only), offline badge + Keep offline queue (ADR-009, D-06 both copies), welcome tour (once, skip/finish saved) + Settings › Help, axe 0 serious on 10 screens × light/dark × PC/phone, Home < 1.5 s. Later: swipe gestures. Unit 339, e2e 25. | 2026-11-14 | #13 |
 | P9 | **DONE** · freeze; regression unit 340 / e2e 25; migration rehearsal = built v1.1.0 DB → all migrations, every v1 row byte-identical, backup restores (in CI) + anonymised dev DB clean. Live-backup rehearsal skipped (owner). SERVICE-HANDOFF upgrade/rollback/checks, RELEASE-NOTES, README. No deploy. | 2026-11-14 | #14 |
 | P10 | **DONE (release)** · `v2` merged into `main`, `app/package.json` 2.0.0, tag `v2.0.0` → release workflow → GHCR image + GitHub Release with deploy bundle. **Not deployed** (owner backs up live, then upgrades per SERVICE-HANDOFF §5). "Live + smoke test" = owner. | 2026-11-14 | tag |
+| v3.1.1 | **DONE (release)** · Removed the mistaken read-only `/timetable` page (#270, #271). No migration. Unit 386, e2e desktop 28, phone 246. | 2026-11-20 | #271 |
+| v3.1.0 | **DONE (release)** · QA-loop fixes (#243–#269): repeat end row, `until`/`for N` quick add, Keep Trash restore, Duplicate, accessibility + layout. No migration. Unit 386, e2e desktop 28, phone 246. | 2026-11-20 | #264–#269 |
 | v3.0.0 | **DONE (release)** · Mobile overhaul #106 (#87–#120), repeating items #72/#73, security pass #22–#59, review fixes #155–#211, QA-loop fixes #221–#232, Android sign-in error page. Migrations 0009, 0010. Unit 368, e2e desktop 26, phone 246. | 2026-11-18 | #233–#241 |
 | v2.0.4 | **DONE (release)** · PR #19: 7 themed widgets (Robolectric shots in CI), Today tick/now band, Keep phone editor + back, motion audit. No migration. Unit 342, e2e 25. | 2026-11-14 | #19 |
 | v2.0.3 | **DONE (release)** · PR #18 Android app (`mobile/`, Capacitor 8.6): Today + Keep widgets, reminder alarms, in-app update; `GET /api/native`. No migration. Unit 342, e2e 25, CI APK build. | 2026-11-14 | #18 |

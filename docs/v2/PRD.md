@@ -6,10 +6,10 @@ Set: **PRD.md** (what) → **FEATURES.md** (behaviour) → **DESIGN.md** (how). 
 
 ## 0. State now
 
-- **Next release = v2.0.0 (big bang).** See PHASES.md.
-- **Live:** `https://planner.jeremyjosh.org`, **v1.1.0**, homelab Docker + Cloudflare Tunnel (P2b done). Ops contract = repo `docs/SERVICE-HANDOFF.md`.
+- **Latest release = v3.1.1** (2026-11-20; v3.1.0 same day, v3.0.0 2026-11-18, v2.0.0 2026-11-14). Release table = PHASES.md. 3.1.2 patch in progress, not released.
+- **Live:** `https://planner.jeremyjosh.org`, homelab Docker + Cloudflare Tunnel. Last verified 2026-11-19 at v3.0.0. Ops contract = repo `docs/SERVICE-HANDOFF.md`.
 - **Rule: every v1.1.0 feature stays** (core loop tested 1 week). Parity list = RELEASE-PARITY.md.
-- Live app = Life Planner only: auth + open sign-up (admin can set invite-only), Home (month 2/3 + planner 1/3), Week, item peek, N quick add, trash, view-only calendar sharing by `LT-` code, light/dark theme ("gradient C").
+- v1.1.0 baseline (what the parity list covers) = Life Planner only: auth + open sign-up (admin can set invite-only), Home (month 2/3 + planner 1/3), Week, item peek, N quick add, trash, view-only calendar sharing by `LT-` code, light/dark theme ("gradient C").
 - Test counts disagree across old docs (237 / 258 / 260). **Truth = CI.** Don't quote a number without checking.
 - Dormant data in DB (no UI): goals, courses, places, lists, list_items, people, person_facts, ideas, workout_split/logs. Keep it. See D-22.
 
