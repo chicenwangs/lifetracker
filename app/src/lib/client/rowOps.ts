@@ -1,7 +1,7 @@
 // Row actions shared by phone lists (#96): done, delete, move. Each one shows a toast with Undo.
 import { isoPlus } from '$lib/time';
-import type { BlockDTO, ItemDTO, Status } from '$lib/types';
-import { patch } from './api';
+import { nextStatus, type BlockDTO, type ItemDTO, type Status } from '$lib/types';
+import { patch, post } from './api';
 import { buzz } from './haptics';
 import { enqueueAction, isOffline } from './offline';
 import { removeBlock, removeItem } from './remove';
@@ -34,6 +34,44 @@ async function change(x: Row, body: Record<string, unknown>, text: string, refre
 			return;
 		}
 		showError(e);
+	}
+}
+
+const TICK_TEXT: Record<Status, string> = { todo: 'Not started', doing: 'Started', done: 'Done' };
+
+/**
+ * Tap a status square (#293, #310): POST /cycle, then a toast with Undo. Offline = queued PATCH. One helper
+ * for every tick, so Today and the item sheet cannot drift apart.
+ * `onResult` runs before `refresh` (the item sheet follows a repeating date that was detached into its own row).
+ */
+export async function cycleRow(
+	kind: 'items' | 'blocks',
+	id: string,
+	cur: Status,
+	name: string,
+	refresh: Refresh,
+	onResult?: (r: { item?: { id: string } }) => void,
+): Promise<'ok' | 'queued' | 'failed'> {
+	const next = nextStatus(cur);
+	const p = `/api/${kind}/${encodeURIComponent(id)}`;
+	try {
+		const r = await post<{ item?: { id: string }; undo?: UndoRef }>(`${p}/cycle`);
+		onResult?.(r);
+		await refresh();
+		if (next === 'done') buzz('success');
+		const u = r.undo;
+		showToast(`${TICK_TEXT[next]}: "${name}"`, {
+			undo: u ? async () => void ((await undoLast(u.id)) && (await refresh())) : undefined,
+		});
+		return 'ok';
+	} catch (e) {
+		if (!isOffline(e)) {
+			showError(e);
+			return 'failed';
+		}
+		enqueueAction({ key: p, method: 'PATCH', path: p, payload: { status: next } });
+		showToast(`${TICK_TEXT[next]}: "${name}" · Waiting to sync`);
+		return 'queued';
 	}
 }
 
