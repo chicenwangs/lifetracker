@@ -14,7 +14,7 @@ Newest first. Latest release = v3.1.1 (2026-11-20; v3.1.0 same day, v3.0.0 2026-
 - Phone Today: "To do today · no time set" card removed (and the give-a-time sheet). Hold a timeline row ~0.5 s = delete + Undo toast; moving > 10 px cancels; the ending tap is swallowed.
 - Android: "To do today" widget removed (6 widgets). `/api/native` still sends `todos` for older installs.
 - Settings › Users: Storage column = uploaded files per person vs `UPLOAD_QUOTA_BYTES` (`usageByOwner`, same rule as the quota check).
-- Parked: phone tour (#83, next major with a mobile UX audit). Repeating items + Google-Calendar-style reminders (#72, own PR, full scope).
+- Was parked here, now shipped: phone tour (P8, welcome tour once + Settings › Help), repeating items + default reminders (#72, #73, v3.0.0).
 
 ## Security hardening (2026-11-16, audit of v2.0.4, issues #22–#59)
 
@@ -222,7 +222,17 @@ Newest first. Latest release = v3.1.1 (2026-11-20; v3.1.0 same day, v3.0.0 2026-
 
 - Centred palette over the blurred page. Any order: `title day time [/type] [/calendar | /both]`. Default = planner block only; `/calendar` = item only; `/both` = item + linked block. Problems only on Enter. ↑ = last entry.
 - Once a time parses, a second window shows that day's timeline with the draft moving as you type. Crossing midnight = first day only. "free" / "overlaps N" pill. Beside the palette ≥ 1360 px, under it below that.
-- Shared input `CommandInput.svelte` (ghost hint, `/` menu). Drag boxes use `SlotCommand.svelte` with `QAContext.slot`; API `POST /api/quickadd {text, slot?}`.
+- Shared input `CommandInput.svelte` (ghost hint, `/` menu). Drag boxes use `SlotCommand.svelte` with `QAContext.slot`; API `POST /api/quickadd {text, slot?, day?}`. Phone Add sheet sends `day` = the day shown on screen (default day when the text has none; relative words like `tmr` still count from today). After Add, the phone toast lists server warnings (e.g. "Date is in the past.", "Time already passed today.") and stays 8 s.
+- **Grammar** (truth = `app/src/lib/quickadd.ts`; client preview and server share it; never throws; problems show on Enter):
+  - Any order. Last day wins, last time wins. Words like `on at by from` need no prefix. Common typos ok (`tommorow`, `wensday`, `febuary`). `#word` stays in the title.
+  - `/type` = one of your item types by slug (`/work`, `/hobby` …). None typed = No type. `/` opens the menu. Unknown `/x` = problem.
+  - Goes to: `/planner` (aliases `/plan /timeline /block`) = time block only, needs a time. `/calendar` (`/cal`) = calendar item only, time optional. `/both` = item + linked block, needs a time. No destination = your Quick add target pref (default planner). A month-day drag defaults to calendar. Text with `every …` and no destination = `both` if it has a time, else calendar.
+  - `/remind 1w|3d|2d|1d|2h|15min` (several ok: `/remind 1d 2h`; glued `/remind2h` ok). Any other offset = problem.
+  - Days: `today tonight tmr yesterday`, weekdays (`fri`, `next fri`), `16 nov` (a passed date rolls to next year), `16/11` (D/M; US region = M/D), `2026-11-16`, `in 3 days / 2 weeks / 1 month`, `3 days from now`, `day after tomorrow`, `next week`, `weekend`, `next month`, `end of month` (`eom`). Past date = warning, not a problem.
+  - Times: `3pm`, `3:30pm`, `15:30`, `noon`, `midnight`, ranges `3pm to 5pm`, `3-5pm`, `between 3 and 5pm` (also `till`/`until`), end by length `for 2h`, `for 90min`, `for 1h30`. Planner times snap to 15 min ("rounded to 15 min"). One time = block length pref (default 60 min). End before start = crosses midnight; block max 24 h. `all day` = no time, so add `/calendar` (planner needs a time). End time on `/calendar` is dropped (note "end time needs /both").
+  - Repeat (#72): `every day`, `every weekday`, `every week`, `every month`, `every year`, `every 2 weeks`, `every mon,wed,fri` (also `every mon and wed`). Weekly gets BYDAY of the start day, monthly BYMONTHDAY. Bare `daily weekly monthly yearly annually` count only when an end phrase is also typed (so "weekly report" stays a title).
+  - Repeat end (#262, #268): `until <date>` (also `till`, `til`; date forms as above, or a weekday) and `for N days|weeks|months|years` (first day counts as one). Need a repeat, else problem. End before start = problem. Words are removed from the title; the rule gets `UNTIL=`.
+  - Title: leftover words, cut to 300 chars. Empty title = problem ("Add a title first").
 
 ## Item view
 
