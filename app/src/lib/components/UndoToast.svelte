@@ -226,4 +226,10 @@
 		border-radius: 5px;
 		padding: 1px 5px;
 	}
+	/* no key hint on phone (#363) */
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		kbd {
+			display: none;
+		}
+	}
 </style>
