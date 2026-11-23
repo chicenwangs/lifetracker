@@ -1,6 +1,11 @@
 <!-- Item = one big markdown page (FR-I1..I5). Used as the centre peek and as the /item/[id] page.
      Title edits in place. Properties edit inline. Right column: Delete · History · Time blocks
      (the real day timeline: this item's blocks in its colour, others muted; drag empty time = linked block). -->
+<script lang="ts" module>
+	/** #278: split/detached row id -> the row the user came from; survives the page route remounting the view */
+	const cameFrom: Record<string, string> = {};
+</script>
+
 <script lang="ts">
 	import Reminders from './Reminders.svelte';
 	import { onDestroy, onMount, tick, untrack } from 'svelte';
@@ -88,6 +93,7 @@
 	function follow(sent: string, got: { item?: { id: string } } | undefined) {
 		if (got?.item && sent === it?.id && got.item.id !== sent) {
 			detached = got.item.id;
+			cameFrom[got.item.id] = sent;
 			showAt(got.item.id);
 		}
 	}
@@ -121,9 +127,12 @@
 			failed = false;
 		} catch (e) {
 			if (n !== loadSeq) return;
-			if (detached) {
-				// #278: Undo deleted the row this sheet followed: fall back to the series date it came from
+			const back = cameFrom[viewId];
+			if (back) {
+				// #278: Undo deleted the row this sheet followed: fall back to the row it came from
+				delete cameFrom[viewId];
 				detached = null;
+				if (!peek) return void showAt(back); // the page route reloads with it
 				showAt(id);
 				return load(quiet);
 			}
