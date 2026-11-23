@@ -130,7 +130,7 @@
 			const back = cameFrom[viewId];
 			if (back) {
 				// #278: Undo deleted the row this sheet followed: fall back to the row it came from
-				delete cameFrom[viewId];
+				cameFrom[viewId] = '';
 				detached = null;
 				if (!peek) return void showAt(back); // the page route reloads with it
 				showAt(id);
