@@ -180,6 +180,27 @@ export function recalc(ownerId: string, type: Source, sourceId: string, now = Da
 	}
 }
 
+/**
+ * #296: "this and following" splits a series in two. Relative reminders ("1d before") are copied to the new
+ * half so later dates still remind; exact-time ones due from the new start on move there.
+ * shortcut: an exact time before the new start stays on the old half, fine until reminders get a per-occurrence link.
+ */
+export function splitSeries(ownerId: string, oldId: string, toId: string, now = Date.now()): void {
+	const rows = db().prepare(`SELECT * FROM reminders WHERE owner_id = ? AND source_type = 'planner_item' AND source_id = ? AND status = 'scheduled'`).all(ownerId, oldId) as Row[]; // prettier-ignore
+	const fresh = sourceInfo(ownerId, 'planner_item', toId)?.repeat;
+	if (!rows.length || !fresh) return;
+	const t = nowUtcIso(now);
+	for (const r of rows) {
+		if (r.rule_kind === 'relative') {
+			db().prepare(`INSERT INTO reminders (id, owner_id, source_type, source_id, rule_kind, rel_value, rel_unit, at_time, due_at, status, created_at, updated_at) VALUES (?, ?, 'planner_item', ?, 'relative', ?, ?, NULL, ?, 'scheduled', ?, ?)`).run(newId('rem'), ownerId, toId, r.rel_value, r.rel_unit, r.due_at, t, t); // prettier-ignore
+		} else if (r.due_at && utcToLocal(r.due_at, fresh.tz).date >= fresh.date) {
+			db().prepare(`UPDATE reminders SET source_id = ?, updated_at = ? WHERE id = ?`).run(toId, t, r.id); // prettier-ignore
+		}
+	}
+	recalc(ownerId, 'planner_item', oldId, now);
+	recalc(ownerId, 'planner_item', toId, now);
+}
+
 /** After a reminder on a repeating item fires (#72, #261), schedule the next occurrence if one exists. */
 export function advanceRepeating(id: string, ownerId: string, now = Date.now()): void {
 	const r = db().prepare(`SELECT * FROM reminders WHERE id = ? AND owner_id = ?`).get(id, ownerId) as Row | undefined; // prettier-ignore

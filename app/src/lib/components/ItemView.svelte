@@ -234,14 +234,22 @@
 		await save({
 			rrule: formatRRule({
 				...p,
-				until: kind === 'until' ? it?.date || undefined : undefined,
+				// #296: a later date, not the start date (that would cut the series to one occurrence)
+				until:
+					kind === 'until' ? (p.until ?? (seriesStart ? addDays(seriesStart, 30) : undefined)) : undefined,
 				count: kind === 'count' ? p.count || 5 : undefined,
 			}),
 		});
 	}
-	async function setRepeatEnd(date: string | null) {
+	const seriesStart = $derived(it?.seriesDate ?? it?.date ?? null);
+	async function setRepeatEnd(date: string | null, input: HTMLInputElement) {
 		const p = parseRRule(it?.rrule ?? '');
 		if (!p) return;
+		if (date && seriesStart && date < seriesStart) {
+			showToast('The end date must be on or after the start date');
+			input.value = parseRRule(it?.rrule ?? '')?.until ?? ''; // put the input back
+			return;
+		}
 		await save({ rrule: formatRRule({ ...p, until: date ?? undefined, count: undefined }) });
 	}
 	async function setRepeatCount(n: number) {
@@ -571,8 +579,8 @@
 									<input
 										type="date"
 										value={curRule.until ?? ''}
-										min={it.date ?? undefined}
-										onchange={(e) => setRepeatEnd(e.currentTarget.value || null)}
+										min={seriesStart ?? undefined}
+										onchange={(e) => setRepeatEnd(e.currentTarget.value || null, e.currentTarget)}
 									/>
 								</label>
 							{:else if endKind === 'count'}

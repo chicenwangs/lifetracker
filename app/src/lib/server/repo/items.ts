@@ -191,6 +191,12 @@ function checkDates(date: string | null, endDate: string | null) {
 	if (endDate && date && endDate < date) bad('end date before date');
 }
 
+/** a repeat that ends before its first date has no occurrences: the item would vanish from every calendar */
+function checkRuleEnd(date: string | null, rrule: string | null | undefined) {
+	const until = parseRRule(rrule)?.until;
+	if (until && date && until < date) bad('repeat end before start', 'bad_repeat_end');
+}
+
 const zRRule = z
 	.string()
 	.max(200)
@@ -222,6 +228,7 @@ export function create(meId: string, input: ItemCreate): ItemRow {
 	checkDates(input.date, input.endDate);
 	if (input.time && !input.date) bad('time needs a date');
 	if (input.rrule && !input.date) bad('repeat needs a date');
+	checkRuleEnd(input.date, input.rrule);
 	if (input.rrule && input.parentId) bad('steps cannot repeat');
 	checkParent(meId, input.parentId);
 	const cal = calendarsRepo.defaultFor(meId);
@@ -299,6 +306,13 @@ function statusStamps(prev: ItemRow, s: Status, now: string) {
 	return { startedAt: prev.startedAt ?? now, completedAt: now };
 }
 
+/** #296: the rule really generates `occDate` (detached dates count: they are still the rule's dates) */
+export function isOccurrence(cur: ItemRow, occDate: string): boolean {
+	if (!cur.rrule || !cur.date) return false;
+	const span = cur.endDate ? diffDays(cur.date, cur.endDate) : 0;
+	return expandRRule(cur.date, cur.rrule, [], occDate, addDays(occDate, 1), span).includes(occDate);
+}
+
 function addExdate(meId: string, cur: ItemRow, occDate: string, now: string): void {
 	const ex = parseExdates(cur.exdates);
 	if (!ex.includes(occDate)) {
@@ -338,6 +352,7 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	const cur = mustOwn(meId, id);
 	// #158/#163: that date was already detached into its own row; editing it again would make a second copy
 	if (occDate && parseExdates(cur.exdates).includes(occDate)) notFound();
+	if (occDate && cur.rrule && !isOccurrence(cur, occDate)) notFound(); // #296: a made-up @date is not an occurrence
 	const { scope, editedAt, ...fields } = p;
 	// #105 offline edit made before the server copy last changed: the server wins
 	if (editedAt && cur.updatedAt > editedAt) return cur;
@@ -410,8 +425,19 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 		}
 	}
 
-	const date = fields.date !== undefined ? fields.date : cur.date;
+	let date = fields.date !== undefined ? fields.date : cur.date;
 	let endDate = fields.endDate !== undefined ? fields.endDate : cur.endDate;
+	// #296: "Does not repeat" must not put the series back on a date it already detached into its own row
+	if (fields.rrule === null && fields.date === undefined && cur.rrule && cur.date) {
+		const ex = parseExdates(cur.exdates);
+		if (ex.includes(cur.date)) {
+			const span = cur.endDate ? diffDays(cur.date, cur.endDate) : 0;
+			const next = expandRRule(cur.date, cur.rrule, ex, cur.date, addDays(cur.date, 36_600), span)[0];
+			if (!next) return bad('every date of this series was edited on its own; delete the series instead', 'series_empty'); // prettier-ignore
+			date = next;
+			endDate = span > 0 ? addDays(next, span) : null;
+		}
+	}
 	// moving date without explicit endDate keeps the span
 	if (fields.date !== undefined && fields.endDate === undefined && cur.date && cur.endDate && fields.date) {
 		endDate = addDays(fields.date, diffDays(cur.date, cur.endDate));
@@ -426,6 +452,7 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	checkDates(date, endDate);
 	if (time && !date) bad('time needs a date');
 	if (rrule && !date) bad('repeat needs a date');
+	checkRuleEnd(date, rrule);
 	if (fields.parentId !== undefined) checkParent(meId, fields.parentId, id);
 	if (fields.parentId && steps(meId, id).length) bad('an item with steps cannot become a step');
 	if ((fields.parentId ?? cur.parentId) && rrule) bad('steps cannot repeat');
