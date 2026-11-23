@@ -74,3 +74,14 @@ test('Pin and Share live in the ⋯ menu', async () => {
 	await page.getByRole('menuitem', { name: 'Share…' }).click();
 	await expect(page.getByRole('dialog', { name: /Share/ })).toBeVisible();
 });
+
+test('Pin toast says Pinned, Unpin toast says Unpinned (#348)', async () => {
+	await page.getByRole('dialog', { name: /Share/ }).getByRole('button', { name: 'Done' }).click();
+	const bar = page.locator('.pagev .bar');
+	await bar.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Pin to header' }).click();
+	await expect(page.getByText('Pinned to header')).toBeVisible();
+	await bar.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: /^Unpin/ }).click();
+	await expect(page.getByText('Unpinned from header')).toBeVisible();
+});
