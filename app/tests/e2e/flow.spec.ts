@@ -1244,6 +1244,38 @@ test('modals keep focus and Escape: share over note, palette, shortcuts, account
 	await expect(page.locator('header .menu')).toHaveCount(0);
 });
 
+test('database view: filter + sort add without errors, valid tablist and names, Clear all (#297)', async () => {
+	const errors: string[] = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	await page.goto('/pages');
+	await page.getByRole('button', { name: 'New database' }).click();
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	const db = page.locator('section.dbv').first();
+	await db.getByRole('button', { name: 'Add property' }).first().click();
+	await db.getByLabel('Property name').fill('kg');
+	await db.getByRole('button', { name: '# Number' }).click();
+	await expect(db.getByLabel('Column kg')).toBeVisible();
+	await db.getByRole('button', { name: '+ Filter' }).click();
+	await db.getByLabel('Filter column').selectOption({ label: 'kg' });
+	await db.getByLabel('Filter value').fill('40');
+	await db.getByRole('button', { name: 'Add filter' }).click();
+	await expect(db.getByRole('button', { name: /Remove filter: kg/ })).toBeVisible();
+	await db.getByRole('button', { name: '+ Sort' }).click();
+	await db.getByLabel('Sort column').selectOption({ label: 'kg' });
+	await db.getByRole('button', { name: 'Sort', exact: true }).click();
+	await expect(db.getByRole('button', { name: /Remove sort: kg/ })).toBeVisible();
+	const r = await new AxeBuilder({ page }).include('section.dbv').withRules(['aria-required-children', 'label-content-name-mismatch', 'target-size']).analyze(); // prettier-ignore
+	expect(r.violations.map((v) => `${v.id} ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]); // prettier-ignore
+	// a second filter: Clear all removes both
+	await db.getByRole('button', { name: '+ Filter' }).click();
+	await db.getByLabel('Filter column').selectOption({ label: 'kg' });
+	await db.getByLabel('Filter value').fill('90');
+	await db.getByRole('button', { name: 'Add filter' }).click();
+	await db.getByRole('button', { name: 'Clear all' }).click();
+	await expect(db.getByRole('button', { name: /Remove filter/ })).toHaveCount(0);
+	expect(errors).toEqual([]);
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)

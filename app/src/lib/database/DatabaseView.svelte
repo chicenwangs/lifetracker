@@ -229,12 +229,14 @@
 				void run(() => patch(`/api/databases/${databaseId}`, { title: t }));
 			}}
 		/>
-		<div class="tabs" role="tablist" aria-label="Views">
-			{#each d.views as v (v.id)}
-				<button type="button" role="tab" aria-selected={v.id === d.viewId} onclick={() => load(v.id)}
-					>▤ {v.name}</button
-				>
-			{/each}
+		<div class="tabs">
+			<div class="tl" role="tablist" aria-label="Views">
+				{#each d.views as v (v.id)}
+					<button type="button" role="tab" aria-selected={v.id === d.viewId} onclick={() => load(v.id)}
+						>▤ {v.name}</button
+					>
+				{/each}
+			</div>
 			<button type="button" class="soft" onclick={addView}>+ View</button>
 			<span class="grow"></span>
 			<button type="button" class="soft" onclick={renameView}>Rename view</button>
@@ -257,12 +259,14 @@
 				<button
 					type="button"
 					class="pill on"
-					aria-label="Remove sort"
+					aria-label="Remove sort: {prop(cfg.sort.prop)?.name} {cfg.sort.dir === 'asc' ? '↑' : '↓'}"
 					onclick={() => saveView({ ...cfg, sort: null })}
 					>{prop(cfg.sort.prop)?.name} {cfg.sort.dir === 'asc' ? '↑' : '↓'} ✕</button
 				>
 			{/if}
 			{#if (cfg.filters ?? []).length > 1}
+				<button type="button" class="pill" onclick={() => saveView({ ...cfg, filters: [] })}>Clear all</button
+				>
 				<button
 					type="button"
 					class="pill"
@@ -406,8 +410,8 @@
 									class="th"
 									aria-expanded={openProp === p.id}
 									aria-label="Column {p.name}"
-									onclick={() => (openProp = openProp === p.id ? null : p.id)}
-									>{TYPE_LABEL[p.type].split(' ')[0]} {p.name}</button
+									data-ico={TYPE_LABEL[p.type].split(' ')[0]}
+									onclick={() => (openProp = openProp === p.id ? null : p.id)}>{p.name}</button
 								>
 								{#if openProp === p.id}
 									<div class="pmenu" role="group" aria-label="{p.name} column settings">
@@ -550,6 +554,11 @@
 		margin-bottom: 10px;
 		gap: 2px;
 	}
+	.tl {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 2px;
+	}
 	.tabs button {
 		font: inherit;
 		font-weight: 600;
@@ -681,6 +690,9 @@
 	th {
 		position: relative;
 		border-bottom: 1.5px solid var(--ink);
+	}
+	.th::before {
+		content: attr(data-ico) ' '; /* icon kept out of the text so "Column X" holds all visible text */
 	}
 	.th {
 		font: inherit;
