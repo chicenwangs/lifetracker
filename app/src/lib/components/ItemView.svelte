@@ -385,6 +385,14 @@
 	onDestroy(() => {
 		if (saveTimer) void flushNotes();
 	});
+	// sign-out: the layout waits (max 2 s) for this save before it drops the session (#288)
+	$effect(() => {
+		const h = (e: Event) => {
+			if (saveTimer) (e as CustomEvent<{ wait: (p: Promise<unknown>) => void }>).detail.wait(flushNotes());
+		};
+		addEventListener('lt:signout', h);
+		return () => removeEventListener('lt:signout', h);
+	});
 	function onUnload() {
 		if (!saveTimer || !it) return;
 		// keepalive: the request outlives the page
