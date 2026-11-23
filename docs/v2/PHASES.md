@@ -1,7 +1,7 @@
 # Life Tracker v2 — build phases
 
-Caveman doc. 2026-11-13. Entry point for Claude Code. One phase per session/PR. **No deploy until P10.**
-Release plan (owner, history): live stayed on **v1.1.0** while all of v2 was built on branch `v2`, then one big release **v2.0.0**. Done 2026-11-14. Releases since: see Status table (newest = v3.1.1).
+Caveman doc. 2026-11-13 (status table kept current; newest release v3.1.1). Entry point for Claude Code. One phase per session/PR. Phases P0-P10 are DONE (v2.0.0 released 2026-11-14). Agents never deploy.
+Release plan (history, done): live stayed on v1.1.0 while v2 was built on branch `v2`, then one big release v2.0.0. Since then work goes branch + PR per issue off `main`. Releases: see Status table (newest = v3.1.1, `app/package.json` 3.1.1).
 
 ## Read order (every session)
 1. `CLAUDE.md` (root) — rules.
