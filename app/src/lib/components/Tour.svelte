@@ -11,7 +11,7 @@
 		{ title: 'Welcome to Life Tracker', text: 'A quick look around: 7 short steps. Skip any time; restart it from Settings › Help.' },
 		{ title: 'Home', text: 'Your month on the left, the day planner on the right. Click a day to plan it.', at: ['.hdr nav a[href="/"]', '.mbar a[href="/today"]'] },
 		{ title: 'Planner blocks', text: 'Drag on empty time to block it, then type a title. Every drag also has a button.', at: ['aside[aria-label="Daily planner"]', '.wheel'] },
-		{ title: 'Quick add', text: 'Press N anywhere (or +) and type "dentist fri 3pm". It reads dates, times, /type and /remind.', at: ['.mbar .add', '.hdr [aria-label="Keyboard shortcuts"]'] },
+		{ title: 'Quick add', text: 'Press N anywhere (or +) and type "dentist fri 3pm". It reads dates, times, /type and /remind.', at: ['.mbar .add', '.hdr .opener'] },
 		{ title: 'Keep', text: 'Quick notes and checklists, with labels, binders and reminders.', at: ['.hdr nav a[href="/keep"]', '.mbar a[href="/keep"]'] },
 		{ title: 'Pages', text: 'Longer writing, linked pages and databases. Ctrl+K finds anything.', at: ['.hdr nav a[href="/pages"]', '.mbar a[href="/more"]'] },
 		{ title: "You're set", text: 'That is it. Settings › Help has short guides if you need them.' },

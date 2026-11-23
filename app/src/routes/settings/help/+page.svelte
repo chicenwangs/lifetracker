@@ -59,7 +59,7 @@
 
 <section class="card panel">
 	<h1>Help</h1>
-	<p class="muted">The welcome tour shows the main parts in 6 steps.</p>
+	<p class="muted">The welcome tour shows the main parts in 7 short steps (8 on a phone).</p>
 	<button class="btn primary" type="button" onclick={restart}>Restart the tour</button>
 </section>
 {#if app}
