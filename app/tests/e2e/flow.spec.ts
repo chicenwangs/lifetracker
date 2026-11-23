@@ -452,6 +452,30 @@ test('notes on a repeating item send the chosen scope (#243)', async () => {
 	}
 });
 
+test('repeat occurrence view follows a detached row and recovers after Undo (#278)', async () => {
+	const made = await api('POST', '/api/items', {
+		title: 'Stale view probe',
+		date: '2031-07-01',
+		rrule: 'FREQ=WEEKLY;COUNT=6',
+	});
+	const id = made.j.item.id as string;
+	try {
+		await page.goto(`/item/${id}@2031-07-08`);
+		const sq = page.locator('button.sq').first();
+		await expect(sq).toHaveAttribute('aria-label', /Not started/);
+		await sq.click();
+		await expect(sq).toHaveAttribute('aria-label', /In progress/);
+		expect(page.url()).not.toContain('@'); // the address is the detached row now
+		await page.keyboard.press('Control+z');
+		await expect(sq).toHaveAttribute('aria-label', /Not started/); // not the deleted row
+		expect(decodeURIComponent(page.url())).toContain(`${id}@2031-07-08`);
+		await sq.click(); // acts on a live row: no 404
+		await expect(sq).toHaveAttribute('aria-label', /In progress/);
+	} finally {
+		await api('DELETE', `/api/items/${id}`);
+	}
+});
+
 test('open sign-up + swap share codes: partner calendar read-only, hidden types Busy, overlap switch', async ({
 	browser,
 }) => {

@@ -3,7 +3,7 @@
      (the real day timeline: this item's blocks in its colour, others muted; drag empty time = linked block). -->
 <script lang="ts">
 	import Reminders from './Reminders.svelte';
-	import { onDestroy, onMount, tick } from 'svelte';
+	import { onDestroy, onMount, tick, untrack } from 'svelte';
 	import StatusSquare from './StatusSquare.svelte';
 	import Markdown from './Markdown.svelte';
 	import DayPlanner from './DayPlanner.svelte';
@@ -36,6 +36,7 @@
 	import { get, patch, post } from '$lib/client/api';
 	import { enqueueAction, isOffline } from '$lib/client/offline';
 	import { backCloses } from '$lib/client/layers';
+	import { calendarBus } from '$lib/client/bus.svelte';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { removeItem } from '$lib/client/remove';
 	import { duplicate } from '$lib/client/altdrag';
@@ -84,7 +85,18 @@
 	let detached = $state<string | null>(null);
 	const viewId = $derived(detached ?? id);
 	function follow(sent: string, got: { item?: { id: string } } | undefined) {
-		if (got?.item && sent === it?.id && got.item.id !== sent) detached = got.item.id;
+		if (got?.item && sent === it?.id && got.item.id !== sent) {
+			detached = got.item.id;
+			showAt(got.item.id);
+		}
+	}
+	/** #278: the address follows the row on screen, so a reload or a copied link shows the same item */
+	function showAt(itemId: string) {
+		try {
+			history.replaceState(history.state, '', `/item/${encodeURIComponent(itemId)}`);
+		} catch {
+			/* sandboxed frame: the URL stays, the view still works */
+		}
 	}
 
 	const it = $derived(v?.item);
@@ -95,7 +107,7 @@
 	// sequence numbers: a slow older response never overwrites a newer one
 	let loadSeq = 0;
 	let daySeq = 0;
-	async function load() {
+	async function load(quiet = false) {
 		const n = ++loadSeq;
 		try {
 			const r = await get<View>(`/api/items/${encodeURIComponent(viewId)}/view`);
@@ -104,6 +116,13 @@
 			failed = false;
 		} catch (e) {
 			if (n !== loadSeq) return;
+			if (detached) {
+				// #278: Undo deleted the row this sheet followed: fall back to the series date it came from
+				detached = null;
+				showAt(id);
+				return load(quiet);
+			}
+			if (quiet) return; // a bus refetch after this item was deleted: the host is closing the sheet
 			failed = true;
 			showError(e);
 		}
@@ -124,6 +143,15 @@
 		await Promise.all([load(), loadDay()]);
 		onchanged?.();
 	}
+
+	// #278: Undo (Ctrl+Z or a toast) and other writes bump the bus: refetch what this sheet shows
+	let busSeen = calendarBus.version;
+	$effect(() => {
+		const n = calendarBus.version;
+		if (n === busSeen) return;
+		busSeen = n;
+		untrack(() => void Promise.all([load(true), loadDay()]));
+	});
 
 	let phone = $state(false); // phone wording (#108); set after mount so SSR and hydration agree
 	onMount(async () => {
