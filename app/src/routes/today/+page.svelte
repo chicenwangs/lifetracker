@@ -5,26 +5,24 @@
 	import GestureHint from '$lib/components/GestureHint.svelte';
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
 	import { askText } from '$lib/client/dialog.svelte';
-	import { deleteRow, moveRow, toggleDone } from '$lib/client/rowOps';
+	import { cycleRow, deleteRow, moveRow, toggleDone } from '$lib/client/rowOps';
 	import { rowGestures } from '$lib/client/rowGestures';
 	import { peerSwipe } from '$lib/client/peerSwipe';
 	import { buzz } from '$lib/client/haptics';
 	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { invalidateAll } from '$lib/client/refresh';
 	import { onMount, tick } from 'svelte';
-	import { post } from '$lib/client/api';
-	import { enqueueAction, isOffline, pendingPatch } from '$lib/client/offline';
+	import { pendingPatch } from '$lib/client/offline';
 	import { calendarBus } from '$lib/client/bus.svelte';
 	import { shown } from '$lib/client/itemtypes.svelte';
 	import { openItem } from '$lib/client/peek.svelte';
 	import { entryColors } from '$lib/client/partner';
-	import { showError } from '$lib/client/toast.svelte';
 	import { without } from '$lib/client/obj';
 	import { openAdd } from '$lib/client/mobile.svelte';
 	import { colorsFor } from '$lib/colors';
 	import StatusSquare from '$lib/components/StatusSquare.svelte';
 	import { addDays, clock, nowLocalMinutes, prettyDate, utcToLocal } from '$lib/time';
-	import type { BlockDTO, ItemDTO, Status } from '$lib/types';
+	import { nextStatus, type BlockDTO, type ItemDTO, type Status } from '$lib/types';
 
 	let { data } = $props();
 	const tz = $derived(data.user?.timezone ?? 'Asia/Kuala_Lumpur');
@@ -96,26 +94,11 @@
 		void qTick;
 		return over[id] ?? (pendingPatch(`/api/${kind}/${id}`)?.status as Status | undefined) ?? cur;
 	};
-	async function cycle(kind: 'items' | 'blocks', id: string, cur: Status) {
-		const next: Status = cur === 'todo' ? 'doing' : cur === 'doing' ? 'done' : 'todo';
-		over[id] = next;
-		try {
-			await post(`/api/${kind}/${id}/cycle`);
-			await invalidateAll();
-			over = without(over, id);
-		} catch (e) {
-			if (isOffline(e)) {
-				enqueueAction({
-					key: `/api/${kind}/${id}`,
-					method: 'PATCH',
-					path: `/api/${kind}/${id}`,
-					payload: { status: next },
-				});
-				return;
-			}
-			over = without(over, id);
-			showError(e);
-		}
+	async function cycle(kind: 'items' | 'blocks', id: string, cur: Status, name: string) {
+		over[id] = nextStatus(cur);
+		// #310: the same tick + Undo toast + offline queue as the item sheet; a queued tick keeps its optimistic status
+		const r = await cycleRow(kind, id, cur, name, invalidateAll);
+		if (r !== 'queued') over = without(over, id);
 	}
 
 	// ---------- row gestures (#96): swipe right = done, left = delete, hold + drag = move (15 min steps) ----------
@@ -302,10 +285,18 @@
 									>
 								{:else if e.block}
 									{@const st = statusOf('blocks', e.key, e.block.status)}
-									<StatusSquare status={st} size={20} oncycle={() => e.block && cycle('blocks', e.key, st)} />
+									<StatusSquare
+										status={st}
+										size={20}
+										oncycle={() => e.block && cycle('blocks', e.key, st, e.block.label)}
+									/>
 								{:else if e.item}
 									{@const st = statusOf('items', e.key, e.item.status)}
-									<StatusSquare status={st} size={20} oncycle={() => e.item && cycle('items', e.key, st)} />
+									<StatusSquare
+										status={st}
+										size={20}
+										oncycle={() => e.item && cycle('items', e.key, st, e.item.title)}
+									/>
 								{/if}
 								<button
 									class="t"
