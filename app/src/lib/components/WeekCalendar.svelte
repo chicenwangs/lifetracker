@@ -283,7 +283,7 @@
 					else wrap.append(square(it.id, it.status, c.ink, it.title, () => oncycleitem(it.id)));
 					const t = document.createElement('span');
 					t.className = 'lt-title';
-					t.textContent = (it.time ? `${prettyTime(it.time)} ` : '') + it.title;
+					t.textContent = (it.time ? `${prettyTime(it.time, us)} ` : '') + it.title;
 					t.title = `${typeName(it.type) ?? 'Custom type'} · ${t.textContent}`;
 					wrap.append(t);
 					if (it.editable) wrap.append(xButton(it.title, c.bg, () => ondelete('item', it.id, it.title)));
@@ -301,7 +301,7 @@
 					l.textContent = b.label;
 					const tm = document.createElement('span');
 					tm.className = 'lt-time';
-					tm.textContent = us ? `${prettyTime(s.time)} – ${prettyTime(e.time)}` : `${s.time} – ${e.time}`;
+					tm.textContent = `${prettyTime(s.time, us)} – ${prettyTime(e.time, us)}`;
 					l.title = `${b.busy ? 'Busy' : (typeName(b.itemType ?? b.type) ?? 'Custom type')} · ${b.label}`;
 					col.append(l, tm);
 					wrap.append(col);

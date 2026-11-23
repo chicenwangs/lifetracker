@@ -1213,6 +1213,98 @@ test('accessible names contain visible text, external links are underlined and 2
 	await expect(page.locator('.pm a[target=_blank]')).toHaveCSS('text-decoration-line', 'underline');
 });
 
+test('#298 24 h region: month chip reads 14:00; visible labels are in the accessible name', async () => {
+	const now = new Date();
+	const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-15`;
+	await api('POST', '/api/items', { title: 'Clock24 dentist', date: day, time: '14:00' });
+	await page.goto('/?desktop=1');
+	await expect(page.locator('.lt-title', { hasText: 'Clock24 dentist' }).first()).toHaveText('14:00 Clock24 dentist'); // prettier-ignore
+	for (const [w, url] of [
+		[1280, '/today'],
+		[1280, '/month'],
+		[1280, '/week'],
+		[1280, '/?desktop=1'],
+		[390, '/today'],
+		[390, '/month'],
+	] as const) {
+		// prettier-ignore
+		await page.setViewportSize({ width: w, height: 800 });
+		await page.goto(url);
+		await page.waitForTimeout(500);
+		const r = await new AxeBuilder({ page }).withRules(['label-content-name-mismatch']).analyze();
+		const bad = r.violations.flatMap((v) => v.nodes.map((n) => `${url} ${n.target.join(' ')}`));
+		expect(bad.filter((s) => !s.includes(' .search'))).toEqual([]); // header Search button: batch E (AppHeader names)
+	}
+	await page.setViewportSize({ width: 1440, height: 900 });
+});
+
+test('checklist Tab with nothing to indent moves focus on, does not trap (#281)', async () => {
+	const items = ['a', 'b'].map((id) => ({ id, text: id, checked: false, parentId: null }));
+	const n = await api('POST', '/api/keep/notes', { type: 'checklist', title: 'Tab trap', items });
+	await page.goto(`/keep?note=${n.j.note.id}`);
+	await page.locator('#ci-0').focus();
+	await page.keyboard.press('Tab'); // first item: no sibling above, cannot indent
+	expect(await page.evaluate(() => document.activeElement?.id)).not.toBe('ci-0');
+	await page.locator('#ci-1').focus();
+	await page.keyboard.press('Tab'); // second item indents under the first
+	expect(await page.evaluate(() => document.activeElement?.id)).toBe('ci-1');
+	await page.keyboard.press('Shift+Tab'); // outdent
+	expect(await page.evaluate(() => document.activeElement?.id)).toBe('ci-1');
+	await page.keyboard.press('Shift+Tab'); // top level: leaves the field
+	expect(await page.evaluate(() => document.activeElement?.id)).not.toBe('ci-1');
+});
+
+test('modals keep focus and Escape: share over note, palette, shortcuts, account menu (#279)', async () => {
+	const n = await api('POST', '/api/keep/notes', { type: 'text', title: 'Esc note', body: 'x' });
+	await page.goto(`/keep?note=${n.j.note.id}`);
+	const inside = (sel: string) => page.evaluate((s) => !!document.activeElement?.closest(s), sel);
+	await expect(page.locator('.note[role=dialog]')).toBeVisible();
+	await page.getByRole('button', { name: 'Share…' }).click();
+	await expect(page.locator('.dlg[role=dialog]')).toBeVisible();
+	for (let i = 0; i < 12; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside('.dlg[role=dialog]')).toBe(true);
+	}
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.dlg[role=dialog]')).toHaveCount(0);
+	await expect(page.locator('.note[role=dialog]')).toBeVisible();
+	for (let i = 0; i < 40; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside('.note[role=dialog]')).toBe(true);
+	}
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.note[role=dialog]')).toHaveCount(0);
+	// palette: Tab stays in, Escape works from the archived checkbox
+	await page.goto('/week');
+	await page.waitForLoadState('networkidle'); // hydrated: the Ctrl+K listener is on
+	await page.keyboard.press('Control+k');
+	const pal = page.getByRole('dialog', { name: 'Search and go' });
+	await expect(pal).toBeVisible();
+	for (let i = 0; i < 8; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside('[aria-label="Search and go"]')).toBe(true);
+	}
+	await pal.getByLabel('Include archived').focus();
+	await page.keyboard.press('Escape');
+	await expect(pal).toHaveCount(0);
+	// shortcuts: focus moves in, Tab stays
+	await page.keyboard.press('?');
+	const keys = page.getByRole('dialog', { name: 'Shortcuts' });
+	await expect(keys).toBeVisible();
+	expect(await inside('[aria-labelledby="keys-h"]')).toBe(true);
+	for (let i = 0; i < 4; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside('[aria-labelledby="keys-h"]')).toBe(true);
+	}
+	await page.keyboard.press('Escape');
+	await expect(keys).toHaveCount(0);
+	// account menu closes on Escape
+	await page.getByRole('button', { name: 'Account menu' }).click();
+	await expect(page.locator('header .menu')).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(page.locator('header .menu')).toHaveCount(0);
+});
+
 test('plan ahead "before bed": after today ends, Home opens on tomorrow', async () => {
 	const d = await today();
 	// a block that ended 1 min ago today (if it is just past midnight there is no "today" before now; skip)

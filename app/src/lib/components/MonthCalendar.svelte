@@ -111,7 +111,7 @@
 			// shared, read-only: badge + text, no square / link / delete
 			const t = document.createElement('span');
 			t.className = 'lt-title';
-			t.textContent = (it.time ? `${prettyTime(it.time)} ` : '') + it.title;
+			t.textContent = (it.time ? `${prettyTime(it.time, page.data.user?.region === 'us')} ` : '') + it.title;
 			t.title = `${it.owner.name}: ${t.textContent}`;
 			wrap.append(badge(it.owner), t);
 			return { domNodes: [wrap] };
@@ -138,7 +138,7 @@
 		const t = document.createElement('a');
 		t.className = 'lt-title';
 		t.href = `/item/${it.id}`;
-		t.textContent = (it.time ? `${prettyTime(it.time)} ` : '') + it.title;
+		t.textContent = (it.time ? `${prettyTime(it.time, page.data.user?.region === 'us')} ` : '') + it.title;
 		t.title =
 			`${typeName(it.type) ?? 'Custom type'} · ${t.textContent}` +
 			(it.stepsTotal ? ` (${it.stepsDone}/${it.stepsTotal} steps)` : '');
@@ -206,10 +206,9 @@
 			},
 			dateClick: (a) => onpick(a.dateStr),
 			dayCellDidMount: (a) => {
+				a.el.removeAttribute('aria-labelledby'); // the cell's name = its visible text, not just the date (#298, #284)
 				const d = a.date;
 				const s = makeDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
-				// #284: the cell's name was the day number only, not its visible chips; the day link inside names it
-				a.el.removeAttribute('aria-labelledby');
 				if (a.el.dataset.ltDbl) return; // one listener per cell, even if FullCalendar re-mounts it
 				a.el.dataset.ltDbl = '1';
 				a.el.addEventListener('dblclick', (ev) => {

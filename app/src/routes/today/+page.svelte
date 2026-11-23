@@ -192,7 +192,9 @@
 			<button
 				class="pickday"
 				type="button"
-				aria-label="{isToday ? 'Today, ' : ''}{prettyDate(data.day)}. Pick a day"
+				aria-label="{prettyDate(data.day)} ▾ {isToday
+					? 'Today'
+					: prettyDate(data.day).split(' ').slice(0, 3).join(' ')}. Pick a day"
 				onclick={pick}
 			>
 				<span class="sub">{prettyDate(data.day)} ▾</span>{isToday

@@ -21,6 +21,9 @@
 <AuthShell tab="login">
 	<form method="post" use:enhance={signedIn}>
 		<input type="hidden" name="next" value={data.next} />
+		{#if data.next}<p role="status">
+				Sign in to continue. Anything you had not sent is kept and sent after you sign in.
+			</p>{/if}
 		<div class="field">
 			<label for="u">Username</label>
 			<input

@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { invalidateAll } from '$lib/client/refresh';
-	import { post } from '$lib/client/api';
+	import { ApiError, post } from '$lib/client/api';
 	import { enqueue, enqueueAction, isOffline } from '$lib/client/offline';
 	import { calendarChanged } from '$lib/client/bus.svelte';
 	import { qaPrefs } from '$lib/client/itemtypes.svelte';
@@ -48,7 +48,7 @@
 			problem = '';
 			calendarChanged();
 		} catch (e) {
-			if (isOffline(e)) {
+			if (waitsForSignIn(e)) {
 				enqueueAction({
 					key: `qa_${Date.now()}_${Math.random().toString(36).slice(2)}`,
 					method: 'POST',
@@ -66,6 +66,8 @@
 			busy = false;
 		}
 	}
+	// offline, or the session ended (401 redirects to sign-in): keep the text in the queue, it is sent after sign-in (#305)
+	const waitsForSignIn = (e: unknown) => isOffline(e) || (e instanceof ApiError && e.status === 401);
 	async function saveNote() {
 		if (busy || !note.trim()) return;
 		busy = true;
@@ -77,7 +79,7 @@
 			close();
 			await invalidateAll();
 		} catch (e) {
-			if (isOffline(e)) {
+			if (waitsForSignIn(e)) {
 				enqueue({
 					key: `new_${Date.now()}_${Math.random().toString(36).slice(2)}`,
 					noteId: null,
