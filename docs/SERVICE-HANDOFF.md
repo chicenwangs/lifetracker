@@ -25,7 +25,7 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | Tags | `1.0.0` (exact, use this), `1.0` (moving minor), `sha-<short>` (exact commit). No `latest`. |
 | Versioning | SemVer. PATCH = fixes, MINOR = features, MAJOR = breaking (read the release notes). |
 | Release page | `github.com/chicenwangs/lifetracker/releases`: notes + this file + `deploy-vX.Y.Z.tar.gz` (flat: `compose.yaml`, `.env.example`, `tunnel.env.example`, `backup.sh`, `restore.sh`, this file). |
-| How a release is made | Dev pushes tag `vX.Y.Z` → GitHub Actions runs lint, type check, unit + e2e tests → builds the image → pushes to GHCR → creates the Release. A red pipeline = no image. |
+| How a release is made | Dev pushes tag `vX.Y.Z` → GitHub Actions runs lint, type check, unit, desktop + phone e2e tests (and a CI Android build) → builds the image → pushes to GHCR → creates the Release. A red pipeline = no image. |
 | Contents | Built app, prod `node_modules`, SQL migrations, `scripts/reset-password.mjs`. **No personal data, no secrets.** |
 
 ## 3. Runtime contract
@@ -56,7 +56,7 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | `TZ`, `PORT`, `HOST` | defaults ok | `Asia/Kuala_Lumpur`, `3000`, `0.0.0.0`. |
 | `DATABASE_PATH`, `SEED_DIR` | set by compose | `/app/data/app.db`, `/app/data/seed`. Do not change. |
 | `UPLOAD_DIR` | v2, optional | Empty = `/app/data/uploads`. Must be on the data volume (temp files are written inside it, so rename never crosses filesystems). |
-| `MAX_UPLOAD_BYTES` | v2, optional | Default `26214400` (25 MB, D-12). Allowed types: png jpg gif webp pdf zip docx xlsx pptx doc xls ppt txt md csv. |
+| `MAX_UPLOAD_BYTES` | v2, optional | Default `26214400` (25 MB, D-12). Allowed types: png jpg jpeg gif webp pdf zip docx xlsx pptx doc xls ppt txt md csv. |
 | `UPLOAD_QUOTA_BYTES` | optional | Default `2147483648` (2 GB). Total of one person's files. Over it = upload refused with a clear message. |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | v2, optional | Both or neither (boot fails on one). Make once: `docker compose run --rm app npx web-push generate-vapid-keys`. Keep the private one in the password manager. Unset = push off; reminders still show inside the app. Changing them breaks every device's push until it re-subscribes. |
 | `VAPID_SUBJECT` | with VAPID | `mailto:you@example.com` (push services contact this if something is wrong). |
