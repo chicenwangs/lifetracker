@@ -108,3 +108,26 @@ test('Item sheet: tick and edit show an Undo snackbar; an offline tick waits to 
 	await page.context().setOffline(false);
 	await expect.poll(async () => (await get(one)).status).toBe('doing');
 });
+
+test('Repeat ends "On date" keeps the series; an end before the start is refused (#295)', async () => {
+	const id = await page.evaluate(async (title) => {
+		const r = await fetch('/api/items', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ title, date: '2031-01-04', rrule: 'FREQ=DAILY;COUNT=10' }),
+		});
+		return ((await r.json()) as { item: { id: string } }).item.id;
+	}, `${T} ondate`);
+	const rule = () =>
+		page.evaluate(async (i) => {
+			const r = await fetch(`/api/items/${i}`);
+			return ((await r.json()) as { item: { rrule: string } }).item.rrule;
+		}, id);
+	await page.goto(`/item/${id}`);
+	await page.getByLabel('Repeat ends').selectOption('until');
+	await expect.poll(rule).toBe('FREQ=DAILY;UNTIL=2031-02-03'); // start + 30 days
+	await page.getByLabel('End date').fill('2030-12-01');
+	await page.getByLabel('End date').press('Tab');
+	await expect(page.locator('.toast')).toContainText('on or after the start');
+	expect(await rule()).toBe('FREQ=DAILY;UNTIL=2031-02-03');
+});
