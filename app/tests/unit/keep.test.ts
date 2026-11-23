@@ -33,6 +33,15 @@ describe('Keep', () => {
 		expect(() => keep.create(me, { title: ' ', body: '' })).toThrow(/Empty/);
 	});
 
+	it('#304: an offline edit older than the server copy is refused (409), not silently dropped', () => {
+		const a = note({ body: 'ORIGINAL' });
+		keep.update(me, a.id, { body: 'ONLINE-C' });
+		expect(() => keep.update(me, a.id, { body: 'OFFLINE-B', editedAt: '2000-01-01T00:00:00Z' })).toThrow(
+			/changed somewhere else/,
+		);
+		expect(keep.get(me, a.id).body).toBe('ONLINE-C');
+	});
+
 	it('#308 #309: a repeated create with the same client id returns the same note', () => {
 		const id = 'kn_abcdefgh12345678';
 		const a = keep.create(me, { id, body: 'once' });
