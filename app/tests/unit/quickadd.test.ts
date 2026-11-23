@@ -416,6 +416,10 @@ describe('quickAdd server', () => {
 			endAt: '2026-11-07T11:00:00Z',
 		});
 	});
+	it('phone: day on screen is the default day (#290)', () => {
+		expect(quickAdd(me, 'probe /calendar', NOW, undefined, '2019-01-01').item?.date).toBe('2019-01-01');
+		expect(quickAdd(me, 'probe /calendar tmr', NOW, undefined, '2019-01-01').item?.date).toBe('2026-11-07');
+	});
 	it('timeline drag with no /type = no type (grey); typed type kept', () => {
 		const slot = { date: '2026-11-09', start: 600, end: 660 };
 		expect(quickAdd(me, 'focus', NOW, slot).block).toMatchObject({ type: null, itemType: null });
