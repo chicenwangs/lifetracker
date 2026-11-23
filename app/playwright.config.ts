@@ -7,7 +7,8 @@ import { join } from 'node:path';
 // (or set PW_CHROME=/path/to/chrome to use an installed browser).
 const dir = process.env.E2E_DIR ?? mkdtempSync(join(tmpdir(), 'lt-e2e-'));
 process.env.E2E_DIR = dir;
-const PORT = 4173;
+// E2E_PORT lets parallel checkouts (worktrees) run e2e at the same time
+const PORT = Number(process.env.E2E_PORT ?? 4173);
 // Pixel 7 at its full screen (412×915), not Playwright's 839 px browser-chrome height
 const pixel7 = { ...devices['Pixel 7'], viewport: { width: 412, height: 915 } };
 
