@@ -503,6 +503,33 @@ test('"This and following" edit keeps the item page; Undo moves the sheet back (
 	}
 });
 
+test('Undo after a reload on the split row moves the sheet back (#278)', async () => {
+	const made = await api('POST', '/api/items', {
+		title: 'Reload probe',
+		date: '2031-07-01',
+		rrule: 'FREQ=WEEKLY;COUNT=6',
+	});
+	const id = made.j.item.id as string;
+	try {
+		await page.goto(`/item/${id}@2031-07-08`);
+		await page.locator('.title-btn').click();
+		await page.locator('#iv-title').fill('Reload probe 2');
+		await page.locator('#iv-title').press('Enter');
+		await page.getByLabel('This and following').check();
+		await page.getByRole('button', { name: 'Save', exact: true }).click();
+		await expect(page.getByRole('heading', { level: 1, name: /Reload probe 2/ })).toBeVisible();
+		await expect(page).not.toHaveURL(/@/);
+		await page.reload();
+		await expect(page.getByRole('heading', { level: 1, name: /Reload probe 2/ })).toBeVisible();
+		await page.mouse.click(5, 300);
+		await page.keyboard.press('Control+z');
+		await expect(page.getByRole('heading', { level: 1, name: 'Reload probe', exact: true })).toBeVisible();
+		await expect(page.getByText('Not found')).toHaveCount(0);
+	} finally {
+		await api('DELETE', `/api/items/${id}`);
+	}
+});
+
 test('open sign-up + swap share codes: partner calendar read-only, hidden types Busy, overlap switch', async ({
 	browser,
 }) => {
