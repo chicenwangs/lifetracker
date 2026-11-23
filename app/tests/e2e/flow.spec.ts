@@ -465,12 +465,35 @@ test('repeat occurrence view follows a detached row and recovers after Undo (#27
 		await expect(sq).toHaveAttribute('aria-label', /Not started/);
 		await sq.click();
 		await expect(sq).toHaveAttribute('aria-label', /In progress/);
-		expect(page.url()).not.toContain('@'); // the address is the detached row now
+		await expect(page).not.toHaveURL(/@/); // the address is the detached row now
 		await page.keyboard.press('Control+z');
 		await expect(sq).toHaveAttribute('aria-label', /Not started/); // not the deleted row
 		expect(decodeURIComponent(page.url())).toContain(`${id}@2031-07-08`);
 		await sq.click(); // acts on a live row: no 404
 		await expect(sq).toHaveAttribute('aria-label', /In progress/);
+	} finally {
+		await api('DELETE', `/api/items/${id}`);
+	}
+});
+
+test('"This and following" edit keeps the item page (#362)', async () => {
+	const made = await api('POST', '/api/items', {
+		title: 'Split probe',
+		date: '2031-07-01',
+		rrule: 'FREQ=WEEKLY;COUNT=6',
+	});
+	const id = made.j.item.id as string;
+	try {
+		await page.goto(`/item/${id}@2031-07-08`);
+		await page.locator('.title-btn').click();
+		await page.locator('#iv-title').fill('Split probe 2');
+		await page.locator('#iv-title').press('Enter');
+		await page.getByLabel('This and following').check();
+		await page.getByRole('button', { name: 'Save', exact: true }).click();
+		await expect(page.getByRole('heading', { level: 1, name: /Split probe 2/ })).toBeVisible();
+		await page.waitForLoadState('networkidle'); // the refresh after Save re-runs the route load
+		await expect(page.getByText('Not found')).toHaveCount(0); // #362
+		await expect(page).not.toHaveURL(/@/);
 	} finally {
 		await api('DELETE', `/api/items/${id}`);
 	}

@@ -4,6 +4,7 @@
 <script lang="ts">
 	import Reminders from './Reminders.svelte';
 	import { onDestroy, onMount, tick, untrack } from 'svelte';
+	import { goto } from '$app/navigation';
 	import StatusSquare from './StatusSquare.svelte';
 	import Markdown from './Markdown.svelte';
 	import DayPlanner from './DayPlanner.svelte';
@@ -91,9 +92,13 @@
 		}
 	}
 	/** #278: the address follows the row on screen, so a reload or a copied link shows the same item */
+	let nav: Promise<unknown> = Promise.resolve(); // a refresh must not supersede the address change
 	function showAt(itemId: string) {
+		const url = `/item/${encodeURIComponent(itemId)}`;
 		try {
-			history.replaceState(history.state, '', `/item/${encodeURIComponent(itemId)}`);
+			// the page route must move through the router: with a raw replaceState invalidateAll re-runs the old URL's load (#362)
+			if (peek) history.replaceState(history.state, '', url);
+			else nav = goto(url, { replaceState: true, noScroll: true, keepFocus: true }).catch(() => {});
 		} catch {
 			/* sandboxed frame: the URL stays, the view still works */
 		}
@@ -140,6 +145,7 @@
 		}
 	}
 	async function changed() {
+		await nav;
 		await Promise.all([load(), loadDay()]);
 		onchanged?.();
 	}
@@ -365,6 +371,7 @@
 			if (detached) await load();
 			if (v) v = { ...v, item: { ...v.item, notes: val } };
 			saveState = 'saved';
+			await nav;
 			onchanged?.();
 			return true;
 		} catch (e) {
