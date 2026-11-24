@@ -530,6 +530,41 @@ test('Undo after a reload on the split row moves the sheet back (#278)', async (
 	}
 });
 
+for (const how of ['tick', 'rename this and following', 'rename this item'] as const) {
+	test(`toast Undo after a repeating-item ${how} keeps the sheet on a live row (#375)`, async () => {
+		const title = `Toast undo ${how}`;
+		const made = await api('POST', '/api/items', { title, date: '2031-07-01', rrule: 'FREQ=WEEKLY;COUNT=6' });
+		const id = made.j.item.id as string;
+		const toast = page.locator('.toast');
+		try {
+			await page.goto(`/item/${id}@2031-07-08`);
+			if (how === 'tick') {
+				await page.locator('button.sq').first().click();
+				await expect(toast).toContainText('Started');
+			} else {
+				await page.locator('.title-btn').click();
+				await page.locator('#iv-title').fill(`${title} 2`);
+				await page.locator('#iv-title').press('Enter');
+				await page
+					.getByRole('radio', { name: how === 'rename this item' ? 'This item' : 'This and following' })
+					.check();
+				await page.getByRole('button', { name: 'Save', exact: true }).click();
+				await expect(toast).toContainText('Saved');
+			}
+			await expect(page).not.toHaveURL(/@/); // on the new row
+			await page.waitForLoadState('networkidle');
+			await toast.getByRole('button', { name: 'Undo' }).click();
+			await expect(page).toHaveURL(/%40|@/); // the address leaves the deleted row
+			await page.waitForLoadState('networkidle');
+			await expect(page.getByText('Not found')).toHaveCount(0); // page card and toast
+			await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible();
+			expect(decodeURIComponent(page.url())).toContain(`${id}@2031-07-08`);
+		} finally {
+			await api('DELETE', `/api/items/${id}`);
+		}
+	});
+}
+
 test('open sign-up + swap share codes: partner calendar read-only, hidden types Busy, overlap switch', async ({
 	browser,
 }) => {
