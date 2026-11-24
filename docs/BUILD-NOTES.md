@@ -1,7 +1,16 @@
 # Build notes — what the app does now
 
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
-Newest first. Latest release = v3.1.1 (2026-11-20; v3.1.0 same day, v3.0.0 2026-11-18). Sections below cover v2 phases, then the v1.1.0 state from 2026-11-08. Live was last verified at v3.0.0 on 2026-11-19. Read `AGENTS.md` for current bugs.
+Newest first. Latest release = v3.1.2 (2026-11-24; v3.1.1 + v3.1.0 2026-11-20, v3.0.0 2026-11-18). Sections below cover v2 phases, then the v1.1.0 state from 2026-11-08. Live was last verified at v3.0.0 on 2026-11-19. Read `AGENTS.md` for current bugs.
+
+## v3.1.2 patch (2026-11-24, milestone 3.1.2, QA-loop bugs #272–#313, #324, #348, #362–#364, #375)
+
+- Offline: sign-out keeps queued edits if it fails and waits for a pending notes autosave; Keep create/Retry is idempotent; a 409 offline note edit becomes an "(offline copy)" note; Home ticks + desktop quick add queue offline; quick add typed at session expiry is sent after sign-in.
+- Item page: the address follows the row on screen through the router (`goto`, not a raw `replaceState`), so a "This and following" or "This item" edit never 404s on the next refresh. Undo of a split moves the sheet back to the row it came from (`sessionStorage` `lt.cameFrom.<id>`, survives a reload). One module-level `nav` promise is shared by every ItemView, so the instance the `{#key}` remount retires waits for the address change; a retired instance (`gone`) stays quiet on load failure (#375).
+- Phone rows: action sheets build their actions from a plain value (`actionsFor(x)`), never from state the sheet clears on close.
+- Keep checklist on phone: the `⋮⋮` handle is a named 48 dp button; tap = sheet with Move up / Move down / Indent / Outdent, drag unchanged. Desktop keeps it out of Tab order (`tabindex=-1`, `aria-hidden`).
+- Help › Quick add lists the repeat grammar (`every …`, `until <date>`, `for N days|weeks|months|years`) on desktop and phone.
+- Undo note: no `Ctrl+Z` key hint on phone. Phone 48 dp e2e check rounds sub-pixel sizes.
 
 ## Owner test pass (2026-11-16, 3-day test list, issues #61–#86)
 

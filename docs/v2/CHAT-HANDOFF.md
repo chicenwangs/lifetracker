@@ -1,4 +1,4 @@
-> **Superseded 2026-11-19.** This is the v2.0.4 snapshot (2026-11-14). Latest release is **v3.1.1** (live last verified 2026-11-19 at v3.0.0). For a new chat read `AGENTS.md` → `docs/HANDOFF.md` instead. The §v2.1 backlog at the bottom is parked; next work = open GitHub issues.
+> **Superseded 2026-11-19.** This is the v2.0.4 snapshot (2026-11-14). Latest release is **v3.1.2** (live last verified 2026-11-19 at v3.0.0). For a new chat read `AGENTS.md` → `docs/HANDOFF.md` instead. The §v2.1 backlog at the bottom is parked; next work = open GitHub issues.
 
 # Life Tracker — chat handoff (2026-11-14, v2.0.4)
 

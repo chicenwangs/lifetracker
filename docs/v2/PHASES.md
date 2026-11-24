@@ -1,7 +1,7 @@
 # Life Tracker v2 — build phases
 
-Caveman doc. 2026-11-13 (status table kept current; newest release v3.1.1). Entry point for Claude Code. One phase per session/PR. Phases P0-P10 are DONE (v2.0.0 released 2026-11-14). Agents never deploy.
-Release plan (history, done): live stayed on v1.1.0 while v2 was built on branch `v2`, then one big release v2.0.0. Since then work goes branch + PR per issue off `main`. Releases: see Status table (newest = v3.1.1, `app/package.json` 3.1.1).
+Caveman doc. 2026-11-13 (status table kept current; newest release v3.1.2). Entry point for Claude Code. One phase per session/PR. Phases P0-P10 are DONE (v2.0.0 released 2026-11-14). Agents never deploy.
+Release plan (history, done): live stayed on v1.1.0 while v2 was built on branch `v2`, then one big release v2.0.0. Since then work goes branch + PR per issue off `main`. Releases: see Status table (newest = v3.1.2, `app/package.json` 3.1.2).
 
 ## Read order (every session)
 1. `CLAUDE.md` (root) — rules.
@@ -73,6 +73,7 @@ Close now in one go so phases don't stall. Owner ticks or overrides; Claude Code
 | P8 | **DONE** · phone Week agenda + Month grid + More, PWA manifest/icons/service worker (shell only), offline badge + Keep offline queue (ADR-009, D-06 both copies), welcome tour (once, skip/finish saved) + Settings › Help, axe 0 serious on 10 screens × light/dark × PC/phone, Home < 1.5 s. Later: swipe gestures. Unit 339, e2e 25. | 2026-11-14 | #13 |
 | P9 | **DONE** · freeze; regression unit 340 / e2e 25; migration rehearsal = built v1.1.0 DB → all migrations, every v1 row byte-identical, backup restores (in CI) + anonymised dev DB clean. Live-backup rehearsal skipped (owner). SERVICE-HANDOFF upgrade/rollback/checks, RELEASE-NOTES, README. No deploy. | 2026-11-14 | #14 |
 | P10 | **DONE (release)** · `v2` merged into `main`, `app/package.json` 2.0.0, tag `v2.0.0` → release workflow → GHCR image + GitHub Release with deploy bundle. **Not deployed** (owner backs up live, then upgrades per SERVICE-HANDOFF §5). "Live + smoke test" = owner. | 2026-11-14 | tag |
+| v3.1.2 | **DONE (release)** · Bug-fix patch, 48 QA-loop issues (#272–#313, #324, #348, #362–#364, #375): offline data loss, repeat rules, undo, phone + desktop accessibility, docs. No migration. Unit 399, e2e desktop 45, phone 314. Independent QA pass `docs/v3/QA-RUN-2026-11-23.md`. | 2026-11-24 | #316–#376 |
 | v3.1.1 | **DONE (release)** · Removed the mistaken read-only `/timetable` page (#270, #271). No migration. Unit 386, e2e desktop 28, phone 246. | 2026-11-20 | #271 |
 | v3.1.0 | **DONE (release)** · QA-loop fixes (#243–#269): repeat end row, `until`/`for N` quick add, Keep Trash restore, Duplicate, accessibility + layout. No migration. Unit 386, e2e desktop 28, phone 246. | 2026-11-20 | #264–#269 |
 | v3.0.0 | **DONE (release)** · Mobile overhaul #106 (#87–#120), repeating items #72/#73, security pass #22–#59, review fixes #155–#211, QA-loop fixes #221–#232, Android sign-in error page. Migrations 0009, 0010. Unit 368, e2e desktop 26, phone 246. | 2026-11-18 | #233–#241 |

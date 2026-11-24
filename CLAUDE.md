@@ -4,11 +4,11 @@ Caveman rules for Claude Code in this repo. Read `AGENTS.md` first (one page of 
 
 ## Now
 
-- **Latest release = v3.1.1** (2026-11-20): tag + GHCR image + GitHub Release + `life-tracker-3.1.1.apk`. `app/package.json` = 3.1.1. 3.1.2 patch in progress on `main`, not released.
+- **Latest release = v3.1.2** (2026-11-24, bug-fix patch, milestone 3.1.2): tag + GHCR image + GitHub Release + `life-tracker-3.1.2.apk`. `app/package.json` = 3.1.2. Live upgrade = owner.
 - Live = `https://planner.jeremyjosh.org` (homelab Docker + Cloudflare Tunnel). Last verified 2026-11-19 via `/healthz` (then v3.0.0); not re-checked since. **Owner deploys. Agents never deploy, never touch live data.**
 - Last migration = 0010 (v3.1.x added none). Migrations 0009, 0010 shipped in v3.0.0.
 - Mobile overhaul (#106) DONE (`docs/v3/MOBILE-SPRINT.md`). Next = open GitHub issues (`gh issue list --state open`). v2.1 backlog (`docs/v2/CHAT-HANDOFF.md`) + `docs/REVIEW.md` Open items are parked. One branch + PR per issue off `main`.
-- Tests at this commit: 371 unit · desktop e2e 25 (+1 skipped near midnight) · phone e2e 246 (`docs/v3/QA-RUN-2026-11-19.md`).
+- Tests at this commit: 399 unit · desktop e2e 45 · phone e2e 314 (`docs/v3/QA-RUN-2026-11-23.md`).
 - Known bugs before you touch anything: `AGENTS.md` §Known issues (graph sigma console error at phone width).
 
 ## Docs

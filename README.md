@@ -2,9 +2,9 @@
 
 A self-hosted planner, notebook and wiki in one app. It runs as a single service with one SQLite file — no separate database, queue or external service to manage.
 
-**[Download the latest release](https://github.com/chicenwangs/lifetracker/releases/latest)** · **[Docker image: `ghcr.io/chicenwangs/lifetracker`](https://github.com/chicenwangs/lifetracker/pkgs/container/lifetracker)** · **Current version: 3.1.1**
+**[Download the latest release](https://github.com/chicenwangs/lifetracker/releases/latest)** · **[Docker image: `ghcr.io/chicenwangs/lifetracker`](https://github.com/chicenwangs/lifetracker/pkgs/container/lifetracker)** · **Current version: 3.1.2**
 
-![Life Tracker](https://img.shields.io/badge/version-3.1.1-blue) ![Tests](https://img.shields.io/badge/tests-386%20unit%20%7C%2028%20desktop%20%7C%20246%20phone-green)
+![Life Tracker](https://img.shields.io/badge/version-3.1.2-blue) ![Tests](https://img.shields.io/badge/tests-399%20unit%20%7C%2045%20desktop%20%7C%20314%20phone-green)
 
 ---
 
@@ -67,9 +67,9 @@ A self-hosted planner, notebook and wiki in one app. It runs as a single service
 | What                                  | Link                                                                                                             |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | Latest release, deploy bundle and APK | [GitHub Releases](https://github.com/chicenwangs/lifetracker/releases/latest)                                    |
-| Docker image                          | `ghcr.io/chicenwangs/lifetracker:3.1.1`                                                                          |
-| Android APK                           | `life-tracker-3.1.1.apk` on the [v3.1.1 release](https://github.com/chicenwangs/lifetracker/releases/tag/v3.1.1) |
-| Deploy bundle                         | `deploy-v3.1.1.tar.gz` on the release page                                                                       |
+| Docker image                          | `ghcr.io/chicenwangs/lifetracker:3.1.2`                                                                          |
+| Android APK                           | `life-tracker-3.1.2.apk` on the [v3.1.2 release](https://github.com/chicenwangs/lifetracker/releases/tag/v3.1.2) |
+| Deploy bundle                         | `deploy-v3.1.2.tar.gz` on the release page                                                                       |
 
 The published APK points at the project's hosted instance. To use the Android app with your own server, build it from source after setting your server URL in `mobile/capacitor.config.json` and `mobile/android/app/src/main/res/values/strings.xml`.
 
@@ -82,17 +82,17 @@ You need Docker Engine with the Compose plugin. The image is private unless acce
 ```bash
 sudo mkdir -p /opt/life-tracker && sudo chown $USER /opt/life-tracker && cd /opt/life-tracker
 curl -L -o deploy.tar.gz \
-  https://github.com/chicenwangs/lifetracker/releases/download/v3.1.1/deploy-v3.1.1.tar.gz
+  https://github.com/chicenwangs/lifetracker/releases/download/v3.1.2/deploy-v3.1.2.tar.gz
 tar -xzf deploy.tar.gz
 cp .env.example .env && chmod 600 .env
 mkdir -p data && sudo chown -R 1000:1000 data && sudo chmod 700 data   # the container runs as uid 1000
 ```
 
-If the repository is private, authenticate with GitHub first (`gh auth login`) and use `gh release download v3.1.1 -p 'deploy-*.tar.gz'` instead of the `curl` line above.
+If the repository is private, authenticate with GitHub first (`gh auth login`) and use `gh release download v3.1.2 -p 'deploy-*.tar.gz'` instead of the `curl` line above.
 
 Edit `.env`:
 
-- `APP_VERSION=3.1.1`
+- `APP_VERSION=3.1.2`
 - `ORIGIN` — the exact browser URL, with no trailing slash.
 - `APP_SECRET` — a long random value: `openssl rand -base64 48`.
 - `SETUP_TOKEN` — a long random value used only to create the first account.
@@ -104,7 +104,7 @@ For a local network test, leave `ADDRESS_HEADER` empty and uncomment the `ports:
 docker compose --profile tunnel up -d
 ```
 
-Then open your `ORIGIN` URL, go to `/setup`, enter the setup token and create the first account. Remove `SETUP_TOKEN` from `.env` and restart afterwards. Check `/healthz` for `{"ok":true,"db":true,"version":"3.1.1"}`.
+Then open your `ORIGIN` URL, go to `/setup`, enter the setup token and create the first account. Remove `SETUP_TOKEN` from `.env` and restart afterwards. Check `/healthz` for `{"ok":true,"db":true,"version":"3.1.2"}`.
 
 Before any upgrade, run `sudo ./backup.sh`. To upgrade, set the new `APP_VERSION` in `.env`, then `docker compose pull app && docker compose up -d app`. Rollback is the previous version tag; if that version ran a database migration, restore the backup first.
 
