@@ -12,6 +12,9 @@
 			/* no storage: no fallback */
 		}
 	}
+	/** a refresh must not supersede the address change. Shared: the page route remounts the view on the new row
+	 *  (#375), and the old instance's toast Undo still refreshes the host, which must wait for the new one's goto */
+	let nav: Promise<unknown> = Promise.resolve();
 	function takeCameFrom(id: string): string | null {
 		try {
 			const from = sessionStorage.getItem(cameFromKey(id));
@@ -115,7 +118,6 @@
 		}
 	}
 	/** #278: the address follows the row on screen, so a reload or a copied link shows the same item */
-	let nav: Promise<unknown> = Promise.resolve(); // a refresh must not supersede the address change
 	function showAt(itemId: string) {
 		const url = `/item/${encodeURIComponent(itemId)}`;
 		try {
@@ -134,6 +136,7 @@
 
 	// sequence numbers: a slow older response never overwrites a newer one
 	let loadSeq = 0;
+	let gone = false; // #375: the page route remounted on another row; this old view's late failures are not the user's
 	let daySeq = 0;
 	async function load(quiet = false) {
 		const n = ++loadSeq;
@@ -152,7 +155,7 @@
 				showAt(id);
 				return load(quiet);
 			}
-			if (quiet) return; // a bus refetch after this item was deleted: the host is closing the sheet
+			if (quiet || gone) return; // a bus refetch after this item was deleted: the host is closing the sheet
 			failed = true;
 			showError(e);
 		}
@@ -172,6 +175,7 @@
 	async function changed() {
 		await nav;
 		await Promise.all([load(), loadDay()]);
+		await nav; // #375: a fallback after Undo moves the address; the host refresh must see the new URL, not the deleted row's
 		onchanged?.();
 	}
 
@@ -416,6 +420,7 @@
 	}
 	// a save still waiting on its 700 ms timer must not be dropped when the view closes or the page unloads
 	onDestroy(() => {
+		gone = true;
 		if (saveTimer) void flushNotes();
 	});
 	// sign-out: the layout waits (max 2 s) for this save before it drops the session (#288)

@@ -132,3 +132,25 @@ test('Item sheet: tick and edit show an Undo snackbar; an offline tick waits to 
 	await page.context().setOffline(false);
 	await expect.poll(async () => (await get(one)).status).toBe('doing');
 });
+
+test('Item page: toast Undo after a tick of a repeating item stays on the item (#375)', async () => {
+	const day = new Date().toLocaleDateString('en-CA');
+	const title = `${T} toast undo`;
+	const id = await page.evaluate(
+		async ([t, d]) => {
+			const r = await fetch('/api/items', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: t, date: d, rrule: 'FREQ=DAILY;COUNT=5' }) }); // prettier-ignore
+			return ((await r.json()) as { item: { id: string } }).item.id;
+		},
+		[title, day],
+	);
+	await page.goto(`/item/${id}@${day}`);
+	const sq = page.locator('button.sq').first();
+	await sq.click();
+	const toast = page.locator('.toast');
+	await expect(toast).toContainText('Started');
+	await toast.getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible();
+	await page.waitForLoadState('networkidle');
+	await expect(page.getByText('Not found')).toHaveCount(0);
+	await expect(sq).toHaveAttribute('aria-label', /Not started/);
+});
