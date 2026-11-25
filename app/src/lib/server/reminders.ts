@@ -265,6 +265,17 @@ export function upcoming(ownerId: string, now = Date.now(), ms = 48 * 3_600_000)
 	});
 }
 
+/** Skip (PLAN §3A): the skipped date does not happen, so its exact-time reminder goes. Relative ones are
+ *  recalculated to the next occurrence by recalcOwner. */
+export function cancelOnDay(ownerId: string, sourceId: string, date: string, now = Date.now()): void {
+	const tz = (db().prepare(`SELECT timezone FROM users WHERE id = ?`).get(ownerId) as { timezone: string } | undefined)?.timezone ?? 'Asia/Kuala_Lumpur'; // prettier-ignore
+	const rows = db().prepare(`SELECT id, due_at FROM reminders WHERE owner_id = ? AND source_type = 'planner_item' AND source_id = ? AND rule_kind = 'absolute' AND status = 'scheduled'`).all(ownerId, sourceId) as { id: string; due_at: string | null }[]; // prettier-ignore
+	const t = nowUtcIso(now);
+	for (const r of rows)
+		if (r.due_at && utcToLocal(r.due_at, tz).date === date)
+			db().prepare(`UPDATE reminders SET status = 'cancelled', updated_at = ? WHERE id = ?`).run(t, r.id); // prettier-ignore
+}
+
 /** in-app channel: the oldest sent/missed reminder not shown yet (#198: one at a time, the toast has one slot) */
 export function inbox(ownerId: string) {
 	const rows = db().prepare(`SELECT * FROM reminders WHERE owner_id = ? AND status IN ('sent','missed') AND seen_at IS NULL ORDER BY sent_at LIMIT 21`).all(ownerId) as Row[]; // prettier-ignore

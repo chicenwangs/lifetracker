@@ -62,12 +62,21 @@ test('Today: hold lifts the row; drag down 2 steps = 30 min later', async () => 
 	await expect.poll(async () => (await item(id)).time).toBe('09:30');
 });
 
-test('⋯ actions: Done, Move…, Delete by tap', async () => {
+test('⋯ actions: postpone moves, then Done, Move…, Delete by tap', async () => {
 	await make(`Row menu ${P}`, DAY, '10:00');
 	await page.goto(`/today?d=${DAY}`);
 	await page.getByRole('button', { name: `Actions for Row menu ${P}` }).click();
 	const sheet = page.getByRole('dialog', { name: `Actions for Row menu ${P}` });
-	await expect(sheet.getByRole('button')).toContainText(['Done', 'Move…', 'Delete']);
+	await expect(sheet.getByRole('button')).toContainText([
+		'Today',
+		'Tomorrow',
+		'Next weekday',
+		'+1 week',
+		'Pick date…',
+		'Done',
+		'Move…',
+		'Delete',
+	]);
 	await sheet.getByRole('button', { name: 'Move…' }).click();
 	await expect(page.getByRole('dialog', { name: 'Item' })).toBeVisible(); // the item sheet edits day + time
 });
