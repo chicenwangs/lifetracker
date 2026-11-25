@@ -1,40 +1,10 @@
 // v3.2 PR 3: the reschedule action set on the item page — Postpone (Undo restores the date), a detached
 // occurrence follows, and Skip writes an EXDATE (Undo removes it).
 import { expect, test, type Page } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
-import { join } from 'node:path';
+import { signIn } from './signin';
 
 test.describe.configure({ mode: 'serial' });
-const PW = 'good pass phrase';
 let page: Page;
-
-/** The full desktop run executes flow.spec.ts first; it ends by resetting jeremy's password. Put the known
- *  one back, or this file can only pass when run alone. A fresh DB has no user yet: signIn() runs /setup. */
-async function prepare() {
-	await page.goto('/');
-	if (page.url().endsWith('/setup')) return;
-	execFileSync('node', ['scripts/reset-password.mjs', 'jeremy'], {
-		input: `${PW}\n`,
-		env: { ...process.env, DATABASE_PATH: join(process.env.E2E_DIR as string, 'app.db') },
-	});
-}
-
-async function signIn() {
-	await page.goto('/');
-	if (page.url().endsWith('/setup')) {
-		await page.fill('#tk', 'e2e-setup-token-long-enough');
-		await page.fill('#p', PW);
-		await page.fill('#cp', PW);
-		await page.click('button[type=submit]');
-	} else if (page.url().includes('/login')) {
-		await page.fill('#u', 'jeremy');
-		await page.fill('#p', PW);
-		await page.click('button[type=submit]');
-	}
-	const skip = page.getByRole('button', { name: 'Skip tour' });
-	await skip.waitFor({ state: 'visible', timeout: 1500 }).catch(() => {});
-	if (await skip.isVisible().catch(() => false)) await skip.click();
-}
 
 async function api(m: 'GET' | 'POST' | 'PATCH', p: string, b?: unknown) {
 	return page.evaluate(
@@ -73,8 +43,7 @@ const onCalendar = (occId: string, date: string) =>
 
 test.beforeAll(async ({ browser }) => {
 	page = await (await browser.newContext()).newPage();
-	await prepare();
-	await signIn();
+	await signIn(page);
 });
 test.afterAll(() => page.context().close());
 

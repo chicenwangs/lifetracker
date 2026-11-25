@@ -22,6 +22,7 @@
 	import { openAdd } from '$lib/client/mobile.svelte';
 	import { colorsFor } from '$lib/colors';
 	import StatusSquare from '$lib/components/StatusSquare.svelte';
+	import SlippedStrip from '$lib/components/SlippedStrip.svelte';
 	import { addDays, clock, nowLocalMinutes, prettyDate, utcToLocal } from '$lib/time';
 	import { nextStatus, type BlockDTO, type ItemDTO, type Status } from '$lib/types';
 
@@ -240,6 +241,13 @@
 			</button>
 		{/each}
 	</nav>
+	<SlippedStrip
+		items={data.slipped.items}
+		more={data.slipped.more}
+		today={data.today}
+		{tz}
+		refresh={refreshDay}
+	/>
 	<div
 		class="swipe"
 		role="group"

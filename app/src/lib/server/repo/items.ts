@@ -1,5 +1,5 @@
 // Items. ALL scoping here: only rows in calendars owned by `me` (P2 adds grants via access.ts).
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db, handle } from '../db';
 import { blocks, calendars, items, users } from '../schema';
@@ -646,6 +646,75 @@ export function dueOn(meId: string, day: string): ItemRow[] {
 			if (a.time && b.time && a.time !== b.time) return a.time < b.time ? -1 : 1;
 			return a.title.localeCompare(b.title);
 		});
+}
+
+/** v3.2 PR 4: a one-off top-level item whose last day is behind today. A normal repeat never slips. */
+const SLIPPED_CAP = 50;
+const slippedWhere = (cals: string[], today: string) =>
+	and(
+		inArray(items.calendarId, cals),
+		live,
+		isNull(items.parentId),
+		isNull(items.rrule),
+		ne(items.status, 'done'),
+		isNotNull(items.date),
+		lt(sql`COALESCE(${items.endDate}, ${items.date})`, today),
+	);
+
+/** the Slipped strip: newest first, capped, plus how many more are waiting */
+export function slipped(meId: string, today: string): { items: ItemDTO[]; more: number } {
+	const cals = myCalendarIds(meId);
+	if (!cals.length) return { items: [], more: 0 };
+	const rows = db()
+		.select()
+		.from(items)
+		.where(slippedWhere(cals, today))
+		.orderBy(desc(items.date), desc(items.createdAt))
+		.limit(SLIPPED_CAP)
+		.all();
+	const n =
+		db()
+			.select({ n: sql<number>`count(*)` })
+			.from(items)
+			.where(slippedWhere(cals, today))
+			.get()?.n ?? 0;
+	return { items: withCounts(rows), more: Math.max(0, n - rows.length) };
+}
+
+/** the rows "Move all to today" will change (the undo journal targets, before the move) */
+export function slippedIds(meId: string, today: string): string[] {
+	const cals = myCalendarIds(meId);
+	if (!cals.length) return [];
+	return db()
+		.select({ id: items.id })
+		.from(items)
+		.where(slippedWhere(cals, today))
+		.all()
+		.map((r) => r.id);
+}
+
+/** "Move all to today": every slipped item keeps its time and its multi-day span. Call inside undoable(). */
+export function moveSlippedToToday(meId: string, today: string): { moved: number } {
+	const cals = myCalendarIds(meId);
+	if (!cals.length) return { moved: 0 };
+	const rows = db().select().from(items).where(slippedWhere(cals, today)).all();
+	const now = nowUtcIso();
+	return handle().sqlite.transaction(() => {
+		for (const r of rows) {
+			const span = r.date && r.endDate ? diffDays(r.date, r.endDate) : 0;
+			db()
+				.update(items)
+				.set({
+					date: today,
+					endDate: span > 0 ? addDays(today, span) : null,
+					updatedAt: now,
+					updatedBy: meId,
+				})
+				.where(eq(items.id, r.id))
+				.run();
+		}
+		return { moved: rows.length };
+	})();
 }
 
 /** all-day (no time) items touching [from, to) that are not done and have no planner block anywhere */
