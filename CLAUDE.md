@@ -11,6 +11,7 @@ Caveman rules for Claude Code in this repo. Read `AGENTS.md` first (one page of 
 - Mobile overhaul (#106) DONE (`docs/v3/MOBILE-SPRINT.md`). Next = v3.3 (line above) plus open GitHub issues. v2.1 backlog (`docs/v2/CHAT-HANDOFF.md`) + `docs/REVIEW.md` Open items are parked. One branch + PR per issue off `main`.
 - Tests at this commit: 424 unit · desktop e2e 52 · phone e2e 328 (CI). Last QA pass: `docs/v3/QA-RUN-2026-11-23.md` (v3.1.2).
 - Known bugs before you touch anything: `AGENTS.md` §Known issues (graph sigma console error at phone width).
+- **Team loop running toward v4.0.0** (`qa/TEAM-LOOP.md`, plan `qa/TEAM-PLAN.md`): v3.2 + v3.3 scope + Pages overhaul ship together as **one release, v4.0.0** (no v3.2/v3.3 tags). In the team loop only: LEAD may merge migration PRs to main after `migration-check.mjs` passes (via `qa/team/merge.ps1`); the tag is created only by the owner's `run.ps1 -Approve 4.0.0`. Agents still never deploy, never touch live data or `data/app.db`.
 
 ## Docs
 
