@@ -4,6 +4,8 @@ import { freshDb } from './helpers';
 import * as usersRepo from '../../src/lib/server/repo/users';
 import * as items from '../../src/lib/server/repo/items';
 import * as blocks from '../../src/lib/server/repo/blocks';
+import * as pages from '../../src/lib/server/repo/pages';
+import { handle } from '../../src/lib/server/db';
 import { undo, undoable } from '../../src/lib/server/undo';
 import { quickAdd } from '../../src/lib/server/quickadd-server';
 
@@ -79,6 +81,19 @@ describe('undo journal', () => {
 		undo(me);
 		expect(items.getOwn(me, r.item?.id ?? '')).toBeUndefined();
 		expect(blocks.getOwn(me, r.block?.id ?? '')).toBeUndefined();
+	});
+
+	it('undone created page survives being opened first (#440)', () => {
+		const r = undoable(me, 'Duplicate page', [], () => {
+			const p = pages.create(me, { parentId: null, title: 'Copy of page' });
+			return { result: p, created: [{ t: 'pages' as const, id: p.id }] };
+		});
+		pages.get(me, r.result.id, true); // the copy opens: last_opened_at moves
+		handle()
+			.sqlite.prepare(`UPDATE pages SET last_opened_at = '2026-01-01T00:00:00Z' WHERE id = ?`)
+			.run(r.result.id);
+		undo(me, r.undo.id);
+		expect(() => pages.get(me, r.result.id, false)).toThrow();
 	});
 
 	it('only my own actions', () => {

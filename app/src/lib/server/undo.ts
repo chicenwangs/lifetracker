@@ -32,6 +32,13 @@ const EXPIRES_MS = 12 * 3_600_000;
 const db = () => handle().sqlite;
 const get = (t: Table, id: string) =>
 	db().prepare(`SELECT * FROM ${t} WHERE id = ?`).get(id) as Row | undefined;
+/** pages.last_opened_at moves on every page load; opening a page must not block undoing what created it (#440) */
+const comparable = (t: Table, row: Row | null | undefined) => {
+	if (!row || t !== 'pages') return row ?? null;
+	const rest = { ...row };
+	delete rest.last_opened_at;
+	return rest;
+};
 
 /**
  * Run `fn` and journal what it changed. `targets` = rows that exist before (they are captured first);
@@ -71,7 +78,8 @@ export function undo(userId: string, id?: string): { label: string } {
 		const rows = JSON.parse(a.rows) as Snap[];
 		for (const r of rows) {
 			const cur = get(r.t, r.id);
-			const same = JSON.stringify(cur ?? null) === JSON.stringify(r.after);
+			const same =
+				JSON.stringify(comparable(r.t, cur)) === JSON.stringify(comparable(r.t, r.after));
 			if (!same) throw new ApiFail(409, 'cant_undo', `Can't undo safely: "${a.label}" was changed since.`);
 		}
 		// parents before children on re-insert (a step needs its item), children first on delete
