@@ -37,6 +37,7 @@ browser ──https──> Cloudflare edge ──tunnel──> cloudflared ─�
 | Filesystem | Read-only root in compose. Writable: `/app/data` (volume), `/tmp` (tmpfs). |
 | State | `/app/data/app.db` (+ `-wal`, `-shm` while running). `/app/data/seed/` = optional Notion import input. `/app/data/backups/` = from `backup.sh`. **v2:** `/app/data/uploads/` = attached files (`<2 chars>/<key>`, temp files in `uploads/.tmp/`). Back it up with the DB. |
 | Health | `GET /healthz` → `200 {"ok":true,"db":true,"version":"…","jobs":true,"reminderBacklog":0}`; 503 if the DB is unusable. A backlog that keeps growing = the runner is stuck (check logs for `[job]`). No auth. Image HEALTHCHECK every 30 s. |
+| Public routes | No login: `/login`, `/signup`, `/setup`, `/healthz`, and (v3.2) `GET /cal/<token>.ics` = a user's read-only ICS feed. The 43-char token is the secret, so the full URL can show up in tunnel/proxy access logs (the app's own error log masks it). In-app rate limit 120 requests / 15 min per IP (Google Calendar's fetchers share IPs, one bucket); `Cache-Control: private, max-age=300`; unknown or turned-off token = 404. No outbound calls, no new env. A user turns it off or rotates it in Settings › Calendar feed. Optional Cloudflare WAF rule: rate-limit `/cal/*` too. |
 | Start | Runs DB migrations on boot (forward only), then listens. Logs `[boot] v<version> db ready, origin=…, secureCookies=…, proxyHeader=…`. Bad env = exits with `Bad env:` lines, no partial start. |
 | Stop | SIGTERM → finishes in-flight requests → closes DB (`[shutdown] db closed`). `init: true` in compose. |
 | Logs | stdout/stderr, plain lines. Errors: `[error] <status> <method> <path>: <message>`. Never logs bodies, cookies, passwords or tokens. json-file driver, 10 MB × 3. |
@@ -97,6 +98,8 @@ echo "$GHCR_PAT" | docker login ghcr.io -u chicenwangs --password-stdin
 ## 5. Operations
 
 **Upgrade:** read the release notes → `sudo ./backup.sh` → set `APP_VERSION=X.Y.Z` in `.env` → `docker compose pull app && docker compose up -d app` → watch `docker compose logs -f app` for `[boot] vX.Y.Z` → `curl -s https://planner.jeremyjosh.org/healthz` shows the new version.
+
+**v3.1.2 → v3.2.0:** **no migration**, no env change. Normal upgrade with `APP_VERSION=3.2.0`. Rollback = `APP_VERSION=3.1.2` + `up -d` (no restore needed). New public read-only route `/cal/<token>.ics` (§3 Public routes). `/healthz` → `"version":"3.2.0"`.
 
 **v3.1.1 → v3.1.2:** **no migration**, no env change. Normal upgrade with `APP_VERSION=3.1.2`. Rollback = `APP_VERSION=3.1.1` + `up -d` (no restore needed). Bug fixes (offline data loss, repeat rules, undo, accessibility). `/healthz` → `"version":"3.1.2"`. Any v3.x goes straight to 3.1.2.
 

@@ -8,6 +8,7 @@ Read this first. One page of truth; deeper docs at the end. Caveman style: short
 - Repo `github.com/chicenwangs/lifetracker` (private). Local: `C:\Users\jeremy josh\Desktop\life-tracker`. Branch `main`.
 - Latest release: **v3.1.2** (bug-fix patch, milestone 3.1.2; tag, GHCR image, GitHub Release, APK; 2026-11-24). `app/package.json` = 3.1.2. Live upgrade = owner.
 - Live: `https://planner.jeremyjosh.org` (homelab Docker Compose + Cloudflare Tunnel). Last verified 2026-11-19: `/healthz` → `{"ok":true,"db":true,"version":"3.0.0","jobs":true}`. Not re-checked since v3.1.x. **Owner deploys. Agents never deploy and never touch live data.**
+- **main has v3.2 work, not tagged yet:** merged 2026-11-25 by the build loop — Postpone/Skip (#384), Slipped list (#385), print week (#387), ICS calendar feed (#388), `agenda()` refactor (#386), Keep restore test (#382); #383 was already fixed. No migration. Tag + APK = owner.
 - Android app ships per release (`life-tracker-X.Y.Z.apk`), Capacitor 8 shell in `mobile/`.
 
 ## Run it
@@ -46,7 +47,7 @@ npm run dev                # http://localhost:5173, reads app/.env
 | Android | `mobile/` — `capacitor.config.json` (`server.url` = site), `android/app/src/main/java/.../` plugins: Updater, Session, ThemeBars, Haptics, Widgets, Reminders, SyncWorker, Native |
 | Ops bundle | `deploy/` (compose, backup.sh, restore.sh, .env.example) |
 
-Routes that exist (2026-11): `/`, `/today`, `/week`, `/month`, `/item/[id]`, `/keep` (+ `?scope=trash`), `/pages`, `/pages/[id]`, `/pages/graph`, `/pages/archive`, `/pages/shared`, `/pages/trash`, `/more`, `/trash`, `/login`, `/signup`, `/setup`, `/settings/{account,preferences,notifications,sharing,sessions,users,types,import,help}`.
+Routes that exist (2026-11): `/`, `/today`, `/week`, `/month`, `/item/[id]`, `/keep` (+ `?scope=trash`), `/pages`, `/pages/[id]`, `/pages/graph`, `/pages/archive`, `/pages/shared`, `/pages/trash`, `/more`, `/trash`, `/login`, `/signup`, `/setup`, `/settings/{account,preferences,notifications,calendar,sharing,sessions,users,types,import,help}`, public `/cal/<token>.ics` (ICS feed, no login).
 
 ## Product facts that surprise people
 
@@ -55,6 +56,8 @@ Routes that exist (2026-11): `/`, `/today`, `/week`, `/month`, `/item/[id]`, `/k
 - Undo: every mutation posts to the undo journal; Ctrl+Z (and the toast Undo) replays the inverse. Page editor keeps its own history.
 - Access: single check `level()`/`need()` in `lib/server/repo/shares.ts` for item/page/note/database-record. Trashed rows return "not found" there — restore paths must not go through it.
 - Phone layout = width < 700 px, or coarse pointer with max-height 500 px. One shared bottom sheet (`BottomSheet.svelte`); Back closes the top layer (`use:backCloses`); hit areas ≥ 48 dp on phone, ≥ 24 px desktop; no "Click/Ctrl/PC" copy on phone; swipes move between peers, long-press selects.
+- Reschedule (v3.2): one action list `Today · Tomorrow · Next weekday · +1 week · Pick date…` (+ `Skip this one` on a repeat occurrence) in the item sheet (Postpone ▾), phone row ⋯ sheets and the Slipped strip (`lib/client/reschedule.ts`). Slipped = one-off top-level undone items before today; repeats never slip. Move all to today = one undo entry.
+- ICS feed (v3.2): Settings › Calendar feed makes a secret URL (`/cal/<token>.ics`, only the sha256 stored in `users.ics_token_hash`). Own items, private = "Busy", −30 d … +365 d. `lib/server/ics.ts` + `icsfeed.ts`, not `agenda()`.
 - Offline: service worker shell + offline badge; Keep edits and quick adds queue in `lib/client/offline.ts`; the Android app adds a real `offline.html` fallback.
 - Android extras: 6 widgets (Timeline, Keep, Now&Next, Quick, Countdown, Week), exact-alarm reminders (no FCM), in-app updater that polls GitHub Releases, theme-matched status bars, sign-out clears alarms/cache.
 
@@ -62,7 +65,8 @@ Routes that exist (2026-11): `/`, `/today`, `/week`, `/month`, `/item/[id]`, `/k
 
 - v3.0.0 released 2026-11-18 (mobile overhaul #106, repeating items #72/#73, security pass #22–#59, review fixes #155–#211, QA-loop fixes #221–#232). Migrations 0009 (`users.hints_seen`), 0010 (`users.default_reminder`).
 - v3.1.0/v3.1.1 (2026-11-20): QA-loop fixes, timetable removed. v3.1.2: 48 QA-loop bugs (#272–#313, #324, #348, #362–#364, #375). No migration since 0010.
-- Tests at this commit, independent QA pass: **399 unit**, **desktop e2e 45**, **phone e2e 314** (phone + landscape). See `docs/v3/QA-RUN-2026-11-23.md`.
+- v3.2 merged on main 2026-11-25 (build loop, not tagged): Postpone/Skip (#384), Slipped list (#385), print week (#387), ICS calendar feed (#388), `agenda()` refactor (#386), Keep restore test (#382); #383 was already fixed. #380 (phone rapid taps #378/#379) merged the same day.
+- Tests at this commit (CI on the last v3.2 PR): **424 unit**, **desktop e2e 52**, **phone e2e 328** (phone + landscape). Last independent QA pass: `docs/v3/QA-RUN-2026-11-23.md` (v3.1.2).
 - Docs drift was fixed 2026-11-19 (live version, test counts, tree, handoff). If a doc disagrees with code, code wins, then update the doc.
 - Backlog lives in `docs/v2/CHAT-HANDOFF.md` §"v2.1" and open review items in `docs/REVIEW.md`.
 
@@ -74,7 +78,7 @@ Routes that exist (2026-11): `/`, `/today`, `/week`, `/month`, `/item/[id]`, `/k
 
 ## Testing recipe (localhost + Android emulator)
 
-- Unit: `cd app; npm run test:unit`. E2E: `npm run test:e2e` (45 desktop) / `npm run test:e2e:phone` (phone + landscape, 314). E2E uses its own temp DB (`E2E_DIR`, port 4173) — no need to stop a dev server on another port, but both share `.svelte-kit`, so do not run two Vite servers on the same checkout.
+- Unit: `cd app; npm run test:unit`. E2E: `npm run test:e2e` (52 desktop) / `npm run test:e2e:phone` (phone + landscape, 328). Desktop specs share one DB and run in file order: sign in through `tests/e2e/signin.ts` (flow.spec resets the password at its end). E2E uses its own temp DB (`E2E_DIR`, port 4173) — no need to stop a dev server on another port, but both share `.svelte-kit`, so do not run two Vite servers on the same checkout.
 - Emulator: AVD `lt_pixel7` (`%LOCALAPPDATA%\Android\Sdk\emulator\emulator.exe -avd lt_pixel7`), `adb` in `%LOCALAPPDATA%\Android\Sdk\platform-tools\`. Start the dev server on **4174** against `data/qa/app.db`, then `adb reverse tcp:4174 tcp:4174`.
 - Debug APK `mobile/android/app/build/outputs/apk/debug/app-debug.apk` embeds `http://localhost:4174` (cleartext). `adb install -r` it; the installed release app is older and will offer the newest release as an update instead.
 - WebView inspection works on the debug build: `adb shell cat /proc/net/unix | findstr webview_devtools`, `adb forward tcp:9223 localabstract:webview_devtools_remote_<pid>`, then `http://127.0.0.1:9223/json` → CDP WebSocket (Node 22 has global `WebSocket`). That is how to read `document.body.innerText`, click, and screenshot without OCR. `adb shell uiautomator dump` shows only an empty `<WebView>` node — not useful here.

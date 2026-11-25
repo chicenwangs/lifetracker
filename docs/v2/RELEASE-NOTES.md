@@ -1,5 +1,16 @@
 # Life Tracker v2 — release notes
 
+## v3.2.0 (draft, not tagged) — planner: postpone, slipped list, print week, calendar feed, no migration
+Back up first (`sudo ./backup.sh`), then set `APP_VERSION=3.2.0` in `.env` and run `docker compose pull app && docker compose up -d app`. Rollback is `APP_VERSION=3.1.2` plus `up -d`; no database migration and no restore needed. No new env. `/healthz` should report `3.2.0`.
+
+- **Postpone and Skip** (#384): item sheet Postpone ▾ and the phone row ⋯ sheet offer Today, Tomorrow, Next weekday, +1 week, Pick date…; Skip this one drops one date of a repeating item. Every move has Undo. (Undo of a Skip does not bring back an exact-time reminder it cancelled.)
+- **Slipped list** (#385): overdue one-off items collect in a "Slipped" strip on Home and Today, with Move all to today (one Undo). Repeating items never slip.
+- **Print week** (#387): desktop Week › ⋯ › Print week gives a one-page A4 landscape plan.
+- **Calendar feed** (#388): Settings › Calendar feed makes a private link for Google/Apple Calendar or Outlook. Your own items only; private items show as "Busy". **New public route** `/cal/<token>.ics` (no login, rate-limited, no outbound calls) — see SERVICE-HANDOFF.
+- Phone rapid taps (#378, #379): no tap-through after Save note, no timeline jump on tick (#380).
+- Internal: `agenda()` query for the Android sync (#386); Keep restore test (#382).
+- Verified by CI: 424 unit, 52 desktop e2e, 328 phone e2e. Not yet: a QA pass on the tagged build, APK check.
+
 ## v3.1.2 (2026-11-24) — bug-fix patch: offline data loss, repeat rules, phone + desktop accessibility, no migration
 Back up first (`sudo ./backup.sh`), then set `APP_VERSION=3.1.2` in `.env` and run `docker compose pull app && docker compose up -d app`. Rollback is `APP_VERSION=3.1.1` plus `up -d`; no database migration and no restore needed. `/healthz` should report `3.1.2`. Android: installed apps offer the 3.1.2 APK update.
 
