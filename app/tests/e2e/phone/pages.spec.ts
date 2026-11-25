@@ -21,13 +21,15 @@ test.beforeAll(async ({ browser }, info) => {
 });
 test.afterAll(() => page.context().close());
 
-test('toolbar hidden until typing, then docked at the bottom, 48 dp, no Ctrl', async () => {
+test('toolbar hidden until typing, then docked above the tab bar, 48 dp, no Ctrl', async () => {
 	await expect(tools()).toBeHidden();
 	await page.getByLabel('Page content').click();
 	await expect(tools()).toBeVisible();
 	const box = await tools().boundingBox();
-	const vh = page.viewportSize()!.height;
-	expect(Math.round(box!.y + box!.height)).toBe(vh);
+	const barTop = Math.round((await page.locator('nav.mbar').boundingBox())!.y);
+	// #433: the toolbar sits on top of the tab bar (its bottom edge meets the bar's top edge)
+	expect(Math.round(box!.y + box!.height)).toBeLessThanOrEqual(barTop);
+	expect(Math.round(box!.y + box!.height)).toBeGreaterThanOrEqual(barTop - 2);
 	await expectTargets48(page);
 	await noDesktopHints(page);
 	await expect(tools().locator('[title*="Ctrl"]')).toHaveCount(0);
@@ -37,6 +39,28 @@ test('toolbar hidden until typing, then docked at the bottom, 48 dp, no Ctrl', a
 	await expect(tools()).toBeVisible();
 	await page.getByLabel('Page title').click();
 	await expect(tools()).toBeHidden();
+});
+
+test('the docked toolbar leaves every tab tappable (#433)', async () => {
+	await page.getByLabel('Page content').click();
+	await expect(tools()).toBeVisible();
+	const hits = await page.evaluate(() => {
+		const bar = document.querySelector('nav.mbar')!;
+		return [...bar.querySelectorAll<HTMLElement>('a, button')].map((a) => {
+			const r = a.getBoundingClientRect();
+			const at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+			return {
+				label: (a.getAttribute('aria-label') || a.innerText || '').trim().slice(0, 16),
+				hit: at ? (at.closest('nav.mbar') ? 'bar' : (at as HTMLElement).tagName) : 'none',
+			};
+		});
+	});
+	expect(hits.length).toBeGreaterThan(0);
+	for (const h of hits) expect(`${h.label}:${h.hit}`).toBe(`${h.label}:bar`);
+	const tb = (await tools().boundingBox())!;
+	const bb = (await page.locator('nav.mbar').boundingBox())!;
+	expect(Math.round(tb.y + tb.height)).toBeLessThanOrEqual(Math.round(bb.y));
+	await page.getByLabel('Page title').click();
 });
 
 test('"/" menu and page ⋯ menu rows are 48 dp (#228, #223)', async () => {
