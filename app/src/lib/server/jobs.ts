@@ -6,6 +6,7 @@ import { handle } from './db';
 import { env } from './env';
 import { newId } from './crypto';
 import { advanceRepeating, sourceInfo, type Source } from './reminders';
+import { digestsDue } from './digest';
 import { isoPlus, nowUtcIso } from '$lib/time';
 
 const db = () => handle().sqlite;
@@ -181,6 +182,14 @@ export async function tick(now = Date.now()): Promise<number> {
 		// in-app always gets it (inbox); "sent" = handed to the push service, never "delivered"
 		set(late ? 'missed' : 'sent', res.failed && !res.sent ? ", last_error = 'push failed, in-app only'" : '');
 		advanceRepeating(r.id, r.owner_id, now);
+	}
+	// PR 12: one web push per user per local day (digestsDue marks the day before we send)
+	for (const d of digestsDue(now)) {
+		try {
+			await pushTo(d.userId, { title: 'Today in Life Tracker', body: d.text, route: '/today' });
+		} catch (e) {
+			console.error(`[job] digest: ${(e as Error).message}`);
+		}
 	}
 	return claimed.length;
 }

@@ -31,6 +31,35 @@ import java.util.Set;
  */
 public class Reminders extends BroadcastReceiver {
     static final String CHANNEL = "reminders";
+    /** PR 12: one daily agenda alarm (fixed request code, replaced on every sync) */
+    static final int DIGEST_REQ = 7412;
+
+    /** PR 12: the server sends { at, text } for the next digest, or null (off / nothing planned). */
+    static void scheduleDigest(Context c, JSONObject d) {
+        AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        if (d == null) {
+            am.cancel(digestAlarm(c, ""));
+            return;
+        }
+        long at;
+        try {
+            at = Instant.parse(d.optString("at")).toEpochMilli();
+        } catch (Exception e) {
+            return;
+        }
+        String text = d.optString("text");
+        if (at <= System.currentTimeMillis() || text.isEmpty()) return;
+        setAlarm(am, at, digestAlarm(c, text));
+    }
+
+    private static PendingIntent digestAlarm(Context c, String text) {
+        Intent i = new Intent(c, Reminders.class)
+                .putExtra("digest", true)
+                .putExtra("text", text)
+                .putExtra("route", "/today");
+        return PendingIntent.getBroadcast(c, DIGEST_REQ, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
 
     /** replace the alarm set with `list` (ones the server dropped are cancelled) */
     static void schedule(Context c, JSONArray list) {
@@ -97,6 +126,10 @@ public class Reminders extends BroadcastReceiver {
     /** the alarm fired or a notification action button was tapped (#112) */
     @Override
     public void onReceive(Context c, Intent i) {
+        if (i.getBooleanExtra("digest", false)) {
+            showDigest(c, i.getStringExtra("text"));
+            return;
+        }
         String id = i.getStringExtra("id");
         if (id == null) return;
         String title = i.getStringExtra("title");
@@ -129,8 +162,27 @@ public class Reminders extends BroadcastReceiver {
         NotificationManagerCompat.from(c).notify(id.hashCode(), n.build());
     }
 
-    private static void handleAction(Context c, String id, String title, String route, String sourceType, String sourceId, String act) {
-        if ("done".equals(act) && sourceId != null && !sourceId.isEmpty()) {
+    /** PR 12: the daily agenda notification — counts only, no item titles in the body. */
+    private static void showDigest(Context c, String text) {
+        if (text == null || text.isEmpty()) return;
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(c, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return;
+        channel(c);
+        NotificationCompat.Builder n = new NotificationCompat.Builder(c, CHANNEL)
+                .setSmallIcon(R.drawable.ic_stat_reminder)
+                .setColor(ContextCompat.getColor(c, R.color.lt_accent))
+                .setContentTitle("Today in Life Tracker")
+                .setContentText(text)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(text))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .setPublicVersion(new NotificationCompat.Builder(c, CHANNEL).setSmallIcon(R.drawable.ic_stat_reminder).setContentTitle("Today in Life Tracker").build())
+                .setAutoCancel(true)
+                .setContentIntent(Native.open(c, "/today", DIGEST_REQ));
+        NotificationManagerCompat.from(c).notify(DIGEST_REQ, n.build());
+    }
+
+    private static void handleAction(Context c, String id, String title, String route, String sourceType, String sourceId, String act) {        if ("done".equals(act) && sourceId != null && !sourceId.isEmpty()) {
             JSONObject j = Native.cached(c);
             for (String key : new String[] {"rows", "todos"}) {
                 JSONArray a = j.optJSONArray(key);
