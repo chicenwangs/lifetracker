@@ -26,6 +26,8 @@ declare global {
 			notifyPlanner: boolean;
 			notifyKeep: boolean;
 			notifyPages: boolean;
+			/** v3.3 PR 12: daily agenda `HH:MM` owner-local; null = off */
+			digestTime: string | null;
 		}
 		interface SessionInfo {
 			id: string;

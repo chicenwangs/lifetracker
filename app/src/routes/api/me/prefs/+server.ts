@@ -43,6 +43,11 @@ const schema = z
 		notifyPlanner: z.boolean(),
 		notifyKeep: z.boolean(),
 		notifyPages: z.boolean(),
+		/** v3.3 PR 12: `HH:MM` owner-local, null = off */
+		digestTime: z
+			.string()
+			.regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'must be HH:MM')
+			.nullable(),
 	})
 	.partial()
 	.strict();

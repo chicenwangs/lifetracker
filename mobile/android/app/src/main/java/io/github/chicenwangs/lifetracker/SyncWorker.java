@@ -38,6 +38,7 @@ public class SyncWorker extends Worker {
         } else {
             c.getSharedPreferences(Native.PREFS, 0).edit().putString("sync", j.toString()).putBoolean("signedOut", false).apply();
             Reminders.schedule(c, j.optJSONArray("reminders"));
+            Reminders.scheduleDigest(c, j.optJSONObject("digest")); // PR 12: one exact alarm, replaced every sync
         }
         Widgets.updateAll(c);
         return Result.success();

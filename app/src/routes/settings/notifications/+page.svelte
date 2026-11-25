@@ -74,6 +74,19 @@
 			showError(e);
 		}
 	}
+	// PR 12: daily agenda off / on + time (owner-local HH:MM). remember = the last time while the switch is Off.
+	// svelte-ignore state_referenced_locally
+	let remember = $state(u.digestTime ?? '07:30');
+	async function setDigest(t: string | null) {
+		if (t) remember = t;
+		try {
+			await patch('/api/me/prefs', { digestTime: t });
+			await invalidateAll();
+			showToast(t ? `Daily agenda at ${t}` : 'Daily agenda off');
+		} catch (e) {
+			showError(e);
+		}
+	}
 	const PERM: Record<string, string> = { granted: 'Allowed', denied: 'Blocked (change it in the browser\'s site settings)', default: 'Not asked yet', unsupported: "This browser can't do push" }; // prettier-ignore
 </script>
 
@@ -134,6 +147,34 @@
 </section>
 
 <section class="card panel">
+	<h2>Daily agenda</h2>
+	<div class="opt agenda-row">
+		<span>Daily agenda</span>
+		<div class="seg" role="group" aria-label="Daily agenda">
+			<button type="button" class="segbtn" aria-pressed={!u.digestTime} onclick={() => setDigest(null)}
+				>Off</button
+			>
+			<button
+				type="button"
+				class="segbtn"
+				aria-pressed={!!u.digestTime}
+				onclick={() => setDigest(u.digestTime ?? remember)}>On</button
+			>
+		</div>
+		{#if u.digestTime}
+			<input
+				type="time"
+				aria-label="Daily agenda time"
+				value={u.digestTime}
+				onchange={(e) => setDigest(e.currentTarget.value || null)}
+			/>
+		{/if}
+	</div>
+	<p class="hint">One notification a day with today's items and blocks. Nothing on → no notification.</p>
+	<p class="hint digest-preview">{data.digestPreview ?? 'Nothing on today'}</p>
+</section>
+
+<section class="card panel">
 	<h2>What can remind me</h2>
 	<label class="opt"
 		><input
@@ -182,9 +223,51 @@
 		font-size: 14px;
 		min-height: 32px;
 	}
+	.agenda-row {
+		justify-content: space-between;
+		gap: 10px;
+		flex-wrap: wrap;
+	}
+	.seg {
+		display: inline-flex;
+		border: 1.5px solid var(--border);
+		border-radius: 10px;
+		overflow: hidden;
+	}
+	.segbtn {
+		min-height: 28px;
+		padding: 0 12px;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 13px;
+		cursor: pointer;
+	}
+	.segbtn[aria-pressed='true'] {
+		background: var(--pill);
+		color: var(--pill-ink);
+		font-weight: 700;
+	}
+	.agenda-row input[type='time'] {
+		min-height: 28px;
+		padding: 0 8px;
+		border: 1.5px solid var(--border);
+		border-radius: 8px;
+		background: var(--field);
+		color: var(--ink);
+		font: inherit;
+	}
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.opt {
 			min-height: 48px;
+		}
+		.agenda-row .segbtn,
+		.agenda-row input[type='time'] {
+			min-height: 48px;
+		}
+		.agenda-row .segbtn {
+			min-width: 48px;
 		}
 	}
 </style>
