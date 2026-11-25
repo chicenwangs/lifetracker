@@ -83,6 +83,8 @@ export const users = sqliteTable(
 			.default(sql`'[]'`),
 		/** account-level default reminder on new dated items (#72): '1w'|'3d'|'2d'|'1d'|'2h'|'15min' or null */
 		defaultReminder: text('default_reminder'),
+		// v3.3 PR 12: daily digest `HH:MM` in the owner's timezone; NULL = off. CHECK is in drizzle/0011.
+		digestTime: text('digest_time'),
 		// D-15 per-kind reminder toggles. On by default: v1 had no reminders, so nobody gets one they didn't add.
 		notifyPlanner: integer('notify_planner', { mode: 'boolean' }).notNull().default(true),
 		notifyKeep: integer('notify_keep', { mode: 'boolean' }).notNull().default(true),
@@ -192,6 +194,10 @@ export const items = sqliteTable(
 		private: integer('private', { mode: 'boolean' }).notNull().default(false),
 		rrule: text('rrule'),
 		exdates: text('exdates', { mode: 'json' }).$type<string[]>(),
+		/** v3.3 PR 9: the repeat counts from when the item is done, not from its scheduled date */
+		repeatFromCompletion: integer('repeat_from_completion', { mode: 'boolean' }).notNull().default(false),
+		/** v3.3 PR 11: the calendar file's UID, so a re-import updates the same row */
+		icsUid: text('ics_uid'),
 		startedAt: text('started_at'),
 		completedAt: text('completed_at'),
 		createdAt: text('created_at').notNull(),
@@ -206,6 +212,7 @@ export const items = sqliteTable(
 		index('items_cal_range').on(t.calendarId, t.date, sql`COALESCE(end_date, date)`),
 		index('items_parent').on(t.parentId),
 		index('items_course').on(t.courseId),
+		index('items_cal_ics').on(t.calendarId, t.icsUid), // v3.3 PR 11: re-import lookup by UID
 		check('items_title_len', sql`length(title) BETWEEN 1 AND 300`),
 		check('items_status', inList('status', STATUSES)),
 		check('items_date_fmt', sql`date IS NULL OR date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'`),
@@ -266,6 +273,8 @@ export const itemTypes = sqliteTable(
 		shareDefault: integer('share_default', { mode: 'boolean' }).notNull().default(false),
 		countsDown: integer('counts_down', { mode: 'boolean' }).notNull().default(false),
 		isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+		/** v3.3 PR 10: show this type on the Month calendar (Week/day/ICS/search always show it) */
+		onCalendar: integer('on_calendar', { mode: 'boolean' }).notNull().default(true),
 		createdAt: text('created_at').notNull(),
 		updatedAt: text('updated_at').notNull(),
 	},
