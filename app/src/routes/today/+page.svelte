@@ -6,6 +6,7 @@
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
 	import { askText } from '$lib/client/dialog.svelte';
 	import { cycleRow, deleteRow, moveRow, toggleDone } from '$lib/client/rowOps';
+	import { postpones } from '$lib/client/reschedule';
 	import { rowGestures } from '$lib/client/rowGestures';
 	import { peerSwipe } from '$lib/client/peerSwipe';
 	import { buzz } from '$lib/client/haptics';
@@ -139,6 +140,8 @@
 		const r = rowOf(e);
 		if (!r) return [];
 		return [
+			// v3.2: the row ⋯ sheet is the phone path for postpone (the item sheet has the same list)
+			...('startAt' in r ? [] : postpones(r, { today: data.today, tz, refresh: refreshDay })),
 			{ label: r.status === 'done' ? 'Not done' : 'Done', run: () => toggleDone(r, refreshDay) },
 			{ label: 'Move…', run: () => moveByTime(e, r) },
 			{ label: 'Delete', danger: true, run: () => deleteRow(r, refreshDay) },

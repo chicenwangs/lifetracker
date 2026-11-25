@@ -13,6 +13,7 @@
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
 	import { invalidateAll } from '$lib/client/refresh';
 	import { deleteRow, toggleDone } from '$lib/client/rowOps';
+	import { postpones } from '$lib/client/reschedule';
 	import { rowGestures } from '$lib/client/rowGestures';
 	import type { BlockDTO, ItemDTO } from '$lib/types';
 
@@ -57,6 +58,8 @@
 	let acting = $state<ItemDTO | BlockDTO | null>(null);
 	// closures over a plain value: ActionSheet closes (acting = null) before run() fires (#324)
 	const actionsFor = (a: ItemDTO | BlockDTO) => [
+		// v3.2: postpone a whole item (a block is history, it stays)
+		...('startAt' in a ? [] : postpones(a, { today: data.today, tz, refresh })),
 		{ label: a.status === 'done' ? 'Not done' : 'Done', run: () => toggleDone(a, refresh) },
 		...(itemIdOf(a) ? [{ label: 'Move…', run: () => openItem(itemIdOf(a) as string) }] : []),
 		{ label: 'Delete', danger: true, run: () => deleteRow(a, refresh) },

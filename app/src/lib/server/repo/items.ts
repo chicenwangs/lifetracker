@@ -481,6 +481,18 @@ export function cycle(meId: string, rawId: string): ItemRow {
 	return patch(meId, rawId, { status: nextStatus(cur.status) });
 }
 
+/** Skip one date of a repeating series (v3.2 reschedule): an EXDATE. Undo = the journal's before-row. */
+export function skipOccurrence(meId: string, rawId: string): ItemRow {
+	const { id, occDate } = splitOccId(rawId);
+	const cur = mustOwn(meId, id);
+	if (!cur.rrule || !cur.date) bad('This item does not repeat.', 'not_repeating');
+	if (!occDate) return bad('Skip needs one date of a repeating item.', 'occurrence_only');
+	if (parseExdates(cur.exdates).includes(occDate)) notFound();
+	if (!isOccurrence(cur, occDate)) notFound(); // #296: a made-up @date is not an occurrence
+	addExdate(meId, cur, occDate, nowUtcIso());
+	return mustOwn(meId, id);
+}
+
 // ---------- delete / trash (FR-I5) ----------
 /** rows a delete of this item touches (for the undo journal): it, its live steps, their live blocks */
 export function deleteSet(meId: string, id: string): { t: 'items' | 'blocks'; id: string }[] {

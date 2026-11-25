@@ -28,6 +28,7 @@
 
 <script lang="ts">
 	import Reminders from './Reminders.svelte';
+	import ActionSheet from './ActionSheet.svelte';
 	import { onDestroy, onMount, tick, untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import StatusSquare from './StatusSquare.svelte';
@@ -58,6 +59,7 @@
 		type UndoRef,
 	} from '$lib/types';
 	import { cycleRow } from '$lib/client/rowOps';
+	import { postpones } from '$lib/client/reschedule';
 	import { undoLast } from '$lib/client/undo.svelte';
 	import { get, patch, post } from '$lib/client/api';
 	import { enqueueAction, isOffline } from '$lib/client/offline';
@@ -470,6 +472,15 @@
 		void duplicate('item', baseItemId(it.id), { date: it.date ?? todayLocal(v?.tz ?? 'Asia/Kuala_Lumpur') });
 	}
 
+	// ---------- postpone / skip (v3.2) ----------
+	let postponeOpen = $state(false);
+	/** a skipped occurrence is gone: stay on the series instead of a dead /item/<id>@<date> URL */
+	function toSeries() {
+		if (!it) return;
+		detached = baseItemId(it.id);
+		showAt(detached);
+	}
+
 	const fmtZ = (z: string | null) => (z ? prettyDate(z.slice(0, 10)) : '—');
 	const fmtBlock = (b: BlockDTO) => {
 		if (!v) return { date: '', text: '' };
@@ -600,6 +611,14 @@
 							onchange={(e) => save({ date: e.currentTarget.value || null })}
 						/>
 					</label>
+					{#if it.date}
+						<button
+							class="prop post-btn"
+							type="button"
+							aria-haspopup="dialog"
+							onclick={() => (postponeOpen = true)}>Postpone ▾</button
+						>
+					{/if}
 					<label class="prop">
 						<span>Time</span>
 						<input
@@ -696,6 +715,20 @@
 						<span>Keep secret</span>
 					</label>
 				</div>
+				{#if postponeOpen}
+					<ActionSheet
+						title={`Postpone "${it.title}"`}
+						actions={postpones(it, {
+							today: v.today,
+							tz: v.tz,
+							refresh: changed,
+							blocks: v.blocks,
+							onResult: (r) => follow(it.id, r),
+							onSkip: toSeries,
+						})}
+						onclose={() => (postponeOpen = false)}
+					/>
+				{/if}
 				{#if customRepeat && it.date}
 					{@const nth = nthWeekdayOfDate(it.date)}
 					<div
@@ -1107,6 +1140,14 @@
 	.prop.check span {
 		color: var(--ink);
 		font-weight: 600;
+	}
+	/* v3.2 postpone: a pill beside the date on desktop, a 48 dp row on phone (same .prop box) */
+	.post-btn {
+		font: inherit;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--ink);
+		cursor: pointer;
 	}
 
 	/* ---- the page body ---- */

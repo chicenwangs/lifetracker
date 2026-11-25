@@ -10,6 +10,7 @@
 	import { openItem } from '$lib/client/peek.svelte';
 	import { invalidateAll } from '$lib/client/refresh';
 	import { deleteRow, moveRow, toggleDone } from '$lib/client/rowOps';
+	import { postpones } from '$lib/client/reschedule';
 	import { rowGestures } from '$lib/client/rowGestures';
 
 	let {
@@ -72,6 +73,8 @@
 	}
 	// closures over a plain value: ActionSheet closes (acting = null) before run() fires (#324)
 	const actionsFor = (a: { r: Row; date: string }) => [
+		// v3.2: postpone a whole item (a block is history, it stays)
+		...('startAt' in a.r.x ? [] : postpones(a.r.x, { today, tz, refresh })),
 		{ label: a.r.x.status === 'done' ? 'Not done' : 'Done', run: () => toggleDone(a.r.x, refresh) },
 		{ label: 'Move…', run: () => pickDay(a.r, a.date) },
 		{ label: 'Delete', danger: true, run: () => deleteRow(a.r.x, refresh) },
