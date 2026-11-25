@@ -227,6 +227,10 @@ export const itemCreateSchema = z
 		notes: z.string().max(20_000).nullable().default(null),
 		private: z.boolean().default(false),
 		rrule: zRRule.nullable().default(null),
+		/** v3.3 PR 11: imported series can arrive with skipped dates (YYYY-MM-DD) */
+		exdates: z.array(zDate).max(500).nullable().default(null),
+		/** v3.3 PR 11: the calendar file's UID (import only); opaque here */
+		icsUid: z.string().max(200).nullable().default(null),
 	})
 	.strict();
 export type ItemCreate = z.infer<typeof itemCreateSchema>;
@@ -258,6 +262,8 @@ export function create(meId: string, input: ItemCreate): ItemRow {
 			notes: input.notes,
 			private: input.private,
 			rrule: input.rrule ?? null,
+			exdates: input.exdates ?? null,
+			icsUid: input.icsUid ?? null,
 			startedAt: input.status !== 'todo' ? now : null,
 			completedAt: input.status === 'done' ? now : null,
 			createdAt: now,
@@ -298,6 +304,8 @@ export const itemPatchSchema = z
 		notes: z.string().max(20_000).nullable(),
 		private: z.boolean(),
 		rrule: zRRule.nullable(),
+		/** v3.3 PR 11: EXDATEs for an imported series (YYYY-MM-DD) */
+		exdates: z.array(zDate).max(500).nullable(),
 		/** v3.3 PR 9: count the next one from the day it is finished */
 		repeatFromCompletion: z.boolean(),
 		/** repeating edit scope (#72): 'this' detaches one date, 'following' splits the series, 'all' updates the series */
@@ -747,6 +755,22 @@ const slippedWhere = (cals: string[], today: string) =>
 		isNotNull(items.date),
 		lt(sql`COALESCE(${items.endDate}, ${items.date})`, today),
 	);
+
+/** v3.3 PR 11: live items in my default calendar that came from a calendar file, keyed by UID (re-import match) */
+export function byIcsUids(meId: string, uids: string[]): Map<string, ItemRow> {
+	const cal = calendarsRepo.defaultFor(meId);
+	const out = new Map<string, ItemRow>();
+	for (let i = 0; i < uids.length; i += 500) {
+		const chunk = uids.slice(i, i + 500);
+		for (const r of db()
+			.select()
+			.from(items)
+			.where(and(eq(items.calendarId, cal.id), inArray(items.icsUid, chunk), isNull(items.deletedAt)))
+			.all())
+			if (r.icsUid) out.set(r.icsUid, r);
+	}
+	return out;
+}
 
 /** the Slipped strip: newest first, capped, plus how many more are waiting */
 export function slipped(meId: string, today: string): { items: ItemDTO[]; more: number } {

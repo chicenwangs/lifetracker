@@ -59,10 +59,14 @@ export const handle: Handle = async ({ event, resolve }) => {
 		if (event.request.headers.get('origin') !== e.ORIGIN) return jsonOr(api, 403, 'bad_origin', 'Bad origin');
 	}
 
-	// 2b body size: uploads may be large (adapter BODY_SIZE_LIMIT is raised for them), every other route stays small
+	// 2b body size: uploads may be large (adapter BODY_SIZE_LIMIT is raised for them), every other route stays small.
+	// v3.3 PR 11: the calendar import is a normal form POST whose file the action caps at 1 MB, so that route alone
+	// gets 1 MB + multipart headroom; anything past it is the action's friendly "bigger than 1 MB", not a raw 413.
 	const len = Number(event.request.headers.get('content-length') ?? 0);
 	const upload = path === '/api/attachments' && event.request.method === 'POST';
-	if (len > 1_048_576 && !upload) return jsonOr(api, 413, 'too_large', 'Request too large');
+	const importPost = path === '/settings/import' && event.request.method === 'POST';
+	const cap = importPost ? 1_048_576 + 65_536 : 1_048_576;
+	if (len > cap && !upload) return jsonOr(api, 413, 'too_large', 'Request too large');
 	// a chunked body has no Content-Length, so the check above can't see it: it would reach the 26 MB adapter limit
 	if (
 		!upload &&

@@ -51,6 +51,8 @@ export default defineConfig({
 			PORT: String(PORT),
 			HOST: '127.0.0.1',
 			REMINDER_POLL_INTERVAL_MS: '2000', // reminders fire within the test's wait
+			// like the Docker image (26M): the ICS import e2e uploads a 600 KB file; the app's own hooks cap still applies
+			BODY_SIZE_LIMIT: '26M',
 		},
 	},
 });
