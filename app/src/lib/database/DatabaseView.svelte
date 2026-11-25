@@ -10,6 +10,9 @@
 	import type { DatabaseDTO, DbProp, DbRow } from '$lib/types';
 	import { onMount } from 'svelte';
 	import { isPhone } from '$lib/client/phone';
+	import { peerSwipe } from '$lib/client/peerSwipe';
+	import { backCloses } from '$lib/client/layers';
+	import BottomSheet from '$lib/components/BottomSheet.svelte';
 	import { boardGroups, NO_VALUE, type BoardGroup } from './board';
 	import DbCell from './DbCell.svelte';
 
@@ -262,6 +265,7 @@
 	}
 	/** one move = PATCH the group value; the toast Undo puts the old value back. */
 	async function move(r: DbRow, optId: string) {
+		swallowedClick = false;
 		const p = groupProp;
 		if (!p) return;
 		const old = (r.values[p.id] as string | null | undefined) ?? null;
@@ -292,9 +296,11 @@
 			await load();
 		}, false);
 	}
-	function pickStart(r: DbRow) {
+	function pickStart(r: DbRow, e: PointerEvent) {
+		px0 = e.clientX;
 		if (!phoneNow) return;
 		clearTimeout(pressTimer);
+		swallowedClick = false; // a fresh press starts clean: only THIS long press may swallow the next click
 		pressTimer = setTimeout(() => {
 			moving = r.id;
 			swallowedClick = true;
@@ -303,8 +309,16 @@
 	function pickEnd() {
 		clearTimeout(pressTimer);
 	}
+	let px0 = 0;
+	function pickMove(e: PointerEvent) {
+		if (Math.abs(e.clientX - px0) > 10) clearTimeout(pressTimer); // a swipe is not a pick-up
+	}
+	const boardStep = (n: 1 | -1) => {
+		activeCol = Math.min(boardCols.length - 1, Math.max(0, activeCol + n));
+	};
 	/** phone: a chip tap drops a picked-up card on that column, else switches which column shows. */
 	function chipTap(i: number) {
+		swallowedClick = false;
 		const id = moving;
 		moving = null;
 		activeCol = i;
@@ -339,6 +353,29 @@
 			if (phoneNow && (e.target as HTMLElement).closest('button, .bcard')) e.preventDefault();
 		}}
 	>
+		{#snippet boardCfg()}
+			<label
+				>Group by
+				<select aria-label="Group by" value={groupProp?.id ?? ''} onchange={setGroup}>
+					{#each selectProps as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+				</select>
+			</label>
+			<label
+				>Card shows
+				<select aria-label="Card property 1" value={cardProps[0]?.id ?? ''} onchange={(e) => setCard(0, e)}>
+					<option value="">None</option>
+					{#each (d?.props ?? []).filter((p) => p.type !== 'title') as p (p.id)}
+						<option value={p.id}>{p.name}</option>
+					{/each}
+				</select>
+				<select aria-label="Card property 2" value={cardProps[1]?.id ?? ''} onchange={(e) => setCard(1, e)}>
+					<option value="">None</option>
+					{#each (d?.props ?? []).filter((p) => p.type !== 'title') as p (p.id)}
+						<option value={p.id}>{p.name}</option>
+					{/each}
+				</select>
+			</label>
+		{/snippet}
 		<input
 			class="dbtitle"
 			aria-label="Database name"
@@ -361,7 +398,7 @@
 			<button type="button" class="soft" aria-expanded={addingView} onclick={() => (addingView = !addingView)}
 				>+ View</button
 			>
-			{#if addingView}
+			{#if addingView && !phoneNow}
 				<div class="panel row" role="group" aria-label="New view type">
 					<button type="button" onclick={() => addViewOfType('table')}>Table</button>
 					<button type="button" onclick={() => addViewOfType('board')}>Board</button>
@@ -382,30 +419,25 @@
 			{/if}
 		</div>
 
-		{#if isBoard && viewCfgOpen}
+		{#if isBoard && viewCfgOpen && !phoneNow}
 			<div class="panel row" role="group" aria-label="Board settings">
-				<label
-					>Group by
-					<select aria-label="Group by" value={groupProp?.id ?? ''} onchange={setGroup}>
-						{#each selectProps as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
-					</select>
-				</label>
-				<label
-					>Card shows
-					<select aria-label="Card property 1" value={cardProps[0]?.id ?? ''} onchange={(e) => setCard(0, e)}>
-						<option value="">None</option>
-						{#each d.props.filter((p) => p.type !== 'title') as p (p.id)}
-							<option value={p.id}>{p.name}</option>
-						{/each}
-					</select>
-					<select aria-label="Card property 2" value={cardProps[1]?.id ?? ''} onchange={(e) => setCard(1, e)}>
-						<option value="">None</option>
-						{#each d.props.filter((p) => p.type !== 'title') as p (p.id)}
-							<option value={p.id}>{p.name}</option>
-						{/each}
-					</select>
-				</label>
+				{@render boardCfg()}
 			</div>
+		{/if}
+		{#if phoneNow && addingView}
+			<BottomSheet label="New view" onclose={() => (addingView = false)}>
+				<div class="row">
+					<button type="button" class="btn" onclick={() => addViewOfType('table')}>Table</button>
+					<button type="button" class="btn primary" onclick={() => addViewOfType('board')}>Board</button>
+				</div>
+			</BottomSheet>
+		{/if}
+		{#if phoneNow && isBoard && viewCfgOpen}
+			<BottomSheet label="View settings" onclose={() => (viewCfgOpen = false)}>
+				<div class="panel row" role="group" aria-label="Board settings">
+					{@render boardCfg()}
+				</div>
+			</BottomSheet>
 		{/if}
 
 		<div class="bar">
@@ -585,7 +617,13 @@
 				{#if moving && phoneNow}
 					<p class="hint" role="status">Tap a column above to move the card.</p>
 				{/if}
-				<div class="board">
+				<div
+					class="board"
+					use:peerSwipe={{
+						step: boardStep,
+						peek: (n) => boardCols[activeCol + n]?.label ?? '',
+					}}
+				>
 					{#each boardCols as c, i (c.id)}
 						<section
 							class="bcol"
@@ -609,7 +647,8 @@
 										e.dataTransfer?.setData('text/plain', r.id);
 									}}
 									ondragend={() => (moving = null)}
-									onpointerdown={() => pickStart(r)}
+									onpointerdown={(e) => pickStart(r, e)}
+									onpointermove={pickMove}
 									onpointerup={pickEnd}
 									onpointercancel={pickEnd}
 								>
@@ -642,7 +681,12 @@
 										</div>
 									{/if}
 									{#if menuFor === r.id}
-										<div class="bmenu" role="menu" aria-label="Actions for {title(r)}">
+										<div
+											class="bmenu"
+											role="menu"
+											aria-label="Actions for {title(r)}"
+											use:backCloses={() => (menuFor = null)}
+										>
 											<button type="button" role="menuitem" onclick={() => openRecord(r)}>Open</button>
 											{#each boardCols as g (g.id)}
 												{#if (r.values[groupProp?.id ?? ''] ?? '') !== g.id}
@@ -1027,6 +1071,10 @@
 		.mini,
 		.th {
 			min-width: 48px;
+		}
+		.bct,
+		.bmenu button {
+			min-height: 48px;
 		}
 	}
 	@media (max-width: 700px) {
