@@ -8,6 +8,7 @@
 - Every move and skip shows a toast with Undo. A postpone keeps the time and a multi-day span; a linked planner block stays where it is and the toast says which day.
 - Next weekday = the next day, or Monday when today is Fri/Sat/Sun.
 - Offline: a postpone waits in the existing offline queue; a skip says it was not saved.
+- Limit: Undo of a Skip restores the date but does not bring back the exact-time reminder it cancelled (reminders are not in the undo journal).
 
 ## Files
 

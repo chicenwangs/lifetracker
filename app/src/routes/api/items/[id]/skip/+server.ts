@@ -15,6 +15,7 @@ export const POST = api((e) => {
 		result: items.skipOccurrence(u.id, id),
 	}));
 	recalcOwner(u.id); // relative reminders move to the next date
+	// shortcut: Undo of a Skip does not bring back this cancelled reminder (reminders are not in the undo journal); upgrade if users report it.
 	if (occDate) cancelOnDay(u.id, cur.id, occDate); // exact-time ones would still fire on the skipped day
 	return json({ item: items.withCounts([r.result])[0], undo: r.undo });
 });
