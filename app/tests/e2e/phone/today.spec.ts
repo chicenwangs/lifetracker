@@ -42,6 +42,9 @@ test('swipe the strip = next / previous week', async () => {
 test('the day follows the finger; a short drag snaps back, a long one steps', async () => {
 	await page.goto('/today?d=2030-01-08');
 	const area = page.getByRole('group', { name: /The day/ });
+	// a Slipped strip (any overdue item left by an earlier spec) pushes the day down; in landscape the touch
+	// point would land under the bottom bar
+	await area.evaluate((el) => el.scrollIntoView({ block: 'start' }));
 	const b = (await area.boundingBox())!;
 	const y = b.y + 40;
 	const f = await finger(page);
