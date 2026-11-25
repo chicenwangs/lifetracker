@@ -1,5 +1,5 @@
-﻿// Pages on phone (#98): toolbar docks to the bottom only while typing, 48 dp, no Ctrl hints; block actions in a
-// sheet; Pin + Share in the â‹¯ menu.
+// Pages on phone (#98): toolbar docks to the bottom only while typing, 48 dp, no Ctrl hints; block actions in a
+// sheet; Pin + Share in the ⋯ menu.
 import { expect, test, type Page } from '@playwright/test';
 import { expectTargets48, expectTappable, noDesktopHints, signIn } from './helpers';
 
@@ -63,7 +63,7 @@ test('the docked toolbar leaves every tab tappable (#433)', async () => {
 	await page.getByLabel('Page title').click();
 });
 
-test('"/" menu and page â‹¯ menu rows are 48 dp (#228, #223)', async () => {
+test('"/" menu and page ⋯ menu rows are 48 dp (#228, #223)', async () => {
 	await page.getByLabel('Page content').click();
 	await page.keyboard.type('/');
 	await expect(page.getByRole('listbox', { name: 'Insert block' })).toBeVisible();
@@ -78,7 +78,7 @@ test('"/" menu and page â‹¯ menu rows are 48 dp (#228, #223)', async () => {
 	await expect(page.getByRole('menuitem', { name: 'Pin to header' })).toBeHidden();
 });
 
-test('block â‹¯ = sheet with move, duplicate, delete', async () => {
+test('block ⋯ = sheet with move, duplicate, delete', async () => {
 	await page.getByLabel('Page content').click();
 	await page.keyboard.type('first line');
 	await tools().getByRole('button', { name: 'Block actions' }).click();
@@ -88,14 +88,14 @@ test('block â‹¯ = sheet with move, duplicate, delete', async () => {
 	await expect(page.getByLabel('Page content').getByText('first line')).toHaveCount(2);
 });
 
-test('Pin and Share live in the â‹¯ menu', async () => {
+test('Pin and Share live in the ⋯ menu', async () => {
 	await page.getByLabel('Page title').click();
 	const bar = page.locator('.pagev .bar');
 	await expect(bar.getByRole('button', { name: 'Share', exact: true })).toBeHidden();
 	await expect(bar.getByRole('button', { name: 'Pin', exact: true })).toBeHidden();
 	await bar.getByRole('button', { name: 'Page menu' }).click();
 	await expect(page.getByRole('menuitem', { name: 'Pin to header' })).toBeVisible();
-	await page.getByRole('menuitem', { name: 'Shareâ€¦' }).click();
+	await page.getByRole('menuitem', { name: 'Share…' }).click();
 	await expect(page.getByRole('dialog', { name: /Share/ })).toBeVisible();
 });
 
@@ -141,7 +141,7 @@ test('cover: add from the page menu, 120 px banner, remove (#454)', async () => 
 	});
 	await page.goto(`/pages/${id}`);
 	await page.locator('.pagev .bar').getByRole('button', { name: 'Page menu' }).click();
-	await page.getByRole('menuitem', { name: 'Add coverâ€¦' }).click();
+	await page.getByRole('menuitem', { name: /Add cover/ }).click();
 	await page
 		.getByLabel('Cover image')
 		.setInputFiles({ name: 'cover.png', mimeType: 'image/png', buffer: PNG });
