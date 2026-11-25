@@ -6,9 +6,10 @@ Caveman doc. Read `AGENTS.md` first (one page), then this. Repo `github.com/chic
 
 - **Latest release = v3.1.2** (2026-11-24, bug-fix patch, milestone 3.1.2). `app/package.json` = 3.1.2. Android APK `life-tracker-3.1.2.apk` on the release; installed phones self-update. Live upgrade = owner.
 - Live = `https://planner.jeremyjosh.org` (homelab Docker Compose + Cloudflare Tunnel). Last verified 2026-11-19: `/healthz` → `version":"3.0.0"`, `jobs:true`; not re-checked since v3.1.x. Owner deploys; agents never deploy and never touch live data.
-- **399 unit** · **desktop e2e 45** · **phone e2e 314**. Independent QA pass — `docs/v3/QA-RUN-2026-11-23.md`.
+- **main has v3.2 work, not tagged:** Postpone/Skip (#384), Slipped list (#385), print week (#387), ICS calendar feed (#388), `agenda()` refactor (#386), Keep restore test (#382); #383 was already fixed. No migration. Owner tags + builds the APK.
+- **424 unit** · **desktop e2e 52** · **phone e2e 328** (CI, 2026-11-25). Last independent QA pass — `docs/v3/QA-RUN-2026-11-23.md` (v3.1.2).
 - Mobile overhaul (#106) done. v3.0.0 shipped repeating items, reminder actions, Android widgets/updater, offline, security + QA fixes.
-- Next = open GitHub issues (`gh issue list --state open`). v2.1 backlog (`docs/v2/CHAT-HANDOFF.md` §v2.1) and `docs/REVIEW.md` Open items are parked. One branch + PR per issue off `main`.
+- Next = v3.3 per `docs/v4/PLAN.md` §8 (migration 0011 first, owner merges it) and `docs/v4/BREAKDOWN.md`; build loop contract `qa/BUILD-LOOP.md`. v2.1 backlog (`docs/v2/CHAT-HANDOFF.md` §v2.1) and `docs/REVIEW.md` Open items are parked. One branch + PR per issue off `main`.
 
 Release history and per-phase test counts: `docs/v2/PHASES.md` (v3 row = mobile overhaul, migrations 0009/0010). Release notes: `docs/v2/RELEASE-NOTES.md`. What the app does now, newest first: `docs/BUILD-NOTES.md`.
 
@@ -20,8 +21,8 @@ npm run dev                # 5173, uses app/.env (real data — do not test on i
 npm run check              # svelte-check
 npm run lint               # prettier --check + eslint
 npm run test:unit          # vitest
-npm run test:e2e           # 45 desktop tests, own temp DB on 4173 (E2E_PORT to change)
-npm run test:e2e:phone     # phone + phone-landscape, 314 tests
+npm run test:e2e           # 52 desktop tests, own temp DB on 4173 (E2E_PORT to change)
+npm run test:e2e:phone     # phone + phone-landscape, 328 tests
 ```
 
 Against the throwaway QA DB instead of real data:
@@ -51,7 +52,7 @@ Login: `phone` / `dyzw_qid3LlYwGbj` (`data/qa/TEST-LOGIN.txt`). `data/` is gitig
 |---|---|
 | Pages | `app/src/routes/**/+page.svelte`, `+layout.svelte` (shell, mobile bottom bar, tour, offline badge) |
 | API | `app/src/routes/api/**/+server.ts` → repo layer |
-| Server | `lib/server/` — `env`, `db`, `auth`, `http`, `access`, `calendar`, `search`, `reminders`, `push`, `attachments`, `quickadd-server`, `purge`, `seed`, `repo/*` |
+| Server | `lib/server/` — `env`, `db`, `auth`, `http`, `access`, `calendar`, `agenda` (Android sync range), `ics` + `icsfeed` (calendar feed), `search`, `reminders`, `push`, `attachments`, `quickadd-server`, `purge`, `seed`, `repo/*` |
 | Shared (pure) | `lib/time.ts`, `lib/quickadd.ts` (one parser for client preview + server), `planner-layout.ts`, `planahead.ts`, `colors.ts`, `hours.ts` |
 | Client | `lib/client/` — `api`, `toast`, `bus`, `peek`, `layers` (Back stack), `offline` (queue), `prefs`, `mobile.svelte.ts`, `refresh` (only `invalidateAll` caller) |
 | Editor | Tiptap (`lib/components/pages/*`, block storage ADR-003) |
@@ -66,7 +67,8 @@ Login: `phone` / `dyzw_qid3LlYwGbj` (`data/qa/TEST-LOGIN.txt`). `data/` is gitig
 | `/pages` `/pages/[id]` | tree, Tiptap editor, `/` menu, internal links, images/files |
 | `/pages/graph` | sigma graph + list fallback |
 | `/pages/{archive,shared,trash}` | page lifecycle + shares |
-| `/settings/*` | account, preferences, notifications, sharing, sessions, users, types, import, help |
+| `/settings/*` | account, preferences, notifications, calendar (feed link), sharing, sessions, users, types, import, help |
+| `/cal/<token>.ics` | public read-only ICS feed (secret token in the path, no login) |
 | `/more` `/trash` | phone browse menu, deleted items/blocks (30 days) |
 | `/login` `/signup` `/setup` | auth (invite/open, `SETUP_TOKEN` for first admin) |
 

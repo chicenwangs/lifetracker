@@ -6,9 +6,10 @@ Caveman rules for Claude Code in this repo. Read `AGENTS.md` first (one page of 
 
 - **Latest release = v3.1.2** (2026-11-24, bug-fix patch, milestone 3.1.2): tag + GHCR image + GitHub Release + `life-tracker-3.1.2.apk`. `app/package.json` = 3.1.2. Live upgrade = owner.
 - Live = `https://planner.jeremyjosh.org` (homelab Docker + Cloudflare Tunnel). Last verified 2026-11-19 via `/healthz` (then v3.0.0); not re-checked since. **Owner deploys. Agents never deploy, never touch live data.**
+- **main = v3.2 work, not tagged** (merged 2026-11-25 by the build loop, no migration): Postpone/Skip (#384), Slipped list (#385), print week (#387), ICS calendar feed (#388), `agenda()` refactor (#386), Keep restore test (#382); #383 was already fixed. Next = owner tags v3.2.0 + APK; then v3.3 (`docs/v4/PLAN.md` §8, migration 0011).
 - Last migration = 0010 (v3.1.x added none). Migrations 0009, 0010 shipped in v3.0.0.
-- Mobile overhaul (#106) DONE (`docs/v3/MOBILE-SPRINT.md`). Next = open GitHub issues (`gh issue list --state open`). v2.1 backlog (`docs/v2/CHAT-HANDOFF.md`) + `docs/REVIEW.md` Open items are parked. One branch + PR per issue off `main`.
-- Tests at this commit: 399 unit · desktop e2e 45 · phone e2e 314 (`docs/v3/QA-RUN-2026-11-23.md`).
+- Mobile overhaul (#106) DONE (`docs/v3/MOBILE-SPRINT.md`). Next = v3.3 (line above) plus open GitHub issues. v2.1 backlog (`docs/v2/CHAT-HANDOFF.md`) + `docs/REVIEW.md` Open items are parked. One branch + PR per issue off `main`.
+- Tests at this commit: 424 unit · desktop e2e 52 · phone e2e 328 (CI). Last QA pass: `docs/v3/QA-RUN-2026-11-23.md` (v3.1.2).
 - Known bugs before you touch anything: `AGENTS.md` §Known issues (graph sigma console error at phone width).
 
 ## Docs

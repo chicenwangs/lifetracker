@@ -40,6 +40,10 @@ Tests: 0 pins → Home Week Keep Pages only · 1–3 pins after Pages · 4th fai
   - Toast after undo: centre of viewport, icon + "Undid: <action> '<title>'" + Ctrl+Z hint, 5 s, newest replaces old, doesn't block clicks, not over mobile nav.
   - Existing per-action Undo buttons route through same journal.
   - Tests: create→undo removes · move→undo restores date/time · delete item+blocks→one undo restores all · typing Ctrl+Z = text undo · two actions undo in reverse · permanent delete never "undone".
+- **Reschedule (v3.2).** One list everywhere: Today · Tomorrow · Next weekday (Mon from Fri/Sat/Sun) · +1 week · Pick date…, plus Skip this one on a repeat occurrence. Item sheet Postpone ▾; phone row ⋯ sheet (Today/Week/Month); Slipped rows. Postpone keeps time + multi-day span; a linked planner block stays (toast says where). Skip = EXDATE, cancels that day's exact-time reminder. Every move/skip = one undo entry (Skip undo does not restore the cancelled reminder).
+- **Slipped (v3.2, PLAN §7.1).** One-off top-level items, not done, last day before today, own calendars. Repeats never slip; blocks never slip. Strip "Slipped · N" above the planner on Home and on top of Today; cap 50 + "N more"; Move all to today = one undo. Phone: swipe right done, left delete, tap = item sheet. Empty = hidden.
+- **Print week (v3.2).** Desktop `/week` ⋯ › Print week: one A4 landscape page, no shell, black on white, type colour as the left edge. Not on phone.
+- **Calendar feed (v3.2, PLAN §7.4).** Settings › Calendar feed: secret ICS link shown once (Copy · Rotate · Turn off). Own items only, private = "Busy", −30 d … +365 d, repeats as RRULE. Read-only; planner blocks and shared calendars not included.
 - **Alt-drag duplicate (CORE).** Alt held before/during drag, valid drop → new object (new id, new audit) at drop target; source untouched; copy selected; one undo. Invalid drop = nothing. Date/time/position from target. Never copies shares, reminders, private-flag changes, calendar membership beyond D-09 map. Until D-09: plain planner blocks only. Windows: swallow Alt keyup so Firefox/Edge menu bar doesn't grab focus.
 
 ## 3b. Item types (M1)
