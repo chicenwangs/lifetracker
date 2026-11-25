@@ -318,10 +318,17 @@ export function countBefore(startDate: string, raw: string, date: string): numbe
 	return expandRRule(startDate, raw, [], startDate, date).length;
 }
 
-/** PR 9: from-completion fits a daily/weekly/monthly rule with no weekday list (BYDAY). */
+/** PR 9: from-completion fits a daily/weekly/monthly rule with no weekday list (BYDAY) and no end:
+ *  an UNTIL/COUNT rule already stops, and moving its date by the interval would run past that end. */
 export function canCountFromCompletion(raw: string | null | undefined): boolean {
 	const r = parseRRule(raw);
-	return !!r && (r.freq === 'DAILY' || r.freq === 'WEEKLY' || r.freq === 'MONTHLY') && !r.byday?.length;
+	return (
+		!!r &&
+		(r.freq === 'DAILY' || r.freq === 'WEEKLY' || r.freq === 'MONTHLY') &&
+		!r.byday?.length &&
+		!r.until &&
+		!r.count
+	);
 }
 
 /** PR 9: the series' next date after finishing it today: today + one interval (month ends clamp).

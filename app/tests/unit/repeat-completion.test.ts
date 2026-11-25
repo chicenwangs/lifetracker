@@ -41,6 +41,10 @@ describe('nextFromCompletion', () => {
 		expect(canCountFromCompletion('FREQ=YEARLY')).toBe(false);
 		expect(nextFromCompletion('2026-11-25', 'FREQ=YEARLY')).toBe(null);
 	});
+	it('a bounded rule (UNTIL or COUNT) cannot count from completion', () => {
+		expect(canCountFromCompletion('FREQ=DAILY;UNTIL=2026-12-01')).toBe(false);
+		expect(canCountFromCompletion('FREQ=DAILY;COUNT=5')).toBe(false);
+	});
 });
 
 describe('from-completion series', () => {
@@ -114,5 +118,20 @@ describe('from-completion series', () => {
 		expect(items.mustOwn(me, r.id).repeatFromCompletion).toBe(false);
 		expect(() => items.patch(me, r.id, { repeatFromCompletion: true })).toThrow();
 		expect(() => items.patch(me, r.id, { rrule: null, repeatFromCompletion: true })).toThrow();
+	});
+
+	it('a bounded rule is refused for from-completion, but still works as a scheduled repeat', () => {
+		const r = items.create(
+			me,
+			items.itemCreateSchema.parse({
+				title: 'Bounded',
+				date: addDays(today(), -1),
+				rrule: `FREQ=DAILY;UNTIL=${addDays(today(), 10)}`,
+			}),
+		);
+		expect(() => items.patch(me, r.id, { repeatFromCompletion: true })).toThrow();
+		const after = items.patch(me, r.id, { status: 'done' }); // the old detach-one behaviour
+		expect(after.id).not.toBe(r.id);
+		expect(items.mustOwn(me, r.id).date).toBe(r.date); // the series itself did not move
 	});
 });

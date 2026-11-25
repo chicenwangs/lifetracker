@@ -31,11 +31,16 @@ const dayItems = (d: string) =>
 			.items;
 	}, d);
 
+const cleanup: string[] = [];
 test.beforeAll(async ({ browser }) => {
 	page = await (await browser.newContext()).newPage();
 	await signIn(page);
 });
-test.afterAll(() => page.context().close());
+test.afterAll(async () => {
+	for (const id of cleanup)
+		await page.evaluate(async (i) => fetch(`/api/items/${i}`, { method: 'DELETE' }), id).catch(() => {});
+	await page.context().close();
+});
 
 test('from completion: radio + summary, one row, done copy, Undo', async () => {
 	const t = await today();
@@ -43,6 +48,7 @@ test('from completion: radio + summary, one row, done copy, Undo', async () => {
 	const made = await api('POST', '/api/items', { title: T, date: t, time: '09:00', rrule: 'FREQ=DAILY' });
 	expect(made.s).toBe(201);
 	const id = made.j.item.id as string;
+	cleanup.push(id);
 
 	await page.goto(`/item/${id}`);
 	await expect(page.getByRole('radiogroup', { name: 'Next one counts from' })).toBeVisible();

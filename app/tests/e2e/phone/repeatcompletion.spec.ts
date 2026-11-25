@@ -30,7 +30,12 @@ test.beforeAll(async ({ browser }, info) => {
 	).newPage();
 	await signIn(page);
 });
-test.afterAll(() => page.context().close());
+const cleanup: string[] = [];
+test.afterAll(async () => {
+	for (const id of cleanup)
+		await page.evaluate(async (i) => fetch(`/api/items/${i}`, { method: 'DELETE' }), id).catch(() => {});
+	await page.context().close();
+});
 
 test('water plants every 3 days: overdue in Slipped, Done moves it +3, Undo puts it back', async () => {
 	const t = await today();
@@ -43,6 +48,7 @@ test('water plants every 3 days: overdue in Slipped, Done moves it +3, Undo puts
 	});
 	expect(made.s).toBe(201);
 	const id = made.j.item.id as string;
+	cleanup.push(id);
 	const flag = await api('PATCH', `/api/items/${id}`, { repeatFromCompletion: true });
 	expect(flag.s).toBe(200);
 
