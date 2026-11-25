@@ -75,6 +75,50 @@ export function create(
 	});
 }
 
+// ---------- duplicate (PR 17) ----------
+/** Copy a database's SCHEMA to a page I own: title, properties (new ids), views (new ids, config prop ids remapped).
+ *  Records are not copied (DESIGN §4.1 default). The caller rewrites the doc's database block id. */
+export function cloneSchema(
+	sourceOwnerId: string,
+	targetOwnerId: string,
+	sourceDbId: string,
+	targetPageId: string,
+): string {
+	const src = own(sourceOwnerId, sourceDbId);
+	const srcProps = db().prepare(`SELECT * FROM database_properties WHERE database_id = ? ORDER BY position`).all(sourceDbId) as PropRaw[]; // prettier-ignore
+	const srcViews = db().prepare(`SELECT * FROM database_views WHERE database_id = ? ORDER BY position`).all(sourceDbId) as { id: string; name: string; view_type: string; config_json: string; position: number }[]; // prettier-ignore
+	const id = newId('pdb');
+	const t = now();
+	db().prepare(`INSERT INTO page_databases (id, owner_id, page_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`).run(id, targetOwnerId, targetPageId, src.title, t, t); // prettier-ignore
+	const map = new Map<string, string>();
+	const insProp = db().prepare(`INSERT INTO database_properties (id, database_id, name, property_type, config_json, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`); // prettier-ignore
+	for (const p of srcProps) {
+		const nid = newId('pdp');
+		map.set(p.id, nid);
+		insProp.run(nid, id, p.name, p.property_type, p.config_json, p.position, t, t);
+	}
+	const remap = (props: unknown) =>
+		Array.isArray(props) ? props.map((x) => (typeof x === 'string' ? (map.get(x) ?? x) : x)) : props;
+	const insView = db().prepare(`INSERT INTO database_views (id, database_id, name, view_type, config_json, position) VALUES (?, ?, ?, ?, ?, ?)`); // prettier-ignore
+	for (const v of srcViews) {
+		let cfg: Record<string, unknown>;
+		try {
+			cfg = JSON.parse(v.config_json) as Record<string, unknown>;
+		} catch {
+			cfg = {};
+		}
+		if (cfg.sort && typeof cfg.sort === 'object') {
+			const s = cfg.sort as { prop?: string; dir?: string };
+			cfg.sort = { ...s, prop: s.prop ? (map.get(s.prop) ?? s.prop) : s.prop };
+		}
+		if (Array.isArray(cfg.filters))
+			cfg.filters = (cfg.filters as { prop?: string }[]).map((f) => ({ ...f, prop: f.prop ? (map.get(f.prop) ?? f.prop) : f.prop })); // prettier-ignore
+		for (const k of ['hidden', 'order']) if (k in cfg) cfg[k] = remap(cfg[k]);
+		insView.run(newId('pdv'), id, v.name, v.view_type, JSON.stringify(cfg), v.position);
+	}
+	return id;
+}
+
 // ---------- read ----------
 /** the database with one view applied (filters + sort run here), paged */
 export function get(
