@@ -65,6 +65,28 @@ test('Notifications: the three reminder rows are 48 dp on phone (#404)', async (
 	await expectTargets48(page);
 });
 
+test('Notifications: daily agenda Off/On with a time and a preview (#419)', async () => {
+	await page.goto('/settings/notifications');
+	const group = page.getByRole('group', { name: 'Daily agenda' });
+	await group.getByRole('button', { name: 'Off', exact: true }).click(); // fresh user starts off
+	await expect(page.getByLabel('Daily agenda time')).toHaveCount(0);
+	await group.getByRole('button', { name: 'On', exact: true }).click();
+	const time = page.getByLabel('Daily agenda time');
+	await expect(time).toHaveValue('07:30');
+	await expect(page.locator('.digest-preview')).toBeVisible();
+	await time.fill('08:15');
+	await expect(page.locator('.toast')).toContainText('Daily agenda at 08:15');
+	await page.reload();
+	await expect(page.getByLabel('Daily agenda time')).toHaveValue('08:15');
+	await page
+		.getByRole('group', { name: 'Daily agenda' })
+		.getByRole('button', { name: 'Off', exact: true })
+		.click();
+	await expect(page.getByLabel('Daily agenda time')).toHaveCount(0);
+	await expect(page.locator('.toast')).toContainText('Daily agenda off');
+	await expectTargets48(page);
+});
+
 test('Preferences: no hidden-header-button or mouse wording on phone (#301)', async () => {
 	await page.goto('/settings/preferences');
 	await expect(page.getByRole('heading', { name: 'Planner defaults' })).toBeVisible();

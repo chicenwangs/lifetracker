@@ -6,6 +6,7 @@ import * as itemTypes from './repo/itemtypes';
 import * as itemsRepo from './repo/items';
 import * as keep from './repo/keep';
 import { upcoming } from './reminders';
+import { nativeDigest } from './digest';
 import { addDays, examCountdown, prettyDate, todayLocal, weekdayOf } from '$lib/time';
 
 const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -76,5 +77,6 @@ export function nativeSync(me: App.SafeUser, now = Date.now()) {
 		countdowns,
 		notes,
 		reminders: upcoming(me.id, now),
+		digest: nativeDigest(me, now),
 	};
 }
