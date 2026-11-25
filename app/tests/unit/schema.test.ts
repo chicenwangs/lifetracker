@@ -90,6 +90,57 @@ describe('migrations', () => {
 		).sql;
 		expect(sql.replace(/`/g, '')).toContain('COALESCE(end_date, date)');
 	});
+
+	it('0011: v3.3 columns, old-behaviour defaults, digest CHECK, ics index', () => {
+		const cols = (t: string) =>
+			(sqlite.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((r) => r.name);
+		expect(cols('items')).toEqual(expect.arrayContaining(['repeat_from_completion', 'ics_uid']));
+		expect(cols('item_types')).toContain('on_calendar');
+		expect(cols('users')).toContain('digest_time');
+		item();
+		expect(
+			sqlite.prepare(`SELECT repeat_from_completion, ics_uid FROM items WHERE id='itm_1'`).get(),
+		).toEqual({ repeat_from_completion: 0, ics_uid: null });
+		sqlite.exec(
+			`INSERT INTO item_types (id, owner_id, key, name, bg, ink, slug, position, created_at, updated_at) VALUES ('ity_1','usr_a','Work','Work','#fff','#000','work',0,'${Z}','${Z}')`,
+		);
+		expect(sqlite.prepare(`SELECT on_calendar FROM item_types WHERE id='ity_1'`).get()).toEqual({
+			on_calendar: 1,
+		});
+		sqlite.exec(`INSERT INTO users (id, username, display_name) VALUES ('usr_c','cara','Cara')`);
+		expect(sqlite.prepare(`SELECT digest_time FROM users WHERE id='usr_c'`).get()).toEqual({
+			digest_time: null,
+		});
+		expect(() => sqlite.exec(`UPDATE users SET digest_time='9:00' WHERE id='usr_c'`)).toThrow(/CHECK/);
+		for (const bad of ['24:00', '25:00', '29:59']) {
+			expect(() => sqlite.exec(`UPDATE users SET digest_time='${bad}' WHERE id='usr_c'`)).toThrow(/CHECK/);
+		}
+		sqlite.exec(`UPDATE users SET digest_time='23:59' WHERE id='usr_c'`);
+		expect(sqlite.prepare(`SELECT digest_time FROM users WHERE id='usr_c'`).get()).toEqual({
+			digest_time: '23:59',
+		});
+		sqlite.exec(`UPDATE users SET digest_time='00:00' WHERE id='usr_c'`);
+		expect(sqlite.prepare(`SELECT digest_time FROM users WHERE id='usr_c'`).get()).toEqual({
+			digest_time: '00:00',
+		});
+		expect(
+			sqlite.prepare(`SELECT name FROM sqlite_master WHERE type='index' AND name='items_cal_ics'`).get(),
+		).toBeTruthy();
+	});
+
+	it('running the migrator twice is safe', () => {
+		const h = openDb(':memory:');
+		try {
+			migrateDb(h);
+			migrateDb(h); // the journal marks 0011 done: nothing runs twice
+			expect(healthy(h)).toBe(true);
+			expect(
+				(h.sqlite.prepare(`PRAGMA table_info(items)`).all() as { name: string }[]).map((r) => r.name),
+			).toContain('repeat_from_completion');
+		} finally {
+			h.sqlite.close();
+		}
+	});
 });
 
 describe('constraints', () => {
