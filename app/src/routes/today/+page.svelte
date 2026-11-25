@@ -156,8 +156,12 @@
 		if (!wheel || !el) return;
 		wheel.scrollTo({ top: wheel.scrollTop + nowOffset(wheel, el), behavior: smooth ? 'smooth' : 'instant' });
 	}
+	// Align once per day (and when the first data arrives). Re-running this on every refresh moved the
+	// rows out from under a tap burst: one tick could change a different row (#379).
+	let alignedDay: string | null = null;
 	$effect(() => {
-		void entries;
+		if (alignedDay === data.day || !entries.length) return;
+		alignedDay = data.day;
 		void tick().then(() => toNow(false));
 	});
 	/** row nearest "now" (or the first upcoming); on other days the first row */

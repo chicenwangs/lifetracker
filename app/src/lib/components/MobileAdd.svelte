@@ -26,10 +26,20 @@
 	let busy = $state(false);
 	let problem = $state('');
 	let note = $state('');
+	// After a save the sheet closes under the finger: keep an invisible guard for a moment so the rest of
+	// a rapid tap burst cannot reach the page beneath (#378).
+	let tapGuard = $state(false);
+	let guardTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const close = () => {
 		closeAdd();
 		problem = '';
+	};
+	const closeGuarded = () => {
+		close();
+		tapGuard = true;
+		clearTimeout(guardTimer);
+		guardTimer = setTimeout(() => (tapGuard = false), 400);
 	};
 	async function plan() {
 		if (busy) return;
@@ -76,7 +86,7 @@
 			note = '';
 			buzz('success');
 			showToast('Note saved');
-			close();
+			closeGuarded();
 			await invalidateAll();
 		} catch (e) {
 			if (waitsForSignIn(e)) {
@@ -88,7 +98,7 @@
 				note = '';
 				buzz('success');
 				showToast('Note saved · Waiting to sync');
-				close();
+				closeGuarded();
 				return;
 			}
 			showError(e); // text stays in the box
@@ -152,8 +162,18 @@
 		</div>
 	</BottomSheet>
 {/if}
+{#if tapGuard}
+	<div class="tap-guard" aria-hidden="true"></div>
+{/if}
 
 <style>
+	/* invisible, above the page for the rest of a tap burst after Save closes the sheet (#378) */
+	.tap-guard {
+		position: fixed;
+		inset: 0;
+		z-index: 130; /* above the toast (120), which lands on the Save spot in landscape; below dialogs (140) */
+		touch-action: none;
+	}
 	.add {
 		display: flex;
 		flex-direction: column;

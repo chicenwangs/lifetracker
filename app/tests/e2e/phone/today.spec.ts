@@ -86,3 +86,27 @@ test('tapping a status square shows an Undo snackbar (#310)', async () => {
 	await toast.getByRole('button', { name: 'Undo' }).click();
 	await expect(row.locator('button.sq')).toHaveAttribute('aria-label', /Not started/);
 });
+
+test('a tick does not move the timeline under the finger (#379)', async () => {
+	const T = `Tick still ${test.info().project.name}`;
+	for (let h = 7; h <= 20; h++)
+		await page.evaluate(
+			([title, time]) =>
+				fetch('/api/items', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ title, date: '2030-03-10', time }),
+				}),
+			[h === 18 ? T : `${T} filler ${h}`, `${String(h).padStart(2, '0')}:00`] as const,
+		); // prettier-ignore
+	await page.goto('/today?d=2030-03-10');
+	const row = page.getByRole('group', { name: T, exact: true });
+	await row.evaluate((n) => n.scrollIntoView({ block: 'center' }));
+	const wheel = page.locator('.wheel');
+	const before = await wheel.evaluate((w) => w.scrollTop);
+	expect(before).toBeGreaterThan(100);
+	await row.locator('button.sq').click();
+	await expect(row.locator('button.sq')).toHaveAttribute('aria-label', /In progress/);
+	await page.waitForTimeout(500); // the old align-on-every-refresh jumped here
+	expect(Math.abs((await wheel.evaluate((w) => w.scrollTop)) - before)).toBeLessThan(5);
+});
