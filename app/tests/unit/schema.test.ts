@@ -141,6 +141,37 @@ describe('migrations', () => {
 			h.sqlite.close();
 		}
 	});
+
+	it('0012: page template/cover columns; reminders take page_todo; a cover nulls with its attachment', () => {
+		const cols = (t: string) =>
+			(sqlite.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[]).map((r) => r.name);
+		expect(cols('pages')).toEqual(expect.arrayContaining(['is_template', 'cover_attachment_id']));
+		sqlite.exec(
+			`INSERT INTO pages (id, owner_id, title, position, created_at, updated_at) VALUES ('pg_1','usr_a','P',0,'${Z}','${Z}')`,
+		);
+		expect(
+			sqlite.prepare(`SELECT is_template, cover_attachment_id FROM pages WHERE id='pg_1'`).get(),
+		).toEqual({
+			is_template: 0,
+			cover_attachment_id: null,
+		});
+		sqlite.exec(
+			`INSERT INTO attachments (id, owner_id, storage_key, original_name, mime_type, byte_size, status, created_at) VALUES ('att_1','usr_a','k1','a.png','image/png',10,'ready','${Z}')`,
+		);
+		sqlite.exec(`UPDATE pages SET cover_attachment_id = 'att_1' WHERE id = 'pg_1'`);
+		sqlite.exec(`DELETE FROM attachments WHERE id = 'att_1'`);
+		expect(sqlite.prepare(`SELECT cover_attachment_id FROM pages WHERE id='pg_1'`).get()).toEqual({
+			cover_attachment_id: null,
+		});
+		sqlite.exec(
+			`INSERT INTO reminders (id, owner_id, source_type, source_id, rule_kind, status, created_at, updated_at) VALUES ('rem_1','usr_a','page_todo','pgt_1','absolute','scheduled','${Z}','${Z}')`,
+		);
+		expect(() =>
+			sqlite.exec(
+				`INSERT INTO reminders (id, owner_id, source_type, source_id, rule_kind, status, created_at, updated_at) VALUES ('rem_2','usr_a','bogus','x','absolute','scheduled','${Z}','${Z}')`,
+			),
+		).toThrow(/CHECK/);
+	});
 });
 
 describe('constraints', () => {
