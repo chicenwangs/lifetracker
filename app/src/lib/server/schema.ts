@@ -483,6 +483,12 @@ export const pages = sqliteTable(
 		createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
 		updatedBy: text('updated_by').references(() => users.id, { onDelete: 'set null' }),
 		revision: integer('revision').notNull().default(1),
+		/** v4.0 PR 15/22: a template page (lives under Templates, not the sidebar tree) */
+		isTemplate: integer('is_template', { mode: 'boolean' }).notNull().default(false),
+		/** v4.0 PR 15: optional page cover image (an uploaded attachment) */
+		coverAttachmentId: text('cover_attachment_id').references(() => attachments.id, {
+			onDelete: 'set null',
+		}),
 	},
 	(t) => [
 		index('pages_tree').on(t.ownerId, t.parentPageId, t.position),
@@ -656,7 +662,13 @@ export const databaseViews = sqliteTable(
 );
 
 // ---------- v2: Reminders + push (DESIGN §13, §5) ----------
-export const REMINDER_SOURCES = ['planner_item', 'planner_block', 'keep_note', 'database_record'] as const;
+export const REMINDER_SOURCES = [
+	'planner_item',
+	'planner_block',
+	'keep_note',
+	'database_record',
+	'page_todo',
+] as const;
 export const reminders = sqliteTable(
 	'reminders',
 	{
