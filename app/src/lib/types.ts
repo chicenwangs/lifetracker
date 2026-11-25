@@ -173,6 +173,15 @@ export interface PageDTO extends PageNode {
 	access: 'owner' | 'edit' | 'view';
 }
 
+/** one page that links to this one (PR 20); snippet = the linking block, the target's link text bold */
+export interface BacklinkDTO {
+	id: string;
+	title: string;
+	icon: string | null;
+	archived: boolean;
+	snippet: { t: string; b?: boolean }[];
+}
+
 // ---------- Databases (FEATURES PG-DB, DESIGN §7) ----------
 export interface DbProp {
 	id: string;

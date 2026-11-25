@@ -9,7 +9,7 @@ import * as fts from '../search';
 import * as attachments from '../attachments';
 import { accessOf } from './shares';
 import { nowUtcIso } from '$lib/time';
-import type { PageDTO, PageNode } from '$lib/types';
+import type { BacklinkDTO, PageDTO, PageNode } from '$lib/types';
 
 export const MAX_PINS = 3;
 export const TRASH_DAYS = 30; // D-18
@@ -42,6 +42,87 @@ export function recent(ownerId: string, n = 5): { id: string; title: string; las
 	return db()
 		.prepare(`SELECT id, title, last_opened_at AS lastOpenedAt FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND archived_at IS NULL AND last_opened_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM database_records r WHERE r.page_id = pages.id) ORDER BY last_opened_at DESC LIMIT ?`)
 		.all(ownerId, n) as { id: string; title: string; lastOpenedAt: string }[]; // prettier-ignore
+}
+
+type Node = { type?: string; text?: string; attrs?: { pageId?: string }; content?: Node[] };
+
+/** the linking block as one line: the target's link text bold, cut at 120 chars (PR 20) */
+function snippetOf(
+	json: string | null,
+	targetId: string,
+	titleOf: (pageId: string) => string,
+): BacklinkDTO['snippet'] {
+	if (!json) return [];
+	let node: Node;
+	try {
+		node = JSON.parse(json) as Node;
+	} catch {
+		return [];
+	}
+	const parts: { t: string; b?: boolean }[] = [];
+	const walk = (n: Node) => {
+		if (n.type === 'pageLink') {
+			const pid = n.attrs?.pageId ?? '';
+			parts.push({ t: titleOf(pid), b: pid === targetId });
+			return;
+		}
+		if (n.text) {
+			parts.push({ t: n.text });
+			return;
+		}
+		for (const c of n.content ?? []) walk(c);
+	};
+	walk(node);
+	const out: BacklinkDTO['snippet'] = [];
+	let left = 120;
+	for (const s of parts) {
+		if (left <= 0) break;
+		const t = s.t.replace(/\s+/g, ' ');
+		if (!t) continue;
+		const cut = t.length > left ? `${t.slice(0, left)}…` : t;
+		out.push(cut === t ? s : { t: cut, ...(s.b ? { b: true } : {}) });
+		left -= t.length;
+	}
+	return out;
+}
+
+/** pages that link here, newest first; each source must still be openable by the viewer (PLAN §5.4, PR 20) */
+export function backlinks(viewer: string, targetId: string): BacklinkDTO[] {
+	const rows = db()
+		.prepare(
+			`SELECT p.id, p.title, p.icon, p.archived_at, p.updated_at, b.content_json
+			 FROM page_links l
+			 JOIN pages p ON p.id = l.source_page_id
+			 LEFT JOIN page_blocks b ON b.id = l.source_block_id
+			 WHERE l.target_page_id = ?
+			 ORDER BY p.updated_at DESC, p.id`,
+		)
+		.all(targetId) as {
+		id: string;
+		title: string;
+		icon: string | null;
+		archived_at: string | null;
+		updated_at: string;
+		content_json: string | null;
+	}[];
+	const seen = new Set<string>();
+	const out: BacklinkDTO[] = [];
+	const titleOf = (pageId: string) =>
+		(db().prepare(`SELECT title FROM pages WHERE id = ?`).get(pageId) as { title: string } | undefined)
+			?.title || 'Untitled';
+	for (const r of rows) {
+		if (seen.has(r.id)) continue;
+		if (!accessOf('page', viewer, r.id)) continue; // trashed, or not shared with the viewer: never leak
+		seen.add(r.id);
+		out.push({
+			id: r.id,
+			title: r.title,
+			icon: r.icon,
+			archived: !!r.archived_at,
+			snippet: snippetOf(r.content_json, targetId, titleOf),
+		});
+	}
+	return out;
 }
 
 /** ids of a page and everything under it (live rows) */

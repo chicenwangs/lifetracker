@@ -4,6 +4,7 @@ import { freshDb } from './helpers';
 import { handle } from '../../src/lib/server/db';
 import * as usersRepo from '../../src/lib/server/repo/users';
 import * as pages from '../../src/lib/server/repo/pages';
+import * as shares from '../../src/lib/server/repo/shares';
 import * as keep from '../../src/lib/server/repo/keep';
 import { search } from '../../src/lib/server/search';
 import { undo, undoable } from '../../src/lib/server/undo';
@@ -63,6 +64,34 @@ describe('Pages', () => {
 		pages.update(me, target.id, { title: 'Gym log' });
 		pages.move(me, target.id, src.id);
 		expect(pages.get(me, src.id).links[target.id]).toEqual({ title: 'Gym log', archived: false });
+	});
+
+	it('PAGE-020: backlinks list only sources the viewer can open, keep archived ones, bold the target link', () => {
+		const target = page('Shared target');
+		const mine = page('My source');
+		pages.update(me, mine.id, {
+			doc: doc({
+				type: 'paragraph',
+				content: [
+					{ type: 'text', text: 'see ' },
+					{ type: 'pageLink', attrs: { pageId: target.id } },
+				],
+			}),
+		});
+		const [row] = pages.backlinks(me, target.id);
+		expect(row!.title).toBe('My source');
+		expect(row!.snippet).toEqual([{ t: 'see ' }, { t: 'Shared target', b: true }]);
+		// the target is shared with the partner, my private source is not: they must never see its title
+		shares.put('page', me, target.id, { username: 'neina', permission: 'view' });
+		expect(pages.backlinks(other, target.id)).toEqual([]);
+		// once the source is shared too, it shows for them
+		shares.put('page', me, mine.id, { username: 'neina', permission: 'view' });
+		expect(pages.backlinks(other, target.id).map((b) => b.title)).toEqual(['My source']);
+		// archived source stays for me, flagged; trashed source is gone
+		pages.archive(me, mine.id);
+		expect(pages.backlinks(me, target.id)[0]).toMatchObject({ title: 'My source', archived: true });
+		pages.trash(me, mine.id);
+		expect(pages.backlinks(me, target.id)).toEqual([]);
 	});
 
 	it('doc round-trips; unknown nodes, unsafe links, images without alt are refused', () => {

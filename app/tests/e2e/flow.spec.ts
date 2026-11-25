@@ -1280,6 +1280,40 @@ test('v2 P8: phone Week/Month/More, PWA manifest, offline badge + Keep queue, He
 	await ctx.close();
 });
 
+test('page Linked from: the sources that link here, hidden when none (#443)', async () => {
+	const target = (await api('POST', '/api/pages', { title: 'Link target' })).j.page;
+	const src = (await api('POST', '/api/pages', { title: 'Link source' })).j.page;
+	const doc = {
+		type: 'doc',
+		content: [
+			{
+				type: 'paragraph',
+				content: [
+					{ type: 'text', text: 'see ' },
+					{ type: 'pageLink', attrs: { pageId: target.id } },
+				],
+			},
+		],
+	};
+	expect((await api('PATCH', `/api/pages/${src.id}`, { doc })).s).toBe(200);
+	await page.goto(`/pages/${target.id}`);
+	const panel = page.getByRole('region', { name: /Linked from \(1\)/ });
+	await expect(panel).toBeVisible();
+	const row = panel.getByRole('link', { name: 'Link source' });
+	await expect(row).toHaveAttribute('href', `/pages/${src.id}`);
+	await expect(panel.locator('.snip b')).toHaveText('Link target');
+	// collapse, then expand again
+	const toggle = panel.getByRole('button', { name: /Linked from \(1\)/ });
+	await toggle.click();
+	await expect(panel.getByRole('link')).toHaveCount(0);
+	await toggle.click();
+	await expect(panel.getByRole('link', { name: 'Link source' })).toBeVisible();
+	// no links at all: the whole panel is hidden
+	const lonely = (await api('POST', '/api/pages', { title: 'Lonely page' })).j.page;
+	await page.goto(`/pages/${lonely.id}`);
+	await expect(page.getByRole('region', { name: /Linked from/ })).toHaveCount(0);
+});
+
 test('v2 P8 a11y: axe finds no serious or critical issues on the main screens (light + dark, PC + phone)', async ({
 	browser,
 }) => {
