@@ -7,6 +7,7 @@
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { undoLast } from '$lib/client/undo.svelte';
 	import PageEditor from '$lib/editor/PageEditor.svelte';
+	import PageIcon from '$lib/components/PageIcon.svelte';
 	import DbCell from '$lib/database/DbCell.svelte';
 	import ShareDialog from '$lib/components/ShareDialog.svelte';
 	import type { PageDTO, PageNode, UndoRef } from '$lib/types';
@@ -57,6 +58,29 @@
 			await invalidateAll();
 		} catch (e) {
 			saveState = 'failed';
+			showError(e);
+		}
+	}
+
+	async function setIcon(icon: string | null) {
+		if (icon === pg.icon) return;
+		try {
+			await editor?.flush(); // one writer at a time: the revision must line up
+			const r = await patch<{ page: PageDTO; undo?: UndoRef }>(`/api/pages/${pg.id}`, { icon });
+			editor?.setRevision(r.page.revision);
+			await invalidateAll();
+			const u = r.undo;
+			showToast(icon ? 'Icon updated' : 'Icon removed', {
+				undo: u
+					? async () => {
+							if (!(await undoLast(u.id))) return;
+							const fresh = await get<{ page: PageDTO }>(`/api/pages/${pg.id}`);
+							editor?.setRevision(fresh.page.revision);
+							await invalidateAll();
+						}
+					: undefined,
+			});
+		} catch (e) {
 			showError(e);
 		}
 	}
@@ -238,16 +262,19 @@
 		</div>
 	</div>
 	<div class="body">
-		<input
-			class="title"
-			autocomplete="off"
-			placeholder="Untitled"
-			aria-label="Page title"
-			maxlength="300"
-			readonly={pg.access === 'view'}
-			bind:value={title}
-			oninput={onTitle}
-		/>
+		<div class="head">
+			<PageIcon icon={pg.icon} disabled={pg.access === 'view'} onpick={setIcon} />
+			<input
+				class="title"
+				autocomplete="off"
+				placeholder="Untitled"
+				aria-label="Page title"
+				maxlength="300"
+				readonly={pg.access === 'view'}
+				bind:value={title}
+				oninput={onTitle}
+			/>
+		</div>
 		{#if !mine}<p class="shared" role="status">
 				Shared with you · {pg.access === 'edit' ? 'you can edit' : 'view only'}
 			</p>{/if}
@@ -378,10 +405,18 @@
 		max-width: none;
 		padding: 28px 40px 40px;
 	}
+	.head {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin-bottom: 12px;
+	}
 	.title {
 		display: block;
-		width: 100%;
-		margin: 0 0 12px;
+		flex: 1 1 auto;
+		min-width: 0;
+		width: auto;
+		margin: 0;
 		padding: 0;
 		font: inherit;
 		font-size: 32px;

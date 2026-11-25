@@ -110,6 +110,22 @@ test('Pin toast says Pinned, Unpin toast says Unpinned (#348)', async () => {
 	await expect(page.getByText('Unpinned from header')).toBeVisible();
 });
 
+test('page icon sheet: 48 dp grid, Back closes, Remove clears', async () => {
+	await page.getByRole('button', { name: 'Page icon: Add icon' }).click();
+	const sheet = page.getByRole('dialog', { name: 'Page icon' });
+	await expect(sheet).toBeVisible();
+	await expectTargets48(page);
+	await sheet.getByRole('option', { name: '⭐' }).click();
+	await expect(page.getByRole('button', { name: 'Page icon: ⭐' })).toHaveText('⭐');
+	await page.getByRole('button', { name: 'Page icon: ⭐' }).click();
+	await expect(sheet).toBeVisible();
+	await page.goBack(); // Back closes the top layer (#91)
+	await expect(sheet).toBeHidden();
+	await page.getByRole('button', { name: 'Page icon: ⭐' }).click();
+	await sheet.getByRole('button', { name: 'Remove' }).click();
+	await expect(page.getByRole('button', { name: 'Page icon: Add icon' })).toBeVisible();
+});
+
 test('Archive: 48 dp search field and no sideways scroll at 320 px (#405)', async () => {
 	await page.goto('/pages/archive');
 	await expect(page.getByLabel('Search archive')).toBeVisible();

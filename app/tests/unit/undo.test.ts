@@ -4,6 +4,7 @@ import { freshDb } from './helpers';
 import * as usersRepo from '../../src/lib/server/repo/users';
 import * as items from '../../src/lib/server/repo/items';
 import * as blocks from '../../src/lib/server/repo/blocks';
+import * as pages from '../../src/lib/server/repo/pages';
 import { undo, undoable } from '../../src/lib/server/undo';
 import { quickAdd } from '../../src/lib/server/quickadd-server';
 
@@ -72,6 +73,16 @@ describe('undo journal', () => {
 		items.patch(me, i.id, { title: 'X' });
 		expect(() => undo(me)).toThrow(/can't undo safely|Can't undo safely/i);
 		expect(items.getOwn(me, i.id)?.title).toBe('X');
+	});
+
+	it('opening the page does not block undoing a page change', () => {
+		const p = pages.create(me, { title: 'Icon page', parentId: null });
+		const r = undoable(me, 'Page icon', [{ t: 'pages', id: p.id }], () => ({
+			result: pages.update(me, p.id, { icon: '📕' }),
+		}));
+		pages.get(me, p.id, true); // every page load stamps last_opened_at
+		undo(me, r.undo.id);
+		expect(pages.get(me, p.id, false).icon).toBeNull();
 	});
 
 	it('quick add /both = one undo removes item + block', () => {

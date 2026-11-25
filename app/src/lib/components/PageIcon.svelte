@@ -1,0 +1,235 @@
+<!-- v4.0 PR 16: page emoji icon. Desktop popover 8x5, phone BottomSheet 6 columns, Remove, arrows/Enter/Esc,
+     focus returns to the trigger. Curated set only (no search, no full emoji data). -->
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import BottomSheet from './BottomSheet.svelte';
+	import { backCloses } from '$lib/client/layers';
+	import { isPhone } from '$lib/client/phone';
+
+	let {
+		icon,
+		disabled = false,
+		onpick,
+	}: { icon: string | null; disabled?: boolean; onpick: (v: string | null) => unknown } = $props();
+
+	// 40 curated emoji (no search, no full set — DESIGN 2.2)
+	const EMOJI = [
+		'📄', '📝', '📌', '📎', '📚', '📖', '📓', '📔', '📕', '📗',
+		'📘', '📙', '🗒️', '🗓️', '📅', '📆', '📊', '📈', '📉', '🗃️',
+		'🗄️', '📁', '📂', '🗂️', '🔖', '🏷️', '⭐', '✨', '💡', '✅',
+		'❗', '❓', '🔥', '🎯', '🧠', '🛠️', '🎨', '🎵', '🏠', '🌱',
+	]; // prettier-ignore
+	let phone = $state(false);
+	let open = $state(false);
+	let active = $state(0);
+	let btn: HTMLButtonElement | undefined = $state();
+	let grid: HTMLDivElement | undefined = $state();
+	onMount(() => (phone = isPhone()));
+	const cols = $derived(phone ? 6 : 8);
+
+	function focusCell(i: number) {
+		grid?.querySelectorAll<HTMLButtonElement>('.cell')[i]?.focus();
+	}
+	function show() {
+		if (disabled) return;
+		open = !open;
+		if (open) {
+			active = Math.max(0, icon ? EMOJI.indexOf(icon) : 0);
+			queueMicrotask(() => focusCell(active));
+		}
+	}
+	function close() {
+		open = false;
+		queueMicrotask(() => btn?.focus());
+	}
+	function choose(v: string | null) {
+		open = false;
+		void onpick(v);
+		queueMicrotask(() => btn?.focus());
+	}
+	function keys(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			e.stopPropagation();
+			return close();
+		}
+		if (e.key === 'Enter' || e.key === ' ') return; // the focused cell's own click fires
+		const step: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -cols, ArrowDown: cols };
+		const d = step[e.key];
+		if (d === undefined) return;
+		e.preventDefault();
+		active = Math.min(EMOJI.length - 1, Math.max(0, active + d));
+		focusCell(active);
+	}
+</script>
+
+<span class="wrap">
+	<button
+		bind:this={btn}
+		class="pickbtn"
+		class:empty={!icon}
+		type="button"
+		{disabled}
+		aria-haspopup="dialog"
+		aria-expanded={open}
+		aria-label={icon ? `Page icon: ${icon}` : 'Page icon: Add icon'}
+		onclick={show}>{icon ?? 'Add icon'}</button
+	>
+	{#if open && !phone}
+		<div class="pop card" role="dialog" tabindex="-1" aria-label="Page icon" use:backCloses={close}>
+			<button class="remove" type="button" onclick={() => choose(null)}>Remove</button>
+			<div
+				class="grid"
+				bind:this={grid}
+				role="listbox"
+				tabindex="-1"
+				aria-label="Emoji"
+				onkeydown={keys}
+				style:--cols={8}
+			>
+				{#each EMOJI as e, i (e + i)}
+					<button
+						type="button"
+						role="option"
+						class="cell"
+						aria-selected={i === active}
+						tabindex={i === active ? 0 : -1}
+						aria-label={e}
+						onclick={() => choose(e)}
+						onfocus={() => (active = i)}>{e}</button
+					>
+				{/each}
+			</div>
+		</div>
+	{/if}
+</span>
+
+{#if open && phone}
+	<BottomSheet label="Page icon" onclose={close}>
+		<div class="sheet">
+			<div class="head">
+				<b>Page icon</b>
+				<button class="remove" type="button" onclick={() => choose(null)}>Remove</button>
+			</div>
+			<div
+				class="grid"
+				bind:this={grid}
+				role="listbox"
+				tabindex="-1"
+				aria-label="Emoji"
+				onkeydown={keys}
+				style:--cols={cols}
+			>
+				{#each EMOJI as e, i (e + i)}
+					<button
+						type="button"
+						role="option"
+						class="cell"
+						aria-selected={i === active}
+						tabindex={i === active ? 0 : -1}
+						aria-label={e}
+						onclick={() => choose(e)}
+						onfocus={() => (active = i)}>{e}</button
+					>
+				{/each}
+			</div>
+		</div>
+	</BottomSheet>
+{/if}
+
+<style>
+	.wrap {
+		position: relative;
+		flex: none;
+		display: inline-flex;
+	}
+	.pickbtn {
+		border: 1px solid var(--border);
+		background: var(--card);
+		color: var(--ink);
+		border-radius: 10px;
+		font: inherit;
+		font-size: 22px;
+		line-height: 1;
+		padding: 4px 8px;
+		min-width: 40px;
+		min-height: 40px;
+		cursor: pointer;
+	}
+	.pickbtn.empty {
+		font-size: 12px;
+		color: var(--quiet);
+		padding: 0 10px;
+	}
+	.pickbtn:disabled {
+		cursor: default;
+		opacity: 0.6;
+	}
+	.pop {
+		position: absolute;
+		top: calc(100% + 6px);
+		left: 0;
+		z-index: 70;
+		width: 320px;
+		padding: 12px;
+		border: 1.5px solid var(--border);
+		border-radius: 12px;
+		box-shadow: -4px 4px 0 var(--accent);
+		background: var(--card);
+	}
+	.remove {
+		position: absolute;
+		top: 8px;
+		right: 12px;
+		display: inline-flex;
+		align-items: center;
+		min-height: 24px;
+		border: 0;
+		background: none;
+		color: var(--quiet);
+		font: inherit;
+		font-size: 12px;
+		cursor: pointer;
+		text-decoration: underline;
+	}
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(var(--cols), 1fr);
+		gap: 2px;
+		margin-top: 8px;
+	}
+	.cell {
+		border: 0;
+		background: none;
+		font-size: 20px;
+		line-height: 1;
+		width: 100%;
+		aspect-ratio: 1;
+		border-radius: 8px;
+		cursor: pointer;
+	}
+	.cell:hover,
+	.cell:focus-visible {
+		background: var(--hover);
+	}
+	.sheet .head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.sheet .remove {
+		position: static;
+		min-height: 48px;
+	}
+	/* phone: 48 dp cells (DESIGN 2.2) */
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.pickbtn {
+			min-width: 48px;
+			min-height: 48px;
+		}
+		.sheet .cell {
+			min-height: 48px;
+			font-size: 24px;
+		}
+	}
+</style>
