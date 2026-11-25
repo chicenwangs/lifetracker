@@ -139,9 +139,11 @@
 		gap: 12px;
 		align-items: center;
 		margin-bottom: 8px;
+		flex-wrap: wrap; /* #405: Sort drops to its own row on a narrow phone instead of widening the page */
 	}
 	.bar input {
 		flex: 1;
+		min-width: 0; /* #405: may shrink below the placeholder's width */
 		min-height: 32px;
 		padding: 0 10px;
 		font: inherit;
@@ -149,6 +151,12 @@
 		border: 1.5px solid var(--border);
 		background: var(--card);
 		color: var(--ink);
+	}
+	/* phone (#101): 48 dp field */
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.bar input {
+			min-height: 48px;
+		}
 	}
 	.row {
 		display: flex;
