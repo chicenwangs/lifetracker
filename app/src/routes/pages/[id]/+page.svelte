@@ -1,7 +1,8 @@
 <!-- One page: breadcrumbs, title, ⋯ menu (pin, move, archive, delete, copy link), "Archived · Restore" bar, editor. -->
 <script lang="ts">
-	import { backCloses } from '$lib/client/layers';
+	import { backCloses, leave } from '$lib/client/layers';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { invalidateAll } from '$lib/client/refresh';
 	import { del, get, patch, post, apiFetch } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
@@ -9,6 +10,8 @@
 	import PageEditor from '$lib/editor/PageEditor.svelte';
 	import DbCell from '$lib/database/DbCell.svelte';
 	import ShareDialog from '$lib/components/ShareDialog.svelte';
+	import LocalGraph from '$lib/components/LocalGraph.svelte';
+	import { modal } from '$lib/client/modal';
 	import type { PageDTO, PageNode, UndoRef } from '$lib/types';
 
 	let { data } = $props();
@@ -20,6 +23,8 @@
 	let menu = $state(false);
 	let moving = $state(false);
 	let sharing = $state(false);
+	// PR 21: the local graph is a query state (?lg=1), so Back closes it like any other history entry
+	const lgOpen = $derived(page.url.searchParams.get('lg') === '1');
 	const mine = $derived(pg.access === 'owner');
 	// new page opened: take its title; a reload of the same page keeps what is being typed
 	let shownId = '';
@@ -100,6 +105,16 @@
 		}
 	}
 	// v4.0 PR 17: the copy opens at once; Undo removes it and returns to this page
+	function openLocalGraph() {
+		leave(); // the goto replaces the menu's entry: its Back must not pop the new URL
+		menu = false;
+		void goto(`?lg=1`, { noScroll: true, keepFocus: true });
+	}
+	function closeLocalGraph() {
+		const u = new URL(page.url);
+		u.searchParams.delete('lg');
+		void goto(u.pathname + u.search, { replaceState: true, noScroll: true, keepFocus: true });
+	}
 	async function duplicate() {
 		menu = false;
 		const sourceId = pg.id; // pg follows the open page: after goto it is the copy
@@ -239,6 +254,7 @@
 						<button role="menuitem" type="button" onclick={() => reorder(1)}>Move down</button>
 					{/if}
 					<button role="menuitem" type="button" onclick={duplicate}>Duplicate</button>
+					<button role="menuitem" type="button" onclick={openLocalGraph}>Local graph</button>
 					<button
 						role="menuitem"
 						type="button"
@@ -271,6 +287,19 @@
 				Shared with you · {pg.access === 'edit' ? 'you can edit' : 'view only'}
 			</p>{/if}
 		{#if sharing}<ShareDialog kind="page" id={pg.id} name={pg.title} onclose={() => (sharing = false)} />{/if}
+		{#if lgOpen}
+			<div class="lgscrim" role="presentation" onclick={closeLocalGraph}></div>
+			<div
+				class="lgbox"
+				role="dialog"
+				aria-modal="true"
+				aria-label="Links around {pg.title || 'Untitled'}"
+				tabindex="-1"
+				use:modal={closeLocalGraph}
+			>
+				<LocalGraph around={{ id: pg.id, title: pg.title }} onclose={closeLocalGraph} />
+			</div>
+		{/if}
 		{#if moving}
 			<div class="moveto">
 				<label
@@ -483,5 +512,38 @@
 		align-items: center;
 		margin-bottom: 8px;
 		font-size: 13px;
+	}
+	/* PR 21: local graph dialog (900x640 desktop, full screen on the phone) */
+	.lgscrim {
+		position: fixed;
+		inset: 0;
+		z-index: 120;
+		background: var(--scrim);
+	}
+	.lgbox {
+		position: fixed;
+		z-index: 121;
+		left: 50%;
+		top: 50%;
+		translate: -50% -50%;
+		width: min(900px, calc(100vw - 32px));
+		height: min(640px, calc(100vh - 32px));
+		background: var(--card);
+		border: 1.5px solid var(--card-edge);
+		border-radius: 14px;
+		box-shadow: -8px 8px 0 var(--accent);
+		display: flex;
+		overflow: hidden;
+	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.lgbox {
+			inset: 0;
+			translate: none;
+			width: 100%;
+			height: 100%;
+			border-radius: 0;
+			border: 0;
+			box-shadow: none;
+		}
 	}
 </style>
