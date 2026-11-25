@@ -1,6 +1,7 @@
 // Search on phone (#99): full screen, no desktop actions or key hints, Planner · Keep · Pages, big rows,
 // opened results come back first; Back / the ‹ button close it.
 import { expect, test, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 import { expectTargets48, noDesktopHints, signIn } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
@@ -64,4 +65,26 @@ test('results grouped Planner first, opened one shows as Recent; Back closes', a
 	await page.goBack();
 	await expect(dlg()).toBeHidden();
 	await expect(page).toHaveURL(/\/pages\/pg_/);
+});
+
+test('empty and result states are clean for axe aria-required-children (#434)', async () => {
+	const axe = async () =>
+		(
+			await new AxeBuilder({ page })
+				.include('[aria-label="Search and go"]')
+				.withRules(['aria-required-children'])
+				.analyze()
+		).violations.map((v) => v.id);
+	await open();
+	// no results: the hint lives outside any listbox
+	await page.getByRole('combobox', { name: 'Search' }).fill('zzzznomatch');
+	await expect(dlg().getByText(/Nothing found/)).toBeVisible();
+	await expect(dlg().locator('#cmdk-list[role=listbox]')).toHaveCount(0);
+	expect(await axe()).toEqual([]);
+	// results: a proper listbox with option children
+	await page.getByRole('combobox', { name: 'Search' }).fill(word);
+	await expect(dlg().getByRole('option').first()).toBeVisible();
+	await expect(dlg().locator('#cmdk-list[role=listbox]')).toHaveCount(1);
+	expect(await axe()).toEqual([]);
+	await dlg().getByRole('button', { name: 'Close search' }).click();
 });
