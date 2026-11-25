@@ -61,10 +61,12 @@ test('from completion: radio + summary, one row, done copy, Undo', async () => {
 	await page.goto('/today');
 	await expect(page.getByLabel('Repeats from completion').first()).toBeVisible();
 
-	// todo -> doing -> done. A doing tick must not detach the series.
+	// todo -> doing -> done. A doing tick must not detach the series. Scope to the item panel: the same
+	// unstarted square also sits on the day planner while the item is on today.
 	await page.goto(`/item/${id}`);
-	await page.getByRole('button', { name: 'Not started. Activate to start' }).click();
-	await page.getByRole('button', { name: 'In progress. Activate to complete' }).click();
+	const itemRegion = page.getByRole('region', { name: 'Item' });
+	await itemRegion.getByRole('button', { name: 'Not started. Activate to start' }).click();
+	await itemRegion.getByRole('button', { name: 'In progress. Activate to complete' }).click();
 	await expect.poll(() => dateOf(id)).toBe(plusDay(t, 1));
 	const copy = (await dayItems(t)).find((i) => i.title === T && i.status === 'done');
 	expect(copy?.date).toBe(t);
