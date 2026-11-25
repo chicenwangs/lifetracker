@@ -171,7 +171,7 @@
 	.tap-guard {
 		position: fixed;
 		inset: 0;
-		z-index: 90;
+		z-index: 130; /* above the toast (120), which lands on the Save spot in landscape; below dialogs (140) */
 		touch-action: none;
 	}
 	.add {
