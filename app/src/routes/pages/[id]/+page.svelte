@@ -21,6 +21,7 @@
 	let menu = $state(false);
 	let moving = $state(false);
 	let sharing = $state(false);
+	let iconPicker: PageIcon | undefined = $state();
 	const mine = $derived(pg.access === 'owner');
 	// new page opened: take its title; a reload of the same page keeps what is being typed
 	let shownId = '';
@@ -229,6 +230,12 @@
 				<div use:backCloses={() => (menu = false)} class="menu card" role="menu">
 					{#if mine}
 						<!-- phone (#98): Pin + Share live here, the bar only has room for ⋯ -->
+						{#if !pg.icon}<button
+								role="menuitem"
+								type="button"
+								class="narrow"
+								onclick={() => ((menu = false), iconPicker?.openPicker())}>Add icon</button
+							>{/if}
 						{#if !pg.archived}<button role="menuitem" type="button" class="narrow" onclick={pin}
 								>{pg.pinned ? 'Unpin from header' : 'Pin to header'}</button
 							>{/if}
@@ -262,19 +269,19 @@
 		</div>
 	</div>
 	<div class="body">
-		<div class="head">
-			<PageIcon icon={pg.icon} disabled={pg.access === 'view'} onpick={setIcon} />
-			<input
-				class="title"
-				autocomplete="off"
-				placeholder="Untitled"
-				aria-label="Page title"
-				maxlength="300"
-				readonly={pg.access === 'view'}
-				bind:value={title}
-				oninput={onTitle}
-			/>
+		<div class="pico" class:blank={!pg.icon}>
+			<PageIcon bind:this={iconPicker} icon={pg.icon} disabled={pg.access === 'view'} onpick={setIcon} />
 		</div>
+		<input
+			class="title"
+			autocomplete="off"
+			placeholder="Untitled"
+			aria-label="Page title"
+			maxlength="300"
+			readonly={pg.access === 'view'}
+			bind:value={title}
+			oninput={onTitle}
+		/>
 		{#if !mine}<p class="shared" role="status">
 				Shared with you · {pg.access === 'edit' ? 'you can edit' : 'view only'}
 			</p>{/if}
@@ -405,18 +412,23 @@
 		max-width: none;
 		padding: 28px 40px 40px;
 	}
-	.head {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		margin-bottom: 12px;
+	/* icon row (DESIGN 2.1): 56 px emoji above the title; when empty a faint 13 px "Add icon" shows on hover */
+	.pico {
+		margin-bottom: 6px;
+	}
+	@media (hover: hover) and (min-width: 700px) {
+		.pico.blank {
+			opacity: 0;
+		}
+		.body:hover .pico.blank,
+		.pico.blank:focus-within {
+			opacity: 1;
+		}
 	}
 	.title {
 		display: block;
-		flex: 1 1 auto;
-		min-width: 0;
-		width: auto;
-		margin: 0;
+		width: 100%;
+		margin: 0 0 12px;
 		padding: 0;
 		font: inherit;
 		font-size: 32px;
@@ -456,6 +468,9 @@
 		}
 		.body {
 			padding: 20px 16px 32px;
+		}
+		.pico {
+			margin-bottom: 2px;
 		}
 		.title {
 			font-size: 26px;

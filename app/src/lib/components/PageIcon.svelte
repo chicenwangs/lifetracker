@@ -12,12 +12,12 @@
 		onpick,
 	}: { icon: string | null; disabled?: boolean; onpick: (v: string | null) => unknown } = $props();
 
-	// 40 curated emoji (no search, no full set — DESIGN 2.2)
+	// DESIGN 2.2: the exact 40 curated emoji (no search, no full set)
 	const EMOJI = [
-		'📄', '📝', '📌', '📎', '📚', '📖', '📓', '📔', '📕', '📗',
-		'📘', '📙', '🗒️', '🗓️', '📅', '📆', '📊', '📈', '📉', '🗃️',
-		'🗄️', '📁', '📂', '🗂️', '🔖', '🏷️', '⭐', '✨', '💡', '✅',
-		'❗', '❓', '🔥', '🎯', '🧠', '🛠️', '🎨', '🎵', '🏠', '🌱',
+		'📄', '📝', '📚', '🎓', '💼', '🏠', '🧠', '💡', '✅', '📅',
+		'🗂️', '📌', '🔖', '🧪', '🛠️', '💻', '🖥️', '🌐', '🔒', '💰',
+		'🛒', '🍳', '🏋️', '🏃', '🧘', '🎮', '🎬', '📺', '🎵', '🎨',
+		'✈️', '🚗', '🌱', '🐾', '❤️', '⭐', '🔥', '⚠️', '❓', '🎯',
 	]; // prettier-ignore
 	let phone = $state(false);
 	let open = $state(false);
@@ -26,6 +26,11 @@
 	let grid: HTMLDivElement | undefined = $state();
 	onMount(() => (phone = isPhone()));
 	const cols = $derived(phone ? 6 : 8);
+
+	/** the page ⋯ menu opens the sheet when the header has no icon button (phone) */
+	export function openPicker() {
+		if (!open) show();
+	}
 
 	function focusCell(i: number) {
 		grid?.querySelectorAll<HTMLButtonElement>('.cell')[i]?.focus();
@@ -76,17 +81,16 @@
 		onclick={show}>{icon ?? 'Add icon'}</button
 	>
 	{#if open && !phone}
-		<div class="pop card" role="dialog" tabindex="-1" aria-label="Page icon" use:backCloses={close}>
+		<div
+			class="pop card"
+			role="dialog"
+			tabindex="-1"
+			aria-label="Page icon"
+			use:backCloses={close}
+			onkeydown={keys}
+		>
 			<button class="remove" type="button" onclick={() => choose(null)}>Remove</button>
-			<div
-				class="grid"
-				bind:this={grid}
-				role="listbox"
-				tabindex="-1"
-				aria-label="Emoji"
-				onkeydown={keys}
-				style:--cols={8}
-			>
+			<div class="grid" bind:this={grid} role="listbox" tabindex="-1" aria-label="Emoji" style:--cols={8}>
 				{#each EMOJI as e, i (e + i)}
 					<button
 						type="button"
@@ -111,15 +115,7 @@
 				<b>Page icon</b>
 				<button class="remove" type="button" onclick={() => choose(null)}>Remove</button>
 			</div>
-			<div
-				class="grid"
-				bind:this={grid}
-				role="listbox"
-				tabindex="-1"
-				aria-label="Emoji"
-				onkeydown={keys}
-				style:--cols={cols}
-			>
+			<div class="grid" bind:this={grid} role="listbox" tabindex="-1" aria-label="Emoji" style:--cols={cols}>
 				{#each EMOJI as e, i (e + i)}
 					<button
 						type="button"
@@ -144,22 +140,32 @@
 		display: inline-flex;
 	}
 	.pickbtn {
-		border: 1px solid var(--border);
-		background: var(--card);
+		border: 0;
+		background: none;
 		color: var(--ink);
 		border-radius: 10px;
 		font: inherit;
-		font-size: 22px;
+		font-size: 36px;
 		line-height: 1;
-		padding: 4px 8px;
-		min-width: 40px;
-		min-height: 40px;
+		padding: 4px;
+		min-width: 56px;
+		min-height: 56px;
 		cursor: pointer;
 	}
+	.pickbtn:hover {
+		background: var(--hover);
+	}
 	.pickbtn.empty {
-		font-size: 12px;
-		color: var(--quiet);
-		padding: 0 10px;
+		min-width: 0;
+		min-height: 24px;
+		padding: 0 6px;
+		border-radius: 6px;
+		font-size: 13px;
+		color: var(--faint);
+		text-align: left;
+	}
+	.pickbtn.empty::before {
+		content: '☺ ';
 	}
 	.pickbtn:disabled {
 		cursor: default;
@@ -171,7 +177,7 @@
 		left: 0;
 		z-index: 70;
 		width: 320px;
-		padding: 12px;
+		padding: 8px;
 		border: 1.5px solid var(--border);
 		border-radius: 12px;
 		box-shadow: -4px 4px 0 var(--accent);
@@ -221,11 +227,15 @@
 		position: static;
 		min-height: 48px;
 	}
-	/* phone: 48 dp cells (DESIGN 2.2) */
+	/* phone: 48 dp tap box (repo rule) around an ~44 px glyph; empty = the ⋯ sheet owns it (DESIGN 2.1) */
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.pickbtn {
 			min-width: 48px;
 			min-height: 48px;
+			font-size: 32px;
+		}
+		.pickbtn.empty {
+			display: none;
 		}
 		.sheet .cell {
 			min-height: 48px;

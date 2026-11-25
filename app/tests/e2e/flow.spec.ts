@@ -1061,23 +1061,31 @@ test('v4 PR 16: page emoji icon - keyboard pick, sidebar, Undo', async () => {
 	await expect(pop).toBeVisible();
 	await expect(pop.getByRole('option', { name: '📄' })).toBeFocused();
 	await page.keyboard.press('ArrowDown'); // 8 columns -> second row, first cell
-	await expect(pop.getByRole('option', { name: '📕' })).toBeFocused();
+	await expect(pop.getByRole('option', { name: '✅' })).toBeFocused();
 	await page.keyboard.press('Enter');
 	await expect(pop).toBeHidden();
-	await expect(page.getByRole('button', { name: 'Page icon: 📕' })).toHaveText('📕');
-	await expect(page.getByRole('button', { name: 'Page icon: 📕' })).toBeFocused();
+	await expect(page.getByRole('button', { name: 'Page icon: ✅' })).toHaveText('✅');
+	await expect(page.getByRole('button', { name: 'Page icon: ✅' })).toBeFocused();
 	// sidebar shows it; toast Undo puts the old icon (none) back
-	await expect(page.getByRole('tree', { name: 'Page tree' })).toContainText('📕 Icon test');
+	await expect(page.getByRole('tree', { name: 'Page tree' })).toContainText('✅ Icon test');
 	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
 	await expect(page.getByRole('button', { name: 'Page icon: Add icon' })).toHaveText('Add icon');
-	await expect(page.getByRole('tree', { name: 'Page tree' })).not.toContainText('📕');
-	// set it again: the graph label carries the icon too
+	await expect(page.getByRole('tree', { name: 'Page tree' })).not.toContainText('✅');
+	// set it again, then Esc from Remove (outside the grid) closes and returns focus to the trigger
 	await page.getByRole('button', { name: 'Page icon: Add icon' }).click();
-	await page.getByRole('dialog', { name: 'Page icon' }).getByRole('option', { name: '📕' }).click();
-	await expect(page.getByRole('button', { name: 'Page icon: 📕' })).toHaveText('📕');
+	await page.getByRole('dialog', { name: 'Page icon' }).getByRole('option', { name: '✅' }).click();
+	await expect(page.getByRole('button', { name: 'Page icon: ✅' })).toHaveText('✅');
+	await page.getByRole('button', { name: 'Page icon: ✅' }).click();
+	await expect(pop).toBeVisible();
+	await page.keyboard.press('Shift+Tab'); // grid cell -> Remove (it comes before the grid in the DOM)
+	await expect(pop.getByRole('button', { name: 'Remove' })).toBeFocused();
+	await page.keyboard.press('Escape');
+	await expect(pop).toBeHidden();
+	await expect(page.getByRole('button', { name: 'Page icon: ✅' })).toBeFocused();
+	// the graph label carries the icon too
 	await page.goto('/pages/graph');
 	await page.getByRole('button', { name: 'Show as list instead' }).click();
-	await expect(page.getByRole('list', { name: 'Pages and their links' })).toContainText('📕 Icon test');
+	await expect(page.getByRole('list', { name: 'Pages and their links' })).toContainText('✅ Icon test');
 });
 
 test('v2 P4 Databases: new database, number property rejects text, records, sort, record opens as page', async () => {
