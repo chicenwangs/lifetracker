@@ -94,6 +94,31 @@ describe('Pages', () => {
 		expect(pages.backlinks(me, target.id)).toEqual([]);
 	});
 
+	it('PAGE-020b: a snippet never leaks the title of a page the viewer cannot open', () => {
+		const target = page('Shared target');
+		const hidden = page('Private C');
+		const src = page('Shared source');
+		pages.update(me, src.id, {
+			doc: doc({
+				type: 'paragraph',
+				content: [
+					{ type: 'text', text: 'see ' },
+					{ type: 'pageLink', attrs: { pageId: target.id } },
+					{ type: 'text', text: ' and ' },
+					{ type: 'pageLink', attrs: { pageId: hidden.id } },
+				],
+			}),
+		});
+		for (const id of [target.id, src.id])
+			shares.put('page', me, id, { username: 'neina', permission: 'view' });
+		const [row] = pages.backlinks(other, target.id);
+		expect(row!.title).toBe('Shared source');
+		const text = row!.snippet.map((s) => s.t).join('');
+		expect(row!.snippet.find((s) => s.b)?.t).toBe('Shared target');
+		expect(text).toContain('Unavailable page'); // the link renderer's own label for a page they cannot open
+		expect(text).not.toContain('Private C');
+	});
+
 	it('doc round-trips; unknown nodes, unsafe links, images without alt are refused', () => {
 		const a = page('A');
 		const d = doc({ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Hi', marks: [{ type: 'bold' }] }] }, p('x'));

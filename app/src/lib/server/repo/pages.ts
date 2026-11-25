@@ -107,9 +107,19 @@ export function backlinks(viewer: string, targetId: string): BacklinkDTO[] {
 	}[];
 	const seen = new Set<string>();
 	const out: BacklinkDTO[] = [];
-	const titleOf = (pageId: string) =>
-		(db().prepare(`SELECT title FROM pages WHERE id = ?`).get(pageId) as { title: string } | undefined)
-			?.title || 'Untitled';
+	// a link inside the snippet may point at a page the viewer cannot open: show it as unavailable, never its title
+	const labels = new Map<string, string>();
+	const titleOf = (pageId: string) => {
+		const hit = labels.get(pageId);
+		if (hit !== undefined) return hit;
+		let label = 'Unavailable page';
+		if (accessOf('page', viewer, pageId))
+			label =
+				(db().prepare(`SELECT title FROM pages WHERE id = ?`).get(pageId) as { title: string } | undefined)
+					?.title || 'Untitled';
+		labels.set(pageId, label);
+		return label;
+	};
 	for (const r of rows) {
 		if (seen.has(r.id)) continue;
 		if (!accessOf('page', viewer, r.id)) continue; // trashed, or not shared with the viewer: never leak
