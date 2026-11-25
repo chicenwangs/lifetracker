@@ -64,10 +64,21 @@ describe('ics text', () => {
 		expect(count).toContain('RRULE:FREQ=DAILY;COUNT=5');
 	});
 
-	it('DST zone gets DAYLIGHT and STANDARD transitions at local wall time', () => {
-		const v = vtimezone('America/New_York', 2026).join('\n');
-		expect(v).toContain('BEGIN:DAYLIGHT\nDTSTART:20260308T020000\nTZOFFSETFROM:-0500\nTZOFFSETTO:-0400');
-		expect(v).toContain('BEGIN:STANDARD\nDTSTART:20261101T020000\nTZOFFSETFROM:-0400\nTZOFFSETTO:-0500');
+	it('DST zones get yearly rules (n-th / last weekday) so every year of the feed is covered', () => {
+		const ny = vtimezone('America/New_York', 2026).join('|');
+		expect(ny).toContain('BEGIN:DAYLIGHT|DTSTART:19700308T020000|RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU|TZOFFSETFROM:-0500|TZOFFSETTO:-0400'); // prettier-ignore
+		expect(ny).toContain('BEGIN:STANDARD|DTSTART:19701101T020000|RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU|TZOFFSETFROM:-0400|TZOFFSETTO:-0500'); // prettier-ignore
+		expect(vtimezone('Europe/London', 2026).join('|')).toContain('DTSTART:19700329T010000|RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU'); // prettier-ignore
+		const syd = vtimezone('Australia/Sydney', 2026).join('|'); // southern hemisphere: DST over New Year
+		expect(syd).toContain('BEGIN:STANDARD|DTSTART:19700405T030000|RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=1SU|TZOFFSETFROM:+1100|TZOFFSETTO:+1000'); // prettier-ignore
+		expect(syd).toContain('BEGIN:DAYLIGHT|DTSTART:19701004T020000|RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=1SU'); // prettier-ignore
+	});
+
+	it('timed multi-day item ends on its end date; lone CR is escaped', () => {
+		const t = buildIcs({ tz: 'UTC', now, items: [item({ time: '20:00', endDate: '2026-11-28', title: 'a\rb' })] }); // prettier-ignore
+		expect(t).toContain('DTSTART;TZID=UTC:20261126T200000');
+		expect(t).toContain('DTEND;TZID=UTC:20261128T210000');
+		expect(t).toContain('SUMMARY:a\\nb');
 	});
 });
 
@@ -120,5 +131,40 @@ describe('ics feed (db)', async () => {
 		expect(t).toContain('RRULE:FREQ=WEEKLY;BYDAY=MO');
 		expect(t).toContain('DTEND;TZID=Asia/Kuala_Lumpur:20261114T113000'); // 150 min block
 		for (const s of ['Old', 'Ended', 'Far', 'Hobby', 'Partner']) expect(t).not.toContain(s);
+	});
+});
+
+describe('GET /cal/<token>.ics', async () => {
+	const { freshDb } = await import('./helpers');
+	const usersRepo = await import('../../src/lib/server/repo/users');
+	const { GET } = await import('../../src/routes/cal/[file]/+server');
+	const call = async (file: string, ip = '10.0.0.1') => {
+		try {
+			const r = await GET({ params: { file }, getClientAddress: () => ip } as never);
+			return r.status;
+		} catch (e) {
+			return (e as { status: number }).status;
+		}
+	};
+
+	it('200 for a live token; 404 for bad, unknown, disabled; 429 after 120 fetches per IP', async () => {
+		freshDb({ JOBS_ENABLED: 'false' });
+		const u = usersRepo.createWithCalendar({
+			username: 'a',
+			displayName: 'A',
+			passwordHash: 'x',
+			role: 'admin',
+		});
+		const tok = usersRepo.newIcsToken(u.id);
+		expect(await call(`${tok}.ics`)).toBe(200);
+		expect(await call('nope.ics')).toBe(404);
+		expect(await call(`${'A'.repeat(43)}.ics`)).toBe(404);
+		expect(await call(tok)).toBe(404); // no .ics
+		usersRepo.disable(u.id);
+		expect(await call(`${tok}.ics`)).toBe(404);
+		for (let i = 0; i < 119; i++) await call('x.ics', '10.0.0.2');
+		expect(await call('x.ics', '10.0.0.2')).toBe(404); // 120th still served
+		expect(await call('x.ics', '10.0.0.2')).toBe(429);
+		expect(await call('x.ics', '10.0.0.3')).toBe(404); // other IP unaffected
 	});
 });

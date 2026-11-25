@@ -33,7 +33,13 @@ export const init: ServerInit = async () => {
 };
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-const PUBLIC = [/^\/login\/?$/, /^\/signup\/?$/, /^\/setup\/?$/, /^\/healthz\/?$/, /^\/cal\/[^/]+\.ics$/]; // cal = ICS feed, secret token in the path
+const PUBLIC = [
+	/^\/login\/?$/,
+	/^\/signup\/?$/,
+	/^\/setup\/?$/,
+	/^\/healthz\/?$/,
+	/^\/cal\/[A-Za-z0-9_-]{43}\.ics$/,
+]; // cal = ICS feed, secret token in the path
 const isPublic = (p: string) => PUBLIC.some((r) => r.test(p));
 
 export const handle: Handle = async ({ event, resolve }) => {

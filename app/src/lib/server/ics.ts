@@ -1,7 +1,7 @@
 // ICS feed text (RFC 5545) for GET /cal/<token>.ics. Pure: rows in, text out. Item date/time = owner-local.
 import { TZDate } from '@date-fns/tz';
 import { parseRRule } from '$lib/rrule';
-import { addDays, localToUtc, minutesOf } from '$lib/time';
+import { addDays, localToUtc, makeDate, minutesOf, weekdayOf } from '$lib/time';
 
 export interface IcsItem {
 	id: string;
@@ -18,7 +18,11 @@ export interface IcsItem {
 
 /** TEXT value escaping: backslash, semicolon, comma, newline */
 export function escapeText(s: string): string {
-	return s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+	return s
+		.replace(/\\/g, '\\\\')
+		.replace(/;/g, '\\;')
+		.replace(/,/g, '\\,')
+		.replace(/\r\n|\r|\n/g, '\\n');
 }
 
 /** fold a content line at 75 octets (UTF-8), never inside a character */
@@ -55,8 +59,17 @@ function offsetAt(tz: string, ms: number): number {
 const off = (m: number) =>
 	`${m < 0 ? '-' : '+'}${String(Math.floor(Math.abs(m) / 60)).padStart(2, '0')}${String(Math.abs(m) % 60).padStart(2, '0')}`;
 
-/** VTIMEZONE for one year's rules: one STANDARD if the zone has no DST, else the two transitions of `year`.
- * shortcut: rules of `year` only (clients reuse the last observance), fine while zones don't change rules. */
+const WD = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+const monthLen = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+/** day of month of the n-th (or -1 = last) weekday wd (1=Mon) in y-m */
+function nthWeekday(y: number, m: number, n: number, wd: number): number {
+	const len = monthLen(y, m);
+	if (n < 0) return len - ((weekdayOf(makeDate(y, m, len)) - wd + 7) % 7);
+	return 1 + ((wd - weekdayOf(makeDate(y, m, 1)) + 7) % 7) + (n - 1) * 7;
+}
+
+/** VTIMEZONE: one STANDARD if the zone has no DST in `year`, else its two transitions as yearly rules
+ * (BYMONTH + n-th/last weekday) so every year of the feed is covered. */
 export function vtimezone(tz: string, year: number): string[] {
 	const start = Date.UTC(year, 0, 1);
 	const end = Date.UTC(year + 1, 0, 1);
@@ -76,7 +89,12 @@ export function vtimezone(tz: string, year: number): string[] {
 		for (const c of changes) {
 			const kind = c.to > c.from ? 'DAYLIGHT' : 'STANDARD';
 			const wall = new Date(c.at + c.from * 60_000).toISOString(); // local wall time just before the change
-			out.push(`BEGIN:${kind}`, `DTSTART:${utc(wall).replace('Z', '')}`, `TZOFFSETFROM:${off(c.from)}`, `TZOFFSETTO:${off(c.to)}`, `END:${kind}`); // prettier-ignore
+			const m = Number(wall.slice(5, 7));
+			const day = Number(wall.slice(8, 10));
+			const wd = weekdayOf(wall.slice(0, 10));
+			const n = day + 7 > monthLen(year, m) ? -1 : Math.ceil(day / 7);
+			const first = makeDate(1970, m, nthWeekday(1970, m, n, wd));
+			out.push(`BEGIN:${kind}`, `DTSTART:${d8(first)}T${wall.slice(11, 13)}${wall.slice(14, 16)}00`, `RRULE:FREQ=YEARLY;BYMONTH=${m};BYDAY=${n}${WD[wd - 1]}`, `TZOFFSETFROM:${off(c.from)}`, `TZOFFSETTO:${off(c.to)}`, `END:${kind}`); // prettier-ignore
 		}
 	}
 	out.push('END:VTIMEZONE');
@@ -105,7 +123,7 @@ export function buildIcs(o: { tz: string; items: IcsItem[]; now: number; name?: 
 		lines.push('BEGIN:VEVENT', `UID:${it.id}@lifetracker`, `DTSTAMP:${stamp}`);
 		if (it.time) {
 			const s = minutesOf(it.time);
-			lines.push(`DTSTART;TZID=${o.tz}:${local(it.date, s)}`, `DTEND;TZID=${o.tz}:${local(it.date, s + (it.minutes ?? 60))}`); // prettier-ignore
+			lines.push(`DTSTART;TZID=${o.tz}:${local(it.date, s)}`, `DTEND;TZID=${o.tz}:${local(it.endDate ?? it.date, s + (it.minutes ?? 60))}`); // prettier-ignore
 		} else {
 			lines.push(`DTSTART;VALUE=DATE:${d8(it.date)}`, `DTEND;VALUE=DATE:${d8(addDays(it.endDate ?? it.date, 1))}`); // prettier-ignore
 		}
