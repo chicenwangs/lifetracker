@@ -1,0 +1,47 @@
+{
+  "root": "C:\\Users\\Public\\lt-team",
+  "repo": "chicenwangs/lifetracker",
+  "release": "4.0.0",
+  "baseTag": "v3.1.2",
+  "live": "https://planner.jeremyjosh.org",
+  "slots": {
+    "LEAD": { "qa": "LEAD", "build": "LEAD", "port": 4191 },
+    "W1": { "qa": "EMU", "build": "TESTER", "audit": "AUD-ANDROID", "port": 4181, "qaPort": 4174 },
+    "W2": { "qa": "WEB-P", "build": "DEV-A", "audit": "AUD-CLIENT", "port": 4183, "qaPort": 4175 },
+    "W3": { "qa": "WEB-D", "build": "DEV-B", "audit": "AUD-SERVER", "port": 4185, "qaPort": 4176 },
+    "W4": { "qa": "REPRO", "build": "DEV-C", "audit": "AUD-DATA", "port": 4187, "qaPort": 4177 },
+    "W5": { "qa": "SKEPTIC", "build": "REVIEWER", "audit": "SKEPTIC", "port": 4189, "qaPort": 4178 }
+  },
+  "phases": [
+    { "id": "p00-setup", "mode": "setup", "scope": "put the team-loop files on main (TEAM-LOOP.md section 'Phase p00')" },
+    { "id": "p01-qa", "mode": "qa", "rounds": 3, "scope": "current main: every feature since v3.1.2 (the v3.2 work)" },
+    { "id": "p02-fix", "mode": "fix", "scope": "issues filed in p01-qa: all S1 + S2, small S3" },
+    { "id": "p03-m1", "mode": "build", "scope": "milestone M1 = BREAKDOWN PRs 8-14 (v3.3 scope, migration 0011)" },
+    { "id": "p04-qa", "mode": "qa", "rounds": 1, "scope": "M1 features (PRs 8-14) + regression of touched screens" },
+    { "id": "p05-fix", "mode": "fix", "scope": "issues filed in p04-qa: all S1 + S2, small S3" },
+    { "id": "p06-m2", "mode": "build", "scope": "milestone M2 = BREAKDOWN PRs 15-31 (Pages overhaul, migration 0012)" },
+    { "id": "p07-qa", "mode": "qa", "rounds": 3, "scope": "the whole app at current main" },
+    { "id": "p08-audit", "mode": "audit", "scope": "pre-tag SECURITY audit of git diff v3.1.2..main" },
+    { "id": "p09-fix", "mode": "fix", "scope": "issues filed in p07-qa and p08-audit (and RC failures): all S1 + S2, small S3" },
+    { "id": "p10-rc", "mode": "rc", "scope": "release candidate 4.0.0: bump PR, release docs, checks 1-3, RC report" },
+    { "id": "p11-tag", "mode": "tag", "scope": "owner runs run.ps1 -Approve 4.0.0 (script tags, no agent)" },
+    { "id": "p12-docs", "mode": "docs", "scope": "after live /healthz shows 4.0.0: 'now live' documentation PR" },
+    { "id": "p13-audit", "mode": "audit", "scope": "FULL code audit of the whole codebase: report + issues, no fixes" }
+  ],
+  "rcFailGoto": "p09-fix",
+  "maxRcAttempts": 3,
+  "limits": {
+    "issuesPerQaRound": 10,
+    "issuesFinalAudit": 20,
+    "heavyLockMinutes": 60,
+    "browserLockMinutes": 120,
+    "emulatorLockMinutes": 240,
+    "gitLockMinutes": 10,
+    "minFreeRamGB": 1.5,
+    "minFreeDiskGB": 15,
+    "hardStopDiskGB": 10,
+    "hardStopRamGB": 1.0,
+    "mainRedHours": 2,
+    "staleAgentMinutes": 120
+  }
+}

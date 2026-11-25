@@ -8,6 +8,7 @@ Read this first. One page of truth; deeper docs at the end. Caveman style: short
 - Repo `github.com/chicenwangs/lifetracker` (private). Local: `C:\Users\jeremy josh\Desktop\life-tracker`. Branch `main`.
 - Latest release: **v3.1.2** (bug-fix patch, milestone 3.1.2; tag, GHCR image, GitHub Release, APK; 2026-11-24). `app/package.json` = 3.1.2. Live upgrade = owner.
 - Live: `https://planner.jeremyjosh.org` (homelab Docker Compose + Cloudflare Tunnel). Last verified 2026-11-19: `/healthz` → `{"ok":true,"db":true,"version":"3.0.0","jobs":true}`. Not re-checked since v3.1.x. **Owner deploys. Agents never deploy and never touch live data.**
+- Team loop (2026-11-25 →): `qa/TEAM-LOOP.md`. One release v4.0.0 (no v3.2/v3.3 tags). Migration PRs merge after `qa/team/migration-check.mjs`; tag only via the owner's `qa/team/run.ps1 -Approve`. Design for v3.3 + v4.0 screens: `docs/v4/DESIGN.md` + `wireframes/v4/index.html`.
 - **main has v3.2 work, not tagged yet:** merged 2026-11-25 by the build loop — Postpone/Skip (#384), Slipped list (#385), print week (#387), ICS calendar feed (#388), `agenda()` refactor (#386), Keep restore test (#382); #383 was already fixed. No migration. Tag + APK = owner.
 - Android app ships per release (`life-tracker-X.Y.Z.apk`), Capacitor 8 shell in `mobile/`.
 

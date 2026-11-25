@@ -242,6 +242,8 @@ These answers override anything above that disagrees.
 
 ## 8. Work split (one issue = one branch = one PR off `main`)
 
+> **Update 2026-11-25 (owner):** no v3.2 / v3.3 tags. Everything below ships as **one release, v4.0.0**. v3.3 = milestone M1, the Pages overhaul = milestone M2 (QA checkpoints, no tags). Run by the team loop: `qa/TEAM-PLAN.md`, `qa/TEAM-LOOP.md`. Screens: `docs/v4/DESIGN.md`.
+
 Planner first (owner, 2026-11-25). `∥` = can run in parallel with other `∥` rows in the same release (no shared files, no dependency).
 
 ### v3.2 — Planner, no migration (7 PRs)
