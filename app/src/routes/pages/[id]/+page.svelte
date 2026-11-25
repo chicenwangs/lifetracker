@@ -145,6 +145,60 @@
 			showError(e);
 		}
 	}
+	// v4.0 PR 31: cover image (the page owner uploads it; the toast Undo restores the previous cover)
+	let coverInput: HTMLInputElement | undefined = $state();
+	let coverBusy = $state(false);
+	function pickCover() {
+		menu = false;
+		coverInput?.click();
+	}
+	async function setCover(attId: string | null) {
+		const prev = pg.coverAttachmentId ?? null;
+		try {
+			await patch(`/api/pages/${pg.id}`, { coverAttachmentId: attId });
+			await invalidateAll();
+			showToast(attId ? 'Cover added' : 'Cover removed', {
+				undo:
+					prev === attId
+						? undefined
+						: async () => {
+								await patch(`/api/pages/${pg.id}`, { coverAttachmentId: prev });
+								await invalidateAll();
+							},
+			});
+		} catch (e) {
+			showError(e);
+		}
+	}
+	async function uploadCover(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const f = input.files?.[0];
+		input.value = '';
+		if (!f) return;
+		coverBusy = true;
+		try {
+			const lim = (await (await fetch('/api/attachments')).json()) as { maxBytes: number; types: string[] };
+			if (f.size > lim.maxBytes)
+				return showToast(`That image is too big (max ${Math.round(lim.maxBytes / 1048576)} MB).`, {
+					kind: 'error',
+				});
+			const ext = (/\.([a-z0-9]+)$/i.exec(f.name)?.[1] ?? '').toLowerCase();
+			if (!lim.types.includes(ext))
+				return showToast(`${f.name}: this file type isn't allowed.`, { kind: 'error' });
+			const res = await fetch(`/api/attachments?name=${encodeURIComponent(f.name)}`, {
+				method: 'POST',
+				headers: { 'content-type': f.type || 'application/octet-stream' },
+				body: f,
+			});
+			const j = (await res.json()) as { attachment?: { id: string }; error?: { message?: string } };
+			if (!res.ok) throw new Error(j.error?.message ?? 'Upload failed');
+			if (j.attachment) await setCover(j.attachment.id);
+		} catch (err) {
+			showError(err);
+		} finally {
+			coverBusy = false;
+		}
+	}
 </script>
 
 <svelte:head><title>{pg.title || 'Untitled'} · Pages · Life Tracker</title></svelte:head>
@@ -220,6 +274,11 @@
 						<button role="menuitem" type="button" onclick={() => reorder(-1)}>Move up</button>
 						<button role="menuitem" type="button" onclick={() => reorder(1)}>Move down</button>
 					{/if}
+					{#if mine}
+						<button role="menuitem" type="button" onclick={pickCover}
+							>{pg.coverAttachmentId ? 'Change cover…' : 'Add cover…'}</button
+						>
+					{/if}
 					<button
 						role="menuitem"
 						type="button"
@@ -238,6 +297,20 @@
 		</div>
 	</div>
 	<div class="body">
+		{#if pg.coverAttachmentId}
+			<div class="cover">
+				<img src="/api/attachments/{pg.coverAttachmentId}" alt="Page cover" />
+				{#if mine && !pg.archived}
+					<div class="cover-acts">
+						<button class="btn sm" type="button" disabled={coverBusy} onclick={pickCover}>Change cover</button
+						>
+						<button class="btn sm" type="button" disabled={coverBusy} onclick={() => setCover(null)}
+							>Remove</button
+						>
+					</div>
+				{/if}
+			</div>
+		{/if}
 		<input
 			class="title"
 			autocomplete="off"
@@ -247,6 +320,14 @@
 			readonly={pg.access === 'view'}
 			bind:value={title}
 			oninput={onTitle}
+		/>
+		<input
+			type="file"
+			accept="image/png,image/jpeg,image/gif,image/webp"
+			aria-label="Cover image"
+			bind:this={coverInput}
+			hidden
+			onchange={uploadCover}
 		/>
 		{#if !mine}<p class="shared" role="status">
 				Shared with you · {pg.access === 'edit' ? 'you can edit' : 'view only'}
@@ -378,6 +459,33 @@
 		max-width: none;
 		padding: 28px 40px 40px;
 	}
+	/* v4.0 PR 31: cover image (180 px desktop, 120 px phone) */
+	.cover {
+		position: relative;
+		margin: 0 0 14px;
+		border-radius: 12px;
+		overflow: hidden;
+		background: var(--ground);
+	}
+	.cover img {
+		display: block;
+		width: 100%;
+		height: 180px;
+		object-fit: cover;
+	}
+	.cover-acts {
+		position: absolute;
+		right: 8px;
+		bottom: 8px;
+		display: flex;
+		gap: 6px;
+		opacity: 0;
+		transition: opacity 120ms var(--ease);
+	}
+	.cover:hover .cover-acts,
+	.cover:focus-within .cover-acts {
+		opacity: 1;
+	}
 	.title {
 		display: block;
 		width: 100%;
@@ -421,6 +529,15 @@
 		}
 		.body {
 			padding: 20px 16px 32px;
+		}
+		.cover img {
+			height: 120px;
+		}
+		.cover-acts {
+			opacity: 1;
+		}
+		.cover-acts .btn {
+			min-height: 48px;
 		}
 		.title {
 			font-size: 26px;

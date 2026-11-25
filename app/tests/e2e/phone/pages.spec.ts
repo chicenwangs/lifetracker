@@ -1,5 +1,5 @@
-// Pages on phone (#98): toolbar docks to the bottom only while typing, 48 dp, no Ctrl hints; block actions in a
-// sheet; Pin + Share in the ⋯ menu.
+﻿// Pages on phone (#98): toolbar docks to the bottom only while typing, 48 dp, no Ctrl hints; block actions in a
+// sheet; Pin + Share in the â‹¯ menu.
 import { expect, test, type Page } from '@playwright/test';
 import { expectTargets48, expectTappable, noDesktopHints, signIn } from './helpers';
 
@@ -63,7 +63,7 @@ test('the docked toolbar leaves every tab tappable (#433)', async () => {
 	await page.getByLabel('Page title').click();
 });
 
-test('"/" menu and page ⋯ menu rows are 48 dp (#228, #223)', async () => {
+test('"/" menu and page â‹¯ menu rows are 48 dp (#228, #223)', async () => {
 	await page.getByLabel('Page content').click();
 	await page.keyboard.type('/');
 	await expect(page.getByRole('listbox', { name: 'Insert block' })).toBeVisible();
@@ -78,7 +78,7 @@ test('"/" menu and page ⋯ menu rows are 48 dp (#228, #223)', async () => {
 	await expect(page.getByRole('menuitem', { name: 'Pin to header' })).toBeHidden();
 });
 
-test('block ⋯ = sheet with move, duplicate, delete', async () => {
+test('block â‹¯ = sheet with move, duplicate, delete', async () => {
 	await page.getByLabel('Page content').click();
 	await page.keyboard.type('first line');
 	await tools().getByRole('button', { name: 'Block actions' }).click();
@@ -88,14 +88,14 @@ test('block ⋯ = sheet with move, duplicate, delete', async () => {
 	await expect(page.getByLabel('Page content').getByText('first line')).toHaveCount(2);
 });
 
-test('Pin and Share live in the ⋯ menu', async () => {
+test('Pin and Share live in the â‹¯ menu', async () => {
 	await page.getByLabel('Page title').click();
 	const bar = page.locator('.pagev .bar');
 	await expect(bar.getByRole('button', { name: 'Share', exact: true })).toBeHidden();
 	await expect(bar.getByRole('button', { name: 'Pin', exact: true })).toBeHidden();
 	await bar.getByRole('button', { name: 'Page menu' }).click();
 	await expect(page.getByRole('menuitem', { name: 'Pin to header' })).toBeVisible();
-	await page.getByRole('menuitem', { name: 'Share…' }).click();
+	await page.getByRole('menuitem', { name: 'Shareâ€¦' }).click();
 	await expect(page.getByRole('dialog', { name: /Share/ })).toBeVisible();
 });
 
@@ -128,4 +128,28 @@ test('Archive: 48 dp search field and no sideways scroll at 320 px (#405)', asyn
 	} finally {
 		await page.setViewportSize(vp);
 	}
+});
+
+test('cover: add from the page menu, 120 px banner, remove (#454)', async () => {
+	const PNG = Buffer.from(
+		'89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c62f8cfc0f01f00050001ff9a5ee73f0000000049454e44ae426082',
+		'hex',
+	);
+	const id = await page.evaluate(async () => {
+		const r = await fetch('/api/pages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'Phone cover page' }) }); // prettier-ignore
+		return ((await r.json()) as { page: { id: string } }).page.id;
+	});
+	await page.goto(`/pages/${id}`);
+	await page.locator('.pagev .bar').getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Add coverâ€¦' }).click();
+	await page
+		.getByLabel('Cover image')
+		.setInputFiles({ name: 'cover.png', mimeType: 'image/png', buffer: PNG });
+	const img = page.locator('.cover img');
+	await expect(img).toBeVisible();
+	const box = await img.boundingBox();
+	expect(Math.round(box!.height)).toBe(120);
+	await page.getByRole('button', { name: 'Remove' }).click();
+	await expect(page.locator('.cover')).toHaveCount(0);
+	await page.evaluate(async (x) => fetch(`/api/pages/${x}`, { method: 'DELETE' }), id);
 });

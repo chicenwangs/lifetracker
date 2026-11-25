@@ -137,6 +137,16 @@ export async function save(
 	}
 } // prettier-ignore
 
+/** v4.0 PR 31: a ready file this user owns (page cover validation) */
+export function ownedReady(attachmentId: string, ownerId: string): boolean {
+	const r = db()
+		.prepare(
+			`SELECT id FROM attachments WHERE id = ? AND owner_id = ? AND status = 'ready' AND deleted_at IS NULL`,
+		)
+		.get(attachmentId, ownerId);
+	return !!r;
+}
+
 /** the file to send, if `userId` owns it or can read a note/page that uses it (shares, DESIGN §12) */
 export function readable(userId: string, id: string): { row: Row; path: string; inline: boolean } {
 	const r = db().prepare(`SELECT * FROM attachments WHERE id = ?`).get(id) as Row | undefined;
@@ -145,7 +155,7 @@ export function readable(userId: string, id: string): { row: Row; path: string; 
 	return { row: r, path: pathOf(r.storage_key), inline: !!KINDS[extOf(r.original_name)]?.inline };
 }
 
-const SOURCE_KIND: Record<string, Kind> = { keep_note: 'note', page_block: 'page' };
+const SOURCE_KIND: Record<string, Kind> = { keep_note: 'note', page_block: 'page', page_cover: 'page' };
 function viaSource(userId: string, id: string): boolean {
 	const refs = db().prepare(`SELECT source_type, source_id FROM attachment_refs WHERE attachment_id = ?`).all(id) as { source_type: string; source_id: string }[]; // prettier-ignore
 	return refs.some((x) => { const k = SOURCE_KIND[x.source_type]; return !!k && !!accessOf(k, userId, x.source_id); }); // prettier-ignore
