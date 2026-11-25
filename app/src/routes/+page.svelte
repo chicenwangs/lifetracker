@@ -9,6 +9,7 @@
 	import MonthCalendar from '$lib/components/MonthCalendar.svelte';
 	import DayPlanner from '$lib/components/DayPlanner.svelte';
 	import DueTodayChips from '$lib/components/DueTodayChips.svelte';
+	import SlippedStrip from '$lib/components/SlippedStrip.svelte';
 	import { patch } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { calendarBus } from '$lib/client/bus.svelte';
@@ -152,6 +153,13 @@
 		/>
 	</div>
 	<aside class="right" aria-label="Daily planner">
+		<SlippedStrip
+			items={data.slipped.items}
+			more={data.slipped.more}
+			today={data.today}
+			tz={data.user?.timezone ?? 'Asia/Kuala_Lumpur'}
+			{refresh}
+		/>
 		<DayPlanner
 			bind:this={planner}
 			date={data.day}
