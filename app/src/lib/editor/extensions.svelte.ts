@@ -1,8 +1,9 @@
 // Tiptap pieces for Pages (ADR-002): internal page link node, "/" menu, block operations.
 import { Extension, Node } from '@tiptap/core';
+import { TaskItem } from '@tiptap/extension-list';
 import { closeHistory } from '@tiptap/pm/history';
-import { NodeSelection, type EditorState, type Transaction } from '@tiptap/pm/state';
-import type { EditorView } from '@tiptap/pm/view';
+import { NodeSelection, Plugin, PluginKey, type EditorState, type Transaction } from '@tiptap/pm/state';
+import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
 import { Suggestion } from '@tiptap/suggestion';
 import { mount, unmount } from 'svelte';
 import SlashMenu from './SlashMenu.svelte';
@@ -69,6 +70,108 @@ export const DatabaseBlock = Node.create({
 			// the table is its own world: ProseMirror must not eat its keys, clicks or DOM changes
 			return { dom, stopEvent: () => true, ignoreMutation: () => true, destroy: () => void unmount(comp) };
 		};
+	},
+});
+
+/** v4.0 PR 30: a stable id for a to-do, so a reminder survives page saves (page_blocks rows are rebuilt) */
+export function newBlockId(): string {
+	const a = new Uint8Array(16);
+	crypto.getRandomValues(a);
+	return 'pbl_' + Array.from(a, (b) => (b % 36).toString(36)).join('');
+}
+
+/** TaskItem that keeps our stable to-do id in the saved JSON */
+export const TodoItem = TaskItem.extend({
+	addAttributes() {
+		return {
+			...this.parent?.(),
+			blockId: {
+				default: null,
+				parseHTML: (el) => el.getAttribute('data-block-id'),
+				renderHTML: (attrs) => (attrs.blockId ? { 'data-block-id': attrs.blockId } : {}),
+			},
+		};
+	},
+});
+
+/** gives every to-do a blockId; a duplicated to-do gets a fresh one (a reminder follows one item only) */
+export const TodoIds = Extension.create({
+	name: 'todoIds',
+	addProseMirrorPlugins() {
+		return [
+			new Plugin({
+				key: new PluginKey('todoIds'),
+				appendTransaction: (trs, _old, state) => {
+					if (!trs.some((t) => t.docChanged)) return null;
+					const seen: string[] = [];
+					const edits: { pos: number; attrs: Record<string, unknown> }[] = [];
+					state.doc.descendants((node, pos) => {
+						if (node.type.name !== 'taskItem') return;
+						const id = node.attrs.blockId as string | null;
+						if (id && !seen.includes(id)) {
+							seen.push(id);
+							return;
+						}
+						const next = newBlockId();
+						seen.push(next);
+						edits.push({ pos, attrs: { ...node.attrs, blockId: next } });
+					});
+					if (!edits.length) return null;
+					const tr = state.tr;
+					for (const e of edits) tr.setNodeMarkup(e.pos, undefined, e.attrs);
+					return tr;
+				},
+			}),
+		];
+	},
+});
+
+export interface TodoReminderStore {
+	labels: Record<string, string>;
+	onOpen: (blockId: string) => void;
+}
+function todoChip(label: string, open: () => void): HTMLElement {
+	const b = document.createElement('button');
+	b.type = 'button';
+	b.className = 'todo-rem';
+	b.textContent = `\u{1F514} ${label}`;
+	b.title = 'Edit reminder';
+	b.contentEditable = 'false';
+	b.addEventListener('mousedown', (e) => e.preventDefault());
+	b.addEventListener('click', (e) => {
+		e.preventDefault();
+		open();
+	});
+	return b;
+}
+/** the bell chip after a to-do: a decoration, so the saved doc never carries reminder state */
+export const TodoReminders = Extension.create({
+	name: 'todoReminders',
+	addStorage() {
+		return { labels: {}, onOpen: () => {} } as TodoReminderStore;
+	},
+	addProseMirrorPlugins() {
+		return [
+			new Plugin({
+				key: new PluginKey('todoReminders'),
+				props: {
+					decorations: (state) => {
+						const store = this.storage as unknown as TodoReminderStore;
+						const decos: Decoration[] = [];
+						state.doc.descendants((node, pos) => {
+							if (node.type.name !== 'taskItem') return;
+							const id = node.attrs.blockId as string | null;
+							const label = id ? store.labels[id] : '';
+							if (!id || !label) return;
+							const first = node.firstChild;
+							const at = first ? pos + first.nodeSize : pos + node.nodeSize - 1;
+							decos.push(Decoration.widget(at, () => todoChip(label, () => store.onOpen(id)), { side: 1 }));
+						});
+						return DecorationSet.create(state.doc, decos);
+					},
+				},
+			}),
+		];
 	},
 });
 

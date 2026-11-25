@@ -305,7 +305,12 @@
 			</div>
 		{/if}
 		{#key pg.id}
-			<PageEditor bind:this={editor} page={pg} onstate={(s) => (saveState = s)} />
+			<PageEditor
+				bind:this={editor}
+				page={pg}
+				tz={data.user?.timezone ?? 'Asia/Kuala_Lumpur'}
+				onstate={(s) => (saveState = s)}
+			/>
 		{/key}
 	</div>
 </article>

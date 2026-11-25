@@ -7,6 +7,7 @@ import { newId } from '../crypto';
 import { ApiFail, bad, notFound } from '../http';
 import * as fts from '../search';
 import * as attachments from '../attachments';
+import * as reminders from '../reminders';
 import { accessOf } from './shares';
 import { nowUtcIso } from '$lib/time';
 import type { PageDTO, PageNode } from '$lib/types';
@@ -103,7 +104,7 @@ const NODES: Record<string, string[]> = {
 	orderedList: ['start', 'type'],
 	listItem: [],
 	taskList: [],
-	taskItem: ['checked'],
+	taskItem: ['checked', 'blockId'],
 	horizontalRule: [],
 	blockquote: [],
 	codeBlock: ['language'],
@@ -143,6 +144,7 @@ function check(n: unknown, depth: number): void {
 		if (typeof alt !== 'string' || !alt.trim()) bad('Images need alt text.', 'alt_required');
 	}
 	if (node.type === 'pageLink' && !/^pg_[0-9a-z]+$/.test(String(node.attrs?.pageId ?? ''))) bad('bad page link');
+	if (node.type === 'taskItem' && node.attrs?.blockId != null && !/^pbl_[0-9a-z]{16}$/.test(String(node.attrs.blockId))) bad('bad to-do id'); // v4.0 PR 30
 	if (node.type === 'database' && !/^pdb_[0-9a-z]+$/.test(String(node.attrs?.databaseId ?? ''))) bad('bad database'); // the viewer's browser fetches /api/databases/<id>
 	if (node.type === 'text' && typeof node.text !== 'string') bad('bad text');
 	if (node.marks !== undefined) {
@@ -264,6 +266,7 @@ export function update(
 			const ownerOf = (a: string) => (ownedBy.get(a) as { o: string } | undefined)?.o ?? '';
 			const atts = [...new Set(JSON.stringify(p.doc).match(/att_[0-9a-z]{16}/g) ?? [])].filter((a) => had.has(a) || ownerOf(a) === actor); // prettier-ignore
 			attachments.syncRefs('page_block', id, ownerId, atts, atts.map(ownerOf));
+			reminders.syncPageTodos(id); // v4.0 PR 30: ticked / deleted to-dos cancel their reminders
 		}
 		const set: string[] = ['updated_at = @now', 'updated_by = @me', 'revision = revision + 1'];
 		if (p.title !== undefined) set.push('title = @title');
