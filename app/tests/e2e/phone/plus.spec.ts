@@ -155,6 +155,10 @@ test('rapid taps after Save note do not reach the page beneath (#378)', async ()
 		},
 		[x, y] as const,
 	);
+	// Press Save with Playwright's click: it re-checks that the button is the hit target at the click point and
+	// retries on a toast or layout shift. A raw CDP touch at the old coordinates sometimes pressed nothing on CI
+	// landscape (#414: sheet open, Save enabled, no toast, yet no save). The burst below stays a real touch.
+	await save.click();
 	const f = await finger(page);
 	await f.send('touchStart', x, y);
 	await f.send('touchEnd');
