@@ -7,6 +7,10 @@ import * as pages from '../../src/lib/server/repo/pages';
 import * as databases from '../../src/lib/server/repo/databases';
 import * as shares from '../../src/lib/server/repo/shares';
 import { duplicatePage } from '../../src/lib/server/repo/page-duplicate';
+import { POST as duplicatePost } from '../../src/routes/api/pages/[id]/duplicate/+server';
+import { POST as undoPost } from '../../src/routes/api/undo/+server';
+import * as search from '../../src/lib/server/search';
+import { nowUtcIso } from '../../src/lib/time';
 
 let u1: string;
 let u2: string;
@@ -119,7 +123,7 @@ describe('duplicatePage', () => {
 			).n,
 		).toBe(0);
 	});
-	it('a shared page copies into the viewerâ€™s tree, parent top level, no shares', () => {
+	it("a shared page copies into the viewer's tree, parent top level, no shares", () => {
 		const { p } = source();
 		shares.put('page', u1, p.id, { username: 'two', permission: 'view' });
 		const copy = duplicatePage(u2, u1, p.id);
@@ -127,5 +131,51 @@ describe('duplicatePage', () => {
 		expect(pages.get(u2, copy.id).access).toBe('owner');
 		expect((sql().prepare('SELECT count(*) AS n FROM page_shares WHERE page_id = ?').get(copy.id) as { n: number }).n).toBe(0); // prettier-ignore
 		expect(copy.doc.content.length).toBe(3); // content copied even from a view share
+	});
+
+	it('Undo (route) clears the copy search hit and its attachment refs', async () => {
+		const ATT = 'att_0000000000000001';
+		sql()
+			.prepare(
+				`INSERT INTO attachments (id, owner_id, storage_key, original_name, mime_type, byte_size, status, created_at) VALUES (?,?,?,?,?,?,?,?)`,
+			)
+			.run(ATT, u1, 'aa'.repeat(16), 'p.png', 'image/png', 12, 'ready', nowUtcIso());
+		const p = pages.create(u1, { parentId: null, title: 'Copy search source' });
+		pages.update(u1, p.id, {
+			doc: {
+				type: 'doc',
+				content: [
+					{ type: 'paragraph', content: [{ type: 'text', text: 'searchable body' }] },
+					{ type: 'image', attrs: { src: `/api/attachments/${ATT}`, alt: 'pic' } },
+				],
+			},
+		});
+		const user = usersRepo.safe(usersRepo.byId(u1)!);
+		const res = await duplicatePost({ locals: { user }, params: { id: p.id } } as never);
+		const j = (await res.json()) as { page: { id: string }; undo: { id: string } };
+		const copyId = j.page.id;
+		const hit = () => search.search(u1, 'Copy of Copy search source').some((h) => h.id === copyId);
+		const refs = () =>
+			(
+				sql()
+					.prepare(
+						`SELECT count(*) AS n FROM attachment_refs WHERE source_type = 'page_block' AND source_id = ?`,
+					)
+					.get(copyId) as { n: number }
+			).n;
+		expect(hit()).toBe(true);
+		expect(refs()).toBe(1);
+		await undoPost({
+			locals: { user },
+			request: new Request('http://localhost/api/undo', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ id: j.undo.id }),
+			}),
+			params: {},
+		} as never);
+		expect(hit()).toBe(false);
+		expect(refs()).toBe(0);
+		expect(() => pages.get(u1, copyId)).toThrow();
 	});
 });
