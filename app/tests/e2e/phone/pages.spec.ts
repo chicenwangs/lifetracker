@@ -85,3 +85,23 @@ test('Pin toast says Pinned, Unpin toast says Unpinned (#348)', async () => {
 	await page.getByRole('menuitem', { name: /^Unpin/ }).click();
 	await expect(page.getByText('Unpinned from header')).toBeVisible();
 });
+
+test('Archive: 48 dp search field and no sideways scroll at 320 px (#405)', async () => {
+	await page.goto('/pages/archive');
+	await expect(page.getByLabel('Search archive')).toBeVisible();
+	await expectTargets48(page); // the field was 32 px tall before
+	const vp = page.viewportSize()!;
+	try {
+		await page.setViewportSize({ width: 320, height: 640 });
+		await page.waitForTimeout(200);
+		const m = await page.evaluate(() => {
+			const d = document.documentElement;
+			const sort = document.querySelector('select')!.getBoundingClientRect();
+			return { scrollW: d.scrollWidth, clientW: d.clientWidth, sortRight: Math.round(sort.right) };
+		});
+		expect(m.scrollW).toBeLessThanOrEqual(m.clientW); // 401 px wide before
+		expect(m.sortRight).toBeLessThanOrEqual(320); // Sort was clipped
+	} finally {
+		await page.setViewportSize(vp);
+	}
+});
