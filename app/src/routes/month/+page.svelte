@@ -2,7 +2,8 @@
      select it: its agenda shows below, you stay in Calendar. Swipe the grid for the month before / after. -->
 <script lang="ts">
 	import GestureHint from '$lib/components/GestureHint.svelte';
-	import { shown } from '$lib/client/itemtypes.svelte';
+	import { shown, typesState } from '$lib/client/itemtypes.svelte';
+	import { onMonth } from '$lib/itemtypes';
 	import { entryColors } from '$lib/client/partner';
 	import { addDays, clipToDay, hhmm, prettyDate, weekStartOf } from '$lib/time';
 	import { goto } from '$app/navigation';
@@ -30,8 +31,14 @@
 				date: d,
 				inMonth: d.startsWith(data.ym),
 				things: [
-					...shown(data.cal.items).filter((i) => i.date && i.date <= d && (i.endDate ?? i.date) >= d),
-					...shown(data.cal.blocks).filter((b) => clipToDay(b.startAt, b.endAt, d, tz)),
+					...shown(data.cal.items)
+						.filter((i) => onMonth(typesState.list, i.type))
+						.filter((i) => i.date && i.date <= d && (i.endDate ?? i.date) >= d),
+					...shown(data.cal.blocks)
+						.filter((b) =>
+							onMonth(typesState.list, ('itemType' in b ? b.itemType : null) ?? b.type ?? 'None'),
+						)
+						.filter((b) => clipToDay(b.startAt, b.endAt, d, tz)),
 				],
 			});
 		return out;

@@ -15,6 +15,8 @@ export interface ItemTypeDTO {
 	shareDefault: boolean;
 	countsDown: boolean;
 	isDefault: boolean;
+	/** v3.3 PR 10: "Month calendar" switch. Off = hidden on the Month views, shown everywhere else. */
+	onCalendar: boolean;
 	/** items + blocks using it (Settings only) */
 	used?: number;
 }
