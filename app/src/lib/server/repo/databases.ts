@@ -285,7 +285,7 @@ export function recordOfPage(
 const zFilter = z
 	.object({ prop: z.string().max(40), op: z.string().max(20), value: z.unknown().optional() })
 	.strict();
-export const viewConfigSchema = z.object({ sort: z.object({ prop: z.string().max(40), dir: z.enum(['asc', 'desc']) }).strict().nullable().optional(), filters: z.array(zFilter).max(20).optional(), conj: z.enum(['and', 'or']).optional(), hidden: z.array(z.string().max(40)).max(MAX_PROPS).optional(), order: z.array(z.string().max(40)).max(MAX_PROPS).optional() }).strict(); // prettier-ignore
+export const viewConfigSchema = z.object({ sort: z.object({ prop: z.string().max(40), dir: z.enum(['asc', 'desc']) }).strict().nullable().optional(), filters: z.array(zFilter).max(20).optional(), conj: z.enum(['and', 'or']).optional(), hidden: z.array(z.string().max(40)).max(MAX_PROPS).optional(), order: z.array(z.string().max(40)).max(MAX_PROPS).optional(), groupBy: z.string().max(40).nullable().optional(), cardProps: z.array(z.string().max(40)).max(2).optional() }).strict(); // prettier-ignore
 export const viewPatchSchema = z
 	.object({ name: z.string().trim().min(1).max(60), config: viewConfigSchema })
 	.partial()
@@ -294,6 +294,12 @@ export const viewPatchSchema = z
 /** filters must name a real property + an operator valid for its type (no raw columns or SQL from the client) */
 function checkConfig(dbId: string, c: ViewConfig) {
 	const ps = props(dbId);
+	if (c.groupBy) {
+		const g = ps.find((p) => p.id === c.groupBy);
+		if (!g || g.type !== 'select') bad('Group by needs a select property.');
+	}
+	for (const id of c.cardProps ?? [])
+		if (!ps.some((p) => p.id === id)) bad('Card shows an unknown property.');
 	for (const f of c.filters ?? []) {
 		const p = ps.find((x) => x.id === f.prop);
 		if (!p || !OPS[p.type].includes(f.op)) bad('That filter does not fit the property type.');
@@ -303,12 +309,12 @@ function checkConfig(dbId: string, c: ViewConfig) {
 	if (c.sort && !ps.some((p) => p.id === c.sort?.prop)) bad('unknown sort property');
 }
 
-export function addView(ownerId: string, dbId: string, name: string): DbView {
+export function addView(ownerId: string, dbId: string, name: string, type: DbView['type'] = 'table'): DbView {
 	own(ownerId, dbId);
 	const id = newId('pdv');
-	db().prepare(`INSERT INTO database_views (id, database_id, name, view_type, config_json, position) VALUES (?, ?, ?, 'table', '{}', ?)`)
-		.run(id, dbId, name, maxPos(`SELECT max(position) AS m FROM database_views WHERE database_id = ?`, dbId)); // prettier-ignore
-	return { id, name, type: 'table', config: {} };
+	db().prepare(`INSERT INTO database_views (id, database_id, name, view_type, config_json, position) VALUES (?, ?, ?, ?, '{}', ?)`)
+		.run(id, dbId, name, type, maxPos(`SELECT max(position) AS m FROM database_views WHERE database_id = ?`, dbId)); // prettier-ignore
+	return { id, name, type, config: {} };
 }
 export function patchView(ownerId: string, viewId: string, p: z.infer<typeof viewPatchSchema>): void {
 	const v = db().prepare(`SELECT v.* FROM database_views v JOIN page_databases d ON d.id = v.database_id WHERE v.id = ? AND d.owner_id = ?`).get(viewId, ownerId) as { database_id: string; name: string; config_json: string } | undefined; // prettier-ignore
