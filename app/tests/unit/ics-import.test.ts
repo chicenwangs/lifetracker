@@ -114,8 +114,8 @@ describe('ics parser', () => {
 		expect(skipped[0]?.reason).toContain(`more than ${ICS_MAX_EVENTS} events`);
 	});
 
-	it('refuses a file over 512 KB with a plain message (adapter-node body cap)', () => {
-		expect(() => parseIcs('X'.repeat(ICS_MAX_BYTES + 1), TZ)).toThrow(/512 KB/);
+	it('refuses a file over 1 MB with a plain message', () => {
+		expect(() => parseIcs('X'.repeat(ICS_MAX_BYTES + 1), TZ)).toThrow(/1 MB/);
 	});
 });
 

@@ -60,7 +60,7 @@ export const actions: Actions = {
 		if (!(file instanceof File) || !file.name || file.size === 0)
 			return fail(400, { icsError: 'Pick a calendar file (.ics) first.' });
 		if (file.size > ICS_MAX_BYTES)
-			return fail(400, { icsError: 'That file is bigger than 512 KB. Export a shorter date range.' });
+			return fail(400, { icsError: 'That file is bigger than 1 MB. Export a shorter date range.' });
 		let text: string;
 		try {
 			text = await file.text();

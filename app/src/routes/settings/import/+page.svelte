@@ -28,9 +28,9 @@
 		// adapter-node caps the whole POST body at 512 KB: refuse a bigger file before the request (the server
 		// check stays as the backstop, but its message never reaches a browser after the body limit)
 		const f = formData.get('file');
-		if (f instanceof File && f.size > 512 * 1024) {
+		if (f instanceof File && f.size > 1024 * 1024) {
 			cancel();
-			clientError = 'That file is bigger than 512 KB. Export a shorter date range.';
+			clientError = 'That file is bigger than 1 MB. Export a shorter date range.';
 			return;
 		}
 		clientError = '';
@@ -67,7 +67,7 @@
 		</p>
 		<form method="post" action="?/ics" enctype="multipart/form-data" use:enhance={icsEnhance}>
 			<label class="field">
-				<span class="label">File (.ics, up to 512 KB)</span>
+				<span class="label">File (.ics, up to 1 MB)</span>
 				<input
 					type="file"
 					name="file"
