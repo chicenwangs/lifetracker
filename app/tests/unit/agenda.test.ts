@@ -1,4 +1,4 @@
-// PR 5: agenda() = shared range query for /api/native + ICS: own calendar, repeats expanded,
+// PR 5: agenda() = shared range query for /api/native: own calendar, repeats expanded,
 // hidden types dropped, private flag kept.
 import { beforeEach, expect, it } from 'vitest';
 import { freshDb } from './helpers';

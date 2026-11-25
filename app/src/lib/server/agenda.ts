@@ -1,4 +1,4 @@
-// Shared range query for the Android sync (/api/native) and the ICS export: the owner's own calendar
+// Shared range query for the Android sync (/api/native): the owner's own calendar
 // only, repeats expanded, hidden types dropped, private flag kept for the caller.
 import * as calendarsRepo from './repo/calendars';
 import * as itemsRepo from './repo/items';

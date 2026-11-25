@@ -1,5 +1,5 @@
 // ICS feed content: the owner's own items, today −30 d … +365 d, hidden types left out (same rule as the widgets).
-// Not agenda(): the feed needs repeating series unexpanded (RRULE + EXDATE) and a 395-day window.
+// Not agenda() (lib/server/agenda.ts): the feed needs repeating series unexpanded (RRULE + EXDATE) and a 395-day window.
 import { buildIcs } from './ics';
 import * as calendarsRepo from './repo/calendars';
 import * as itemsRepo from './repo/items';
