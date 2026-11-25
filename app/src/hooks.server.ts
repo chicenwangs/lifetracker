@@ -33,7 +33,13 @@ export const init: ServerInit = async () => {
 };
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-const PUBLIC = [/^\/login\/?$/, /^\/signup\/?$/, /^\/setup\/?$/, /^\/healthz\/?$/];
+const PUBLIC = [
+	/^\/login\/?$/,
+	/^\/signup\/?$/,
+	/^\/setup\/?$/,
+	/^\/healthz\/?$/,
+	/^\/cal\/[A-Za-z0-9_-]{43}\.ics$/,
+]; // cal = ICS feed, secret token in the path
 const isPublic = (p: string) => PUBLIC.some((r) => r.test(p));
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -112,6 +118,8 @@ export const handleError: HandleServerError = ({ error, event, status }) => {
 	// log path + status only. never body, cookies, tokens.
 	if (status === 404) return { code: 'not_found', message: 'Not found' };
 	const msg = error instanceof Error ? error.message : 'unknown';
-	console.error(`[error] ${status} ${event.request.method} ${event.url.pathname}: ${msg}`);
+	console.error(
+		`[error] ${status} ${event.request.method} ${event.url.pathname.replace(/^\/cal\/.+/, '/cal/<token>')}: ${msg}`,
+	);
 	return { code: 'internal', message: 'Something broke' };
 };

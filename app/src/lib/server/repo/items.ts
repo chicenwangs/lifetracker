@@ -673,3 +673,41 @@ export function editorName(userId: string | null): string | null {
 	if (!userId) return null;
 	return db().select({ n: users.displayName }).from(users).where(eq(users.id, userId)).get()?.n ?? null;
 }
+
+/** ICS feed rows: top-level dated items of `calendarId` in [from, to), repeating series NOT expanded (RRULE goes
+ * out as is), each with the minutes of its first linked live planner block (null = none). */
+export function feedRows(
+	calendarId: string,
+	from: string,
+	to: string,
+): (ItemRow & { blockMin: number | null })[] {
+	const rows = db()
+		.select()
+		.from(items)
+		.where(
+			and(
+				eq(items.calendarId, calendarId),
+				live,
+				isNull(items.parentId),
+				isNotNull(items.date),
+				lt(items.date, to),
+				or(isNotNull(items.rrule), gte(sql`COALESCE(${items.endDate}, ${items.date})`, from)),
+			),
+		)
+		.orderBy(asc(items.date), asc(items.createdAt))
+		.all();
+	const ids = rows.map((r) => r.id);
+	const len = new Map<string, number>();
+	for (let i = 0; i < ids.length; i += 500) {
+		const linked = db()
+			.select({ itemId: blocks.itemId, startAt: blocks.startAt, endAt: blocks.endAt })
+			.from(blocks)
+			.where(and(inArray(blocks.itemId, ids.slice(i, i + 500)), isNull(blocks.deletedAt)))
+			.orderBy(asc(blocks.startAt))
+			.all();
+		for (const b of linked) {
+			if (b.itemId && !len.has(b.itemId)) len.set(b.itemId, Math.round((Date.parse(b.endAt) - Date.parse(b.startAt)) / 60_000)); // prettier-ignore
+		}
+	}
+	return rows.map((r) => ({ ...r, blockMin: len.get(r.id) ?? null }));
+}

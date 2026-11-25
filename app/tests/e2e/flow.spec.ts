@@ -1726,6 +1726,41 @@ test('Home offline: tick and quick add are queued as Waiting to sync', async ({ 
 	await ctx.close();
 });
 
+test('ICS feed: create link, fetch without login, private = Busy, rotate kills the old link (v3.2 PR 7)', async ({
+	playwright,
+}) => {
+	const t = await today();
+	await api('POST', '/api/items', { title: 'Feed probe, dentist', date: plusDay(t, 2), time: '10:00' });
+	await api('POST', '/api/items', { title: 'Feed secret', date: plusDay(t, 3), private: true });
+	await page.goto('/settings/calendar');
+	await page.getByRole('button', { name: 'Create feed link' }).click();
+	const link = page.getByRole('textbox', { name: 'Feed link' });
+	await expect(link).toHaveValue(/\/cal\/[A-Za-z0-9_-]{43}\.ics$/);
+	const url1 = await link.inputValue();
+	const anon = await playwright.request.newContext(); // no session cookie
+	const r1 = await anon.get(url1);
+	expect(r1.status()).toBe(200);
+	expect(r1.headers()['content-type']).toContain('text/calendar');
+	const body = await r1.text();
+	expect(body).toContain('SUMMARY:Feed probe\\, dentist');
+	expect(body).toContain('SUMMARY:Busy');
+	expect(body).not.toContain('Feed secret');
+	// reload: the link is not shown again
+	await page.reload();
+	await expect(page.getByRole('textbox', { name: 'Feed link' })).toHaveCount(0);
+	await page.getByRole('button', { name: 'Rotate' }).click();
+	await page.getByRole('alertdialog').getByRole('button', { name: 'New link' }).click();
+	const url2 = await page.getByRole('textbox', { name: 'Feed link' }).inputValue();
+	expect(url2).not.toBe(url1);
+	expect((await anon.get(url1)).status()).toBe(404);
+	expect((await anon.get(url2)).status()).toBe(200);
+	await page.getByRole('button', { name: 'Turn off' }).click();
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Turn off' }).click();
+	await expect(page.getByRole('button', { name: 'Create feed link' })).toBeVisible();
+	expect((await anon.get(url2)).status()).toBe(404);
+	await anon.dispose();
+});
+
 test('reset-password script works', async ({ browser }) => {
 	execFileSync('node', ['scripts/reset-password.mjs', 'jeremy'], {
 		input: 'reset pass phrase 1\n',

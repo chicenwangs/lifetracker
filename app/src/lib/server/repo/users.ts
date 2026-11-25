@@ -1,7 +1,8 @@
 import { asc, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { calendars, users } from '../schema';
-import { newId } from '../crypto';
+import { randomBytes } from 'node:crypto';
+import { newId, sha256hex } from '../crypto';
 import { nowUtcIso } from '$lib/time';
 import { USER_COLORS } from '$lib/colors';
 import { seedFor } from './itemtypes';
@@ -118,4 +119,27 @@ export type Prefs = Partial<
 >; // prettier-ignore
 export function setPrefs(id: string, prefs: Prefs): void {
 	db().update(users).set(prefs).where(eq(users.id, id)).run();
+}
+
+/** ICS feed: new random token (rotate = same call), only its hash is stored. Returns the raw token once. */
+export function newIcsToken(id: string): string {
+	const token = randomBytes(32).toString('base64url');
+	db()
+		.update(users)
+		.set({ icsTokenHash: sha256hex(token) })
+		.where(eq(users.id, id))
+		.run();
+	return token;
+}
+export function clearIcsToken(id: string): void {
+	db().update(users).set({ icsTokenHash: null }).where(eq(users.id, id)).run();
+}
+/** feed owner for a raw token; a disabled user (no password hash) has no feed */
+export function byIcsToken(token: string): UserRow | undefined {
+	const u = db()
+		.select()
+		.from(users)
+		.where(eq(users.icsTokenHash, sha256hex(token)))
+		.get();
+	return u?.passwordHash ? u : undefined;
 }
