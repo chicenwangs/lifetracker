@@ -3,10 +3,11 @@
 <script lang="ts">
 	import { shown } from '$lib/client/itemtypes.svelte';
 	import { entryColors } from '$lib/client/partner';
-	import { addDays, clipToDay, hhmm, prettyDate } from '$lib/time';
+	import { addDays, clipToDay, hhmm, isDate, prettyDate } from '$lib/time';
 	import type { BlockDTO, CalendarPayload, ItemDTO } from '$lib/types';
 	import ActionSheet from './ActionSheet.svelte';
 	import { askText } from '$lib/client/dialog.svelte';
+	import { showToast } from '$lib/client/toast.svelte';
 	import { openItem } from '$lib/client/peek.svelte';
 	import { invalidateAll } from '$lib/client/refresh';
 	import { deleteRow, moveRow, toggleDone } from '$lib/client/rowOps';
@@ -69,7 +70,9 @@
 		const id = 'startAt' in r.x ? r.x.itemId : r.x.id;
 		if (id) return openItem(id); // the item sheet edits the day
 		const d = await askText('Move to which day? (YYYY-MM-DD)', { value: date, ok: 'Move' });
-		if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) return moveRow(r.x, { days: daysBetween(date, d) }, refresh);
+		if (!d) return;
+		if (!isDate(d)) return showToast('Not a date. Use YYYY-MM-DD.', { kind: 'error' });
+		return moveRow(r.x, { days: daysBetween(date, d) }, refresh);
 	}
 	// closures over a plain value: ActionSheet closes (acting = null) before run() fires (#324)
 	const actionsFor = (a: { r: Row; date: string }) => [
