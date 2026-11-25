@@ -1280,6 +1280,75 @@ test('v2 P8: phone Week/Month/More, PWA manifest, offline badge + Keep queue, He
 	await ctx.close();
 });
 
+test('database board: group by a select property, move by menu + undo, drag, keyboard, empty state', async () => {
+	const db = (await api('POST', '/api/databases', { title: 'Board DB' })).j.database as {
+		id: string;
+		pageId: string;
+	};
+	const st = (
+		await api('POST', `/api/databases/${db.id}/properties`, {
+			name: 'Status',
+			type: 'select',
+			config: {
+				options: [
+					{ id: 'todo', label: 'Todo', color: 'work' },
+					{ id: 'doing', label: 'Doing', color: 'hobby' },
+				],
+			},
+		})
+	).j.prop as { id: string };
+	const info = (await api('GET', `/api/databases/${db.id}`)).j.database as {
+		props: { id: string; type: string }[];
+	};
+	const tp = info.props.find((p) => p.type === 'title')!;
+	await api('POST', `/api/databases/${db.id}/records`, { values: { [tp.id]: 'Alpha', [st.id]: 'todo' } });
+	await api('POST', `/api/databases/${db.id}/records`, { values: { [tp.id]: 'Beta', [st.id]: 'doing' } });
+	await api('POST', `/api/databases/${db.id}/records`, { values: { [tp.id]: 'Gamma' } });
+	await api('POST', `/api/databases/${db.id}/views`, { name: 'Board', type: 'board' });
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Board/ }).click();
+	const todo = page.locator('section.bcol').filter({ hasText: 'Todo' });
+	const doing = page.locator('section.bcol').filter({ hasText: 'Doing' });
+	await expect(todo).toContainText('Alpha');
+	await expect(doing).toContainText('Beta');
+	await expect(page.locator('section.bcol').filter({ hasText: 'No value' })).toContainText('Gamma');
+
+	// card ... menu = the keyboard path; Undo puts the old value back
+	await todo
+		.locator('.bcard', { hasText: 'Alpha' })
+		.getByRole('button', { name: 'Actions for Alpha' })
+		.click();
+	await page.getByRole('menuitem', { name: 'Move to Doing' }).click();
+	await expect(doing).toContainText('Alpha');
+	await expect(page.locator('.toast')).toContainText('Moved to Doing');
+	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
+	await expect(todo).toContainText('Alpha');
+
+	// drag a card onto another column
+	await todo.locator('.bcard', { hasText: 'Alpha' }).dragTo(doing);
+	await expect(doing).toContainText('Alpha');
+
+	// keyboard: focus the ... button, open with Enter, Tab to the move item, Enter
+	const moved = doing.locator('.bcard', { hasText: 'Alpha' });
+	await moved.getByRole('button', { name: 'Actions for Alpha' }).focus();
+	await page.keyboard.press('Enter');
+	await page.keyboard.press('Tab'); // Open
+	await page.keyboard.press('Tab'); // Move to Todo
+	await page.keyboard.press('Enter');
+	await expect(todo).toContainText('Alpha');
+
+	// no select property -> the empty state, not an empty board
+	const db2 = (await api('POST', '/api/databases', { title: 'No select' })).j.database as {
+		id: string;
+		pageId: string;
+	};
+	await api('POST', `/api/databases/${db2.id}/views`, { name: 'Board', type: 'board' });
+	await page.goto(`/pages/${db2.pageId}`);
+	await page.getByRole('tab', { name: /Board/ }).click();
+	await expect(page.getByText('Board groups cards by a select property.')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Add a select property' })).toBeVisible();
+});
+
 test('v2 P8 a11y: axe finds no serious or critical issues on the main screens (light + dark, PC + phone)', async ({
 	browser,
 }) => {

@@ -153,3 +153,23 @@ test('cover: add from the page menu, 120 px banner, remove (#454)', async () => 
 	await expect(page.locator('.cover')).toHaveCount(0);
 	await page.evaluate(async (x) => fetch(`/api/pages/${x}`, { method: 'DELETE' }), id);
 });
+
+test('duplicate from the page menu: the copy opens (#440)', async () => {
+	const T = 'Phone dup source';
+	const id = await page.evaluate(async (t) => {
+		const r = await fetch('/api/pages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: t }) }); // prettier-ignore
+		return ((await r.json()) as { page: { id: string } }).page.id;
+	}, T);
+	await page.goto(`/pages/${id}`);
+	await page.locator('.pagev .bar').getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Duplicate' }).click();
+	await expect.poll(() => page.url()).not.toContain(`/pages/${id}`);
+	const copyId = page.url().split('/').pop() as string;
+	await expect(page.getByLabel('Page title')).toHaveValue(`Copy of ${T}`);
+	await page.evaluate(
+		async (ids) => {
+			for (const x of ids) await fetch(`/api/pages/${x}`, { method: 'DELETE' });
+		},
+		[id, copyId] as string[],
+	);
+});

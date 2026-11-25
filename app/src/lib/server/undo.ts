@@ -7,6 +7,8 @@ import { handle } from './db';
 import { ApiFail } from './http';
 import { newId } from './crypto';
 import { isoPlus, nowUtcIso } from '$lib/time';
+import * as fts from './search';
+import * as attachments from './attachments';
 
 /** tables the journal may touch. Never sessions, users, grants, share codes. */
 const TABLES = ['items', 'blocks', 'item_types', 'pages'] as const;
@@ -75,7 +77,15 @@ export function undo(userId: string, id?: string): { label: string } {
 		// parents before children on re-insert (a step needs its item), children first on delete
 		const order = (t: Table) => TABLES.indexOf(t);
 		for (const r of [...rows].sort((x, y) => order(x.t) - order(y.t) || Number(!!y.before?.parent_id) - Number(!!x.before?.parent_id)).reverse())
-			if (!r.before) db().prepare(`DELETE FROM ${r.t} WHERE id = ?`).run(r.id);
+			if (!r.before) {
+				// pages keep side tables synced by repo helpers, not triggers: clear them before the row (and its
+				// blocks/links/databases, which cascade) goes
+				if (r.t === 'pages') {
+					fts.unindex('page', r.id);
+					attachments.dropRefs('page_block', r.id);
+				}
+				db().prepare(`DELETE FROM ${r.t} WHERE id = ?`).run(r.id);
+			}
 		for (const r of [...rows].sort((x, y) => (x.t === y.t ? Number(!!x.before?.parent_id) - Number(!!y.before?.parent_id) : order(x.t) - order(y.t)))) {
 			if (!r.before) continue;
 			const cols = Object.keys(r.before).filter((c) => c !== 'id');

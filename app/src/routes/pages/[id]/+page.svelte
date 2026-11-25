@@ -99,6 +99,24 @@
 			showError(e);
 		}
 	}
+	// v4.0 PR 17: the copy opens at once; Undo removes it and returns to this page
+	async function duplicate() {
+		menu = false;
+		const sourceId = pg.id; // pg follows the open page: after goto it is the copy
+		try {
+			await editor?.flush();
+			const r = await post<{ page: PageNode; undo: UndoRef }>(`/api/pages/${sourceId}/duplicate`);
+			showToast('Duplicated page', {
+				undo: async () => {
+					await undoLast(r.undo.id);
+					await goto(`/pages/${sourceId}`, { invalidateAll: true });
+				},
+			});
+			await goto(`/pages/${r.page.id}`);
+		} catch (e) {
+			showError(e);
+		}
+	}
 	async function trash() {
 		menu = false;
 		try {
@@ -279,6 +297,7 @@
 							>{pg.coverAttachmentId ? 'Change cover…' : 'Add cover…'}</button
 						>
 					{/if}
+					<button role="menuitem" type="button" onclick={duplicate}>Duplicate</button>
 					<button
 						role="menuitem"
 						type="button"
