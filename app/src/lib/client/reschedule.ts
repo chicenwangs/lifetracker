@@ -105,5 +105,6 @@ async function pick(item: ItemDTO, opts: MoveOpts & { today: string }) {
 		value: item.date ?? opts.today,
 		ok: 'Move',
 	});
-	if (d && isDate(d)) await reschedule(item, d, opts);
+	if (d && !isDate(d)) return showToast('Not a date. Use YYYY-MM-DD.', { kind: 'error' });
+	if (d) await reschedule(item, d, opts);
 }

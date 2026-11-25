@@ -81,3 +81,67 @@ test('item sheet Postpone ▾ → Skip this one drops the date; Undo brings it b
 	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
 	await expect.poll(() => onCalendar(`${base}@2030-09-01`, '2030-09-01')).toBe(true);
 });
+
+test('Pick date: an invalid date says so and keeps the item (#401)', async () => {
+	const T = `Resched pick ${P}`;
+	const d = await page.evaluate(() =>
+		new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date()),
+	);
+	const id = await create({ title: T, date: d, time: '08:00' });
+	const pick = async (value: string) => {
+		await page.goto(`/today?d=${d}`);
+		await page.getByRole('button', { name: `Actions for ${T}` }).click();
+		await page
+			.getByRole('dialog', { name: `Actions for ${T}` })
+			.getByRole('button', { name: 'Pick date…', exact: true })
+			.click();
+		const dlg = page.getByRole('alertdialog');
+		await dlg.getByLabel(/Move to which day/).fill(value);
+		await dlg.getByRole('button', { name: 'Move', exact: true }).click();
+	};
+	await pick('nope');
+	await expect(page.locator('.toast')).toContainText('Not a date');
+	await expect.poll(async () => (await item(id)).date).toBe(d); // unchanged
+	await pick('2027-02-03');
+	await expect.poll(async () => (await item(id)).date).toBe('2027-02-03');
+	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
+	await expect.poll(async () => (await item(id)).date).toBe(d);
+});
+
+test('Week block Move…: an invalid date says so and keeps the block (#401)', async () => {
+	const T = `Resched block ${P}`;
+	const blk = await page.evaluate(async (label) => {
+		const r = await fetch('/api/blocks', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ label, startAt: '2030-09-02T02:00:00Z', endAt: '2030-09-02T03:00:00Z' }),
+		});
+		return ((await r.json()) as { block: { id: string } }).block.id;
+	}, T);
+	const startAt = async () =>
+		page.evaluate(async (id) => {
+			const r = await fetch('/api/calendar?from=2030-09-01&to=2030-09-15');
+			const j = (await r.json()) as { blocks: { id: string; startAt: string }[] };
+			return j.blocks.find((b) => b.id === id)?.startAt ?? '';
+		}, blk);
+	const move = async (value: string) => {
+		await page.getByRole('button', { name: `Actions for ${T}` }).click();
+		await page
+			.getByRole('dialog', { name: `Actions for ${T}` })
+			.getByRole('button', { name: 'Move…', exact: true })
+			.click();
+		await page
+			.getByRole('alertdialog')
+			.getByLabel(/Move to which day/)
+			.fill(value);
+		await page.getByRole('alertdialog').getByRole('button', { name: 'Move', exact: true }).click();
+	};
+	await page.goto('/week?w=2030-09-02');
+	await move('nope');
+	await expect(page.locator('.toast')).toContainText('Not a date');
+	expect((await startAt()).slice(0, 10)).toBe('2030-09-02'); // unchanged
+	// the valid path still works (10:00 MYT stays 10:00, the day moves)
+	await move('2030-09-04');
+	await expect.poll(async () => (await startAt()).slice(0, 10)).toBe('2030-09-04');
+	await page.evaluate(async (id) => fetch(`/api/blocks/${id}`, { method: 'DELETE' }), blk);
+});
