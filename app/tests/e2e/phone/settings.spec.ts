@@ -55,6 +55,16 @@ test('row opens the section; top bar has its name; Back returns to the list', as
 	await fresh.close();
 });
 
+test('Notifications: the three reminder rows are 48 dp on phone (#404)', async () => {
+	await page.goto('/settings/notifications');
+	for (const name of ['Planner items and blocks', 'Keep notes', 'Database records']) {
+		const row = page.locator('label.opt').filter({ hasText: name });
+		const b = await row.boundingBox();
+		expect(Math.round(b?.height ?? 0)).toBeGreaterThanOrEqual(48);
+	}
+	await expectTargets48(page);
+});
+
 test('Preferences: no hidden-header-button or mouse wording on phone (#301)', async () => {
 	await page.goto('/settings/preferences');
 	await expect(page.getByRole('heading', { name: 'Planner defaults' })).toBeVisible();

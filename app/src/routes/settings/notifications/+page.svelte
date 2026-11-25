@@ -182,4 +182,9 @@
 		font-size: 14px;
 		min-height: 32px;
 	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.opt {
+			min-height: 48px;
+		}
+	}
 </style>
