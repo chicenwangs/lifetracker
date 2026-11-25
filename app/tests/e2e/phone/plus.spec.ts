@@ -109,6 +109,7 @@ test('rapid taps after Save note do not reach the page beneath (#378)', async ()
 	await page.getByRole('tab', { name: 'Quick note' }).click();
 	await page.getByRole('textbox', { name: 'Note' }).fill(`Save guard ${test.info().project.name}`);
 	const save = page.getByRole('button', { name: 'Save note' });
+	await expect(save).toBeEnabled(); // a disabled Save would take the tap and do nothing (#414 diagnosis)
 	const b = (await save.boundingBox())!;
 	const x = b.x + b.width / 2;
 	const y = b.y + b.height / 2;
@@ -158,10 +159,28 @@ test('rapid taps after Save note do not reach the page beneath (#378)', async ()
 	await f.send('touchStart', x, y);
 	await f.send('touchEnd');
 	// the rest of the burst must land on the guard, not the Today row that just appeared under the finger
-	await page.waitForFunction(() => (window as unknown as { guardSeen: boolean }).guardSeen, null, {
-		polling: 50,
-		timeout: 15_000,
-	});
+	try {
+		await page.waitForFunction(() => (window as unknown as { guardSeen: boolean }).guardSeen, null, {
+			polling: 50,
+			timeout: 15_000,
+		});
+	} catch {
+		// #414: a red CI run must say what the app did instead of only 'timeout' (sheet open? save sent? toast?)
+		const st = await page.evaluate(() => ({
+			url: location.href,
+			sheet: !!document.querySelector('[role=dialog][aria-label=Add]'),
+			sheetOpen:
+				(document.querySelector('[role=dialog][aria-label=Add]') as HTMLElement | null)?.checkVisibility() ??
+				null,
+			note: (document.querySelector('textarea[aria-label=Note]') as HTMLTextAreaElement)?.value ?? null,
+			saveDisabled:
+				[...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save note')
+					?.disabled ?? null,
+			toast: (document.querySelector('.toast') as HTMLElement)?.innerText ?? null,
+			active: document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName,
+		}));
+		throw new Error(`#378: tap guard never mounted · ${JSON.stringify(st)}`);
+	}
 	expect(await page.evaluate(() => (window as unknown as { guardAtPoint: boolean }).guardAtPoint)).toBe(true);
 	await f.send('touchStart', x, y);
 	await f.send('touchEnd');
