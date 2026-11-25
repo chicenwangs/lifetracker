@@ -69,6 +69,7 @@ describe('ics text', () => {
 		expect(ny).toContain('BEGIN:DAYLIGHT|DTSTART:19700308T020000|RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU|TZOFFSETFROM:-0500|TZOFFSETTO:-0400'); // prettier-ignore
 		expect(ny).toContain('BEGIN:STANDARD|DTSTART:19701101T020000|RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU|TZOFFSETFROM:-0400|TZOFFSETTO:-0500'); // prettier-ignore
 		expect(vtimezone('Europe/London', 2026).join('|')).toContain('DTSTART:19700329T010000|RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU'); // prettier-ignore
+		expect(vtimezone('America/St_Johns', 2026).join('|')).toContain('BEGIN:DAYLIGHT|DTSTART:19700308T020000|RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU|TZOFFSETFROM:-0330|TZOFFSETTO:-0230'); // prettier-ignore
 		const syd = vtimezone('Australia/Sydney', 2026).join('|'); // southern hemisphere: DST over New Year
 		expect(syd).toContain('BEGIN:STANDARD|DTSTART:19700405T030000|RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=1SU|TZOFFSETFROM:+1100|TZOFFSETTO:+1000'); // prettier-ignore
 		expect(syd).toContain('BEGIN:DAYLIGHT|DTSTART:19701004T020000|RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=1SU'); // prettier-ignore

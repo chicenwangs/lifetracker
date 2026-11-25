@@ -69,7 +69,9 @@ function nthWeekday(y: number, m: number, n: number, wd: number): number {
 }
 
 /** VTIMEZONE: one STANDARD if the zone has no DST in `year`, else its two transitions as yearly rules
- * (BYMONTH + n-th/last weekday) so every year of the feed is covered. */
+ * (BYMONTH + n-th/last weekday) so every year of the feed is covered.
+ * shortcut: rules like "first Sunday on or after day X" (Chile) or Ramadan-based (Morocco) don't fit n-th weekday,
+ * so some years are off by a week there; upgrade to explicit per-year observances if a user lives in such a zone. */
 export function vtimezone(tz: string, year: number): string[] {
 	const start = Date.UTC(year, 0, 1);
 	const end = Date.UTC(year + 1, 0, 1);
@@ -78,7 +80,9 @@ export function vtimezone(tz: string, year: number): string[] {
 	for (let t = start + 3_600_000; t <= end; t += 3_600_000) {
 		const o = offsetAt(tz, t);
 		if (o !== prev) {
-			changes.push({ at: t, from: prev, to: o });
+			let at = t; // some zones change on the half or quarter hour: walk back to the exact quarter
+			while (offsetAt(tz, at - 900_000) === o) at -= 900_000;
+			changes.push({ at, from: prev, to: o });
 			prev = o;
 		}
 	}
