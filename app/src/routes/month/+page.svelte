@@ -6,7 +6,6 @@
 	import { entryColors } from '$lib/client/partner';
 	import { addDays, clipToDay, hhmm, prettyDate, weekStartOf } from '$lib/time';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
 	import { openItem } from '$lib/client/peek.svelte';
 	import { peerSwipe } from '$lib/client/peerSwipe';
 	import CalSwitch from '$lib/components/CalSwitch.svelte';
@@ -37,12 +36,8 @@
 			});
 		return out;
 	});
-	// selected day: ?d=, else today when it's in this month, else the 1st
-	const sel = $derived.by(() => {
-		const d = page.url.searchParams.get('d');
-		if (d && cells.some((c) => c.date === d)) return d;
-		return data.today.startsWith(data.ym) ? data.today : `${data.ym}-01`;
-	});
+	// selected day comes from the load (#399): ?d=, else today in this month, else the 1st
+	const sel = $derived(data.sel);
 	// a block that began the day before shows from 00:00 on the selected day
 	const timeOf = (t: ItemDTO | BlockDTO) =>
 		'startAt' in t ? hhmm(clipToDay(t.startAt, t.endAt, sel, tz)?.top ?? 0) : ((t as ItemDTO).time ?? '');

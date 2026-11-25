@@ -117,12 +117,14 @@
 				return showError(err);
 			}
 		}
-		const d = page.data as { day?: string; from?: string; to?: string; today?: string };
+		const d = page.data as { day?: string; from?: string; to?: string; today?: string; sel?: string };
 		const day = p.startsWith('/today')
 			? d.day
 			: p.startsWith('/week') && d.from && d.today && !(d.today >= d.from && d.today < (d.to ?? ''))
 				? d.from
-				: undefined;
+				: p.startsWith('/month')
+					? d.sel
+					: undefined;
 		openAdd('', 'plan', { day, from });
 	}
 	// warm app: every tab's code ready before the first tap

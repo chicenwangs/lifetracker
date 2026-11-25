@@ -64,6 +64,20 @@ test("Calendar on another week: + adds on that week's first day", async () => {
 	await page.goBack();
 });
 
+test('Month: + adds on the selected day on screen (#399)', async () => {
+	await page.goto('/month?m=2030-01&d=2030-01-15');
+	await plus().click();
+	await page.keyboard.type('month399 probe 6pm');
+	await expect(page.getByRole('dialog', { name: 'Add' }).locator('#qa-slots, .slots').first()).toContainText(
+		'15 Jan',
+	);
+	const res = page.waitForResponse((r) => r.url().endsWith('/api/quickadd') && r.status() === 201);
+	await page.getByRole('dialog', { name: 'Add' }).getByRole('button', { name: 'Add', exact: true }).click();
+	const j = await (await res).json();
+	expect(j.block.startAt.slice(0, 10)).toBe('2030-01-15');
+	await page.goBack();
+});
+
 test('Keep: + makes a note; no second New note button', async () => {
 	await page.goto('/keep');
 	await expect(page.getByRole('button', { name: 'New note', exact: true })).toHaveCount(1); // the bar's +
