@@ -8,7 +8,7 @@ import { notFound, bad } from '../http';
 import { zDate, zIsoZ, zStatus, zTime, zTitle, zType, zId } from '../validate';
 import * as calendarsRepo from './calendars';
 import * as itemTypesRepo from './itemtypes';
-import { addDays, diffDays, nowUtcIso, todayLocal } from '$lib/time';
+import { addDays, DEFAULT_TZ, diffDays, nowUtcIso, todayLocal } from '$lib/time';
 import {
 	baseItemId,
 	canCountFromCompletion,
@@ -364,7 +364,7 @@ function completeFromCompletion(meId: string, cur: ItemRow, onCreated?: (id: str
 		(
 			handle().sqlite.prepare(`SELECT timezone FROM users WHERE id = ?`).get(meId) as
 				{ timezone: string } | undefined
-		)?.timezone ?? 'Asia/Kuala_Lumpur';
+		)?.timezone ?? DEFAULT_TZ;
 	const today = todayLocal(tz);
 	const next = nextFromCompletion(today, cur.rrule);
 	if (!next) {

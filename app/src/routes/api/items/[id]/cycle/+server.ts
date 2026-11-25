@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { api, me } from '$lib/server/http';
 import * as items from '$lib/server/repo/items';
 import { undoable } from '$lib/server/undo';
+import { recalcOwner } from '$lib/server/reminders';
 
 export const POST = api((e) => {
 	const u = me(e);
@@ -15,5 +16,6 @@ export const POST = api((e) => {
 			created: result.id !== cur.id ? [...created, { t: 'items' as const, id: result.id }] : created,
 		};
 	});
+	recalcOwner(u.id); // PR 9: a from-completion tick moves the series; relative reminders follow it
 	return json({ item: items.withCounts([r.result])[0], undo: r.undo });
 });

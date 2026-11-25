@@ -5,7 +5,11 @@ import * as usersRepo from '../../src/lib/server/repo/users';
 import * as calendarsRepo from '../../src/lib/server/repo/calendars';
 import * as items from '../../src/lib/server/repo/items';
 import { icsFeed } from '../../src/lib/server/icsfeed';
-import { addDays, todayLocal } from '../../src/lib/time';
+import { handle } from '../../src/lib/server/db';
+import { POST as cyclePost } from '../../src/routes/api/items/[id]/cycle/+server';
+import { POST as undoPost } from '../../src/routes/api/undo/+server';
+import * as rem from '../../src/lib/server/reminders';
+import { addDays, isoPlus, localToUtc, todayLocal } from '../../src/lib/time';
 import { canCountFromCompletion, nextFromCompletion } from '../../src/lib/rrule';
 
 const TZ = 'Asia/Kuala_Lumpur';
@@ -133,5 +137,43 @@ describe('from-completion series', () => {
 		const after = items.patch(me, r.id, { status: 'done' }); // the old detach-one behaviour
 		expect(after.id).not.toBe(r.id);
 		expect(items.mustOwn(me, r.id).date).toBe(r.date); // the series itself did not move
+	});
+
+	it('cycle done recalculates a relative reminder; Undo puts date and reminder back', async () => {
+		const r = items.create(
+			me,
+			items.itemCreateSchema.parse({
+				title: 'Water plants',
+				date: today(),
+				time: '23:00',
+				rrule: 'FREQ=DAILY',
+			}),
+		);
+		items.patch(me, r.id, { repeatFromCompletion: true });
+		rem.add(me, 'planner_item', r.id, { offset: '2h' });
+		const due = () =>
+			(
+				handle().sqlite.prepare('select due_at from reminders where source_id = ?').get(r.id) as {
+					due_at: string;
+				}
+			).due_at;
+		const before = due();
+		expect(before).toBe(isoPlus(localToUtc(today(), 23 * 60, TZ), -2 * 3_600_000));
+		const ev = () =>
+			({ locals: { user: usersRepo.safe(usersRepo.byId(me)!) }, params: { id: r.id } }) as never;
+		expect(((await (await cyclePost(ev())).json()) as { item: { date: string } }).item.date).toBe(today()); // doing
+		const j = (await (await cyclePost(ev())).json()) as { item: { date: string }; undo: { id: string } };
+		expect(j.item.date).toBe(addDays(today(), 1)); // done moves the series
+		expect(due()).toBe(isoPlus(localToUtc(addDays(today(), 1), 23 * 60, TZ), -2 * 3_600_000)); // reminder follows
+		await undoPost({
+			locals: { user: usersRepo.safe(usersRepo.byId(me)!) },
+			request: new Request('http://localhost/api/undo', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ id: j.undo.id }),
+			}),
+		} as never);
+		expect(items.mustOwn(me, r.id).date).toBe(today());
+		expect(due()).toBe(before);
 	});
 });
