@@ -17,7 +17,8 @@
 		prettyDate,
 		prettyTime,
 	} from '$lib/time';
-	import { typeName, typeOf } from '$lib/client/itemtypes.svelte';
+	import { typeName, typeOf, typesState } from '$lib/client/itemtypes.svelte';
+	import { onMonth } from '$lib/itemtypes';
 	import { colorsFor, typeClass } from '$lib/colors';
 	import { badge, entryColors, theirClasses } from '$lib/client/partner';
 	import OverlapToggle from './OverlapToggle.svelte';
@@ -56,6 +57,8 @@
 
 	let el: HTMLDivElement;
 	let cal: Calendar | null = null;
+	/** PR 10: a type with "Month calendar" off is hidden on the Month grid only (Week/Today keep it) */
+	const visible = $derived(items.filter((i) => onMonth(typesState.list, i.type)));
 
 	const ARIA: Record<Status, string> = {
 		todo: 'Not started. Activate to start',
@@ -193,7 +196,7 @@
 			eventStartEditable: true,
 			eventDurationEditable: false,
 			dragRevertDuration: 0,
-			events: toEvents(items),
+			events: toEvents(visible),
 			eventContent: content,
 			eventOrder: 'start,title',
 			dayHeaderFormat: { weekday: 'short' },
@@ -272,7 +275,7 @@
 
 	// re-feed on data change
 	$effect(() => {
-		const evs = toEvents(items);
+		const evs = toEvents(visible);
 		if (!cal) return;
 		cal.batchRendering(() => {
 			cal?.removeAllEvents();

@@ -8,7 +8,7 @@ import * as types from '../../src/lib/server/repo/itemtypes';
 import * as sharekeys from '../../src/lib/server/repo/sharekeys';
 import { undo, undoable } from '../../src/lib/server/undo';
 import { quickAdd } from '../../src/lib/server/quickadd-server';
-import { BUILTIN_TYPES, contrast, inkFor } from '../../src/lib/itemtypes';
+import { BUILTIN_TYPES, TYPE_PRESETS, contrast, inkFor, onMonth, presetState } from '../../src/lib/itemtypes';
 import { examCountdown } from '../../src/lib/time';
 
 let me: string;
@@ -119,5 +119,55 @@ describe('item types', () => {
 		expect(() =>
 			sharekeys.create(me, { types: ['ity_someoneelse'], hiddenAs: 'busy', expiry: '7d' }),
 		).toThrow(/unknown type/);
+	});
+
+	it('Month calendar flag (PR 10): on by default, the patch flips it, the DTO carries it', () => {
+		const ev = types.list(me).find((t) => t.key === 'Event')!;
+		expect(ev.onCalendar).toBe(true);
+		expect(add('Study').onCalendar).toBe(true); // new types default on
+		expect(types.patch(me, ev.id, types.patchSchema.parse({ onCalendar: false })).onCalendar).toBe(false);
+		expect(types.patch(me, ev.id, { onCalendar: true }).onCalendar).toBe(true);
+	});
+
+	it('onMonth filter (pure): off hides only that type; None/unknown stay shown', () => {
+		const list = [
+			{ key: 'Event', onCalendar: false },
+			{ key: 'Work', onCalendar: true },
+		];
+		expect(onMonth(list, 'Event')).toBe(false);
+		expect(onMonth(list, 'Work')).toBe(true);
+		expect(onMonth(list, null)).toBe(true);
+		expect(onMonth(list, 'None')).toBe(true); // unknown key (e.g. a deleted type) keeps the old behaviour
+	});
+
+	it('starter pack (PR 14): 5 presets, Class off the Month grid, add/have/clash states', () => {
+		expect(TYPE_PRESETS.map((p) => p.name)).toEqual(['Class', 'Errand', 'Health', 'Chore', 'Study']);
+		expect(new Set(TYPE_PRESETS.map((p) => p.slug)).size).toBe(TYPE_PRESETS.length);
+		expect(TYPE_PRESETS.find((p) => p.name === 'Class')?.onCalendar).toBe(false);
+		for (const p of TYPE_PRESETS) expect(presetState(types.list(me), p)).toBe('add');
+		const t = add('Class'); // slug 'class'
+		expect(presetState(types.list(me), TYPE_PRESETS[0]!)).toBe('have');
+		types.patch(me, t.id, { name: 'Timetable' }); // same quick-add word, another name
+		expect(presetState(types.list(me), TYPE_PRESETS[0]!)).toBe('clash');
+	});
+
+	it('starter pack fills free slots only: 5 built-ins + 5 presets = 10, the next type is refused', () => {
+		for (const p of TYPE_PRESETS)
+			types.create(
+				me,
+				types.createSchema.parse({ name: p.name, bg: p.bg, slug: p.slug, onCalendar: p.onCalendar }),
+			);
+		expect(types.list(me)).toHaveLength(10);
+		expect(() => add('One more')).toThrow(/10 types/);
+	});
+
+	it('create takes onCalendar (Class lands off the Month grid)', () => {
+		expect(
+			types.create(
+				me,
+				types.createSchema.parse({ name: 'Class', bg: '#C9DAE7', slug: 'class', onCalendar: false }),
+			).onCalendar,
+		).toBe(false);
+		expect(add('Normal').onCalendar).toBe(true);
 	});
 });
