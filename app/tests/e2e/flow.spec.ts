@@ -355,6 +355,31 @@ test('week drag box: same commands, typed time moves the selection', async () =>
 	await expect(page.locator('.fc-timegrid-slot-lane[data-time="23:00:00"]')).toHaveCount(1);
 });
 
+test('v3.2 PR 6: Print week in the desktop ⋯ menu; print CSS hides the shell and keeps 7 day columns', async () => {
+	await page.goto('/week');
+	const days = page.locator('.fc-timegrid-col[data-date]');
+	await expect(days).toHaveCount(7);
+	await page.getByRole('button', { name: 'More actions' }).click();
+	// stub window.print so no real print dialog is used
+	await page.evaluate(() => {
+		(window as unknown as { ltPrint?: number }).ltPrint = 0;
+		window.print = () => {
+			(window as unknown as { ltPrint?: number }).ltPrint = 1;
+		};
+	});
+	await page.getByRole('menuitem', { name: 'Print week' }).click();
+	expect(await page.evaluate(() => (window as unknown as { ltPrint?: number }).ltPrint)).toBe(1);
+	await page.emulateMedia({ media: 'print' });
+	await expect(page.locator('header.hdr')).toBeHidden();
+	await expect(page.locator('nav.mbar')).toBeHidden();
+	await expect(page.locator('.bar .round').first()).toBeHidden();
+	await expect(page.locator('.fc-col-header-cell')).toHaveCount(7);
+	await expect(days).toHaveCount(7);
+	await expect(days.first()).toBeVisible();
+	await page.emulateMedia({ media: 'screen' });
+	await expect(page.locator('header.hdr')).toBeVisible();
+});
+
 test('item opens as centre peek: blur, rename in place, notes, linked block, hover X', async () => {
 	const d = await today();
 	await page.goto(`/?d=${d}`);

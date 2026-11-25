@@ -31,6 +31,7 @@
 	let side: HTMLElement | undefined = $state();
 	let notEl: HTMLElement | undefined = $state();
 	let dragging = $state<'block' | 'item' | null>(null);
+	let more = $state(false);
 	let weekCal: WeekCalendar | undefined = $state();
 	// empty-slot drag -> command box (same grammar as N; default planner, /calendar optional)
 	let slot = $state<{ key: number; date: string; start: number; end: number; x: number; y: number } | null>(
@@ -205,6 +206,7 @@
 </script>
 
 <svelte:head><title>Week · Life Tracker</title></svelte:head>
+<svelte:window onclick={(e) => more && !(e.target as HTMLElement).closest('.more') && (more = false)} />
 
 <!-- phone (< 700 px): read-first agenda; the grid below is for the PC -->
 <main class="phone" aria-label="Week agenda">
@@ -267,6 +269,33 @@
 			<div class="view" role="group" aria-label="View">
 				<a href="/?m={data.from.slice(0, 7)}">Month</a>
 				<span class="on">Week</span>
+			</div>
+			<div class="more">
+				<button
+					class="round"
+					type="button"
+					aria-label="More actions"
+					aria-expanded={more}
+					onclick={() => (more = !more)}>⋯</button
+				>
+				{#if more}
+					<div
+						class="menu"
+						role="menu"
+						tabindex="-1"
+						use:backCloses={() => (more = false)}
+						onkeydown={(e) => e.key === 'Escape' && (more = false)}
+					>
+						<button
+							type="button"
+							role="menuitem"
+							onclick={() => {
+								more = false;
+								window.print();
+							}}>Print week</button
+						>
+					</div>
+				{/if}
 			</div>
 		</div>
 		<div class="types"><TypeBar /></div>
@@ -619,6 +648,37 @@
 		font-size: 13px;
 	}
 
+	.more {
+		position: relative;
+	}
+	.menu {
+		position: absolute;
+		right: 0;
+		top: calc(100% + 6px);
+		z-index: 40;
+		min-width: 160px;
+		padding: 6px;
+		background: var(--raised);
+		border: 1.5px solid var(--card-edge);
+		border-radius: 10px;
+		box-shadow: -4px 4px 0 var(--accent);
+	}
+	.menu button {
+		display: block;
+		width: 100%;
+		padding: 8px 10px;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.menu button:hover {
+		background: var(--hover);
+	}
+
 	/* motion */
 	.round {
 		transition:
@@ -647,5 +707,75 @@
 	}
 	.row:hover {
 		box-shadow: -2px 2px 0 var(--accent);
+	}
+
+	/* Print week (#387): one A4 landscape page, shell/nav/buttons gone, type colour on the left edge only */
+	@media print {
+		@page {
+			size: A4 landscape;
+			margin: 8mm;
+		}
+		:global(html),
+		:global(body) {
+			background: #fff !important;
+			color: #000 !important;
+		}
+		:global(header.hdr),
+		:global(nav.mbar),
+		:global(.offline),
+		.types,
+		.side,
+		.foot,
+		.slotpop {
+			display: none !important;
+		}
+		.wrap {
+			display: block;
+			padding: 0;
+		}
+		.wkc {
+			width: 100%;
+			border: 0;
+			box-shadow: none;
+			background: #fff;
+			zoom: 0.8;
+		}
+		.bar {
+			background: #fff;
+			border: 0;
+			padding: 0 0 6px;
+		}
+		.bar > :not(h1) {
+			display: none !important;
+		}
+		h1 {
+			color: #000;
+		}
+		:global(.fc) {
+			--fc-page-bg-color: #fff;
+			--fc-border-color: #000;
+			--fc-neutral-bg-color: #fff;
+			--fc-today-bg-color: transparent;
+			color: #000;
+		}
+		:global(.fc-timegrid-slot.lt-band) {
+			background: #fff !important;
+		}
+		/* keep FC's border colour (= type colour) only on the left edge */
+		:global(.fc-event) {
+			background: #fff !important;
+			border-width: 0 0 0 3px !important;
+			border-style: solid !important;
+			box-shadow: none !important;
+		}
+		:global(.fc-event .fc-event-main),
+		:global(.fc-event .lt-title),
+		:global(.fc-event .lt-time) {
+			color: #000 !important;
+		}
+		:global(.lt-sq),
+		:global(.lt-x) {
+			display: none !important;
+		}
 	}
 </style>
