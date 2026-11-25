@@ -81,3 +81,30 @@ test('item sheet Postpone ▾ → Skip this one drops the date; Undo brings it b
 	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
 	await expect.poll(() => onCalendar(`${base}@2030-09-01`, '2030-09-01')).toBe(true);
 });
+
+test('Pick date: an invalid date keeps the dialog open with a reason (#401)', async () => {
+	const T = `Resched pick ${P}`;
+	const d = await page.evaluate(() =>
+		new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date()),
+	);
+	const id = await create({ title: T, date: d, time: '08:00' });
+	await page.goto(`/today?d=${d}`);
+	await page.getByRole('button', { name: `Actions for ${T}` }).click();
+	await page
+		.getByRole('dialog', { name: `Actions for ${T}` })
+		.getByRole('button', { name: 'Pick date…', exact: true })
+		.click();
+	const dlg = page.getByRole('alertdialog');
+	await expect(dlg).toBeVisible();
+	const input = dlg.getByLabel(/Move to which day/);
+	await input.fill('nope');
+	await dlg.getByRole('button', { name: 'Move', exact: true }).click();
+	await expect(dlg).toBeVisible(); // stayed open
+	await expect(dlg.getByRole('alert')).toContainText(/real date/i);
+	await expect.poll(async () => (await item(id)).date).toBe(d); // nothing moved
+	await input.fill('2027-02-03');
+	await dlg.getByRole('button', { name: 'Move', exact: true }).click();
+	await expect.poll(async () => (await item(id)).date).toBe('2027-02-03');
+	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
+	await expect.poll(async () => (await item(id)).date).toBe(d);
+});
