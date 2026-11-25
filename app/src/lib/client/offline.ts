@@ -27,6 +27,22 @@ const notify = () => {
 	if (typeof window !== 'undefined') window.dispatchEvent(new Event('lt:queue'));
 };
 
+// #402: the server can come back while the browser still says online (no `online` event). Retry while ops wait;
+// flushQueue() keeps one run in flight and the retry stops as soon as both queues are empty.
+const RETRY_MS = 30_000;
+let retry: ReturnType<typeof setTimeout> | null = null;
+function scheduleRetry() {
+	if (retry || queued() === 0) return;
+	retry = setTimeout(() => {
+		retry = null;
+		void flushQueue();
+	}, RETRY_MS);
+}
+function stopRetry() {
+	if (retry) clearTimeout(retry);
+	retry = null;
+}
+
 const read = (): Op[] => {
 	try {
 		return JSON.parse(localStorage.getItem(KEY) ?? '[]') as Op[];
@@ -42,6 +58,8 @@ const write = (q: Op[]) => {
 		/* private mode / full */
 	}
 	notify();
+	if (q.length) scheduleRetry();
+	else stopRetry();
 };
 
 const readActions = (): ActionOp[] => {
@@ -59,6 +77,8 @@ const writeActions = (q: ActionOp[]) => {
 		/* private mode / full */
 	}
 	notify();
+	if (q.length) scheduleRetry();
+	else stopRetry();
 };
 
 export const queued = () => read().length + readActions().length;
@@ -137,11 +157,16 @@ export function flushQueue(): Promise<{ sent: number; copies: number; planner: n
 			writeActions(readActions().filter((o) => o.key !== op.key));
 		}
 		return { sent, copies, planner };
-	})().finally(() => (running = null));
+	})().finally(() => {
+		running = null;
+		if (queued() > 0) scheduleRetry();
+		else stopRetry();
+	});
 	return running;
 }
 
 export const wipe = () => {
+	stopRetry();
 	write([]);
 	writeActions([]);
 	if (typeof caches !== 'undefined') void caches.delete('lt-data-v1').catch(() => {});

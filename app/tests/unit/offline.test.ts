@@ -80,3 +80,40 @@ describe('sign-out wipe', () => {
 		expect(queued()).toBe(0);
 	});
 });
+
+// #402: the server can come back while the browser still says online (no `online` event) — retry until empty
+describe('retry while queued', () => {
+	it('retries the flush after a 500 and stops once the queue is empty', async () => {
+		vi.useFakeTimers();
+		try {
+			enqueueAction({ key: 'r', method: 'PATCH', path: '/api/items/r', payload: { title: 'x' } });
+			reply(500);
+			await flushQueue();
+			expect(queued()).toBe(1); // kept for later
+			const ok = vi.fn(async () => new Response('{}', { status: 200 }));
+			vi.stubGlobal('fetch', ok);
+			await vi.advanceTimersByTimeAsync(30_000);
+			expect(ok).toHaveBeenCalledTimes(1); // the retry sent it without any `online` event
+			expect(queued()).toBe(0);
+			await vi.advanceTimersByTimeAsync(120_000);
+			expect(ok).toHaveBeenCalledTimes(1); // nothing left: no more retries
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('keeps one flush in flight when flushQueue is asked again', async () => {
+		let release!: (r: Response) => void;
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(() => new Promise<Response>((r) => (release = r))),
+		);
+		enqueueAction({ key: 'd', method: 'PATCH', path: '/api/items/d', payload: { title: 'y' } });
+		const a = flushQueue();
+		const b = flushQueue();
+		expect(a).toBe(b); // the retry reuses the run instead of sending the op twice
+		release(new Response('{}', { status: 200 }));
+		await a;
+		expect(queued()).toBe(0);
+	});
+});
