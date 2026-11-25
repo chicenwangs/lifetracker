@@ -112,6 +112,31 @@ test('rapid taps after Save note do not reach the page beneath (#378)', async ()
 	const b = (await save.boundingBox())!;
 	const x = b.x + b.width / 2;
 	const y = b.y + b.height / 2;
+	// The reminder inbox checks after load and can pop a 15 s snackbar over the sheet, so the toast-count check
+	// above can pass first. Such a toast would eat the burst (its buttons snooze the reminder): close it and
+	// confirm the Save spot really is the Save button before tapping.
+	await expect
+		.poll(
+			async () => {
+				if (
+					await page
+						.locator('.toast')
+						.isVisible()
+						.catch(() => false)
+				)
+					await page
+						.locator('.toast button[aria-label="Close"]')
+						.click()
+						.catch(() => {});
+				return page.evaluate(
+					([px, py]) =>
+						document.elementFromPoint(px, py)?.closest('button')?.textContent?.trim() === 'Save note',
+					[x, y] as const,
+				);
+			},
+			{ timeout: 10_000 },
+		)
+		.toBe(true);
 	// The guard lives 400 ms after the save reply (which can be seconds on a slow runner): record it when it mounts
 	// instead of racing a polling expect against its lifetime. It must cover the Save spot the burst keeps hitting.
 	await page.evaluate(
