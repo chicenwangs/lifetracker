@@ -8,7 +8,7 @@ import * as types from '../../src/lib/server/repo/itemtypes';
 import * as sharekeys from '../../src/lib/server/repo/sharekeys';
 import { undo, undoable } from '../../src/lib/server/undo';
 import { quickAdd } from '../../src/lib/server/quickadd-server';
-import { BUILTIN_TYPES, contrast, inkFor } from '../../src/lib/itemtypes';
+import { BUILTIN_TYPES, contrast, inkFor, onMonth } from '../../src/lib/itemtypes';
 import { examCountdown } from '../../src/lib/time';
 
 let me: string;
@@ -119,5 +119,24 @@ describe('item types', () => {
 		expect(() =>
 			sharekeys.create(me, { types: ['ity_someoneelse'], hiddenAs: 'busy', expiry: '7d' }),
 		).toThrow(/unknown type/);
+	});
+
+	it('Month calendar flag (PR 10): on by default, the patch flips it, the DTO carries it', () => {
+		const ev = types.list(me).find((t) => t.key === 'Event')!;
+		expect(ev.onCalendar).toBe(true);
+		expect(add('Study').onCalendar).toBe(true); // new types default on
+		expect(types.patch(me, ev.id, types.patchSchema.parse({ onCalendar: false })).onCalendar).toBe(false);
+		expect(types.patch(me, ev.id, { onCalendar: true }).onCalendar).toBe(true);
+	});
+
+	it('onMonth filter (pure): off hides only that type; None/unknown stay shown', () => {
+		const list = [
+			{ key: 'Event', onCalendar: false },
+			{ key: 'Work', onCalendar: true },
+		];
+		expect(onMonth(list, 'Event')).toBe(false);
+		expect(onMonth(list, 'Work')).toBe(true);
+		expect(onMonth(list, null)).toBe(true);
+		expect(onMonth(list, 'None')).toBe(true); // unknown key (e.g. a deleted type) keeps the old behaviour
 	});
 });

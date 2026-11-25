@@ -112,19 +112,32 @@ test('rapid taps after Save note do not reach the page beneath (#378)', async ()
 	const b = (await save.boundingBox())!;
 	const x = b.x + b.width / 2;
 	const y = b.y + b.height / 2;
+	// The guard lives 400 ms after the save reply (which can be seconds on a slow runner): record it when it mounts
+	// instead of racing a polling expect against its lifetime. It must cover the Save spot the burst keeps hitting.
+	await page.evaluate(
+		([px, py]) => {
+			const w = window as unknown as { guardSeen: boolean; guardAtPoint: boolean };
+			w.guardSeen = false;
+			w.guardAtPoint = false;
+			const mo = new MutationObserver(() => {
+				if (!document.querySelector('.tap-guard')) return;
+				w.guardSeen = true;
+				w.guardAtPoint = document.elementFromPoint(px, py)?.classList.contains('tap-guard') ?? false;
+				mo.disconnect();
+			});
+			mo.observe(document.body, { childList: true, subtree: true });
+		},
+		[x, y] as const,
+	);
 	const f = await finger(page);
 	await f.send('touchStart', x, y);
 	await f.send('touchEnd');
 	// the rest of the burst must land on the guard, not the Today row that just appeared under the finger
-	await expect(page.locator('.tap-guard')).toBeVisible();
-	await expect
-		.poll(() =>
-			page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.classList.contains('tap-guard'), [
-				x,
-				y,
-			] as const),
-		)
-		.toBe(true);
+	await page.waitForFunction(() => (window as unknown as { guardSeen: boolean }).guardSeen, null, {
+		polling: 50,
+		timeout: 15_000,
+	});
+	expect(await page.evaluate(() => (window as unknown as { guardAtPoint: boolean }).guardAtPoint)).toBe(true);
 	await f.send('touchStart', x, y);
 	await f.send('touchEnd');
 	await page.waitForTimeout(60);
