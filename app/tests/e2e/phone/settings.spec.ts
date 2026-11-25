@@ -1,7 +1,7 @@
 // Settings on phone (#100): a grouped list (icon, label, current value); a row opens its section with Back + its
 // name in the top bar; no sideways chip row.
 import { expect, test, type Page } from '@playwright/test';
-import { expectTargets48, signIn } from './helpers';
+import { expectTargets48, noDesktopHints, signIn } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 let page: Page;
@@ -25,6 +25,7 @@ test('list: groups, every section, current values, no sideways scroll', async ()
 		'Preferences',
 		'Item types',
 		'Notifications',
+		'Calendar feed',
 		'Devices',
 		'Sharing',
 		'Trash',
@@ -59,4 +60,15 @@ test('Preferences: no hidden-header-button or mouse wording on phone (#301)', as
 	await expect(page.getByRole('heading', { name: 'Planner defaults' })).toBeVisible();
 	const text = await page.getByRole('main').innerText();
 	expect(text).not.toMatch(/sun \/ moon|click/i);
+});
+
+test('Calendar feed (v3.2 PR 7): 48 dp buttons, link shown once, no desktop words', async () => {
+	await page.goto('/settings/calendar');
+	await page.getByRole('button', { name: 'Create feed link' }).click();
+	await expect(page.getByRole('textbox', { name: 'Feed link' })).toHaveValue(/\/cal\/.+\.ics$/);
+	await expectTargets48(page);
+	await noDesktopHints(page);
+	await page.getByRole('button', { name: 'Turn off' }).click();
+	await page.getByRole('alertdialog').getByRole('button', { name: 'Turn off' }).click();
+	await expect(page.getByRole('button', { name: 'Create feed link' })).toBeVisible();
 });
