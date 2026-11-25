@@ -2,6 +2,7 @@
      Notion seed import stays admin-only (FR-IM1..3, SEED_DIR). -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import type { SubmitFunction } from '@sveltejs/kit';
 	import { invalidateAll } from '$lib/client/refresh';
 	import { showToast } from '$lib/client/toast.svelte';
 	import { undoLast } from '$lib/client/undo.svelte';
@@ -9,6 +10,7 @@
 	let { data, form } = $props();
 	let busy = $state(false);
 	let icsBusy = $state(false);
+	let clientError = $state('');
 
 	type Preview = {
 		events: number;
@@ -22,15 +24,18 @@
 	const icsImported = $derived((form as { icsImported?: Imported } | null)?.icsImported); // prettier-ignore
 	const icsError = $derived((form as { icsError?: string } | null)?.icsError);
 
-	function icsEnhance() {
+	const icsEnhance: SubmitFunction = ({ cancel, formData }) => {
+		// adapter-node caps the whole POST body at 512 KB: refuse a bigger file before the request (the server
+		// check stays as the backstop, but its message never reaches a browser after the body limit)
+		const f = formData.get('file');
+		if (f instanceof File && f.size > 512 * 1024) {
+			cancel();
+			clientError = 'That file is bigger than 512 KB. Export a shorter date range.';
+			return;
+		}
+		clientError = '';
 		icsBusy = true;
-		return async ({
-			result,
-			update,
-		}: {
-			result: { type: string; data?: unknown };
-			update: (o: { reset: boolean }) => Promise<void>;
-		}) => {
+		return async ({ result, update }) => {
 			icsBusy = false;
 			await update({ reset: false });
 			const imp =
@@ -46,7 +51,7 @@
 				);
 			}
 		};
-	}
+	};
 </script>
 
 <svelte:head><title>Import · Life Tracker</title></svelte:head>
@@ -62,13 +67,14 @@
 		</p>
 		<form method="post" action="?/ics" enctype="multipart/form-data" use:enhance={icsEnhance}>
 			<label class="field">
-				<span class="label">File (.ics, up to 1 MB)</span>
+				<span class="label">File (.ics, up to 512 KB)</span>
 				<input
 					type="file"
 					name="file"
 					accept=".ics,text/calendar"
 					aria-label="Calendar file (.ics)"
 					disabled={icsBusy}
+					onchange={() => (clientError = '')}
 				/>
 			</label>
 			<div class="row">
@@ -90,7 +96,7 @@
 			</div>
 		</form>
 
-		{#if icsError}<p class="alert" role="alert">{icsError}</p>{/if}
+		{#if icsError || clientError}<p class="alert" role="alert">{icsError || clientError}</p>{/if}
 		{#if icsPreview}
 			<p class="summary" role="status">
 				{icsPreview.events} event{icsPreview.events === 1 ? '' : 's'} ·

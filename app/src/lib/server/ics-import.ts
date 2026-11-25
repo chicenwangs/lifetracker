@@ -8,7 +8,7 @@ import * as itemTypesRepo from './repo/itemtypes';
 import { undoable, type Target, type UndoRef } from './undo';
 import { bad } from './http';
 
-export const ICS_MAX_BYTES = 1024 * 1024;
+export const ICS_MAX_BYTES = 512 * 1024; // adapter-node's default POST body cap is 512 KB; the UI checks the same number
 export const ICS_MAX_EVENTS = 2000;
 const MAX_LINE = 64 * 1024;
 const MAX_TITLE = 300;
@@ -201,7 +201,7 @@ function oneEvent(props: Prop[], meTz: string): IcsEvent | Skipped {
 
 export function parseIcs(text: string, meTz: string): IcsParse {
 	if (typeof text !== 'string') throw bad('Send a calendar file.', 'no_file');
-	if (text.length > ICS_MAX_BYTES) throw bad('That file is bigger than 1 MB.', 'too_large');
+	if (text.length > ICS_MAX_BYTES) throw bad('That file is bigger than 512 KB.', 'too_large');
 	const events: IcsEvent[] = [];
 	const skipped: Skipped[] = [];
 	let cur: Prop[] | null = null;

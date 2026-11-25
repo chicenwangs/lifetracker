@@ -6,7 +6,13 @@ import * as usersRepo from '../../src/lib/server/repo/users';
 import * as items from '../../src/lib/server/repo/items';
 import * as types from '../../src/lib/server/repo/itemtypes';
 import { undo } from '../../src/lib/server/undo';
-import { ICS_MAX_EVENTS, importIcs, parseIcs, previewIcs } from '../../src/lib/server/ics-import';
+import {
+	ICS_MAX_BYTES,
+	ICS_MAX_EVENTS,
+	importIcs,
+	parseIcs,
+	previewIcs,
+} from '../../src/lib/server/ics-import';
 
 const TZ = 'Asia/Kuala_Lumpur';
 const wrap = (body: string) => `BEGIN:VCALENDAR\r\nVERSION:2.0\r\n${body}END:VCALENDAR\r\n`;
@@ -106,6 +112,10 @@ describe('ics parser', () => {
 		const { events, skipped } = parseIcs(wrap(many), TZ);
 		expect(events).toHaveLength(ICS_MAX_EVENTS);
 		expect(skipped[0]?.reason).toContain(`more than ${ICS_MAX_EVENTS} events`);
+	});
+
+	it('refuses a file over 512 KB with a plain message (adapter-node body cap)', () => {
+		expect(() => parseIcs('X'.repeat(ICS_MAX_BYTES + 1), TZ)).toThrow(/512 KB/);
 	});
 });
 

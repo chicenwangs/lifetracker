@@ -63,6 +63,33 @@ test('calendar file: preview counts, import, Undo takes the rows away', async ({
 	await expect.poll(async () => (await found(page)).length).toBe(0);
 });
 
+test('a file over 512 KB is refused before the upload with a friendly message', async ({ page }) => {
+	await signIn(page);
+	await page.goto('/settings/import');
+	const big = Buffer.from(
+		[
+			'BEGIN:VCALENDAR',
+			'VERSION:2.0',
+			'BEGIN:VEVENT',
+			'UID:e2e-big@lifetracker',
+			'SUMMARY:Too big',
+			'DTSTART:20300401T010000Z',
+			`X-PAD:${'x'.repeat(600 * 1024)}`,
+			'END:VEVENT',
+			'END:VCALENDAR',
+			'',
+		].join('\r\n'),
+	);
+	await page.getByLabel('Calendar file (.ics)').setInputFiles({
+		name: 'big.ics',
+		mimeType: 'text/calendar',
+		buffer: big,
+	});
+	await page.getByRole('button', { name: 'Preview' }).click();
+	await expect(page.getByRole('alert')).toContainText('bigger than 512 KB');
+	await expect(page.locator('.summary')).toHaveCount(0);
+});
+
 test('the imported event shows on the Week grid; a re-import updates instead of copying', async ({
 	page,
 }) => {
