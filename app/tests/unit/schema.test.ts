@@ -112,9 +112,16 @@ describe('migrations', () => {
 			digest_time: null,
 		});
 		expect(() => sqlite.exec(`UPDATE users SET digest_time='9:00' WHERE id='usr_c'`)).toThrow(/CHECK/);
+		for (const bad of ['24:00', '25:00', '29:59']) {
+			expect(() => sqlite.exec(`UPDATE users SET digest_time='${bad}' WHERE id='usr_c'`)).toThrow(/CHECK/);
+		}
 		sqlite.exec(`UPDATE users SET digest_time='23:59' WHERE id='usr_c'`);
 		expect(sqlite.prepare(`SELECT digest_time FROM users WHERE id='usr_c'`).get()).toEqual({
 			digest_time: '23:59',
+		});
+		sqlite.exec(`UPDATE users SET digest_time='00:00' WHERE id='usr_c'`);
+		expect(sqlite.prepare(`SELECT digest_time FROM users WHERE id='usr_c'`).get()).toEqual({
+			digest_time: '00:00',
 		});
 		expect(
 			sqlite.prepare(`SELECT name FROM sqlite_master WHERE type='index' AND name='items_cal_ics'`).get(),

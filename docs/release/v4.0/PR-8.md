@@ -6,7 +6,8 @@
 - Migration: `drizzle/0011_v4_flags.sql` — ADD COLUMN only, no table rebuild:
   `item_types.on_calendar` INTEGER NOT NULL DEFAULT 1 · `items.repeat_from_completion` INTEGER NOT NULL DEFAULT 0 ·
   `items.ics_uid` TEXT · INDEX `items_cal_ics (calendar_id, ics_uid)` · `users.digest_time` TEXT with
-  `CHECK (digest_time IS NULL OR digest_time GLOB '[0-2][0-9]:[0-5][0-9]')` (NULL = off).
+  `CHECK (digest_time IS NULL OR digest_time GLOB '[0-1][0-9]:[0-5][0-9]' OR digest_time GLOB '2[0-3]:[0-5][0-9]')`
+  (NULL = off; 00:00-23:59 only).
   Snapshot `drizzle/meta/0011_snapshot.json`, journal entry `0011_v4_flags`; `db:generate` after this says
   "No schema changes".
 - Files: `app/drizzle/0011_v4_flags.sql`, `app/drizzle/meta/0011_snapshot.json`, `app/drizzle/meta/_journal.json`,
