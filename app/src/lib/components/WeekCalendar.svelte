@@ -286,6 +286,15 @@
 					t.textContent = (it.time ? `${prettyTime(it.time, us)} ` : '') + it.title;
 					t.title = `${typeName(it.type) ?? 'Custom type'} · ${t.textContent}`;
 					wrap.append(t);
+					if (it.repeatFromCompletion) {
+						// v3.3 PR 9: this row is the series' only upcoming date
+						const rep = document.createElement('span');
+						rep.setAttribute('aria-label', 'Repeats from completion');
+						rep.title = 'Repeats from completion';
+						rep.textContent = '↻✓';
+						rep.style.cssText = 'flex:none;font-size:11px;line-height:1;color:var(--quiet);margin-left:4px;';
+						wrap.append(rep);
+					}
 					if (it.editable) wrap.append(xButton(it.title, c.bg, () => ondelete('item', it.id, it.title)));
 				} else if (p.block) {
 					const b = p.block;

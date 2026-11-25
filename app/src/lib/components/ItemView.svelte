@@ -39,6 +39,7 @@
 	import { colorsFor } from '$lib/colors';
 	import {
 		baseItemId,
+		canCountFromCompletion,
 		describeRRule,
 		formatRRule,
 		nthWeekdayOfDate,
@@ -47,6 +48,7 @@
 		WD_CODES,
 		WD_SHORT,
 		type Freq,
+		type ParsedRRule,
 		type WdCode,
 	} from '$lib/rrule';
 	import { addDays, examCountdown, prettyDate, todayLocal, utcToLocal, weekdayOf } from '$lib/time';
@@ -212,7 +214,7 @@
 	async function save(p: Record<string, unknown>) {
 		if (!it) return;
 		let body = p;
-		if (it.rrule && !('rrule' in p) && !('scope' in p)) {
+		if (it.rrule && !('rrule' in p) && !('scope' in p) && !('repeatFromCompletion' in p)) {
 			const scope = await askScope(`Edit repeating item "${it.title}"?`, { ok: 'Save' });
 			if (!scope) {
 				await load();
@@ -333,6 +335,11 @@
 		const p = parseRRule(it?.rrule ?? '');
 		if (!p) return;
 		await save({ rrule: formatRRule({ ...p, count: Math.max(1, Math.min(999, n || 5)), until: undefined }) });
+	}
+	/** PR 9: the summary line under the Repeat box */
+	function fromSummary(r: ParsedRRule): string {
+		const unit = r.freq === 'DAILY' ? 'day' : r.freq === 'WEEKLY' ? 'week' : 'month';
+		return `${r.interval === 1 ? `Every ${unit}` : `Every ${r.interval} ${unit}s`}, counted from when you finish`;
 	}
 
 	// ---------- title: edit in place ----------
@@ -703,6 +710,32 @@
 										onchange={(e) => setRepeatCount(Number(e.currentTarget.value))}
 									/>
 								</label>
+							{/if}
+							{#if canCountFromCompletion(curRRule)}
+								<div class="repfrom">
+									<span class="rl" id="repfrom-l">Next one counts from</span>
+									<div class="radios" role="radiogroup" aria-labelledby="repfrom-l">
+										<label>
+											<input
+												type="radio"
+												name="repfrom"
+												checked={!it.repeatFromCompletion}
+												onchange={() => save({ repeatFromCompletion: false })}
+											/> Scheduled date</label
+										>
+										<label>
+											<input
+												type="radio"
+												name="repfrom"
+												checked={!!it.repeatFromCompletion}
+												onchange={() => save({ repeatFromCompletion: true })}
+											/> When I finish it</label
+										>
+									</div>
+									{#if it.repeatFromCompletion}
+										<span class="pill-sum">{fromSummary(curRule)}</span>
+									{/if}
+								</div>
 							{/if}
 						{/if}
 					{/if}
@@ -1141,6 +1174,44 @@
 		color: var(--ink);
 		font-weight: 600;
 	}
+	/* PR 9: next one counts from */
+	.repfrom {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding: 2px 4px 6px 10px;
+	}
+	.repfrom .rl {
+		color: var(--quiet);
+		font-size: 12px;
+	}
+	.repfrom .radios {
+		display: flex;
+		gap: 18px;
+		flex-wrap: wrap;
+	}
+	.repfrom .radios label {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		min-height: 24px;
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.repfrom .radios input {
+		width: 15px;
+		height: 15px;
+		accent-color: var(--ink);
+	}
+	.repfrom .pill-sum {
+		align-self: flex-start;
+		padding: 4px 10px;
+		border-radius: 999px;
+		background: var(--pill);
+		color: var(--pill-ink);
+		font-size: 12px;
+	}
 	/* v3.2 postpone: a pill beside the date on desktop, a 48 dp row on phone (same .prop box) */
 	.post-btn {
 		font: inherit;
@@ -1354,6 +1425,9 @@
 		}
 		.prop > span {
 			font-size: 14px;
+		}
+		.repfrom .radios label {
+			min-height: 48px;
 		}
 		.prop select,
 		.prop input:not([type='checkbox']) {

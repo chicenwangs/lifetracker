@@ -4,6 +4,7 @@
 	import type { ItemDTO } from '$lib/types';
 	import { openItem } from '$lib/client/peek.svelte';
 	import ScheduleButton from './ScheduleButton.svelte';
+	import RepeatMark from './RepeatMark.svelte';
 	let { items, label = 'Due today' }: { items: ItemDTO[]; label?: string } = $props();
 </script>
 
@@ -26,7 +27,7 @@
 				e.dataTransfer?.setData('application/x-lt-item', i.id);
 				e.dataTransfer?.setData('text/plain', i.title);
 				if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copy';
-			}}>{i.title}</a
+			}}>{i.title}<RepeatMark item={i} /></a
 		><ScheduleButton itemId={i.id} title={i.title} date={i.date} />
 	{:else}
 		<span class="muted none">Nothing due.</span>

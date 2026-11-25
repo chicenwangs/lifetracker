@@ -40,6 +40,8 @@ export interface ItemDTO {
 	stepsDone: number;
 	stepsTotal: number;
 	editable: boolean;
+	/** v3.3 PR 9: the repeat counts from when the item is done (next date = done day + interval) */
+	repeatFromCompletion?: boolean;
 	/** RFC 5545 repeat rule (#72), e.g. FREQ=WEEKLY;BYDAY=MO,WE */
 	rrule?: string | null;
 	/** series item id when this is an expanded occurrence (#72) */

@@ -24,11 +24,13 @@ export const PATCH = api(async (e) => {
 	const id = e.params.id ?? '';
 	const p = await body(e, items.itemPatchSchema);
 	const cur = items.mustOwn(u.id, id);
+	const created: { t: 'items'; id: string }[] = [];
 	const r = undoable(u.id, `${what(p)} "${cur.title}"`, [{ t: 'items', id: cur.id }], () => {
-		const result = items.patch(u.id, id, p);
+		// PR 9: a from-completion tick writes a done copy; the journal needs its id to remove it on Undo
+		const result = items.patch(u.id, id, p, (cid) => created.push({ t: 'items', id: cid }));
 		return {
 			result,
-			created: result.id !== cur.id ? [{ t: 'items' as const, id: result.id }] : [],
+			created: result.id !== cur.id ? [...created, { t: 'items' as const, id: result.id }] : created,
 		};
 	});
 	if (p.scope === 'following' && r.result.id !== cur.id) splitSeries(u.id, cur.id, r.result.id); // #296

@@ -11,6 +11,7 @@
 	import { peerSwipe } from '$lib/client/peerSwipe';
 	import CalSwitch from '$lib/components/CalSwitch.svelte';
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
+	import RepeatMark from '$lib/components/RepeatMark.svelte';
 	import { invalidateAll } from '$lib/client/refresh';
 	import { deleteRow, toggleDone } from '$lib/client/rowOps';
 	import { postpones } from '$lib/client/reschedule';
@@ -124,6 +125,7 @@
 			{@const c = entryColors(t)}
 			{#snippet body()}
 				<span class="tm">{timeOf(t) || 'All day'}</span><span class="tt">{labelOf(t)}</span>
+				<RepeatMark item={'repeatFromCompletion' in t ? t : null} />
 			{/snippet}
 			<div
 				class="rw"
