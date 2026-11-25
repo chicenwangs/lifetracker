@@ -11,14 +11,27 @@ type ThemeBars = {
 	setDark(opts: { dark: boolean }): Promise<void>;
 };
 type Session = { signOut(): Promise<void> };
+type Speech = {
+	listen(o: { preferOffline?: boolean }): Promise<{ text: string }>;
+	stop(): Promise<void>;
+};
 type Cap = {
 	isNativePlatform?: () => boolean;
-	Plugins?: { Updater?: Updater; SystemBars?: SystemBars; ThemeBars?: ThemeBars; Session?: Session };
+	Plugins?: {
+		Updater?: Updater;
+		SystemBars?: SystemBars;
+		ThemeBars?: ThemeBars;
+		Session?: Session;
+		Speech?: Speech;
+	};
 };
 const cap = () => (globalThis as { Capacitor?: Cap }).Capacitor;
 
 export const isApp = () => !!cap()?.isNativePlatform?.();
 export const updater = () => cap()?.Plugins?.Updater;
+/** v4 PR 13: the Keep quick-note mic. App only, and only when the installed APK carries the plugin. */
+export const speech = () => cap()?.Plugins?.Speech;
+export const hasSpeech = () => isApp() && !!speech();
 /** #201: the Android app drops its alarms, notifications, cached sync and widget data (no-op on the web) */
 export const signOutNative = (): Promise<void> =>
 	cap()

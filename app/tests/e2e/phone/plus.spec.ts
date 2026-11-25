@@ -93,6 +93,14 @@ test('Pages: + makes a page and opens it; no second New page button', async () =
 	await expect(page).toHaveURL(/\/pages\/pg_/);
 });
 
+test('Quick note has no mic on the web (voice note is app only, PR 13)', async () => {
+	await page.goto('/today');
+	await plus().click();
+	await page.getByRole('tab', { name: 'Quick note' }).click();
+	await expect(page.getByRole('textbox', { name: 'Note' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Dictate note' })).toHaveCount(0);
+});
+
 test('rapid taps after Save note do not reach the page beneath (#378)', async () => {
 	await page.goto('/today');
 	// a warning toast from an earlier test can still sit over the Save spot (8 s), so let it clear first
@@ -101,22 +109,79 @@ test('rapid taps after Save note do not reach the page beneath (#378)', async ()
 	await page.getByRole('tab', { name: 'Quick note' }).click();
 	await page.getByRole('textbox', { name: 'Note' }).fill(`Save guard ${test.info().project.name}`);
 	const save = page.getByRole('button', { name: 'Save note' });
+	await expect(save).toBeEnabled(); // a disabled Save would take the tap and do nothing (#414 diagnosis)
 	const b = (await save.boundingBox())!;
 	const x = b.x + b.width / 2;
 	const y = b.y + b.height / 2;
+	// The reminder inbox checks after load and can pop a 15 s snackbar over the sheet, so the toast-count check
+	// above can pass first. Such a toast would eat the burst (its buttons snooze the reminder): close it and
+	// confirm the Save spot really is the Save button before tapping.
+	await expect
+		.poll(
+			async () => {
+				if (
+					await page
+						.locator('.toast')
+						.isVisible()
+						.catch(() => false)
+				)
+					await page
+						.locator('.toast button[aria-label="Close"]')
+						.click()
+						.catch(() => {});
+				return page.evaluate(
+					([px, py]) =>
+						document.elementFromPoint(px, py)?.closest('button')?.textContent?.trim() === 'Save note',
+					[x, y] as const,
+				);
+			},
+			{ timeout: 10_000 },
+		)
+		.toBe(true);
+	// The guard lives 400 ms after the save reply (which can be seconds on a slow runner): record it when it mounts
+	// instead of racing a polling expect against its lifetime. It must cover the Save spot the burst keeps hitting.
+	await page.evaluate(
+		([px, py]) => {
+			const w = window as unknown as { guardSeen: boolean; guardAtPoint: boolean };
+			w.guardSeen = false;
+			w.guardAtPoint = false;
+			const mo = new MutationObserver(() => {
+				if (!document.querySelector('.tap-guard')) return;
+				w.guardSeen = true;
+				w.guardAtPoint = document.elementFromPoint(px, py)?.classList.contains('tap-guard') ?? false;
+				mo.disconnect();
+			});
+			mo.observe(document.body, { childList: true, subtree: true });
+		},
+		[x, y] as const,
+	);
 	const f = await finger(page);
 	await f.send('touchStart', x, y);
 	await f.send('touchEnd');
 	// the rest of the burst must land on the guard, not the Today row that just appeared under the finger
-	await expect(page.locator('.tap-guard')).toBeVisible();
-	await expect
-		.poll(() =>
-			page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.classList.contains('tap-guard'), [
-				x,
-				y,
-			] as const),
-		)
-		.toBe(true);
+	try {
+		await page.waitForFunction(() => (window as unknown as { guardSeen: boolean }).guardSeen, null, {
+			polling: 50,
+			timeout: 15_000,
+		});
+	} catch {
+		// #414: a red CI run must say what the app did instead of only 'timeout' (sheet open? save sent? toast?)
+		const st = await page.evaluate(() => ({
+			url: location.href,
+			sheet: !!document.querySelector('[role=dialog][aria-label=Add]'),
+			sheetOpen:
+				(document.querySelector('[role=dialog][aria-label=Add]') as HTMLElement | null)?.checkVisibility() ??
+				null,
+			note: (document.querySelector('textarea[aria-label=Note]') as HTMLTextAreaElement)?.value ?? null,
+			saveDisabled:
+				[...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Save note')
+					?.disabled ?? null,
+			toast: (document.querySelector('.toast') as HTMLElement)?.innerText ?? null,
+			active: document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName,
+		}));
+		throw new Error(`#378: tap guard never mounted · ${JSON.stringify(st)}`);
+	}
+	expect(await page.evaluate(() => (window as unknown as { guardAtPoint: boolean }).guardAtPoint)).toBe(true);
 	await f.send('touchStart', x, y);
 	await f.send('touchEnd');
 	await page.waitForTimeout(60);

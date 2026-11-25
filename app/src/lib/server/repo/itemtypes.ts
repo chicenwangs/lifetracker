@@ -22,6 +22,7 @@ const toDTO = (r: Row): ItemTypeDTO => ({
 	shareDefault: r.shareDefault,
 	countsDown: r.countsDown,
 	isDefault: r.isDefault,
+	onCalendar: r.onCalendar,
 });
 
 export function list(ownerId: string): ItemTypeDTO[] {
@@ -88,10 +89,12 @@ export const createSchema = z
 		slug: zSlug.optional(),
 		countsDown: z.boolean().default(false),
 		shareDefault: z.boolean().default(false),
+		/** v3.3 PR 10/14: a preset (Class) can arrive with the Month calendar off */
+		onCalendar: z.boolean().default(true),
 	})
 	.strict();
 export const patchSchema = z
-	.object({ name: zName, bg: zColor, slug: zSlug, countsDown: z.boolean(), shareDefault: z.boolean(), isDefault: z.literal(true) })
+	.object({ name: zName, bg: zColor, slug: zSlug, countsDown: z.boolean(), shareDefault: z.boolean(), isDefault: z.literal(true), onCalendar: z.boolean() })
 	.partial()
 	.strict(); // prettier-ignore
 
@@ -131,6 +134,7 @@ export function create(ownerId: string, input: z.infer<typeof createSchema>): It
 				position: Math.max(-1, ...all.map((t) => t.position)) + 1,
 				countsDown: input.countsDown,
 				shareDefault: input.shareDefault,
+				onCalendar: input.onCalendar,
 				createdAt: now,
 				updatedAt: now,
 			})
