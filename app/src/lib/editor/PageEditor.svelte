@@ -235,6 +235,8 @@
 	let phone = $state(false);
 	let typing = $state(false);
 	let blockMenu = $state(false);
+	/** #433: height of the phone tab bar, so the docked toolbar sits above it (0 on desktop / hidden bar) */
+	let barH = $state(0);
 	onMount(() => {
 		phone = isPhone();
 		const dom = el?.querySelector('.pm');
@@ -246,9 +248,18 @@
 		};
 		dom?.addEventListener('focusin', on);
 		dom?.addEventListener('focusout', off);
+		const bar = document.querySelector<HTMLElement>('nav.mbar');
+		const measure = () => {
+			barH = bar && getComputedStyle(bar).display !== 'none' ? bar.offsetHeight : 0;
+		};
+		measure();
+		addEventListener('resize', measure);
+		visualViewport?.addEventListener('resize', measure);
 		return () => {
 			dom?.removeEventListener('focusin', on);
 			dom?.removeEventListener('focusout', off);
+			removeEventListener('resize', measure);
+			visualViewport?.removeEventListener('resize', measure);
 		};
 	});
 </script>
@@ -260,6 +271,7 @@
 	role="toolbar"
 	tabindex="-1"
 	aria-label="Formatting and block tools"
+	style:--bar-h="{barH}px"
 	onmousedown={(e) => (e.target as HTMLElement).closest('button') && e.preventDefault()}
 >
 	<button
@@ -331,7 +343,7 @@
 		<span class="hint desk">Type / for blocks</span>
 	{/if}
 </div>
-<div class="doc" bind:this={el}></div>
+<div class="doc" bind:this={el} style:--bar-h="{barH}px"></div>
 <input
 	class="sr-only"
 	type="file"
@@ -417,8 +429,8 @@
 	.ph {
 		display: none;
 	}
-	/* phone (#98): 48 dp, one scrolling row docked to the bottom of the (keyboard-shrunk, #118) screen while
-	   typing, over the tab bar; gone otherwise */
+	/* phone (#98): 48 dp, one scrolling row docked above the tab bar (and so above the keyboard when it is up,
+	   #433) while typing, gone otherwise */
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.t {
 			min-width: 48px;
@@ -439,7 +451,7 @@
 			position: fixed;
 			left: 0;
 			right: 0;
-			bottom: 0;
+			bottom: var(--bar-h, 0px); /* #433: above the phone tab bar (the bar sits at the keyboard's top) */
 			top: auto;
 			z-index: 60;
 			margin: 0;
@@ -456,7 +468,7 @@
 			display: none;
 		}
 		.doc {
-			padding-bottom: 64px; /* last line clears the docked toolbar */
+			padding-bottom: calc(64px + var(--bar-h, 0px)); /* last line clears the docked toolbar + the tab bar */
 		}
 		/* div.picker beats the base 36 / 32 px rules further down (#223) */
 		div.picker input,
@@ -677,3 +689,5 @@
 		color: var(--pill-ink);
 	}
 </style>
+
+
