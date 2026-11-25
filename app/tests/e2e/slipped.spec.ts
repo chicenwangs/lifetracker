@@ -80,6 +80,26 @@ test('strip: count, original date, collapsible, ⋯ = reschedule actions', async
 	await expect(strip()).toBeVisible();
 });
 
+test('sheet: Escape closes, Tab stays inside, focus returns to the opener (#407)', async () => {
+	const d = plusDay(await today(), -6);
+	await onCreate({ title: 'Sheet escape', date: d, time: '10:00' });
+	await page.goto('/');
+	const opener = page.getByRole('button', { name: 'Actions for Sheet escape' });
+	await opener.focus();
+	await page.keyboard.press('Enter');
+	const sheet = page.getByRole('dialog', { name: 'Sheet escape' });
+	await expect(sheet).toBeVisible();
+	const inside = () =>
+		page.evaluate(() => !!document.activeElement?.closest('[role=dialog][aria-modal="true"]'));
+	for (let i = 0; i < 10; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inside()).toBe(true);
+	}
+	await page.keyboard.press('Escape');
+	await expect(sheet).toBeHidden();
+	await expect(opener).toBeFocused();
+});
+
 test('Move all to today is one undo batch', async () => {
 	const t = await today();
 	const d1 = plusDay(t, -4);
