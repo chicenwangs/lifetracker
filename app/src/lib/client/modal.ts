@@ -31,7 +31,7 @@ export function modal(node: HTMLElement, close: () => void) {
 		}
 	};
 	stack.push(node);
-	addEventListener('keydown', onKey, true);
+	addEventListener('keydown', onKey); // bubble: a field or menu inside handles Escape first (a sheet keeps its own)
 	// after the dialog's own autofocus (mount order): only if nothing inside took focus
 	queueMicrotask(() => {
 		if (!isPhone() && !node.contains(document.activeElement))
@@ -42,7 +42,7 @@ export function modal(node: HTMLElement, close: () => void) {
 			close = next;
 		},
 		destroy() {
-			removeEventListener('keydown', onKey, true);
+			removeEventListener('keydown', onKey);
 			stack.splice(stack.indexOf(node), 1);
 			if (!isPhone() && opener?.isConnected) opener.focus({ preventScroll: true });
 		},

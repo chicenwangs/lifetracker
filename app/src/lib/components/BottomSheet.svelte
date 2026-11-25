@@ -5,6 +5,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
 	import { backCloses } from '$lib/client/layers';
+	import { modal } from '$lib/client/modal';
 
 	let {
 		onclose,
@@ -106,6 +107,7 @@
 		tabindex="-1"
 		bind:this={panel}
 		use:layer={onclose}
+		use:modal={onclose}
 		style:transform={dragY ? `translateY(${dragY}px)` : ''}
 		in:grow={intro === 'grow' ? { duration: 220 } : { duration: 0 }}
 		out:grow={intro === 'grow' ? { duration: 150 } : { duration: 0 }}

@@ -142,6 +142,7 @@
 		}
 		if (e.key === 'Escape' && menuOpen) {
 			e.preventDefault();
+			e.stopPropagation(); // the open list owns Escape: close the list, not the sheet behind it
 			menuHidden = true;
 			return;
 		}
