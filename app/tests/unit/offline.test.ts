@@ -102,6 +102,33 @@ describe('retry while queued', () => {
 		}
 	});
 
+	it('emptying one queue keeps the retry for the other', async () => {
+		vi.useFakeTimers();
+		try {
+			enqueueAction({ key: 'p', method: 'PATCH', path: '/api/items/p', payload: { title: 'p' } });
+			enqueue({ key: 'n', noteId: 'kn_n', revision: 1, payload: { title: 'n' } });
+			let releaseAction!: (r: Response) => void;
+			vi.stubGlobal(
+				'fetch',
+				vi.fn((u: string) =>
+					String(u).includes('/api/keep/notes/')
+						? Promise.resolve(new Response('{}', { status: 200 }))
+						: new Promise<Response>((r) => (releaseAction = r)),
+				),
+			);
+			const run = flushQueue();
+			for (let i = 0; i < 20 && localStorage.getItem('lt_keep_queue'); i++) await Promise.resolve();
+			expect(localStorage.getItem('lt_keep_queue')).toBeNull(); // notes done, planner still queued
+			expect(vi.getTimerCount()).toBe(1); // its retry was not cancelled by the empty note queue
+			releaseAction(new Response('{}', { status: 200 }));
+			await run;
+			expect(queued()).toBe(0);
+			expect(vi.getTimerCount()).toBe(0);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('keeps one flush in flight when flushQueue is asked again', async () => {
 		let release!: (r: Response) => void;
 		vi.stubGlobal(

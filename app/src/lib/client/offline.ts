@@ -59,7 +59,7 @@ const write = (q: Op[]) => {
 	}
 	notify();
 	if (q.length) scheduleRetry();
-	else stopRetry();
+	else if (queued() === 0) stopRetry(); // the other queue may still be waiting
 };
 
 const readActions = (): ActionOp[] => {
@@ -78,7 +78,7 @@ const writeActions = (q: ActionOp[]) => {
 	}
 	notify();
 	if (q.length) scheduleRetry();
-	else stopRetry();
+	else if (queued() === 0) stopRetry(); // the other queue may still be waiting
 };
 
 export const queued = () => read().length + readActions().length;
