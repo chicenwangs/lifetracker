@@ -6,6 +6,9 @@ import { signIn, swipe } from './helpers';
 test.describe.configure({ mode: 'serial' });
 let page: Page;
 let P = '';
+/** every row this file creates is trashed at the end: a leftover slipped item adds a strip to Today for
+ *  later phone specs (today.spec.ts swipes at fixed coordinates and breaks in landscape). */
+const created: string[] = [];
 
 test.beforeAll(async ({ browser }, info) => {
 	const { viewport, isMobile, hasTouch, userAgent, deviceScaleFactor } = info.project.use;
@@ -15,7 +18,14 @@ test.beforeAll(async ({ browser }, info) => {
 	await signIn(page);
 	P = info.project.name;
 });
-test.afterAll(() => page.context().close());
+test.afterAll(async () => {
+	await page
+		.evaluate(async (ids) => {
+			for (const id of ids) await fetch(`/api/items/${id}`, { method: 'DELETE' });
+		}, created)
+		.catch(() => {});
+	await page.context().close();
+});
 
 const create = (body: object) =>
 	page.evaluate(async (b) => {
@@ -26,6 +36,12 @@ const create = (body: object) =>
 		});
 		return ((await r.json()) as { item: { id: string } }).item.id;
 	}, body);
+/** create + remember for the cleanup */
+async function make(body: object) {
+	const id = await create(body);
+	created.push(id);
+	return id;
+}
 const item = (id: string) =>
 	page.evaluate(
 		async (i) =>
@@ -41,7 +57,7 @@ const strip = () => page.getByRole('region', { name: 'Slipped items' });
 test('strip row: swipe right = done with Undo, tap opens the item sheet', async () => {
 	const T = `Slipped swipe ${P}`;
 	const d = plusDay(await today(), -2);
-	const id = await create({ title: T, date: d, time: '09:00' });
+	const id = await make({ title: T, date: d, time: '09:00' });
 	await page.goto('/today');
 	const row = strip().locator('li.rw', { hasText: T });
 	await expect(row).toBeVisible();
@@ -63,8 +79,8 @@ test('Move all to today moves every slipped row; one Undo puts them back', async
 	const d1 = plusDay(t, -3);
 	const d2 = plusDay(t, -4);
 	const T = `Slipped bulk ${P}`;
-	const a = await create({ title: `${T} A`, date: d1, time: '08:00' });
-	const b = await create({ title: `${T} B`, date: d2 });
+	const a = await make({ title: `${T} A`, date: d1, time: '08:00' });
+	const b = await make({ title: `${T} B`, date: d2 });
 	await page.goto('/today');
 	const btn = strip().getByRole('button', { name: 'Move all to today' });
 	const box = await btn.boundingBox();

@@ -25,9 +25,12 @@ const plusDay = (d: string, n: number) =>
 	new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 const dateOf = async (id: string) => (await api('GET', `/api/items/${id}`)).j.item.date as string;
 const endOf = async (id: string) => (await api('GET', `/api/items/${id}`)).j.item.endDate as string;
+/** trashed after the file: a leftover slipped row would add a strip to Home for later desktop specs */
+const created: string[] = [];
 const onCreate = async (body: object) => {
 	const r = await api('POST', '/api/items', body);
 	expect(r.s).toBe(201); // a 401/400 must fail here, not as a TypeError below
+	created.push(r.j.item.id as string);
 	return r.j.item.id as string;
 };
 const strip = () => page.getByRole('region', { name: 'Slipped items' });
@@ -36,7 +39,14 @@ test.beforeAll(async ({ browser }) => {
 	page = await (await browser.newContext()).newPage();
 	await signIn(page);
 });
-test.afterAll(() => page.context().close());
+test.afterAll(async () => {
+	await page
+		.evaluate(async (ids) => {
+			for (const id of ids) await fetch(`/api/items/${id}`, { method: 'DELETE' });
+		}, created)
+		.catch(() => {});
+	await page.context().close();
+});
 
 test('strip: count, original date, collapsible, ⋯ = reschedule actions', async () => {
 	const d1 = plusDay(await today(), -2);
