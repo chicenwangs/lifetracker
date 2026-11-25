@@ -8,7 +8,14 @@ import { undoable, type Target } from '$lib/server/undo';
 
 export const PATCH = api(async (e) => {
 	const u = me(e);
-	return json({ type: itemTypes.patch(u.id, e.params.id ?? '', await body(e, itemTypes.patchSchema)) });
+	const id = e.params.id ?? '';
+	const p = await body(e, itemTypes.patchSchema);
+	const t = itemTypes.list(u.id).find((x) => x.id === id);
+	// v3.3 PR 10: one undo entry per edit (the Month calendar switch included); the row is captured whole
+	const r = undoable(u.id, `Edit type "${t?.name ?? ''}"`, [{ t: 'item_types', id }], () => ({
+		result: itemTypes.patch(u.id, id, p),
+	}));
+	return json({ type: r.result, undo: r.undo });
 });
 
 export const DELETE = api(async (e) => {

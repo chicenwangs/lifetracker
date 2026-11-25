@@ -20,6 +20,23 @@
 			await invalidateAll();
 		}
 	}
+	/** PR 10: the Month calendar switch, with the undo toast (#-undo entry) */
+	async function toggleMonth(t: ItemTypeDTO, on: boolean) {
+		try {
+			const r = await patch<{ type: ItemTypeDTO; undo?: UndoRef }>(`/api/item-types/${t.id}`, {
+				onCalendar: on,
+			});
+			await invalidateAll();
+			const u = r.undo;
+			if (u)
+				showToast(`Month calendar ${on ? 'on' : 'off'} for ${t.name}`, {
+					undo: async () => void ((await undoLast(u.id)) && (await invalidateAll())),
+				});
+		} catch (e) {
+			showError(e);
+			await invalidateAll();
+		}
+	}
 	async function move(i: number, d: -1 | 1) {
 		const ids = types.map((t) => t.id);
 		const j = i + d;
@@ -78,8 +95,8 @@
 		<thead>
 			<tr
 				><th>Order</th><th>Colour</th><th>Name</th><th>Quick add</th><th>Used</th><th>Counts down</th><th
-					>Share by default</th
-				><th></th></tr
+					>Month calendar</th
+				><th>Share by default</th><th></th></tr
 			>
 		</thead>
 		<tbody>
@@ -145,6 +162,16 @@
 						><label class="cb"
 							><input
 								type="checkbox"
+								aria-label="Show {t.name} on the Month calendar"
+								checked={t.onCalendar}
+								onchange={(e) => toggleMonth(t, e.currentTarget.checked)}
+							/></label
+						></td
+					>
+					<td
+						><label class="cb"
+							><input
+								type="checkbox"
 								aria-label="Share {t.name} by default"
 								checked={t.shareDefault}
 								onchange={(e) => save(t, { shareDefault: e.currentTarget.checked })}
@@ -167,7 +194,10 @@
 			{/each}
 		</tbody>
 	</table>
-	<p class="hint">New types: the + at the end of the type bar on Home or Week.</p>
+	<p class="hint">
+		Month calendar off = hidden on Month, still on Week, Today and reminders. New types: the + at the end of
+		the type bar on Home or Week.
+	</p>
 </section>
 
 {#if deleting}
