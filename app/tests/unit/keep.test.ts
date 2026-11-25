@@ -153,6 +153,18 @@ describe('Keep', () => {
 		expect(() => keep.create(other, { body: 'x', labels: [l.id] })).toThrow(/unknown label/);
 	});
 
+	it('#382: owner restores from Trash; another user gets 404 and cannot restore', () => {
+		// level() hides trashed rows, so the restore path must check the owner directly
+		const n = note({ title: 'mine' });
+		keep.update(me, n.id, { trashed: true });
+		expect(() => keep.get(other, n.id)).toThrow(/Not found/);
+		expect(() => keep.update(other, n.id, { trashed: false })).toThrow(/Not found/);
+		expect(keep.get(me, n.id).trashed).toBe(true); // not restored by someone else
+		keep.update(me, n.id, { trashed: false });
+		expect(keep.get(me, n.id).trashed).toBe(false);
+		expect(ids(keep.list(me))).toEqual([n.id]);
+	});
+
 	it('reorder: above another note, and inside a binder', () => {
 		const [a, b, c] = [note(), note(), note()]; // list order: c b a
 		keep.move(me, a.id, c.id);
