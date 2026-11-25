@@ -1,7 +1,7 @@
 // Context-aware + (#93, G6): Today / Calendar add on the day on screen, Keep makes a note, Pages makes a page.
 // One create button per screen.
 import { expect, test, type Page } from '@playwright/test';
-import { bottomBar, signIn } from './helpers';
+import { bottomBar, finger, signIn } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 let page: Page;
@@ -77,4 +77,39 @@ test('Pages: + makes a page and opens it; no second New page button', async () =
 	await expect(page.getByRole('button', { name: 'New page', exact: true })).toHaveCount(1); // the bar's +
 	await plus().click();
 	await expect(page).toHaveURL(/\/pages\/pg_/);
+});
+
+test('rapid taps after Save note do not reach the page beneath (#378)', async () => {
+	await page.goto('/today');
+	await plus().click();
+	await page.getByRole('tab', { name: 'Quick note' }).click();
+	await page.getByRole('textbox', { name: 'Note' }).fill(`Save guard ${test.info().project.name}`);
+	const save = page.getByRole('button', { name: 'Save note' });
+	const b = (await save.boundingBox())!;
+	const x = b.x + b.width / 2;
+	const y = b.y + b.height / 2;
+	const f = await finger(page);
+	await f.send('touchStart', x, y);
+	await f.send('touchEnd');
+	// the rest of the burst must land on the guard, not the Today row that just appeared under the finger
+	await expect(page.locator('.tap-guard')).toBeVisible();
+	await expect
+		.poll(() =>
+			page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.classList.contains('tap-guard'), [
+				x,
+				y,
+			] as const),
+		)
+		.toBe(true);
+	await f.send('touchStart', x, y);
+	await f.send('touchEnd');
+	await page.waitForTimeout(60);
+	await f.send('touchStart', x, y);
+	await f.send('touchEnd');
+	await f.done();
+	await expect(page.locator('.toast')).toContainText('Note saved');
+	await expect(page.getByRole('dialog', { name: /^Actions for/ })).toHaveCount(0);
+	await expect(page.locator('.toast').filter({ hasText: 'Deleted' })).toHaveCount(0);
+	await page.waitForTimeout(500);
+	await expect(page.locator('.tap-guard')).toHaveCount(0); // the guard removes itself
 });
