@@ -1,10 +1,23 @@
 // v3.2 PR 3: the reschedule action set on the item page — Postpone (Undo restores the date), a detached
 // occurrence follows, and Skip writes an EXDATE (Undo removes it).
 import { expect, test, type Page } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
 
 test.describe.configure({ mode: 'serial' });
 const PW = 'good pass phrase';
 let page: Page;
+
+/** The full desktop run executes flow.spec.ts first; it ends by resetting jeremy's password. Put the known
+ *  one back, or this file can only pass when run alone. A fresh DB has no user yet: signIn() runs /setup. */
+async function prepare() {
+	await page.goto('/');
+	if (page.url().endsWith('/setup')) return;
+	execFileSync('node', ['scripts/reset-password.mjs', 'jeremy'], {
+		input: `${PW}\n`,
+		env: { ...process.env, DATABASE_PATH: join(process.env.E2E_DIR as string, 'app.db') },
+	});
+}
 
 async function signIn() {
 	await page.goto('/');
@@ -41,7 +54,11 @@ const today = () =>
 const plusDay = (d: string, n: number) =>
 	new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
 const dateOf = async (id: string) => (await api('GET', `/api/items/${id}`)).j.item.date as string;
-const onCreate = async (body: object) => (await api('POST', '/api/items', body)).j.item.id as string;
+const onCreate = async (body: object) => {
+	const r = await api('POST', '/api/items', body);
+	expect(r.s).toBe(201); // signed in and valid: a 401/400 must fail here, not as a TypeError below
+	return r.j.item.id as string;
+};
 /** is this occurrence on the calendar? */
 const onCalendar = (occId: string, date: string) =>
 	page.evaluate(
@@ -56,6 +73,7 @@ const onCalendar = (occId: string, date: string) =>
 
 test.beforeAll(async ({ browser }) => {
 	page = await (await browser.newContext()).newPage();
+	await prepare();
 	await signIn();
 });
 test.afterAll(() => page.context().close());
