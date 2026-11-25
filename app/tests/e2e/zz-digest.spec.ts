@@ -1,4 +1,6 @@
 // v3.3 PR 12: daily agenda in Settings › Notifications (desktop): Off/On, time, preview, persists, bad time refused.
+// Runs LAST (zz-): flow.spec.ts asserts the first visit lands on /setup, which needs the E2E DB untouched by an
+// earlier spec's sign-in (this file would otherwise sort before flow and create the admin account).
 import { expect, test } from '@playwright/test';
 import { signIn } from './signin';
 
