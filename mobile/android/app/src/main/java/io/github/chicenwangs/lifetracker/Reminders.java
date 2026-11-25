@@ -165,6 +165,8 @@ public class Reminders extends BroadcastReceiver {
     /** PR 12: the daily agenda notification — counts only, no item titles in the body. */
     private static void showDigest(Context c, String text) {
         if (text == null || text.isEmpty()) return;
+        // a signed-out shared device must not show the previous user's plan (SessionPlugin.wipe)
+        if (c.getSharedPreferences(Native.PREFS, 0).getBoolean("signedOut", false)) return;
         if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(c, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return;
         channel(c);
         NotificationCompat.Builder n = new NotificationCompat.Builder(c, CHANNEL)
@@ -182,7 +184,15 @@ public class Reminders extends BroadcastReceiver {
         NotificationManagerCompat.from(c).notify(DIGEST_REQ, n.build());
     }
 
-    private static void handleAction(Context c, String id, String title, String route, String sourceType, String sourceId, String act) {        if ("done".equals(act) && sourceId != null && !sourceId.isEmpty()) {
+    private static void handleAction(
+            Context c,
+            String id,
+            String title,
+            String route,
+            String sourceType,
+            String sourceId,
+            String act) {
+        if ("done".equals(act) && sourceId != null && !sourceId.isEmpty()) {
             JSONObject j = Native.cached(c);
             for (String key : new String[] {"rows", "todos"}) {
                 JSONArray a = j.optJSONArray(key);

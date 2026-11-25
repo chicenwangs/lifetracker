@@ -16,6 +16,7 @@ import org.json.JSONArray;
 public class SessionPlugin extends Plugin {
     static void wipe(Context c) {
         Reminders.schedule(c, new JSONArray()); // cancels every alarm set
+        Reminders.scheduleDigest(c, null); // PR 12: the daily agenda alarm too
         NotificationManagerCompat.from(c).cancelAll();
         c.getSharedPreferences(Native.PREFS, 0).edit().remove("sync").remove("remQueue").putBoolean("signedOut", true).apply();
         Widgets.updateAll(c);
