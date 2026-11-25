@@ -81,6 +81,8 @@ test('Pages: + makes a page and opens it; no second New page button', async () =
 
 test('rapid taps after Save note do not reach the page beneath (#378)', async () => {
 	await page.goto('/today');
+	// a warning toast from an earlier test can still sit over the Save spot (8 s), so let it clear first
+	await expect(page.locator('.toast')).toHaveCount(0, { timeout: 10_000 });
 	await plus().click();
 	await page.getByRole('tab', { name: 'Quick note' }).click();
 	await page.getByRole('textbox', { name: 'Note' }).fill(`Save guard ${test.info().project.name}`);
