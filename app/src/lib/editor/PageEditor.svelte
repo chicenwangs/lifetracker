@@ -144,8 +144,23 @@
 				.run();
 			showToast(`Created "${title}"`, {
 				undo: async () => {
-					// shortcut: editor undo drops the link while it is still the last step; the journal drops the page
-					editor?.commands.undo();
+					// deterministic: remove the chip by page id wherever it is now (typing since must not matter)
+					let at = -1;
+					let size = 1;
+					editor?.state.doc.descendants((node, pos) => {
+						if (node.type.name === 'pageLink' && node.attrs.pageId === r.page.id) {
+							at = pos;
+							size = node.nodeSize;
+							return false;
+						}
+						return true;
+					});
+					if (at >= 0 && editor)
+						editor
+							.chain()
+							.focus()
+							.deleteRange({ from: at, to: Math.min(editor.state.doc.content.size, at + size + 1) })
+							.run();
 					if (await undoLast(r.undo.id)) await invalidateAll();
 				},
 			});

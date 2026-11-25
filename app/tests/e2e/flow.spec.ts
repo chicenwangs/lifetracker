@@ -1089,12 +1089,18 @@ test('v4 PR 19: [[ picker - recent, search, arrows, create page + undo', async (
 	await expect(menu.getByRole('option')).toHaveCount(1);
 	await page.keyboard.press('Enter');
 	await expect(ed.locator('a.pl')).toHaveText([`↗ ${picked}`, '↗ ZZ fresh']);
+	const created = await ed.locator('a.pl').last().getAttribute('data-page-link');
 	const tree = page.getByRole('tree', { name: 'Page tree' });
 	await page.getByRole('button', { name: 'Expand Mention source' }).click();
 	await expect(tree).toContainText('ZZ fresh');
+	// typing after the create must not break the toast Undo: the chip is found by page id, not editor history
+	await ed.click();
+	await page.keyboard.press('Control+End');
+	await page.keyboard.type('!');
 	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
 	await expect(ed.locator('a.pl')).toHaveCount(1);
 	await expect(tree).not.toContainText('ZZ fresh');
+	expect((await page.request.get(`/pages/${created}`)).status()).toBe(404);
 	// Esc leaves "[[text" as plain text
 	await ed.click();
 	await page.keyboard.press('Control+End');
@@ -1103,6 +1109,18 @@ test('v4 PR 19: [[ picker - recent, search, arrows, create page + undo', async (
 	await page.keyboard.press('Escape');
 	await expect(menu).toBeHidden();
 	await expect(ed).toContainText('[[escape me');
+	// popover clamp (#403): a caret near the right edge in a narrow window keeps the menu inside
+	await page.setViewportSize({ width: 800, height: 900 });
+	await ed.click();
+	await page.keyboard.press('Control+End');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('word '.repeat(14) + '[[');
+	await expect(menu).toBeVisible();
+	const mb = (await menu.boundingBox())!;
+	expect(Math.round(mb.x)).toBeGreaterThanOrEqual(12);
+	expect(Math.round(mb.x + mb.width)).toBeLessThanOrEqual(800 - 12);
+	await page.keyboard.press('Escape');
+	await page.setViewportSize({ width: 1440, height: 900 });
 });
 
 test('v2 P4 Databases: new database, number property rejects text, records, sort, record opens as page', async () => {

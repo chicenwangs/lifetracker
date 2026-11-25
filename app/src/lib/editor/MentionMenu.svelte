@@ -17,11 +17,15 @@
 	} = $props();
 	let phone = $state(false);
 	let ih = $state(innerHeight); // shrinks with the on-screen keyboard (#282)
+	let iw = $state(innerWidth);
 	onMount(() => (phone = isPhone()));
 	const below = $derived(ih - s.y - 64); // 64 = docked toolbar
 	const up = $derived(below < 200 && s.top > below);
 	const header = $derived(s.q.trim() ? 'Pages' : 'Recent');
 	const empty = $derived(!s.items.some((i) => !i.create) && !!s.q.trim());
+	// #403: a caret near the right edge must not push the popover off-screen
+	const width = $derived(Math.min(320, iw - 24));
+	const left = $derived(Math.max(12, Math.min(s.x, iw - 12 - width)));
 
 	/** the typed query inside the title, bolded */
 	function parts(title: string): [string, string, string] {
@@ -33,11 +37,13 @@
 	}
 </script>
 
-<svelte:window bind:innerHeight={ih} />
+<svelte:window bind:innerHeight={ih} bind:innerWidth={iw} />
 
 {#snippet rows()}
 	<p class="head">{header}</p>
-	{#if empty}<p class="none">No page called that</p>{/if}
+	{#if empty}<p class="none">No page called that</p>{:else if !s.items.length}<p class="none">
+			Type to search or create a page
+		</p>{/if}
 	{#each s.items as item, i (item.create ?? item.id)}
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div
@@ -75,7 +81,8 @@
 		class="menu"
 		role="listbox"
 		aria-label="Link a page"
-		style:left="{s.x}px"
+		style:left="{left}px"
+		style:width="{width}px"
 		style:top={up ? null : `${s.y + 4}px`}
 		style:bottom={up ? `${ih - s.top + 4}px` : null}
 		style:max-height="{Math.max(120, Math.min(340, up ? s.top - 8 : below))}px"
@@ -89,8 +96,6 @@
 	.menu {
 		position: fixed;
 		z-index: 95;
-		width: 320px;
-		max-width: calc(100vw - 24px);
 		overflow: auto;
 		background: var(--card);
 		color: var(--ink);
