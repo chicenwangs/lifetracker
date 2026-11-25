@@ -2,9 +2,9 @@
      onMount, destroyed on teardown (ADR-002). Autosave ~600 ms after the last change; failed save keeps the text. -->
 <script lang="ts">
 	import { askText } from '$lib/client/dialog.svelte';
-	import { backCloses } from '$lib/client/layers';
-	import { modal } from '$lib/client/modal';
 	import { isPhone } from '$lib/client/phone';
+	import { invalidateAll } from '$lib/client/refresh';
+	import { undoLast } from '$lib/client/undo.svelte';
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
 	import { onMount } from 'svelte';
 	import { Editor, type Content } from '@tiptap/core';
@@ -14,8 +14,17 @@
 	import Image from '@tiptap/extension-image';
 	import { patch, get, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
-	import { BlockKeys, DatabaseBlock, PageLink, Slash, blockOps, type SlashItem } from './extensions.svelte';
-	import type { PageDTO } from '$lib/types';
+	import {
+		BlockKeys,
+		DatabaseBlock,
+		Mention,
+		PageLink,
+		Slash,
+		blockOps,
+		type MentionItem,
+		type SlashItem,
+	} from './extensions.svelte';
+	import type { PageDTO, UndoRef } from '$lib/types';
 
 	let {
 		page,
@@ -36,11 +45,6 @@
 	let marks = $state<Record<string, boolean>>({});
 
 	// ---------- "/" menu ----------
-	let picker = $state<{
-		q: string;
-		hits: { id: string; title: string; archived: number }[];
-		at: number;
-	} | null>(null);
 	const ITEMS: SlashItem[] = [
 		{ title: 'Text', run: (e, r) => e.chain().focus().deleteRange(r).setParagraph().run() },
 		{ title: 'Heading 1', hint: '#', run: (e, r) => e.chain().focus().deleteRange(r).setNode('heading', { level: 1 }).run() },
@@ -54,7 +58,7 @@
 		{ title: 'Quote', run: (e, r) => e.chain().focus().deleteRange(r).toggleBlockquote().run() },
 		{ title: 'Code', run: (e, r) => e.chain().focus().deleteRange(r).toggleCodeBlock().run() },
 		{ title: 'Database', hint: 'table of records', run: (e, r) => { e.chain().focus().deleteRange(r).run(); void addDatabase(); } },
-		{ title: 'Link to page', hint: 'internal', run: (e, r) => { e.chain().focus().deleteRange(r).run(); picker = { q: '', hits: [], at: e.state.selection.from }; void findPages(''); } },
+		{ title: 'Link to page', hint: 'internal', run: (e, r) => { e.chain().focus().deleteRange(r).insertContent('[[').run(); } },
 		{ title: 'Image', hint: 'upload', run: (e, r) => { e.chain().focus().deleteRange(r).run(); pickFile('image'); } },
 		{ title: 'File', hint: 'upload', run: (e, r) => { e.chain().focus().deleteRange(r).run(); pickFile('file'); } },
 	]; // prettier-ignore
@@ -73,31 +77,81 @@
 			showError(e);
 		}
 	}
-	async function findPages(q: string) {
+	// ---------- "[[" link picker (PR 19) ----------
+	async function fetchMentions(q: string): Promise<MentionItem[]> {
 		try {
-			const r = await get<{ hits: { id: string; title: string; archived: number }[] }>(
-				`/api/pages/find?q=${encodeURIComponent(q)}`,
-			);
-			if (picker) picker.hits = r.hits.filter((h) => h.id !== page.id);
+			const r = await get<{
+				hits: {
+					id: string;
+					title: string;
+					icon: string | null;
+					parentTitle: string | null;
+					archived: number;
+				}[];
+			}>(`/api/pages/find?q=${encodeURIComponent(q)}`);
+			const rows: MentionItem[] = r.hits
+				.filter((h) => h.id !== page.id)
+				.map((h) => ({
+					id: h.id,
+					title: h.title,
+					icon: h.icon,
+					path: h.parentTitle,
+					archived: !!h.archived,
+				}));
+			const t = q.trim();
+			if (t) rows.push({ title: t, icon: null, create: t }); // last row, Obsidian style
+			return rows;
 		} catch (e) {
 			showError(e);
+			return [];
 		}
 	}
-	function insertLink(h: { id: string; title: string; archived: number }) {
-		if (!editor || !picker) return;
-		(editor.storage as unknown as { pageLink: { titles: PageDTO['links'] } }).pageLink.titles[h.id] = {
-			title: h.title,
-			archived: !!h.archived,
+	function remember(ed: Editor, id: string, title: string, archived: boolean) {
+		(ed.storage as unknown as { pageLink: { titles: PageDTO['links'] } }).pageLink.titles[id] = {
+			title,
+			archived,
 		};
-		editor
-			.chain()
+	}
+	function pickMention(h: MentionItem, range: { from: number; to: number }) {
+		const ed = editor;
+		if (!ed) return;
+		if (h.create) return void createMention(h.create, range);
+		if (!h.id) return;
+		remember(ed, h.id, h.title, !!h.archived);
+		ed.chain()
 			.focus()
-			.insertContentAt(picker.at, [
+			.deleteRange(range)
+			.insertContent([
 				{ type: 'pageLink', attrs: { pageId: h.id } },
 				{ type: 'text', text: ' ' },
 			])
 			.run();
-		picker = null;
+	}
+	async function createMention(title: string, range: { from: number; to: number }) {
+		try {
+			const r = await post<{ page: PageDTO; undo: UndoRef }>('/api/pages', { title, parentId: page.id });
+			await invalidateAll(); // the new child page appears in the tree
+			const ed = editor;
+			if (!ed) return;
+			remember(ed, r.page.id, r.page.title || title, false);
+			ed.chain()
+				.focus()
+				.deleteRange(range)
+				.insertContent([
+					{ type: 'pageLink', attrs: { pageId: r.page.id } },
+					{ type: 'text', text: ' ' },
+				])
+				.run();
+			showToast(`Created "${title}"`, {
+				undo: async () => {
+					// shortcut: editor undo drops the link while it is still the last step; the journal drops the page
+					editor?.commands.undo();
+					if (await undoLast(r.undo.id)) await invalidateAll();
+				},
+			});
+		} catch (e) {
+			showError(e);
+		}
 	}
 
 	// ---------- uploads ----------
@@ -178,6 +232,7 @@
 				DatabaseBlock,
 				BlockKeys,
 				Slash.configure({ items }),
+				Mention.configure({ items: fetchMentions, pick: pickMention }),
 			],
 			content: (page.doc.content.length ? page.doc : { type: 'doc', content: [{ type: 'paragraph' }] }) as Content,
 			editable: page.access !== 'view',
@@ -369,36 +424,6 @@
 		onclose={() => (blockMenu = false)}
 	/>
 {/if}
-{#if picker}
-	<div class="scrim" role="presentation" onclick={() => (picker = null)}></div>
-	<div
-		use:backCloses={() => (picker = null)}
-		use:modal={() => (picker = null)}
-		class="picker card"
-		role="dialog"
-		aria-modal="true"
-		aria-label="Link to page"
-	>
-		<!-- svelte-ignore a11y_autofocus -->
-		<input
-			placeholder="Search your pages"
-			aria-label="Search your pages"
-			autofocus
-			bind:value={picker.q}
-			oninput={() => picker && findPages(picker.q)}
-			onkeydown={(e) => {
-				if (e.key === 'Escape') picker = null;
-				if (e.key === 'Enter' && picker?.hits[0]) insertLink(picker.hits[0]);
-			}}
-		/>
-		{#each picker.hits as h (h.id)}
-			<button type="button" onclick={() => insertLink(h)}
-				>{h.title || 'Untitled'}{#if h.archived}
-					<span class="hint">archived</span>{/if}</button
-			>
-		{:else}<span class="hint">No pages match.</span>{/each}
-	</div>
-{/if}
 
 <style>
 	.tools {
@@ -469,11 +494,6 @@
 		}
 		.doc {
 			padding-bottom: calc(64px + var(--bar-h, 0px)); /* last line clears the docked toolbar + the tab bar */
-		}
-		/* div.picker beats the base 36 / 32 px rules further down (#223) */
-		div.picker input,
-		div.picker button {
-			min-height: 48px;
 		}
 		/* 22 px box, 48 dp to tap */
 		.doc :global(ul[data-type='taskList'] li > label) {
@@ -642,50 +662,5 @@
 		padding: 8px 12px;
 		border-radius: 8px;
 		overflow-x: auto;
-	}
-	.scrim {
-		position: fixed;
-		inset: 0;
-		z-index: 90;
-		background: rgb(0 0 0 / 0.2);
-	}
-	.picker {
-		position: fixed;
-		top: 20vh;
-		left: 50%;
-		translate: -50% 0;
-		z-index: 91;
-		width: min(420px, 92vw);
-		/* vh shrinks with the on-screen keyboard: the rows scroll instead of hiding below it (#282) */
-		max-height: calc(100vh - 20vh - 8px);
-		overflow-y: auto;
-		padding: 12px;
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-	}
-	.picker input {
-		min-height: 36px;
-		padding: 0 10px;
-		font: inherit;
-		border-radius: 8px;
-		border: 1.5px solid var(--border);
-		background: var(--card);
-		color: var(--ink);
-	}
-	.picker button {
-		text-align: left;
-		min-height: 32px;
-		padding: 0 8px;
-		background: none;
-		border: 0;
-		border-radius: 6px;
-		color: var(--ink);
-		font: inherit;
-		cursor: pointer;
-	}
-	.picker button:hover {
-		background: var(--pill);
-		color: var(--pill-ink);
 	}
 </style>

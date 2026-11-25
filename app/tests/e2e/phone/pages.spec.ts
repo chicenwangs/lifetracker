@@ -110,6 +110,35 @@ test('Pin toast says Pinned, Unpin toast says Unpinned (#348)', async () => {
 	await expect(page.getByText('Unpinned from header')).toBeVisible();
 });
 
+test('[[ link picker: BottomSheet, keyboard stays, 48 dp, Back closes', async () => {
+	await page.evaluate(async () => {
+		await fetch('/api/pages', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ title: 'Phone target' }),
+		});
+	});
+	await page.getByLabel('Page content').click();
+	await page.keyboard.type('[[Phone');
+	const sheet = page.getByRole('dialog', { name: 'Link a page' });
+	await expect(sheet).toBeVisible();
+	await expect(sheet).toContainText('Phone target');
+	await expect(sheet).not.toContainText('Enter link'); // no footer hint on phone
+	await expect(page.getByLabel('Page content')).toBeFocused(); // the keyboard stays up
+	await expectTargets48(page);
+	// Back closes the sheet (before any pick, so one Back = one visible change)
+	await page.goBack();
+	await expect(sheet).toBeHidden();
+	await expect(page.getByLabel('Page content')).toBeFocused();
+	// Esc/Back leaves the typed "[[Phone" as text; a new line resets the dismissal and the sheet opens again
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('[[Phone');
+	await expect(sheet).toBeVisible();
+	await expect(sheet).toContainText('Phone target');
+	await page.keyboard.press('Enter');
+	await expect(page.getByLabel('Page content').locator('a.pl')).toHaveCount(1);
+});
+
 test('Archive: 48 dp search field and no sideways scroll at 320 px (#405)', async () => {
 	await page.goto('/pages/archive');
 	await expect(page.getByLabel('Search archive')).toBeVisible();

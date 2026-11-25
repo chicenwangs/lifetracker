@@ -38,10 +38,13 @@ export function tree(ownerId: string): PageNode[] {
 }
 
 /** last opened live pages (phone All pages · Recent, wireframe MPages) */
-export function recent(ownerId: string, n = 5): { id: string; title: string; lastOpenedAt: string }[] {
+export function recent(
+	ownerId: string,
+	n = 5,
+): { id: string; title: string; icon: string | null; parentTitle: string | null; lastOpenedAt: string }[] {
 	return db()
-		.prepare(`SELECT id, title, last_opened_at AS lastOpenedAt FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND archived_at IS NULL AND last_opened_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM database_records r WHERE r.page_id = pages.id) ORDER BY last_opened_at DESC LIMIT ?`)
-		.all(ownerId, n) as { id: string; title: string; lastOpenedAt: string }[]; // prettier-ignore
+		.prepare(`SELECT p.id, p.title, p.icon, pp.title AS parentTitle, p.last_opened_at AS lastOpenedAt FROM pages p LEFT JOIN pages pp ON pp.id = p.parent_page_id WHERE p.owner_id = ? AND p.deleted_at IS NULL AND p.archived_at IS NULL AND p.last_opened_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM database_records r WHERE r.page_id = p.id) ORDER BY p.last_opened_at DESC LIMIT ?`)
+		.all(ownerId, n) as { id: string; title: string; icon: string | null; parentTitle: string | null; lastOpenedAt: string }[]; // prettier-ignore
 }
 
 /** ids of a page and everything under it (live rows) */
@@ -408,8 +411,8 @@ export function suggestions(ownerId: string, now: number = Date.now()) {
 export function findByTitle(ownerId: string, q: string, limit = 10) {
 	const like = `%${q.trim().replace(/[\\%_]/g, (c) => '\\' + c)}%`;
 	return db()
-		.prepare(`SELECT id, title, archived_at IS NOT NULL AS archived FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND title LIKE ? ESCAPE '\\' ORDER BY archived_at IS NOT NULL, last_opened_at DESC LIMIT ?`)
-		.all(ownerId, like, limit) as { id: string; title: string; archived: number }[]; // prettier-ignore
+		.prepare(`SELECT p.id, p.title, p.icon, pp.title AS parentTitle, p.archived_at IS NOT NULL AS archived FROM pages p LEFT JOIN pages pp ON pp.id = p.parent_page_id WHERE p.owner_id = ? AND p.deleted_at IS NULL AND p.title LIKE ? ESCAPE '\\' ORDER BY p.archived_at IS NOT NULL, p.last_opened_at DESC LIMIT ?`)
+		.all(ownerId, like, limit) as { id: string; title: string; icon: string | null; parentTitle: string | null; archived: number }[]; // prettier-ignore
 }
 
 // ---------- pins (FEATURES §2, D-20: title = page title) ----------
