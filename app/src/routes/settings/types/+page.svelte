@@ -5,11 +5,42 @@
 	import { del, patch, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { undoLast } from '$lib/client/undo.svelte';
-	import { MAX_TYPES, TYPE_SWATCHES } from '$lib/itemtypes';
+	import { MAX_TYPES, TYPE_PRESETS, TYPE_SWATCHES, presetState } from '$lib/itemtypes';
 	import type { ItemTypeDTO, UndoRef } from '$lib/types';
 
 	let { data } = $props();
 	const types = $derived(data.types as ItemTypeDTO[]);
+	/** v3.3 PR 14: starter pack states, recomputed from my types */
+	const presets = $derived(TYPE_PRESETS.map((p) => ({ ...p, state: presetState(types, p) })));
+	let presetsOpen = $state(false);
+
+	async function addPreset(p: (typeof presets)[number]) {
+		if (p.state === 'have') return;
+		if (p.state === 'clash') {
+			const t = types.find((x) => x.slug.toLowerCase() === p.slug);
+			showToast(
+				`Skipped ${p.name}: /${p.slug} is already the quick-add word of "${t?.name ?? 'another type'}"`,
+			);
+			return;
+		}
+		try {
+			const r = await post<{ type: ItemTypeDTO; undo?: UndoRef }>('/api/item-types', {
+				name: p.name,
+				bg: p.bg,
+				slug: p.slug,
+				onCalendar: p.onCalendar,
+			});
+			presetsOpen = false;
+			await invalidateAll();
+			const u = r.undo;
+			if (u)
+				showToast(`Added type "${p.name}"`, {
+					undo: async () => void ((await undoLast(u.id)) && (await invalidateAll())),
+				});
+		} catch (e) {
+			showError(e);
+		}
+	}
 
 	async function save(t: ItemTypeDTO, p: Record<string, unknown>) {
 		try {
@@ -194,6 +225,25 @@
 			{/each}
 		</tbody>
 	</table>
+	{#if types.length >= MAX_TYPES}
+		<p class="hint">All {MAX_TYPES} type slots are used. Remove a type to add more.</p>
+	{:else}
+		<details class="presets" bind:open={presetsOpen}>
+			<summary class="btn sm">+ Add a preset ▾</summary>
+			<ul>
+				{#each presets as p (p.name)}
+					<li>
+						<button type="button" class="preset" disabled={p.state === 'have'} onclick={() => addPreset(p)}>
+							<span class="dot" style:background={p.bg} aria-hidden="true"></span>{p.name}
+							{#if p.state === 'have'}<span class="hint">(have it)</span>{:else if p.state === 'clash'}<span
+									class="hint">(word taken)</span
+								>{/if}
+						</button>
+					</li>
+				{/each}
+			</ul>
+		</details>
+	{/if}
 	<p class="hint">
 		Month calendar off = hidden on Month, still on Week, Today and reminders. New types: the + at the end of
 		the type bar on Home or Week.
@@ -288,6 +338,60 @@
 	}
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.color {
+			min-height: 48px;
+		}
+	}
+	/* v3.3 PR 14: starter pack menu */
+	.presets {
+		margin: 10px 0 4px;
+	}
+	.presets summary {
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		min-height: 32px;
+	}
+	.presets ul {
+		list-style: none;
+		margin: 6px 0 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		max-width: 280px;
+	}
+	.preset {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
+		text-align: left;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		padding: 4px 6px;
+		border-radius: 8px;
+		cursor: pointer;
+		min-height: 32px;
+	}
+	.preset:hover:not(:disabled) {
+		background: var(--hover);
+	}
+	.preset:disabled {
+		color: var(--muted);
+		cursor: default;
+	}
+	.preset .dot {
+		width: 10px;
+		height: 10px;
+		border-radius: 3px;
+		border: 1px solid var(--border);
+		flex: none;
+	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.presets summary,
+		.preset {
 			min-height: 48px;
 		}
 	}

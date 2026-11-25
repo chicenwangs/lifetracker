@@ -64,3 +64,23 @@ export const onMonth = (
 	types: Pick<ItemTypeDTO, 'key' | 'onCalendar'>[],
 	key: string | null | undefined,
 ): boolean => (key ? types.find((t) => t.key === key)?.onCalendar !== false : true);
+
+/** v3.3 PR 14: the starter pack. Fills free slots only; Class is off the Month grid (a timetable is noisy). */
+export const TYPE_PRESETS = [
+	{ name: 'Class', bg: '#C9DAE7', slug: 'class', onCalendar: false },
+	{ name: 'Errand', bg: '#FAEDB8', slug: 'errand', onCalendar: true },
+	{ name: 'Health', bg: '#BFE3DC', slug: 'health', onCalendar: true },
+	{ name: 'Chore', bg: '#E5D4F5', slug: 'chore', onCalendar: true },
+	{ name: 'Study', bg: '#F7D9B8', slug: 'study', onCalendar: true },
+] as const;
+export type TypePreset = (typeof TYPE_PRESETS)[number];
+export type PresetState = 'add' | 'have' | 'clash';
+/** add = free; have = a type with that name exists; clash = another type already owns the quick-add word */
+export function presetState(
+	types: Pick<ItemTypeDTO, 'name' | 'slug'>[],
+	preset: Pick<TypePreset, 'name' | 'slug'>,
+): PresetState {
+	if (types.some((t) => t.name.toLowerCase() === preset.name.toLowerCase())) return 'have';
+	if (types.some((t) => t.slug.toLowerCase() === preset.slug)) return 'clash';
+	return 'add';
+}

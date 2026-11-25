@@ -89,6 +89,8 @@ export const createSchema = z
 		slug: zSlug.optional(),
 		countsDown: z.boolean().default(false),
 		shareDefault: z.boolean().default(false),
+		/** v3.3 PR 10/14: a preset (Class) can arrive with the Month calendar off */
+		onCalendar: z.boolean().default(true),
 	})
 	.strict();
 export const patchSchema = z
@@ -132,6 +134,7 @@ export function create(ownerId: string, input: z.infer<typeof createSchema>): It
 				position: Math.max(-1, ...all.map((t) => t.position)) + 1,
 				countsDown: input.countsDown,
 				shareDefault: input.shareDefault,
+				onCalendar: input.onCalendar,
 				createdAt: now,
 				updatedAt: now,
 			})
