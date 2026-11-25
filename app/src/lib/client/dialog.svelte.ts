@@ -10,8 +10,6 @@ export type Ask =
 			ok: string;
 			value: string;
 			label: string;
-			/** returns a message to show inline and keep the dialog open, or null when the value is fine */
-			check?: (v: string) => string | null;
 			done: (v: string | null) => void;
 	  }
 	| {
@@ -43,10 +41,7 @@ export function askConfirm(text: string, opts: { ok?: string; danger?: boolean }
 }
 
 /** the trimmed text, or null when cancelled */
-export function askText(
-	text: string,
-	opts: { value?: string; ok?: string; label?: string; check?: (v: string) => string | null } = {},
-) {
+export function askText(text: string, opts: { value?: string; ok?: string; label?: string } = {}) {
 	return new Promise<string | null>((done) =>
 		open({
 			kind: 'text',
@@ -54,7 +49,6 @@ export function askText(
 			ok: opts.ok ?? 'OK',
 			value: opts.value ?? '',
 			label: opts.label ?? text,
-			check: opts.check,
 			done: (v) => done(v === null ? null : v.trim()),
 		}),
 	);

@@ -104,7 +104,6 @@ async function pick(item: ItemDTO, opts: MoveOpts & { today: string }) {
 	const d = await askText('Move to which day? (YYYY-MM-DD)', {
 		value: item.date ?? opts.today,
 		ok: 'Move',
-		check: (v) => (isDate(v) ? null : 'Use a real date in YYYY-MM-DD form, for example 2026-12-03.'),
 	});
-	if (d) await reschedule(item, d, opts);
+	if (d && isDate(d)) await reschedule(item, d, opts);
 }

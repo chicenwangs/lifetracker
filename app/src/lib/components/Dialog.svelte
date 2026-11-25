@@ -6,22 +6,12 @@
 
 	let value = $state('');
 	let scope = $state<'this' | 'following' | 'all'>('this');
-	let err = $state<string | null>(null);
 	$effect(() => {
 		if (dialog.current?.kind === 'text') value = dialog.current.value;
 		else if (dialog.current?.kind === 'scope') scope = 'this';
-		err = null;
 	});
-	const ok = () => {
-		if (dialog.current?.kind === 'text' && dialog.current.check) {
-			const msg = dialog.current.check(value);
-			if (msg) {
-				err = msg;
-				return;
-			}
-		}
+	const ok = () =>
 		answer(dialog.current?.kind === 'text' ? value : dialog.current?.kind === 'scope' ? scope : true);
-	};
 	const cancel = () => answer(null);
 </script>
 
@@ -54,7 +44,6 @@
 			{#if d.kind === 'text'}
 				<!-- svelte-ignore a11y_autofocus -->
 				<input class="in" bind:value aria-label={d.label} autofocus />
-				{#if err}<p class="alert" role="alert">{err}</p>{/if}
 			{:else if d.kind === 'scope'}
 				<div class="scopes" role="radiogroup" aria-labelledby="dlg-t">
 					<label class="sopt">
