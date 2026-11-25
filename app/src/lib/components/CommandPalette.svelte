@@ -191,7 +191,11 @@
 		<label class="arch"
 			><input type="checkbox" bind:checked={includeArchived} onchange={run} /> Include archived</label
 		>
-		<div id="cmdk-list" role="listbox" aria-label="Results">
+		<div
+			id="cmdk-list"
+			role={results.length ? 'listbox' : undefined}
+			aria-label={results.length ? 'Results' : undefined}
+		>
 			{#each results as r, i (i)}
 				{#if i === 0 || results[i - 1]?.group !== r.group}<div class="grp">
 						{phone && r.group === 'Notes' ? 'Keep' : r.group}

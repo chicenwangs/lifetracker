@@ -1422,6 +1422,31 @@ test('modals keep focus and Escape: share over note, palette, shortcuts, account
 	await expect(page.locator('header .menu')).toHaveCount(0);
 });
 
+test('search: empty and result states are clean for axe aria-required-children (#434)', async () => {
+	await api('POST', '/api/pages', { title: 'Aardvark axe' });
+	await page.goto('/week');
+	await page.waitForLoadState('networkidle');
+	await page.keyboard.press('Control+k');
+	const pal = page.getByRole('dialog', { name: 'Search and go' });
+	await expect(pal).toBeVisible();
+	const axe = async () =>
+		(
+			await new AxeBuilder({ page })
+				.include('[aria-label="Search and go"]')
+				.withRules(['aria-required-children'])
+				.analyze()
+		).violations.map((v) => v.id);
+	await page.getByRole('combobox', { name: 'Search' }).fill('zzzznomatch');
+	await expect(pal.getByText(/Nothing found/)).toBeVisible();
+	await expect(pal.locator('#cmdk-list[role=listbox]')).toHaveCount(0);
+	expect(await axe()).toEqual([]);
+	await page.getByRole('combobox', { name: 'Search' }).fill('Aardvark');
+	await expect(pal.getByRole('option').first()).toBeVisible();
+	await expect(pal.locator('#cmdk-list[role=listbox]')).toHaveCount(1);
+	expect(await axe()).toEqual([]);
+	await page.keyboard.press('Escape');
+});
+
 test('database view: filter + sort add without errors, valid tablist and names, Clear all (#297)', async () => {
 	const errors: string[] = [];
 	page.on('pageerror', (e) => errors.push(e.message));
