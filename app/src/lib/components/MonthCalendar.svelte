@@ -151,6 +151,15 @@
 			onopen(it.id);
 		});
 		wrap.append(btn, t);
+		if (it.repeatFromCompletion) {
+			// PR 9: this chip is the series' only upcoming date
+			const rep = document.createElement('span');
+			rep.setAttribute('aria-label', 'Repeats from completion');
+			rep.title = 'Repeats from completion';
+			rep.textContent = '↻✓';
+			rep.style.cssText = 'flex:none;font-size:10px;line-height:1;margin-left:2px;';
+			wrap.append(rep);
+		}
 		const cd = examCountdown(it, today, !!typeOf(it.type)?.countsDown);
 		if (cd) {
 			const b = document.createElement('span');

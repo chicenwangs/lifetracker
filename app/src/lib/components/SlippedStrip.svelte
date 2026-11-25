@@ -3,6 +3,7 @@
      delete, ⋯ = the shared reschedule list + done/delete by tap, Move all to today = one undo batch. -->
 <script lang="ts">
 	import ActionSheet from './ActionSheet.svelte';
+	import RepeatMark from './RepeatMark.svelte';
 	import { colorsFor } from '$lib/colors';
 	import { post } from '$lib/client/api';
 	import { openItem } from '$lib/client/peek.svelte';
@@ -77,6 +78,7 @@
 					>
 						<span class="dot" style:background={c.bg} aria-hidden="true"></span>
 						<button class="t" type="button" onclick={() => openItem(i.id)}>{i.title}</button>
+						<RepeatMark item={i} />
 						<span class="od">{i.date ? short(i.date) : ''}</span>
 						<button class="more" type="button" aria-label="Actions for {i.title}" onclick={() => (acting = i)}
 							>⋯</button

@@ -317,3 +317,33 @@ export function retargetRRule(raw: string, oldDate: string, newDate: string): st
 export function countBefore(startDate: string, raw: string, date: string): number {
 	return expandRRule(startDate, raw, [], startDate, date).length;
 }
+
+/** PR 9: from-completion fits a daily/weekly/monthly rule with no weekday list (BYDAY) and no end:
+ *  an UNTIL/COUNT rule already stops, and moving its date by the interval would run past that end. */
+export function canCountFromCompletion(raw: string | null | undefined): boolean {
+	const r = parseRRule(raw);
+	return (
+		!!r &&
+		(r.freq === 'DAILY' || r.freq === 'WEEKLY' || r.freq === 'MONTHLY') &&
+		!r.byday?.length &&
+		!r.until &&
+		!r.count
+	);
+}
+
+/** PR 9: the series' next date after finishing it today: today + one interval (month ends clamp).
+ *  Never a `new Date('YYYY-MM-DD')`; all owner-local day keys. */
+export function nextFromCompletion(today: string, raw: string | null | undefined): string | null {
+	const r = parseRRule(raw);
+	if (!r || !isDate(today)) return null;
+	if (r.freq === 'DAILY') return addDays(today, r.interval);
+	if (r.freq === 'WEEKLY') return addDays(today, 7 * r.interval);
+	if (r.freq === 'MONTHLY') {
+		const [y, m, d] = dateParts(today);
+		const total = y * 12 + (m - 1) + r.interval;
+		const ny = Math.floor(total / 12);
+		const nm = (total % 12) + 1;
+		return makeDate(ny, nm, Math.min(d, daysInMonth(ny, nm)));
+	}
+	return null;
+}

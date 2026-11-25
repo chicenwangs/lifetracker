@@ -8,12 +8,14 @@ import { notFound, bad } from '../http';
 import { zDate, zIsoZ, zStatus, zTime, zTitle, zType, zId } from '../validate';
 import * as calendarsRepo from './calendars';
 import * as itemTypesRepo from './itemtypes';
-import { addDays, diffDays, nowUtcIso } from '$lib/time';
+import { addDays, DEFAULT_TZ, diffDays, nowUtcIso, todayLocal } from '$lib/time';
 import {
 	baseItemId,
+	canCountFromCompletion,
 	countBefore,
 	expandRRule,
 	formatRRule,
+	nextFromCompletion,
 	parseExdates,
 	parseRRule,
 	retargetRRule,
@@ -55,6 +57,7 @@ export function toDTO(r: ItemRow, counts?: { done: number; total: number }): Ite
 		stepsTotal: counts?.total ?? 0,
 		editable: true,
 	};
+	if (r.repeatFromCompletion) dto.repeatFromCompletion = true;
 	if (r.rrule) {
 		dto.rrule = r.rrule;
 		dto.seriesId = r.seriesId ?? baseItemId(r.id);
@@ -137,6 +140,11 @@ export function inRange(calendarId: string, from: string, to: string): ItemRow[]
 	const expanded: ItemRow[] = [...plain];
 	for (const r of repeating) {
 		if (!r.date || !r.rrule) continue;
+		// v3.3 PR 9: a from-completion series has only its next date on screen, never future ghosts
+		if (r.repeatFromCompletion) {
+			if (r.date < to && (r.endDate ?? r.date) >= from) expanded.push(r);
+			continue;
+		}
 		const span = r.endDate ? diffDays(r.date, r.endDate) : 0;
 		const occs = expandRRule(r.date, r.rrule, parseExdates(r.exdates), from, to, span);
 		for (const occ of occs) {
@@ -298,6 +306,8 @@ export const itemPatchSchema = z
 		rrule: zRRule.nullable(),
 		/** v3.3 PR 11: EXDATEs for an imported series (YYYY-MM-DD) */
 		exdates: z.array(zDate).max(500).nullable(),
+		/** v3.3 PR 9: count the next one from the day it is finished */
+		repeatFromCompletion: z.boolean(),
 		/** repeating edit scope (#72): 'this' detaches one date, 'following' splits the series, 'all' updates the series */
 		scope: z.enum(['this', 'following', 'all']),
 		/** #105 offline edit timestamp (UTC Z): if server's updatedAt >= editedAt, server wins */
@@ -355,7 +365,55 @@ function detachOccurrence(meId: string, cur: ItemRow, occDate: string, p: ItemPa
 	})();
 }
 
-export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
+/** PR 9: tick a from-completion series: a done copy dated today stays as history, the series moves on by one
+ *  interval from today. Runs inside the route's undo transaction: the copy id goes to the journal's created list. */
+function completeFromCompletion(meId: string, cur: ItemRow, onCreated?: (id: string) => void): ItemRow {
+	const tz =
+		(
+			handle().sqlite.prepare(`SELECT timezone FROM users WHERE id = ?`).get(meId) as
+				{ timezone: string } | undefined
+		)?.timezone ?? DEFAULT_TZ;
+	const today = todayLocal(tz);
+	const next = nextFromCompletion(today, cur.rrule);
+	if (!next) {
+		bad('This repeat cannot count from completion.', 'bad_from_completion');
+		return cur; // bad() throws; this keeps `next` a string for the type checker
+	}
+	const now = nowUtcIso();
+	const span = cur.date && cur.endDate ? diffDays(cur.date, cur.endDate) : 0;
+	const copyId = newId('itm');
+	handle().sqlite.transaction(() => {
+		db()
+			.insert(items)
+			.values({
+				...cur,
+				id: copyId,
+				date: today,
+				endDate: span > 0 ? addDays(today, span) : null,
+				status: 'done',
+				rrule: null,
+				exdates: null,
+				repeatFromCompletion: false,
+				icsUid: null,
+				parentId: null,
+				startedAt: cur.startedAt ?? now,
+				completedAt: now,
+				createdAt: now,
+				updatedAt: now,
+				updatedBy: meId,
+			})
+			.run();
+		db()
+			.update(items)
+			.set({ date: next, endDate: span > 0 ? addDays(next, span) : null, updatedAt: now, updatedBy: meId })
+			.where(eq(items.id, cur.id))
+			.run();
+	})();
+	onCreated?.(copyId);
+	return mustOwn(meId, cur.id);
+}
+
+export function patch(meId: string, rawId: string, p: ItemPatch, onCreated?: (id: string) => void): ItemRow {
 	const { id, occDate } = splitOccId(rawId);
 	const cur = mustOwn(meId, id);
 	// #158/#163: that date was already detached into its own row; editing it again would make a second copy
@@ -366,11 +424,24 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	if (editedAt && cur.updatedAt > editedAt) return cur;
 	if (fields.type !== undefined) itemTypesRepo.mustHave(meId, fields.type);
 
+	// v3.3 PR 9: finishing a from-completion series never detaches. It leaves a done copy dated today (history)
+	// and moves the series on by one interval from today. Undo: the route passes the copy id to its journal.
+	const onlyDone =
+		fields.status === 'done' &&
+		scope === undefined &&
+		fields.date === undefined &&
+		fields.rrule === undefined &&
+		fields.time === undefined &&
+		fields.endDate === undefined;
+	if (onlyDone && cur.repeatFromCompletion && cur.rrule && cur.date)
+		return completeFromCompletion(meId, cur, onCreated);
+
 	// Repeating occurrence handling (#72):
 	// - Ticking status (only `status` changed, no `scope`) detaches that single occurrence date.
 	// - `scope === 'this'` (or dragging an occurrence date on the calendar without scope) detaches that date.
 	// - `scope === 'following'` truncates the existing series before `occDate` and starts a new series at `occDate`.
-	if (cur.rrule && cur.date) {
+	// PR 9: a from-completion series is one row that moves itself on done; it never detaches or splits.
+	if (cur.rrule && cur.date && !cur.repeatFromCompletion) {
 		const targetOcc = occDate ?? cur.date;
 		const keys = Object.keys(fields);
 		const onlyStatus = keys.length === 1 && keys[0] === 'status';
@@ -461,6 +532,19 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	if (time && !date) bad('time needs a date');
 	if (rrule && !date) bad('repeat needs a date');
 	checkRuleEnd(date, rrule);
+	// v3.3 PR 9: count from completion only on a daily/weekly/monthly rule with no weekdays; picking weekdays
+	// or clearing the rule silently falls back to "from the scheduled date" unless the client asks for it
+	const fromCompletion =
+		fields.repeatFromCompletion !== undefined
+			? fields.repeatFromCompletion
+			: canCountFromCompletion(rrule)
+				? cur.repeatFromCompletion
+				: false;
+	if (fromCompletion && (!rrule || !canCountFromCompletion(rrule)))
+		bad(
+			'Counting from completion needs a daily, weekly or monthly repeat without weekdays.',
+			'bad_from_completion',
+		);
 	if (fields.parentId !== undefined) checkParent(meId, fields.parentId, id);
 	if (fields.parentId && steps(meId, id).length) bad('an item with steps cannot become a step');
 	if ((fields.parentId ?? cur.parentId) && rrule) bad('steps cannot repeat');
@@ -473,6 +557,7 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 			time,
 			endDate,
 			rrule,
+			repeatFromCompletion: !!(fromCompletion && rrule),
 			...(rrule === null ? { exdates: null } : {}),
 			...(fields.status ? statusStamps(cur, fields.status, now) : {}),
 			updatedAt: now,
@@ -483,10 +568,11 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	return mustOwn(meId, id);
 }
 
-/** FR-H3/H4: todo -> doing -> done -> todo. On a repeating item (#72), detaches that occurrence date. */
-export function cycle(meId: string, rawId: string): ItemRow {
+/** FR-H3/H4: todo -> doing -> done -> todo. On a repeating item (#72), detaches that occurrence date;
+ *  a from-completion series advances instead (PR 9). */
+export function cycle(meId: string, rawId: string, onCreated?: (id: string) => void): ItemRow {
 	const cur = mustOwn(meId, rawId);
-	return patch(meId, rawId, { status: nextStatus(cur.status) });
+	return patch(meId, rawId, { status: nextStatus(cur.status) }, onCreated);
 }
 
 /** Skip one date of a repeating series (v3.2 reschedule): an EXDATE. Undo = the journal's before-row. */
@@ -656,14 +742,15 @@ export function dueOn(meId: string, day: string): ItemRow[] {
 		});
 }
 
-/** v3.2 PR 4: a one-off top-level item whose last day is behind today. A normal repeat never slips. */
+/** v3.2 PR 4: a one-off top-level item whose last day is behind today. A normal repeat never slips; a
+ *  from-completion series does (PR 9): its next date is what the user has to finish. */
 const SLIPPED_CAP = 50;
 const slippedWhere = (cals: string[], today: string) =>
 	and(
 		inArray(items.calendarId, cals),
 		live,
 		isNull(items.parentId),
-		isNull(items.rrule),
+		or(isNull(items.rrule), eq(items.repeatFromCompletion, true)),
 		ne(items.status, 'done'),
 		isNotNull(items.date),
 		lt(sql`COALESCE(${items.endDate}, ${items.date})`, today),

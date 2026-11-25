@@ -6,6 +6,7 @@
 	import { addDays, clipToDay, hhmm, isDate, prettyDate } from '$lib/time';
 	import type { BlockDTO, CalendarPayload, ItemDTO } from '$lib/types';
 	import ActionSheet from './ActionSheet.svelte';
+	import RepeatMark from './RepeatMark.svelte';
 	import { askText } from '$lib/client/dialog.svelte';
 	import { showToast } from '$lib/client/toast.svelte';
 	import { openItem } from '$lib/client/peek.svelte';
@@ -95,6 +96,7 @@
 					{#snippet inner()}
 						<span class="tm">{r.time || 'all day'}</span>
 						<span class="lb">{r.x.busy ? 'Busy' : r.label}</span>
+						<RepeatMark item={'repeatFromCompletion' in r.x ? r.x : null} />
 						{#if r.x.theirs}<span class="who" style:background={r.x.owner?.color}>{r.x.owner?.initial}</span
 							>{/if}
 					{/snippet}
