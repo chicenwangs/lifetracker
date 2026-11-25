@@ -23,7 +23,8 @@ export function icsFeed(me: App.SafeUser, now = Date.now()): string {
 			time: r.time,
 			endDate: r.endDate,
 			private: r.private,
-			rrule: r.rrule,
+			// PR 9: a from-completion series exports only its next occurrence, never a rule
+			rrule: r.repeatFromCompletion ? null : r.rrule,
 			exdates: parseExdates(r.exdates),
 			minutes: r.blockMin ?? undefined,
 		}));

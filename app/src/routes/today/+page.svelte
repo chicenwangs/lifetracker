@@ -4,6 +4,7 @@
 <script lang="ts">
 	import GestureHint from '$lib/components/GestureHint.svelte';
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
+	import RepeatMark from '$lib/components/RepeatMark.svelte';
 	import { askText } from '$lib/client/dialog.svelte';
 	import { cycleRow, deleteRow, moveRow, toggleDone } from '$lib/client/rowOps';
 	import { postpones } from '$lib/client/reschedule';
@@ -322,6 +323,7 @@
 									onclick={() => (e.item ? openItem(e.item.id) : e.block?.itemId && openItem(e.block.itemId))}
 									>{e.label}</button
 								>
+								{#if e.item}<RepeatMark item={e.item} />{/if}
 								{#if rowOf(e)}<button
 										class="more"
 										type="button"
