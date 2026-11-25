@@ -78,6 +78,25 @@ test('Month: + adds on the selected day on screen (#399)', async () => {
 	await page.goBack();
 });
 
+test('Month: a new entry from + appears in the agenda without a reload (#432)', async () => {
+	const T = `Month refresh ${test.info().project.name}`;
+	await page.goto('/month?m=2030-01&d=2030-01-15');
+	await plus().click();
+	await page.keyboard.type(`${T} 06:00`);
+	const res = page.waitForResponse((r) => r.url().endsWith('/api/quickadd') && r.status() === 201);
+	await page.getByRole('dialog', { name: 'Add' }).getByRole('button', { name: 'Add', exact: true }).click();
+	await res;
+	// no reload or navigation: the agenda must show the new planner block
+	await expect(page.getByRole('region', { name: /Agenda for/ })).toContainText(T);
+	// cleanup: the block lives only in this E2E run, but leave the day clean for later specs
+	await page.evaluate(async (title) => {
+		const cal = await (await fetch('/api/calendar?from=2030-01-15&to=2030-01-16')).json();
+		for (const b of cal.blocks as { id: string; label: string }[])
+			if (b.label === title) await fetch('/api/blocks/' + b.id, { method: 'DELETE' });
+	}, T);
+	await page.goBack();
+});
+
 test('Keep: + makes a note; no second New note button', async () => {
 	await page.goto('/keep');
 	await expect(page.getByRole('button', { name: 'New note', exact: true })).toHaveCount(1); // the bar's +

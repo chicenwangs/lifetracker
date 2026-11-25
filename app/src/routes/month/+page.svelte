@@ -13,6 +13,8 @@
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
 	import RepeatMark from '$lib/components/RepeatMark.svelte';
 	import { invalidateAll } from '$lib/client/refresh';
+	import { calendarBus } from '$lib/client/bus.svelte';
+	import { untrack } from 'svelte';
 	import { deleteRow, toggleDone } from '$lib/client/rowOps';
 	import { postpones } from '$lib/client/reschedule';
 	import { rowGestures } from '$lib/client/rowGestures';
@@ -58,6 +60,11 @@
 	// row gestures + actions (#96): same meaning as Today and Week
 	const mine = (t: ItemDTO | BlockDTO) => t.editable && !t.theirs;
 	const refresh = () => invalidateAll();
+	// the phone + Add sheet writes on another view: refetch so this agenda shows the new row without a reload (#432)
+	$effect(() => {
+		void calendarBus.version;
+		untrack(() => calendarBus.version > 0 && refresh());
+	});
 	let acting = $state<ItemDTO | BlockDTO | null>(null);
 	// closures over a plain value: ActionSheet closes (acting = null) before run() fires (#324)
 	const actionsFor = (a: ItemDTO | BlockDTO) => [
