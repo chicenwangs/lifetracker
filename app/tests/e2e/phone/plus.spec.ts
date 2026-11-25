@@ -93,6 +93,14 @@ test('Pages: + makes a page and opens it; no second New page button', async () =
 	await expect(page).toHaveURL(/\/pages\/pg_/);
 });
 
+test('Quick note has no mic on the web (voice note is app only, PR 13)', async () => {
+	await page.goto('/today');
+	await plus().click();
+	await page.getByRole('tab', { name: 'Quick note' }).click();
+	await expect(page.getByRole('textbox', { name: 'Note' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Dictate note' })).toHaveCount(0);
+});
+
 test('rapid taps after Save note do not reach the page beneath (#378)', async () => {
 	await page.goto('/today');
 	// a warning toast from an earlier test can still sit over the Save spot (8 s), so let it clear first
