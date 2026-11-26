@@ -1,7 +1,34 @@
 // Blind tests for card 02, C4 and C5 (and C8 at 1440): keyboard hints follow the pointer, not the width.
 // A 900x700 touch screen is coarse but wider than the phone breakpoint; a 1440x900 mouse screen is fine.
 import { expect, test, type Page } from '@playwright/test';
-import { signIn } from '../phone/helpers';
+
+const PW = 'good pass phrase';
+// flow.spec.ts ends by resetting jeremy's password; try both so this file also runs after that one.
+const RESET_PW = 'reset pass phrase 1';
+
+async function signIn(page: Page) {
+	await page.goto('/');
+	if (page.url().endsWith('/setup')) {
+		await page.fill('#tk', 'e2e-setup-token-long-enough');
+		await page.fill('#p', PW);
+		await page.fill('#cp', PW);
+		await page.click('button[type=submit]');
+	} else if (page.url().includes('/login')) {
+		for (const pw of [RESET_PW, PW]) {
+			await page.fill('#u', 'jeremy');
+			await page.fill('#p', pw);
+			await page.click('button[type=submit]');
+			await page.waitForFunction(
+				() => !location.pathname.startsWith('/login') || !!document.querySelector('.alert'),
+			);
+			if (!page.url().includes('/login')) break;
+		}
+	}
+	await expect(page).not.toHaveURL(/\/(setup|login)/);
+	const skip = page.getByRole('button', { name: 'Skip tour' });
+	await skip.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+	if (await skip.isVisible().catch(() => false)) await skip.click();
+}
 
 async function makePage(page: Page, title: string) {
 	const id = await page.evaluate(async (t) => {
