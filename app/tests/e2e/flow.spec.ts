@@ -1990,7 +1990,9 @@ test('database gallery: cover, title + props, size, click opens a record, empty 
 	await page.getByRole('tab', { name: /Gallery/ }).click();
 	const cards = page.getByRole('list', { name: 'Cards' });
 	await expect(cards.locator('img')).toHaveAttribute('src', coverUrl);
-	expect(await cards.locator('img').evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
+	await expect
+		.poll(() => cards.locator('img').evaluate((el: HTMLImageElement) => el.naturalWidth))
+		.toBeGreaterThan(0); // the same-origin upload really decodes under CSP
 	expect(csp).toEqual([]);
 	await expect(page.locator('.gal')).toHaveAttribute('data-size', 'L');
 	const card = cards.getByRole('button', { name: 'One' });
