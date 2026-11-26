@@ -192,7 +192,7 @@ if ($Emulator) {
 		New-Item -ItemType Directory -Force 'C:\Users\Public\jtmp' | Out-Null
 		$env:JAVA_HOME = 'C:\Program Files\Java\jdk-24'; $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
 		$env:JAVA_TOOL_OPTIONS = '-Djdk.net.unixdomain.tmpdir=C:\Users\Public\jtmp'; $env:GRADLE_OPTS = $env:JAVA_TOOL_OPTIONS
-		Push-Location "$mob\android"; cmd /c "gradlew.bat --no-daemon -q assembleDebug 2>&1" | Select-Object -Last 3; $g = $LASTEXITCODE; Pop-Location
+		Push-Location "$mob\android"; cmd /c "$mob\android\gradlew.bat --no-daemon -q assembleDebug 2>&1" | Select-Object -Last 3; $g = $LASTEXITCODE; Pop-Location
 		if ($g -ne 0 -or -not (Test-Path $apk)) { 'gradle failed'; exit 1 }
 		# the APK itself: no live address anywhere (UTF-8 or UTF-16), and the bundled config points at the QA server
 		Add-Type -AssemblyName System.IO.Compression.FileSystem
