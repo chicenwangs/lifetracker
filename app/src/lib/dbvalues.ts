@@ -86,6 +86,9 @@ export interface ViewConfig {
 	/** board view: the select property the columns come from, and up to 2 properties on a card */
 	groupBy?: string | null;
 	cardProps?: string[];
+	/** gallery view: the url property used as a card cover, and the card size */
+	coverProp?: string | null;
+	cardSize?: 'S' | 'M' | 'L';
 }
 
 const empty = (v: unknown) => v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length);

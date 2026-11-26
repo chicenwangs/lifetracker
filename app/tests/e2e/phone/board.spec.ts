@@ -131,3 +131,27 @@ test('board: chips, swipe, long-press move + Undo, card tap, menu Back, sheets, 
 	await page.goBack();
 	await expect(nv).toBeHidden();
 });
+
+test('gallery view: 2 columns, tap a card opens the record, 48 dp (#448)', async () => {
+	const db = (await api('POST', '/api/databases', { title: 'Phone gallery' })).j.database as {
+		id: string;
+		pageId: string;
+	};
+	const info = (await api('GET', `/api/databases/${db.id}`)).j.database as {
+		props: { id: string; type: string }[];
+	};
+	const tp = info.props.find((p) => p.type === 'title')!;
+	await api('POST', `/api/databases/${db.id}/records`, { values: { [tp.id]: 'Card one' } });
+	await api('POST', `/api/databases/${db.id}/views`, { name: 'Gallery', type: 'gallery' });
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Gallery/ }).click();
+	const cards = page.getByRole('list', { name: 'Cards' });
+	await expect(cards.getByRole('button', { name: 'Card one' })).toBeVisible();
+	const cols = await page
+		.locator('.gal')
+		.evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+	expect(cols).toBe(2); // S/M = 2 columns on the phone
+	await expectTargets48(page);
+	await cards.getByRole('button', { name: 'Card one' }).click();
+	await expect(page).toHaveURL(/\/pages\//);
+});

@@ -113,6 +113,7 @@ export function cloneSchema(
 		}
 		if (Array.isArray(cfg.filters))
 			cfg.filters = (cfg.filters as { prop?: string }[]).map((f) => ({ ...f, prop: f.prop ? (map.get(f.prop) ?? f.prop) : f.prop })); // prettier-ignore
+		if (typeof cfg.coverProp === 'string') cfg.coverProp = map.get(cfg.coverProp) ?? cfg.coverProp;
 		for (const k of ['hidden', 'order']) if (k in cfg) cfg[k] = remap(cfg[k]);
 		insView.run(newId('pdv'), id, v.name, v.view_type, JSON.stringify(cfg), v.position);
 	}
@@ -329,7 +330,7 @@ export function recordOfPage(
 const zFilter = z
 	.object({ prop: z.string().max(40), op: z.string().max(20), value: z.unknown().optional() })
 	.strict();
-export const viewConfigSchema = z.object({ sort: z.object({ prop: z.string().max(40), dir: z.enum(['asc', 'desc']) }).strict().nullable().optional(), filters: z.array(zFilter).max(20).optional(), conj: z.enum(['and', 'or']).optional(), hidden: z.array(z.string().max(40)).max(MAX_PROPS).optional(), order: z.array(z.string().max(40)).max(MAX_PROPS).optional(), groupBy: z.string().max(40).nullable().optional(), cardProps: z.array(z.string().max(40)).max(2).optional() }).strict(); // prettier-ignore
+export const viewConfigSchema = z.object({ sort: z.object({ prop: z.string().max(40), dir: z.enum(['asc', 'desc']) }).strict().nullable().optional(), filters: z.array(zFilter).max(20).optional(), conj: z.enum(['and', 'or']).optional(), hidden: z.array(z.string().max(40)).max(MAX_PROPS).optional(), order: z.array(z.string().max(40)).max(MAX_PROPS).optional(), groupBy: z.string().max(40).nullable().optional(), cardProps: z.array(z.string().max(40)).max(2).optional(), coverProp: z.string().max(40).nullable().optional(), cardSize: z.enum(['S', 'M', 'L']).optional() }).strict(); // prettier-ignore
 export const viewPatchSchema = z
 	.object({ name: z.string().trim().min(1).max(60), config: viewConfigSchema })
 	.partial()
@@ -344,6 +345,10 @@ function checkConfig(dbId: string, c: ViewConfig) {
 	}
 	for (const id of c.cardProps ?? [])
 		if (!ps.some((p) => p.id === id)) bad('Card shows an unknown property.');
+	if (c.coverProp) {
+		const cp = ps.find((p) => p.id === c.coverProp);
+		if (!cp || cp.type !== 'url') bad('Card covers need a link property.');
+	}
 	for (const f of c.filters ?? []) {
 		const p = ps.find((x) => x.id === f.prop);
 		if (!p || !OPS[p.type].includes(f.op)) bad('That filter does not fit the property type.');

@@ -1,4 +1,4 @@
-﻿// v4.0 PR 17: duplicate a page â€” new block ids, links rebuilt, database schema only, no child pages, no shares.
+// v4.0 PR 17: duplicate a page — new block ids, links rebuilt, database schema only, no child pages, no shares.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import { handle } from '../../src/lib/server/db';
@@ -43,8 +43,11 @@ function source() {
 		type: 'select',
 		config: { options: [{ id: 'o1', label: 'A', color: 'blue' }] },
 	});
+	const link = databases.addProp(u1, db.id, { name: 'Link', type: 'url', config: {} });
 	const view = databases.addView(u1, db.id, 'Sorted');
-	databases.patchView(u1, view.id, { config: { sort: { prop: sel.id, dir: 'asc' } } });
+	databases.patchView(u1, view.id, {
+		config: { sort: { prop: sel.id, dir: 'asc' }, coverProp: link.id, cardSize: 'L' },
+	});
 	databases.addRecord(u1, db.id);
 	pages.update(u1, p.id, {
 		doc: {
@@ -56,7 +59,7 @@ function source() {
 			],
 		},
 	});
-	return { parent, p, target, child, db, sel };
+	return { parent, p, target, child, db, sel, link };
 }
 
 const blockIds = (pageId: string) =>
@@ -89,7 +92,7 @@ describe('duplicatePage', () => {
 		]);
 	});
 	it('copies database schema only: new db, props and view config remapped, no records', () => {
-		const { p, db, sel } = source();
+		const { p, db, sel, link } = source();
 		const copy = duplicatePage(u1, u1, p.id);
 		const node = (copy.doc.content as { type: string; attrs: { databaseId: string } }[]).find(
 			(n) => n.type === 'database',
@@ -102,6 +105,10 @@ describe('duplicatePage', () => {
 		expect(madeSel?.id).not.toBe(sel.id);
 		const madeView = made.views.find((v) => v.name === 'Sorted');
 		expect(madeView?.config.sort?.prop).toBe(madeSel?.id);
+		const madeLink = made.props.find((x) => x.name === 'Link'); // gallery cover remapped, card size kept
+		expect(madeLink?.id).not.toBe(link.id);
+		expect(madeView?.config.coverProp).toBe(madeLink?.id);
+		expect(madeView?.config.cardSize).toBe('L');
 		expect(made.rows).toHaveLength(0);
 		expect(src.rows).toHaveLength(1); // the source keeps its record
 	});

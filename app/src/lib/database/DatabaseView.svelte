@@ -64,6 +64,26 @@
 			.filter((p): p is DbProp => !!p && p.type !== 'title');
 		return picked.length ? picked.slice(0, 2) : d.props.filter((p) => p.type !== 'title').slice(0, 2);
 	});
+	// gallery (PR 25): cards with a cover (a url property holding an attachment), title and the chosen properties
+	const isGallery = $derived(view?.type === 'gallery');
+	const coverProp = $derived(cfg.coverProp ? prop(cfg.coverProp) : undefined);
+	const cardSize = $derived<'S' | 'M' | 'L'>(cfg.cardSize ?? 'M');
+	const coverOf = (r: DbRow) => {
+		const v = coverProp ? r.values[coverProp.id] : null;
+		// cover = a link to a picture (the page cover arrives with PR 31); anything else falls back to --ground
+		return typeof v === 'string' &&
+			(/^https?:\/\/\S+\.(png|jpe?g|gif|webp|avif|svg)([?#]\S*)?$/i.test(v) ||
+				/^\/api\/attachments\/att_[0-9a-z]+$/.test(v))
+			? v
+			: '';
+	};
+	function setCover(e: Event) {
+		const id = (e.currentTarget as HTMLSelectElement).value;
+		void saveBoard({ coverProp: id || null });
+	}
+	function setSize(e: Event) {
+		void saveBoard({ cardSize: (e.currentTarget as HTMLSelectElement).value as 'S' | 'M' | 'L' });
+	}
 
 	async function load(viewId: string | undefined = d?.viewId) {
 		try {
@@ -234,11 +254,11 @@
 	const toggle = (p: typeof panel) => (panel = panel === p ? null : p);
 
 	// ---------- board (v4 PR 23) ----------
-	function addViewOfType(type: 'table' | 'board') {
+	function addViewOfType(type: 'table' | 'board' | 'gallery') {
 		addingView = false;
 		void (async () => {
 			const name = await askText('Name the view', {
-				value: type === 'board' ? 'Board' : 'Table',
+				value: type === 'gallery' ? 'Gallery' : type === 'board' ? 'Board' : 'Table',
 				ok: 'Add',
 			});
 			if (!name) return;
@@ -354,12 +374,32 @@
 		}}
 	>
 		{#snippet boardCfg()}
-			<label
-				>Group by
-				<select aria-label="Group by" value={groupProp?.id ?? ''} onchange={setGroup}>
-					{#each selectProps as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
-				</select>
-			</label>
+			{#if isGallery}
+				<label
+					>Cover
+					<select aria-label="Cover property" value={coverProp?.id ?? ''} onchange={setCover}>
+						<option value="">None</option>
+						{#each (d?.props ?? []).filter((p) => p.type === 'url') as p (p.id)}
+							<option value={p.id}>{p.name}</option>
+						{/each}
+					</select>
+				</label>
+				<label
+					>Card size
+					<select aria-label="Card size" value={cardSize} onchange={setSize}>
+						<option value="S">Small</option>
+						<option value="M">Medium</option>
+						<option value="L">Large</option>
+					</select>
+				</label>
+			{:else}
+				<label
+					>Group by
+					<select aria-label="Group by" value={groupProp?.id ?? ''} onchange={setGroup}>
+						{#each selectProps as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+					</select>
+				</label>
+			{/if}
 			<label
 				>Card shows
 				<select aria-label="Card property 1" value={cardProps[0]?.id ?? ''} onchange={(e) => setCard(0, e)}>
@@ -402,10 +442,11 @@
 				<div class="panel row" role="group" aria-label="New view type">
 					<button type="button" onclick={() => addViewOfType('table')}>Table</button>
 					<button type="button" onclick={() => addViewOfType('board')}>Board</button>
+					<button type="button" onclick={() => addViewOfType('gallery')}>Gallery</button>
 				</div>
 			{/if}
 			<span class="grow"></span>
-			{#if isBoard}
+			{#if isBoard || isGallery}
 				<button
 					type="button"
 					class="soft"
@@ -419,8 +460,8 @@
 			{/if}
 		</div>
 
-		{#if isBoard && viewCfgOpen && !phoneNow}
-			<div class="panel row" role="group" aria-label="Board settings">
+		{#if (isBoard || isGallery) && viewCfgOpen && !phoneNow}
+			<div class="panel row" role="group" aria-label="View settings">
 				{@render boardCfg()}
 			</div>
 		{/if}
@@ -428,13 +469,14 @@
 			<BottomSheet label="New view" onclose={() => (addingView = false)}>
 				<div class="row">
 					<button type="button" class="btn" onclick={() => addViewOfType('table')}>Table</button>
+					<button type="button" class="btn" onclick={() => addViewOfType('gallery')}>Gallery</button>
 					<button type="button" class="btn primary" onclick={() => addViewOfType('board')}>Board</button>
 				</div>
 			</BottomSheet>
 		{/if}
-		{#if phoneNow && isBoard && viewCfgOpen}
+		{#if phoneNow && (isBoard || isGallery) && viewCfgOpen}
 			<BottomSheet label="View settings" onclose={() => (viewCfgOpen = false)}>
-				<div class="panel row" role="group" aria-label="Board settings">
+				<div class="panel row" role="group" aria-label="View settings">
 					{@render boardCfg()}
 				</div>
 			</BottomSheet>
@@ -594,7 +636,34 @@
 			</div>
 		{/if}
 
-		{#if isBoard}
+		{#if isGallery}
+			{#if !(d?.rows ?? []).length}
+				<div class="panel bempty" role="group" aria-label="Gallery">
+					<p>No records yet.</p>
+					<button type="button" class="btn sm primary" onclick={addRecord}>New record</button>
+				</div>
+			{:else}
+				<div class="gal" data-size={cardSize} role="list" aria-label="Cards">
+					{#each d?.rows ?? [] as r (r.id)}
+						<article class="gcard" role="listitem">
+							<button type="button" class="gbody" aria-label={title(r)} onclick={() => openRecord(r)}>
+								<span class="gcover">
+									{#if coverOf(r)}<img src={coverOf(r)} alt="" loading="lazy" />{/if}
+								</span>
+								<span class="gmeta">
+									<b>{title(r)}</b>
+									{#each cardProps as p (p.id)}
+										{#if asText(p.type, r.values[p.id] ?? null, p.config)}
+											<span class="bchip">{p.name}: {asText(p.type, r.values[p.id] ?? null, p.config)}</span>
+										{/if}
+									{/each}
+								</span>
+							</button>
+						</article>
+					{/each}
+				</div>
+			{/if}
+		{:else if isBoard}
 			{#if !selectProps.length}
 				<div class="panel bempty" role="group" aria-label="Board">
 					<p>Board groups cards by a select property.</p>
@@ -1229,7 +1298,69 @@
 	.bempty p {
 		margin: 0;
 	}
+	/* v4 PR 25: gallery view (card width 180/240/320 px, 16:9 cover, title + 2 chips) */
+	.gal {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, 180px);
+		gap: 12px;
+		padding: 4px 0;
+		justify-content: start;
+	}
+	.gal[data-size='M'] {
+		grid-template-columns: repeat(auto-fill, 240px);
+	}
+	.gal[data-size='L'] {
+		grid-template-columns: repeat(auto-fill, 320px);
+	}
+	.gcard {
+		display: flex;
+		border: 1.5px solid var(--card-edge);
+		border-radius: 10px;
+		background: var(--card);
+		overflow: hidden;
+	}
+	.gbody {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		padding: 0;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.gcover {
+		display: block;
+		aspect-ratio: 16 / 9;
+		background: var(--ground);
+	}
+	.gcover img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+	.gmeta {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		padding: 8px;
+	}
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.gal,
+		.gal[data-size='S'],
+		.gal[data-size='M'] {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 10px;
+		}
+		.gal[data-size='L'] {
+			grid-template-columns: 1fr;
+		}
+		.gbody {
+			min-height: 48px;
+		}
 		.bchips {
 			display: flex;
 			gap: 6px;

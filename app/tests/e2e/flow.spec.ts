@@ -1880,6 +1880,51 @@ test('ICS feed: create link, fetch without login, private = Busy, rotate kills t
 	await anon.dispose();
 });
 
+test('database gallery: cover, title + props, size, click opens a record, empty state (#448)', async () => {
+	const db = (await api('POST', '/api/databases', { title: 'Gallery DB' })).j.database as {
+		id: string;
+		pageId: string;
+	};
+	const pic = (
+		await api('POST', `/api/databases/${db.id}/properties`, { name: 'Pic', type: 'url', config: {} })
+	).j.prop as { id: string };
+	const note = (
+		await api('POST', `/api/databases/${db.id}/properties`, { name: 'Note', type: 'text', config: {} })
+	).j.prop as { id: string };
+	const info = (await api('GET', `/api/databases/${db.id}`)).j.database as {
+		props: { id: string; type: string }[];
+	};
+	const tp = info.props.find((p) => p.type === 'title')!;
+	await api('POST', `/api/databases/${db.id}/records`, {
+		values: { [tp.id]: 'One', [pic.id]: 'https://example.com/pic.png', [note.id]: 'Hello' },
+	});
+	const view = (await api('POST', `/api/databases/${db.id}/views`, { name: 'Gallery', type: 'gallery' })).j
+		.view as { id: string };
+	expect((await api('PATCH', `/api/database-views/${view.id}`, { config: { coverProp: pic.id, cardSize: 'L' } })).s).toBe(200); // prettier-ignore
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Gallery/ }).click();
+	const cards = page.getByRole('list', { name: 'Cards' });
+	await expect(cards.locator('img')).toHaveAttribute('src', 'https://example.com/pic.png');
+	await expect(page.locator('.gal')).toHaveAttribute('data-size', 'L');
+	const card = cards.getByRole('button', { name: 'One' });
+	await expect(card).toContainText('Hello');
+	await card.click();
+	await expect(page).toHaveURL(/\/pages\//);
+	// no records = empty state
+	const empty = (await api('POST', '/api/databases', { title: 'Empty DB' })).j.database as {
+		id: string;
+		pageId: string;
+	};
+	await api('POST', `/api/databases/${empty.id}/views`, { name: 'Gallery', type: 'gallery' });
+	await page.goto(`/pages/${empty.pageId}`);
+	await page.getByRole('tab', { name: /Gallery/ }).click();
+	await expect(page.getByRole('group', { name: 'Gallery' })).toContainText('No records yet.');
+	await page.getByRole('group', { name: 'Gallery' }).getByRole('button', { name: 'New record' }).click();
+	await expect(
+		page.getByRole('list', { name: 'Cards' }).getByRole('button', { name: 'Untitled' }),
+	).toBeVisible();
+});
+
 test('reset-password script works', async ({ browser }) => {
 	execFileSync('node', ['scripts/reset-password.mjs', 'jeremy'], {
 		input: 'reset pass phrase 1\n',
