@@ -83,6 +83,9 @@ export interface ViewConfig {
 	conj?: 'and' | 'or';
 	hidden?: string[];
 	order?: string[];
+	/** board view: the select property the columns come from, and up to 2 properties on a card */
+	groupBy?: string | null;
+	cardProps?: string[];
 }
 
 const empty = (v: unknown) => v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length);
