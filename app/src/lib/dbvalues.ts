@@ -60,11 +60,11 @@ export function checkValue(type: PropType, v: unknown, config: PropConfig = {}):
 		case 'url':
 			// http(s)/mailto, or an uploaded file path on this origin (CSP img-src is 'self' data:)
 			if (typeof v !== 'string' || v.length > 2000)
-				return { ok: false, error: 'URL: must start with http://, https:// or mailto:.' };
+				return { ok: false, error: 'URL: must start with http://, https://, mailto: or be an uploaded file.' };
 			return /^(https?:\/\/|mailto:)\S+$/i.test(v.trim()) ||
 				/^\/api\/attachments\/att_[0-9a-z]{16}$/i.test(v.trim())
 				? { ok: true, value: v.trim() }
-				: { ok: false, error: 'URL: must start with http://, https:// or mailto:.' };
+				: { ok: false, error: 'URL: must start with http://, https://, mailto: or be an uploaded file.' };
 	}
 } // prettier-ignore
 

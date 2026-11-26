@@ -2006,6 +2006,13 @@ test('database gallery: cover, title + props, size, click opens a record, empty 
 	await page.goto(`/pages/${db.pageId}`);
 	await page.getByRole('tab', { name: /Gallery/ }).click();
 	await expect(page.locator('.gal .gicon')).toHaveText('Pop');
+	// an external picture link is a valid url value for link cells but cannot load under CSP: fall back to the icon
+	expect((await api('PATCH', `/api/database-records/${rec.id}`, { values: { [pic.id]: 'https://example.com/pic.png' } })).s).toBe(200); // prettier-ignore
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Gallery/ }).click();
+	await expect(cards.locator('img')).toHaveCount(0);
+	await expect(page.locator('.gal .gicon')).toHaveText('Pop');
+	expect(csp).toEqual([]);
 	// no records = empty state
 	const empty = (await api('POST', '/api/databases', { title: 'Empty DB' })).j.database as {
 		id: string;

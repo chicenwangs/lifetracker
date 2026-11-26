@@ -77,13 +77,8 @@
 	const cardSize = $derived<'S' | 'M' | 'L'>(cfg.cardSize ?? 'M');
 	const coverOf = (r: DbRow) => {
 		const v = coverProp ? r.values[coverProp.id] : null;
-		// DESIGN 2.7: a picture link on the record -> its page cover -> --ground with the page icon
-		if (
-			typeof v === 'string' &&
-			(/^https?:\/\/\S+\.(png|jpe?g|gif|webp|avif|svg)([?#]\S*)?$/i.test(v) ||
-				/^\/api\/attachments\/att_[0-9a-z]+$/.test(v))
-		)
-			return v;
+		// DESIGN 2.7 under CSP img-src 'self': an uploaded file in the Cover property, else the record page cover
+		if (typeof v === 'string' && /^\/api\/attachments\/att_[0-9a-z]{16}$/i.test(v.trim())) return v.trim();
 		return r.coverId ? `/api/attachments/${r.coverId}` : '';
 	};
 	function setCover(e: Event) {
