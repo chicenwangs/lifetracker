@@ -5,9 +5,15 @@
 	import { askConfirm, askText } from '$lib/client/dialog.svelte';
 	import { goto } from '$app/navigation';
 	import { del, get, patch, post, ApiError } from '$lib/client/api';
-	import { showError } from '$lib/client/toast.svelte';
+	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { asText, NO_VALUE_OPS, OP_LABEL, OPS, PROP_TYPES, type Filter, type PropType, type ViewConfig } from '$lib/dbvalues'; // prettier-ignore
 	import type { DatabaseDTO, DbProp, DbRow } from '$lib/types';
+	import { onMount } from 'svelte';
+	import { isPhone } from '$lib/client/phone';
+	import { peerSwipe } from '$lib/client/peerSwipe';
+	import { backCloses } from '$lib/client/layers';
+	import BottomSheet from '$lib/components/BottomSheet.svelte';
+	import { boardGroups, NO_VALUE, type BoardGroup } from './board';
 	import DbCell from './DbCell.svelte';
 
 	let { databaseId }: { databaseId: string } = $props();
@@ -21,6 +27,16 @@
 	let nf = $state<{ prop: string; op: string; value: string }>({ prop: '', op: '', value: '' });
 	let ns = $state<{ prop: string; dir: 'asc' | 'desc' }>({ prop: '', dir: 'asc' });
 	let np = $state('');
+	// v4 PR 23: board view state
+	let addingView = $state(false);
+	let viewCfgOpen = $state(false);
+	let menuFor = $state<string | null>(null);
+	let moving = $state<string | null>(null); // drag (desktop) or long-press pick-up (phone)
+	let activeCol = $state(0);
+	let phoneNow = $state(false);
+	let pressTimer: ReturnType<typeof setTimeout> | undefined;
+	let swallowedClick = false; // the click a long press would otherwise fire on the card's title
+	onMount(() => (phoneNow = isPhone()));
 
 	const view = $derived(d?.views.find((v) => v.id === d?.viewId));
 	const cfg = $derived<ViewConfig>(view?.config ?? {});
@@ -34,6 +50,20 @@
 	const prop = (id: string) => d?.props.find((p) => p.id === id);
 	const titleProp = $derived(d?.props.find((p) => p.type === 'title'));
 	const title = (r: DbRow) => (titleProp && (r.values[titleProp.id] as string)) || 'Untitled';
+	// board: the group property is the saved one, else the first select property; cards show 2 properties
+	const selectProps = $derived((d?.props ?? []).filter((p) => p.type === 'select'));
+	const isBoard = $derived(view?.type === 'board');
+	const groupProp = $derived<DbProp | undefined>(
+		(cfg.groupBy ? prop(cfg.groupBy) : undefined) ?? selectProps[0],
+	);
+	const boardCols = $derived(groupProp && d ? boardGroups(d.rows, groupProp) : []);
+	const cardProps = $derived.by(() => {
+		if (!d) return [] as DbProp[];
+		const picked = (cfg.cardProps ?? [])
+			.map((id) => prop(id))
+			.filter((p): p is DbProp => !!p && p.type !== 'title');
+		return picked.length ? picked.slice(0, 2) : d.props.filter((p) => p.type !== 'title').slice(0, 2);
+	});
 
 	async function load(viewId: string | undefined = d?.viewId) {
 		try {
@@ -82,14 +112,6 @@
 	const saveView = (c: ViewConfig) => run(() => patch(`/api/database-views/${d?.viewId}`, { config: c }));
 
 	// ---------- views ----------
-	async function addView() {
-		const name = await askText('Name the view', { ok: 'Add' });
-		if (!name) return;
-		void run(async () => {
-			const r = await post<{ view: { id: string } }>(`/api/databases/${databaseId}/views`, { name });
-			await load(r.view.id);
-		}, false);
-	}
 	async function renameView() {
 		const name = await askText('Rename the view', { value: view?.name, ok: 'Rename' });
 		if (name) void run(() => patch(`/api/database-views/${d?.viewId}`, { name }));
@@ -210,6 +232,108 @@
 		void run(() => del(`/api/database-records/${r.id}`));
 	}
 	const toggle = (p: typeof panel) => (panel = panel === p ? null : p);
+
+	// ---------- board (v4 PR 23) ----------
+	function addViewOfType(type: 'table' | 'board') {
+		addingView = false;
+		void (async () => {
+			const name = await askText('Name the view', {
+				value: type === 'board' ? 'Board' : 'Table',
+				ok: 'Add',
+			});
+			if (!name) return;
+			await run(async () => {
+				const r = await post<{ view: { id: string } }>(`/api/databases/${databaseId}/views`, {
+					name,
+					type,
+				});
+				await load(r.view.id);
+			}, false);
+		})();
+	}
+	const saveBoard = (c: ViewConfig) => saveView({ ...cfg, ...c });
+	function setGroup(e: Event) {
+		const id = (e.currentTarget as HTMLSelectElement).value;
+		void saveBoard({ groupBy: id || null });
+	}
+	function setCard(i: 0 | 1, e: Event) {
+		const v = (e.currentTarget as HTMLSelectElement).value;
+		const cur = cardProps.map((p) => p.id);
+		while (cur.length < 2) cur.push('');
+		cur[i] = v;
+		void saveBoard({ cardProps: cur.filter(Boolean).slice(0, 2) });
+	}
+	/** one move = PATCH the group value; the toast Undo puts the old value back. */
+	async function move(r: DbRow, optId: string) {
+		swallowedClick = false;
+		const p = groupProp;
+		if (!p) return;
+		const old = (r.values[p.id] as string | null | undefined) ?? null;
+		if ((old ?? NO_VALUE) === optId) return;
+		menuFor = null;
+		moving = null;
+		try {
+			const out = await patch<{ values: Record<string, unknown> }>(`/api/database-records/${r.id}`, {
+				values: { [p.id]: optId || null },
+			});
+			r.values[p.id] = out.values[p.id];
+			const label = optId ? (p.config.options?.find((o) => o.id === optId)?.label ?? optId) : 'No value';
+			showToast(`Moved to ${label}`, {
+				undo: async () => {
+					await patch(`/api/database-records/${r.id}`, { values: { [p.id]: old } });
+					await load();
+				},
+			});
+		} catch (e) {
+			showError(e);
+		}
+	}
+	async function newIn(col: BoardGroup) {
+		await run(async () => {
+			const r = await post<{ row: DbRow }>(`/api/databases/${databaseId}/records`, {});
+			if (groupProp && col.id)
+				await patch(`/api/database-records/${r.row.id}`, { values: { [groupProp.id]: col.id } });
+			await load();
+		}, false);
+	}
+	function pickStart(r: DbRow, e: PointerEvent) {
+		px0 = e.clientX;
+		if (!phoneNow) return;
+		clearTimeout(pressTimer);
+		swallowedClick = false; // a fresh press starts clean: only THIS long press may swallow the next click
+		pressTimer = setTimeout(() => {
+			moving = r.id;
+			swallowedClick = true;
+		}, 500);
+	}
+	function pickEnd() {
+		clearTimeout(pressTimer);
+	}
+	let px0 = 0;
+	function pickMove(e: PointerEvent) {
+		if (Math.abs(e.clientX - px0) > 10) clearTimeout(pressTimer); // a swipe is not a pick-up
+	}
+	const boardStep = (n: 1 | -1) => {
+		activeCol = Math.min(boardCols.length - 1, Math.max(0, activeCol + n));
+	};
+	/** phone: a chip tap drops a picked-up card on that column, else switches which column shows. */
+	function chipTap(i: number) {
+		swallowedClick = false;
+		const id = moving;
+		moving = null;
+		activeCol = i;
+		if (id) {
+			const r = d?.rows.find((x) => x.id === id);
+			if (r) void move(r, boardCols[i]?.id ?? '');
+		}
+	}
+	function dropAt(col: BoardGroup) {
+		const id = moving;
+		moving = null;
+		if (!id) return;
+		const r = d?.rows.find((x) => x.id === id);
+		if (r) void move(r, col.id);
+	}
 </script>
 
 {#if gone}
@@ -217,7 +341,41 @@
 {:else if !d}
 	<p class="hint dbv">Loading database…</p>
 {:else}
-	<section class="dbv" aria-label="Database {d.title || 'Untitled'}" data-db={d.id}>
+	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+	<section
+		class="dbv"
+		aria-label="Database {d.title || 'Untitled'}"
+		data-db={d.id}
+		onmousedown={(e) => {
+			// phone, inside the page editor: a real mousedown on a button or a board card must not move the editor
+			// caret (it can re-render the block between down and up and swallow the click / drop the long press).
+			// Desktop keeps the default so HTML5 drag on a card still starts.
+			if (phoneNow && (e.target as HTMLElement).closest('button, .bcard')) e.preventDefault();
+		}}
+	>
+		{#snippet boardCfg()}
+			<label
+				>Group by
+				<select aria-label="Group by" value={groupProp?.id ?? ''} onchange={setGroup}>
+					{#each selectProps as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+				</select>
+			</label>
+			<label
+				>Card shows
+				<select aria-label="Card property 1" value={cardProps[0]?.id ?? ''} onchange={(e) => setCard(0, e)}>
+					<option value="">None</option>
+					{#each (d?.props ?? []).filter((p) => p.type !== 'title') as p (p.id)}
+						<option value={p.id}>{p.name}</option>
+					{/each}
+				</select>
+				<select aria-label="Card property 2" value={cardProps[1]?.id ?? ''} onchange={(e) => setCard(1, e)}>
+					<option value="">None</option>
+					{#each (d?.props ?? []).filter((p) => p.type !== 'title') as p (p.id)}
+						<option value={p.id}>{p.name}</option>
+					{/each}
+				</select>
+			</label>
+		{/snippet}
 		<input
 			class="dbtitle"
 			aria-label="Database name"
@@ -237,13 +395,50 @@
 					>
 				{/each}
 			</div>
-			<button type="button" class="soft" onclick={addView}>+ View</button>
+			<button type="button" class="soft" aria-expanded={addingView} onclick={() => (addingView = !addingView)}
+				>+ View</button
+			>
+			{#if addingView && !phoneNow}
+				<div class="panel row" role="group" aria-label="New view type">
+					<button type="button" onclick={() => addViewOfType('table')}>Table</button>
+					<button type="button" onclick={() => addViewOfType('board')}>Board</button>
+				</div>
+			{/if}
 			<span class="grow"></span>
+			{#if isBoard}
+				<button
+					type="button"
+					class="soft"
+					aria-expanded={viewCfgOpen}
+					onclick={() => (viewCfgOpen = !viewCfgOpen)}>View settings</button
+				>
+			{/if}
 			<button type="button" class="soft" onclick={renameView}>Rename view</button>
 			{#if d.views.length > 1}
 				<button type="button" class="soft" onclick={deleteView}>Delete view</button>
 			{/if}
 		</div>
+
+		{#if isBoard && viewCfgOpen && !phoneNow}
+			<div class="panel row" role="group" aria-label="Board settings">
+				{@render boardCfg()}
+			</div>
+		{/if}
+		{#if phoneNow && addingView}
+			<BottomSheet label="New view" onclose={() => (addingView = false)}>
+				<div class="row">
+					<button type="button" class="btn" onclick={() => addViewOfType('table')}>Table</button>
+					<button type="button" class="btn primary" onclick={() => addViewOfType('board')}>Board</button>
+				</div>
+			</BottomSheet>
+		{/if}
+		{#if phoneNow && isBoard && viewCfgOpen}
+			<BottomSheet label="View settings" onclose={() => (viewCfgOpen = false)}>
+				<div class="panel row" role="group" aria-label="Board settings">
+					{@render boardCfg()}
+				</div>
+			</BottomSheet>
+		{/if}
 
 		<div class="bar">
 			{#each cfg.filters ?? [] as f, i (i)}
@@ -399,122 +594,240 @@
 			</div>
 		{/if}
 
-		<div class="scroll">
-			<table>
-				<thead>
-					<tr>
-						{#each cols as p (p.id)}
-							<th>
-								<button
-									type="button"
-									class="th"
-									aria-expanded={openProp === p.id}
-									aria-label="Column {p.name}"
-									data-ico={TYPE_LABEL[p.type].split(' ')[0]}
-									onclick={() => (openProp = openProp === p.id ? null : p.id)}>{p.name}</button
-								>
-								{#if openProp === p.id}
-									<div class="pmenu" role="group" aria-label="{p.name} column settings">
-										<label
-											>Name
-											<input
-												value={p.name}
-												maxlength="100"
-												onchange={(e) => renameProp(p, e.currentTarget.value)}
-											/></label
-										>
-										{#if p.type !== 'title'}
-											<label
-												>Type
-												<select value={p.type} onchange={(e) => retype(p, e.currentTarget.value as PropType)}>
-													{#each PROP_TYPES.filter((t) => t !== 'title') as t (t)}
-														<option value={t}>{TYPE_LABEL[t]}</option>
-													{/each}
-												</select></label
-											>
-										{/if}
-										{#if p.type === 'select' || p.type === 'multi_select'}
-											<label
-												>Options (comma between)
-												<input
-													value={(p.config.options ?? []).map((o) => o.label).join(', ')}
-													placeholder="Light, Moderate, Heavy"
-													onchange={(e) => setOptions(p, e.currentTarget.value)}
-												/></label
-											>
-										{/if}
-										<div class="colrow">
-											<button type="button" class="btn sm" onclick={() => shift(p.id, -1)}>← Move</button>
-											<button type="button" class="btn sm" onclick={() => shift(p.id, 1)}>Move →</button>
-										</div>
-										{#if p.type !== 'title'}
-											<div class="colrow">
-												<button
-													type="button"
-													class="btn sm"
-													onclick={() => {
-														openProp = null;
-														toggleHidden(p.id);
-													}}>Hide</button
-												>
-												<button type="button" class="btn sm danger" onclick={() => deleteProp(p)}
-													>Delete…</button
-												>
-											</div>
-										{/if}
-									</div>
-								{/if}
-							</th>
-						{/each}
-						<th class="act"
-							><button
-								type="button"
-								class="th"
-								aria-label="Add property"
-								aria-expanded={panel === 'add'}
-								onclick={() => toggle('add')}>+</button
-							></th
+		{#if isBoard}
+			{#if !selectProps.length}
+				<div class="panel bempty" role="group" aria-label="Board">
+					<p>Board groups cards by a select property.</p>
+					<button type="button" class="btn sm primary" onclick={() => (panel = 'add')}
+						>Add a select property</button
+					>
+				</div>
+			{:else}
+				<div class="bchips" role="tablist" aria-label="Board columns">
+					{#each boardCols as c, i (c.id)}
+						<button
+							type="button"
+							role="tab"
+							aria-selected={activeCol === i}
+							class:on={activeCol === i}
+							onclick={() => chipTap(i)}>{c.label} <span class="cnt">{c.rows.length}</span></button
 						>
-					</tr>
-				</thead>
-				<tbody>
-					{#each d.rows as r (r.id)}
+					{/each}
+				</div>
+				{#if moving && phoneNow}
+					<p class="hint" role="status">Tap a column above to move the card.</p>
+				{/if}
+				<div
+					class="board"
+					use:peerSwipe={{
+						step: boardStep,
+						peek: (n) => boardCols[activeCol + n]?.label ?? '',
+					}}
+				>
+					{#each boardCols as c, i (c.id)}
+						<section
+							class="bcol"
+							class:on={activeCol === i}
+							aria-label="{c.label}, {c.rows.length} cards"
+							ondragover={(e) => e.preventDefault()}
+							ondrop={() => dropAt(c)}
+						>
+							<header class="bhead">
+								{#if c.color}<span class="bdot" style="background: var(--{c.color}-bg)" aria-hidden="true"
+									></span>{/if}
+								<b>{c.label}</b><span class="cnt">{c.rows.length}</span>
+							</header>
+							{#each c.rows as r (r.id)}
+								<article
+									class="bcard"
+									data-record={r.id}
+									draggable="true"
+									ondragstart={(e) => {
+										moving = r.id;
+										e.dataTransfer?.setData('text/plain', r.id);
+									}}
+									ondragend={() => (moving = null)}
+									onpointerdown={(e) => pickStart(r, e)}
+									onpointermove={pickMove}
+									onpointerup={pickEnd}
+									onpointercancel={pickEnd}
+								>
+									<div class="bctop">
+										<button
+											type="button"
+											class="bct"
+											onclick={() => {
+												if (swallowedClick) return void (swallowedClick = false);
+												openRecord(r);
+											}}>{title(r)}</button
+										>
+										<button
+											type="button"
+											class="mini"
+											aria-label="Actions for {title(r)}"
+											aria-expanded={menuFor === r.id}
+											onclick={() => (menuFor = menuFor === r.id ? null : r.id)}>⋯</button
+										>
+									</div>
+									{#if cardProps.length}
+										<div class="bprops">
+											{#each cardProps as p (p.id)}
+												{#if asText(p.type, r.values[p.id] ?? null, p.config)}
+													<span class="bchip"
+														>{p.name}: {asText(p.type, r.values[p.id] ?? null, p.config)}</span
+													>
+												{/if}
+											{/each}
+										</div>
+									{/if}
+									{#if menuFor === r.id}
+										<div
+											class="bmenu"
+											role="menu"
+											aria-label="Actions for {title(r)}"
+											use:backCloses={() => (menuFor = null)}
+										>
+											<button type="button" role="menuitem" onclick={() => openRecord(r)}>Open</button>
+											{#each boardCols as g (g.id)}
+												{#if (r.values[groupProp?.id ?? ''] ?? '') !== g.id}
+													<button type="button" role="menuitem" onclick={() => move(r, g.id)}
+														>Move to {g.label}</button
+													>
+												{/if}
+											{/each}
+											<button type="button" role="menuitem" class="danger" onclick={() => deleteRecord(r)}
+												>Delete</button
+											>
+										</div>
+									{/if}
+								</article>
+							{/each}
+							<button type="button" class="soft bnew" onclick={() => newIn(c)}>+ New</button>
+						</section>
+					{/each}
+				</div>
+			{/if}
+		{:else}
+			<div class="scroll">
+				<table>
+					<thead>
 						<tr>
 							{#each cols as p (p.id)}
-								<td data-label={p.name} class:ttl={p.type === 'title'}>
-									<DbCell
-										prop={p}
-										value={r.values[p.id] ?? null}
-										invalid={r.invalid?.includes(p.id)}
-										label="{p.name} of {title(r)}"
-										onsave={(v) => setValue(r, p, v)}
-									/>
-								</td>
+								<th>
+									<button
+										type="button"
+										class="th"
+										aria-expanded={openProp === p.id}
+										aria-label="Column {p.name}"
+										data-ico={TYPE_LABEL[p.type].split(' ')[0]}
+										onclick={() => (openProp = openProp === p.id ? null : p.id)}>{p.name}</button
+									>
+									{#if openProp === p.id}
+										<div class="pmenu" role="group" aria-label="{p.name} column settings">
+											<label
+												>Name
+												<input
+													value={p.name}
+													maxlength="100"
+													onchange={(e) => renameProp(p, e.currentTarget.value)}
+												/></label
+											>
+											{#if p.type !== 'title'}
+												<label
+													>Type
+													<select
+														value={p.type}
+														onchange={(e) => retype(p, e.currentTarget.value as PropType)}
+													>
+														{#each PROP_TYPES.filter((t) => t !== 'title') as t (t)}
+															<option value={t}>{TYPE_LABEL[t]}</option>
+														{/each}
+													</select></label
+												>
+											{/if}
+											{#if p.type === 'select' || p.type === 'multi_select'}
+												<label
+													>Options (comma between)
+													<input
+														value={(p.config.options ?? []).map((o) => o.label).join(', ')}
+														placeholder="Light, Moderate, Heavy"
+														onchange={(e) => setOptions(p, e.currentTarget.value)}
+													/></label
+												>
+											{/if}
+											<div class="colrow">
+												<button type="button" class="btn sm" onclick={() => shift(p.id, -1)}>← Move</button>
+												<button type="button" class="btn sm" onclick={() => shift(p.id, 1)}>Move →</button>
+											</div>
+											{#if p.type !== 'title'}
+												<div class="colrow">
+													<button
+														type="button"
+														class="btn sm"
+														onclick={() => {
+															openProp = null;
+															toggleHidden(p.id);
+														}}>Hide</button
+													>
+													<button type="button" class="btn sm danger" onclick={() => deleteProp(p)}
+														>Delete…</button
+													>
+												</div>
+											{/if}
+										</div>
+									{/if}
+								</th>
 							{/each}
-							<td class="act">
-								<button
+							<th class="act"
+								><button
 									type="button"
-									class="mini"
-									aria-label="Open {title(r)} as page"
-									onclick={() => openRecord(r)}>Open</button
-								>
-								<button
-									type="button"
-									class="mini"
-									aria-label="Delete {title(r)}"
-									onclick={() => deleteRecord(r)}>✕</button
-								>
-							</td>
+									class="th"
+									aria-label="Add property"
+									aria-expanded={panel === 'add'}
+									onclick={() => toggle('add')}>+</button
+								></th
+							>
 						</tr>
-					{/each}
-					<tr class="new"
-						><td colspan={cols.length + 1}
-							><button type="button" class="soft" onclick={addRecord}>+ New record</button></td
-						></tr
-					>
-				</tbody>
-			</table>
-		</div>
+					</thead>
+					<tbody>
+						{#each d.rows as r (r.id)}
+							<tr>
+								{#each cols as p (p.id)}
+									<td data-label={p.name} class:ttl={p.type === 'title'}>
+										<DbCell
+											prop={p}
+											value={r.values[p.id] ?? null}
+											invalid={r.invalid?.includes(p.id)}
+											label="{p.name} of {title(r)}"
+											onsave={(v) => setValue(r, p, v)}
+										/>
+									</td>
+								{/each}
+								<td class="act">
+									<button
+										type="button"
+										class="mini"
+										aria-label="Open {title(r)} as page"
+										onclick={() => openRecord(r)}>Open</button
+									>
+									<button
+										type="button"
+										class="mini"
+										aria-label="Delete {title(r)}"
+										onclick={() => deleteRecord(r)}>✕</button
+									>
+								</td>
+							</tr>
+						{/each}
+						<tr class="new"
+							><td colspan={cols.length + 1}
+								><button type="button" class="soft" onclick={addRecord}>+ New record</button></td
+							></tr
+						>
+					</tbody>
+				</table>
+			</div>
+		{/if}
 		<div class="hint foot">
 			{d.total} record{d.total === 1 ? '' : 's'}{(cfg.filters ?? []).length ? ' · filtered' : ''}
 			{#if d.rows.length < d.total}
@@ -759,6 +1072,10 @@
 		.th {
 			min-width: 48px;
 		}
+		.bct,
+		.bmenu button {
+			min-height: 48px;
+		}
 	}
 	@media (max-width: 700px) {
 		/* MDb: one card per record */
@@ -794,6 +1111,155 @@
 		}
 		td.ttl::before {
 			display: none;
+		}
+	}
+
+	/* v4 PR 23: board view (columns 260 px on desktop; phone shows one column + a chips row) */
+	.bchip {
+		font-size: 11px;
+		padding: 1px 6px;
+		border-radius: 999px;
+		background: var(--ground);
+		color: var(--quiet);
+	}
+	.bchips {
+		display: none;
+	}
+	.board {
+		display: flex;
+		gap: 12px;
+		overflow-x: auto;
+		align-items: flex-start;
+		padding: 4px 0;
+	}
+	.bcol {
+		flex: 0 0 260px;
+		width: 260px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding: 8px;
+		border-radius: 10px;
+		border: 1px solid var(--border);
+		background: var(--ground);
+		min-height: 84px;
+	}
+	.bhead {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 2px 4px;
+	}
+	.bdot {
+		width: 10px;
+		height: 10px;
+		border-radius: 5px;
+	}
+	.cnt {
+		color: var(--quiet);
+		font-size: 12px;
+	}
+	.bcard {
+		position: relative;
+		padding: 6px;
+		border-radius: 8px;
+		border: 1.5px solid var(--card-edge);
+		background: var(--card);
+		user-select: none; /* long press lifts the card, it must not start text selection in the editor */
+		touch-action: manipulation;
+	}
+	.bctop {
+		display: flex;
+		gap: 4px;
+		align-items: flex-start;
+	}
+	.bct {
+		flex: 1;
+		min-width: 0;
+		padding: 2px;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.bprops {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		padding: 0 2px 2px;
+	}
+	.bmenu {
+		position: absolute;
+		right: 4px;
+		top: 28px;
+		z-index: 5;
+		min-width: 160px;
+		display: flex;
+		flex-direction: column;
+		padding: 4px;
+		border-radius: 8px;
+		border: 1.5px solid var(--card-edge);
+		background: var(--card);
+		box-shadow: -4px 4px 0 var(--accent);
+	}
+	.bmenu button {
+		padding: 6px 8px;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.bmenu button:hover {
+		background: var(--hover, rgb(0 0 0 / 0.06));
+	}
+	.bmenu .danger {
+		color: var(--danger);
+	}
+	.bempty {
+		display: flex;
+		gap: 10px;
+		align-items: center;
+		justify-content: space-between;
+	}
+	.bempty p {
+		margin: 0;
+	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.bchips {
+			display: flex;
+			gap: 6px;
+			overflow-x: auto;
+			padding-bottom: 4px;
+		}
+		.bchips button {
+			min-height: 48px;
+			padding: 0 12px;
+			border-radius: 999px;
+			border: 1.5px solid var(--border);
+			background: transparent;
+			color: var(--ink);
+			font: inherit;
+			white-space: nowrap;
+		}
+		.bchips button.on {
+			background: var(--pill);
+			color: var(--pill-ink);
+		}
+		.board {
+			display: block;
+			overflow: visible;
+		}
+		.bcol {
+			display: none;
+			width: auto;
+		}
+		.bcol.on {
+			display: flex;
 		}
 	}
 </style>
