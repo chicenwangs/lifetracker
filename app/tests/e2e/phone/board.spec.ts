@@ -131,3 +131,40 @@ test('board: chips, swipe, long-press move + Undo, card tap, menu Back, sheets, 
 	await page.goBack();
 	await expect(nv).toBeHidden();
 });
+
+test('calendar view: dot on the day, tap = list, create from the day, No date rail (#445)', async () => {
+	const db = (await api('POST', '/api/databases', { title: 'Phone cal' })).j.database as {
+		id: string;
+		pageId: string;
+	};
+	const when = (
+		await api('POST', `/api/databases/${db.id}/properties`, { name: 'When', type: 'date', config: {} })
+	).j.prop as { id: string };
+	const info = (await api('GET', `/api/databases/${db.id}`)).j.database as {
+		props: { id: string; type: string }[];
+	};
+	const tp = info.props.find((p) => p.type === 'title')!;
+	const day = await page.evaluate(() =>
+		new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date()),
+	);
+	await api('POST', `/api/databases/${db.id}/records`, { values: { [tp.id]: 'Dated', [when.id]: day } });
+	await api('POST', `/api/databases/${db.id}/records`, { values: { [tp.id]: 'Undated' } });
+	await api('POST', `/api/databases/${db.id}/views`, { name: 'Calendar', type: 'calendar' });
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Calendar/ }).click();
+	await page.getByRole('button', { name: `Show ${day}` }).click();
+	const list = page.locator('.daylist');
+	await expect(list).toContainText('Dated');
+	await expect(page.locator('[aria-label="No date"]')).toContainText('Undated');
+	await list.getByRole('button', { name: '+ New record' }).click();
+	await expect(list).toContainText('Untitled');
+	await expect
+		.poll(async () => {
+			const rows = (await api('GET', `/api/databases/${db.id}`)).j.database.rows as {
+				values: Record<string, unknown>;
+			}[];
+			return rows.filter((r) => r.values[when.id] === day).length;
+		})
+		.toBe(2);
+	await expectTargets48(page);
+});

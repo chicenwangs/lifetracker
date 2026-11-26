@@ -2025,6 +2025,60 @@ test('ICS feed: create link, fetch without login, private = Busy, rotate kills t
 	await anon.dispose();
 });
 
+test('database calendar: records on their date, create from a day, No date rail (#445)', async () => {
+	const db = (await api('POST', '/api/databases', { title: 'Cal DB' })).j.database as {
+		id: string;
+		pageId: string;
+	};
+	const when = (
+		await api('POST', `/api/databases/${db.id}/properties`, { name: 'When', type: 'date', config: {} })
+	).j.prop as { id: string };
+	const info = (await api('GET', `/api/databases/${db.id}`)).j.database as {
+		props: { id: string; type: string }[];
+	};
+	const tp = info.props.find((p) => p.type === 'title')!;
+	const ym = await page.evaluate(() =>
+		new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date()).slice(0, 7),
+	);
+	await api('POST', `/api/databases/${db.id}/records`, {
+		values: { [tp.id]: 'Dated', [when.id]: `${ym}-12` },
+	});
+	await api('POST', `/api/databases/${db.id}/records`, { values: { [tp.id]: 'Undated' } });
+	await api('POST', `/api/databases/${db.id}/views`, { name: 'Calendar', type: 'calendar' });
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Calendar/ }).click();
+	const grid = page.getByRole('group', { name: /records/ });
+	await expect(grid.getByRole('button', { name: 'Dated' })).toBeVisible(); // the record sits on the 12th
+	await expect(page.locator('[aria-label="No date"]')).toContainText('Undated');
+	// click a day = a new record dated that day
+	await page.getByRole('button', { name: `New record on ${ym}-20` }).click();
+	await expect(grid.getByRole('button', { name: 'Untitled' })).toBeVisible();
+	await expect
+		.poll(async () => {
+			const rows = (await api('GET', `/api/databases/${db.id}`)).j.database.rows as {
+				values: Record<string, unknown>;
+			}[];
+			return rows.filter((r) => r.values[when.id] === `${ym}-20`).length;
+		})
+		.toBe(1);
+	// D-19: a text value left over after converting a property to date stays visible in No date
+	const note = (
+		await api('POST', `/api/databases/${db.id}/properties`, { name: 'Note', type: 'text', config: {} })
+	).j.prop as { id: string };
+	const view2 = (await api('POST', `/api/databases/${db.id}/views`, { name: 'Calendar 2', type: 'calendar' }))
+		.j.view as { id: string };
+	await api('POST', `/api/databases/${db.id}/records`, {
+		values: { [tp.id]: 'Bad date', [note.id]: 'hello' },
+	});
+	expect((await api('PATCH', `/api/database-properties/${note.id}`, { type: 'date', confirm: true })).s).toBe(
+		200,
+	);
+	await api('PATCH', `/api/database-views/${view2.id}`, { config: { dateProp: note.id } });
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Calendar 2/ }).click();
+	await expect(page.locator('[aria-label="No date"]')).toContainText('Bad date');
+});
+
 test('reset-password script works', async ({ browser }) => {
 	execFileSync('node', ['scripts/reset-password.mjs', 'jeremy'], {
 		input: 'reset pass phrase 1\n',
