@@ -1,6 +1,6 @@
 // Card 03: one reschedule action set in ItemView + the Today row sheet, Skip one occurrence, undo and offline.
 // C3–C9, C11, C13–C15 desktop.
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const PW = 'good pass phrase';
 // flow.spec.ts ends by resetting jeremy's password; a lone run has the setup password
@@ -245,7 +245,6 @@ test('C11 a foreign id is 404 from the item view, the PATCH and the skip route',
 }) => {
 	await signIn(page);
 	const id = await mkItem(page, { title: 'C11 mine', date: '2032-05-03', rrule: 'FREQ=WEEKLY;COUNT=4' });
-	let ctx: BrowserContext | null = null;
 	try {
 		// the owner opens sign-up for the second account
 		await page.goto('/settings/users');
@@ -253,7 +252,8 @@ test('C11 a foreign id is 404 from the item view, the PATCH and the skip route',
 		await page.getByRole('button', { name: 'Save' }).click();
 		await expect(page.getByText('Saved.')).toBeVisible();
 
-		ctx = await browser.newContext();
+		// Playwright closes a context it created at test end: closing it here can hang after a navigation
+		const ctx = await browser.newContext();
 		const other = await ctx.newPage();
 		await other.goto('/signup');
 		await other.fill('#nu', `stranger${Date.now().toString(36)}`);
@@ -269,8 +269,12 @@ test('C11 a foreign id is 404 from the item view, the PATCH and the skip route',
 		// still mine and unchanged
 		expect((await api(page, 'GET', `/api/items/${id}`)).j.item.date).toBe('2032-05-03');
 	} finally {
-		await ctx?.close();
 		await drop(page, id);
+		// leave the shared e2e DB as found: later specs must not inherit open sign-up
+		await page.goto('/settings/users');
+		await page.locator('input[name="open"][value="0"]').check();
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expect(page.getByText('Saved.')).toBeVisible();
 	}
 });
 
