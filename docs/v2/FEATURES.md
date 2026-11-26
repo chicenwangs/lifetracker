@@ -102,6 +102,8 @@ Layout: title · search · New note · binder nav · label filter · Pinned (if 
 
 Tests KEEP-001..020: title+body persists · body-only valid · edit+leave persists · save fail keeps text · check one item only · nested child persists · 2 labels + 2 binders in both filters · delete binder keeps notes · delete label keeps notes · pin then archive → not in pinned · archive→restore · trash→restore · permanent needs confirm, gone · search finds checklist text · bad file rejected · image uploads + reopens · reminder shows + registered · bad Takeout fails safe, data unchanged · user A gets denied on B's note, no content in body · revoked share denied next request.
 
+v4 (BREAKDOWN PR 1, D-V4-02): Restore from Trash works.
+
 ## 6. Pages
 
 Layout: left tree (collapsible) + editor. Page header: title, menu, pin, copy link, share (M7), breadcrumbs.
