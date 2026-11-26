@@ -28,12 +28,13 @@
 			for (let i = 0; i < 60 && (!el || el.clientWidth < 20); i++)
 				await new Promise((r) => requestAnimationFrame(r));
 			if (!el || my !== gen) return;
-			sigma?.kill();
-			sigma = null;
 			const [{ default: Graph }, { default: Sigma, DEFAULT_STYLES }] = await Promise.all([
 				import('graphology'),
 				import('sigma'),
 			]);
+			if (!el || my !== gen) return; // a newer draw owns the stage now: never kill or replace its Sigma
+			sigma?.kill();
+			sigma = null;
 			const g = new Graph({ type: 'directed', multi: true });
 			const css = getComputedStyle(el);
 			const ink = css.getPropertyValue('--ink').trim() || '#00003d';
