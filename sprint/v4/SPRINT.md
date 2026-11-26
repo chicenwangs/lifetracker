@@ -120,7 +120,8 @@ Limits: 4 fix rounds per card. Still blocked: BOARD `blocked`, write why in PROG
 
 - Everything lives in files: PROGRESS, BOARD, cards, DECISIONS, gate results, git. A fresh session continues from them.
 - Keep MAIN lean: give subagents file paths, not file contents. Ask for short reports. Don't read whole logs: read the failing part.
-- After every card: PROGRESS entry + NOW line. If your context is getting long, finish the current step, update PROGRESS, then end with `CONTEXT FULL: restart me with the same prompt`.
+- After every card: PROGRESS entry + NOW line.
+- **Never end your turn.** opencode compacts the context by itself, so a long context is never a reason to stop. Finishing a stage, a card or a PR is never a reason to stop: go straight to the next step. The only stops: a hard rule would be broken, or S0 BLOCKED. After a compaction (you no longer remember recent steps), re-read this file and PROGRESS, then continue from the NOW line.
 
 ## 10. PROGRESS format
 

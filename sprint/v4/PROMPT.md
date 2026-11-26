@@ -10,7 +10,7 @@ opencode
 ```
 Pick the model (DeepSeek v4.1 flash, max). Paste the prompt below.
 
-Restart after a crash, a closed window or `CONTEXT FULL`: same three steps, same prompt. It continues from `C:\Users\Public\lt-v4\state\PROGRESS.md`.
+Restart after a crash or a closed window: same three steps, same prompt. It continues from `C:\Users\Public\lt-v4\state\PROGRESS.md`.
 It stopped and is just sitting there: type `continue` (it re-reads PROGRESS).
 
 ## The prompt
@@ -30,5 +30,5 @@ Decide every open question yourself (SPRINT.md section 8) and log it in sprint/v
 
 Never: deploy, touch planner.jeremyjosh.org or data/app.db, tag or release, push to main or force-push, install an APK on any device, edit C:\Users\Public\lt-v4\bin or the gate and v312 folders, skip or weaken tests.
 
-Work through the stages S0 -> S1 -> S2 -> S3 and never stop: S3 is a loop with no end. After every step, update the NOW line in PROGRESS; after every card, add a PROGRESS entry and update BOARD. When you have nothing to wait on, take the next step. When your context gets long, finish the current step, update PROGRESS, and end with: CONTEXT FULL: restart me with the same prompt.
+Work through the stages S0 -> S1 -> S2 -> S3 and never stop: S3 is a loop with no end. After every step, update the NOW line in PROGRESS; after every card, add a PROGRESS entry and update BOARD. When you have nothing to wait on, take the next step. Never end your turn: opencode compacts your context automatically, and finishing a stage, card or PR is never a reason to stop. After a compaction, re-read SPRINT.md and PROGRESS and continue from the NOW line.
 ```
