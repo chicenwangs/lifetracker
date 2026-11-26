@@ -150,7 +150,7 @@ test('duplicate from the page menu: the copy opens (#440)', async () => {
 	);
 });
 
-test('Pages + offers templates and makes a copy (#447)', async () => {
+test('Pages + offers templates and makes a copy (#445)', async () => {
 	const T = 'Phone tpl page';
 	const id = await page.evaluate(async (t) => {
 		const r = await fetch('/api/pages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: t }) }); // prettier-ignore
