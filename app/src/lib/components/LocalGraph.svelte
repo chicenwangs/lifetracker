@@ -57,15 +57,7 @@
 					y: Math.sin(i) * Math.sqrt(i + 1),
 					size: h === 0 ? 18 : h === 1 ? 10 : 6,
 					label: `${n.icon ? `${n.icon} ` : ''}${n.title || 'Untitled'}${n.archived ? ' · archived' : ''}`,
-					color: n.archived
-						? quiet
-						: n.kind === 'record'
-							? '#3d5a80'
-							: h === 0
-								? ink
-								: h === 1
-									? '#3d5a80'
-									: quiet,
+					color: n.archived ? quiet : h === 0 ? ink : n.kind === 'record' || h === 1 ? '#3d5a80' : quiet,
 				});
 			});
 			d.edges.forEach((e, i) =>
