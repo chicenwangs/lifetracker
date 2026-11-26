@@ -175,6 +175,15 @@ export interface PageDTO extends PageNode {
 	access: 'owner' | 'edit' | 'view';
 }
 
+/** one page that links to this one (PR 20); snippet = the linking block, the target's link text bold */
+export interface BacklinkDTO {
+	id: string;
+	title: string;
+	icon: string | null;
+	archived: boolean;
+	snippet: { t: string; b?: boolean }[];
+}
+
 // ---------- Databases (FEATURES PG-DB, DESIGN §7) ----------
 export interface DbProp {
 	id: string;
@@ -209,7 +218,14 @@ export interface DatabaseDTO {
 
 // ---------- Graph (DESIGN §10) ----------
 export interface GraphDTO {
-	nodes: { id: string; title: string; kind: 'page' | 'record'; archived: boolean; parentId: string | null }[];
+	nodes: {
+		id: string;
+		title: string;
+		icon: string | null;
+		kind: 'page' | 'record';
+		archived: boolean;
+		parentId: string | null;
+	}[];
 	edges: { source: string; target: string; relation: 'parent' | 'link' }[];
 	truncated: boolean;
 	generatedAt: string;
