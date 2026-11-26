@@ -1,6 +1,6 @@
 // Keep on phone (#97): swipe a card = archive with Undo, hold = select, hold + drag = reorder; ↑ ↓ only for TalkBack.
 import { expect, test, type Page } from '@playwright/test';
-import { finger, signIn, swipe } from './helpers';
+import { bottomBar, finger, signIn, swipe } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 let page: Page;
@@ -81,4 +81,18 @@ test('hold + drag a card onto another = it moves before it', async () => {
 	await f.send('touchEnd');
 	await f.done();
 	await expect.poll(async () => (await order())[0]).toBe(last);
+});
+
+test('+ in Trash, Archive or Shared with me switches to Notes so the saved note shows (#400)', async () => {
+	for (const scope of ['trash', 'archive', 'shared']) {
+		await page.goto(`/keep?scope=${scope}`);
+		await bottomBar(page).locator('button.add').click();
+		await expect(page).not.toHaveURL(new RegExp(`scope=${scope}`));
+		const title = `From ${scope} ${P}`;
+		await page.locator('div.note').getByPlaceholder('Title').fill(title);
+		await expect(page.locator('.note .state')).toContainText('Saved');
+		await page.locator('div.note').getByRole('button', { name: 'Back', exact: true }).click();
+		await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible();
+		await expect(card(title)).toBeVisible();
+	}
 });
