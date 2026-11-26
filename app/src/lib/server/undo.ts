@@ -6,8 +6,8 @@
 import { handle } from './db';
 import { ApiFail } from './http';
 import { newId } from './crypto';
-import { isoPlus, nowUtcIso } from '$lib/time';
 import * as fts from './search';
+import { isoPlus, nowUtcIso } from '$lib/time';
 import * as attachments from './attachments';
 
 /** tables the journal may touch. Never sessions, users, grants, share codes. */

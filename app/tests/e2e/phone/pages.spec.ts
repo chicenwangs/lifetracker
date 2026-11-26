@@ -110,6 +110,35 @@ test('Pin toast says Pinned, Unpin toast says Unpinned (#348)', async () => {
 	await expect(page.getByText('Unpinned from header')).toBeVisible();
 });
 
+test('[[ link picker: BottomSheet, keyboard stays, 48 dp, Back closes', async () => {
+	await page.evaluate(async () => {
+		await fetch('/api/pages', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ title: 'Phone target' }),
+		});
+	});
+	await page.getByLabel('Page content').click();
+	await page.keyboard.type('[[Phone');
+	const sheet = page.getByRole('dialog', { name: 'Link a page' });
+	await expect(sheet).toBeVisible();
+	await expect(sheet).toContainText('Phone target');
+	await expect(sheet).not.toContainText('Enter link'); // no footer hint on phone
+	await expect(page.getByLabel('Page content')).toBeFocused(); // the keyboard stays up
+	await expectTargets48(page);
+	// Back closes the sheet (before any pick, so one Back = one visible change)
+	await page.goBack();
+	await expect(sheet).toBeHidden();
+	await expect(page.getByLabel('Page content')).toBeFocused();
+	// Esc/Back leaves the typed "[[Phone" as text; a new line resets the dismissal and the sheet opens again
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('[[Phone');
+	await expect(sheet).toBeVisible();
+	await expect(sheet).toContainText('Phone target');
+	await page.keyboard.press('Enter');
+	await expect(page.getByLabel('Page content').locator('a.pl')).toHaveCount(1);
+});
+
 test('page icon sheet: 48 dp grid, Close hides, Remove clears', async () => {
 	// phone: the header has no "Add icon" row; the page ⋯ sheet opens the picker (DESIGN 2.1)
 	await page.locator('.pagev .bar').getByRole('button', { name: 'Page menu' }).click();
@@ -226,6 +255,76 @@ test('duplicate from the page menu: the copy opens (#440)', async () => {
 		},
 		[id, copyId] as string[],
 	);
+});
+
+test('Pages + offers templates and makes a copy (#445)', async () => {
+	const T = 'Phone tpl page';
+	const id = await page.evaluate(async (t) => {
+		const r = await fetch('/api/pages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: t }) }); // prettier-ignore
+		const p = (await r.json()) as { page: { id: string } };
+		const doc = {
+			type: 'doc',
+			content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Tpl body' }] }],
+		};
+		await fetch(`/api/pages/${p.page.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ doc }) }); // prettier-ignore
+		await fetch(`/api/pages/${p.page.id}/template`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ isTemplate: true }) }); // prettier-ignore
+		return p.page.id;
+	}, T);
+	await page.goto('/pages');
+	await page.locator('nav.mbar').getByRole('button', { name: 'New page' }).click();
+	await page.getByRole('button', { name: T }).click();
+	await expect.poll(() => page.url()).not.toBe('/pages');
+	await expect(page.getByLabel('Page title')).toHaveValue(`Untitled ${T}`);
+	await expect(page.locator('.pm')).toContainText('Tpl body');
+	const copyId = page.url().split('/').pop() as string;
+	await page.evaluate(
+		async (ids) => {
+			for (const x of ids) await fetch(`/api/pages/${x}`, { method: 'DELETE' });
+		},
+		[id, copyId] as string[],
+	);
+});
+
+test('local graph: full-screen dialog, Back closes it, no console errors (#444)', async () => {
+	const [a] = (await page.evaluate(async () => {
+		const post = (u: string, b: unknown) =>
+			fetch(u, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(b),
+			}).then((r) => r.json());
+		const ta = (await post('/api/pages', { title: 'Phone graph A' })).page as { id: string };
+		const tb = (await post('/api/pages', { title: 'Phone graph B' })).page as { id: string };
+		await fetch(`/api/pages/${ta.id}`, {
+			method: 'PATCH',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				doc: {
+					type: 'doc',
+					content: [{ type: 'paragraph', content: [{ type: 'pageLink', attrs: { pageId: tb.id } }] }],
+				},
+			}),
+		});
+		return [ta, tb];
+	})) as [{ id: string }, { id: string }];
+	const errors: string[] = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	page.on('console', (m) => {
+		if (m.type() === 'error') errors.push(m.text());
+	});
+	await page.goto(`/pages/${a.id}`);
+	const before = page.url();
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Local graph' }).click();
+	const dlg = page.getByRole('dialog', { name: 'Links around Phone graph A' });
+	await expect(dlg).toBeVisible();
+	await expect(dlg.getByRole('status')).toHaveText(/2 pages/);
+	const vp = page.viewportSize()!;
+	expect(await dlg.boundingBox()).toMatchObject({ x: 0, y: 0, width: vp.width, height: vp.height });
+	await page.goBack();
+	await expect(dlg).toBeHidden();
+	expect(page.url()).toBe(before);
+	expect(errors.filter((e) => !e.includes('favicon'))).toEqual([]);
 });
 
 test('to-do reminder from the block sheet (#453)', async () => {

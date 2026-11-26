@@ -10,6 +10,8 @@
 	import { buzz } from '$lib/client/haptics';
 	import { showError } from '$lib/client/toast.svelte';
 	import { invalidateAll } from '$lib/client/refresh';
+	import { createFromTemplate } from '$lib/client/newPage';
+	import ActionSheet from './ActionSheet.svelte';
 
 	const TABS = [
 		// icons = wireframe MBar
@@ -98,6 +100,21 @@
 		);
 	});
 	afterNavigate(() => setTimeout(() => (viaTab = false)));
+	// v4.0 PR 22: on Pages, + offers the templates when there are any (DESIGN's add sheet)
+	const templates = $derived(
+		(page.data as { templates?: { id: string; title: string; icon: string | null }[] }).templates ?? [],
+	);
+	let pagePick = $state(false);
+	async function newPage(templateId: string | null) {
+		try {
+			if (templateId) return void (await createFromTemplate(templateId));
+			const made = await post<{ page: { id: string } }>('/api/pages', { parentId: null });
+			await invalidateAll();
+			await goto(`/pages/${made.page.id}`);
+		} catch (err) {
+			showError(err);
+		}
+	}
 	// + makes what this tab makes (#93, G6): a note on Keep, a page on Pages, else an item on the day on screen
 	async function add(e: MouseEvent) {
 		const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -106,16 +123,13 @@
 		const p = page.url.pathname;
 		if (p.startsWith('/keep')) {
 			const u = new URL(page.url);
+			// #400: a note saved while the list shows Trash/Archive is invisible - switch to Notes first
+			if (u.searchParams.has('scope')) u.searchParams.delete('scope');
 			u.searchParams.set('new', '');
 			return goto(u, { noScroll: true, keepFocus: true });
 		}
 		if (p.startsWith('/pages')) {
-			try {
-				const made = await post<{ page: { id: string } }>('/api/pages', { parentId: null });
-				return goto(`/pages/${made.page.id}`);
-			} catch (err) {
-				return showError(err);
-			}
+			return (pagePick = true);
 		}
 		const d = page.data as { day?: string; from?: string; to?: string; today?: string; sel?: string };
 		const day = p.startsWith('/today')
@@ -163,6 +177,21 @@
 		{/if}
 	{/each}
 </nav>
+
+{#if pagePick}
+	<ActionSheet
+		title="New page"
+		hint={templates.length ? undefined : 'No templates yet. Use the page menu > Make template on any page.'}
+		actions={[
+			{ label: 'Blank page', run: () => newPage(null) },
+			...templates.map((t) => ({
+				label: `${t.icon ? `${t.icon} ` : ''}${t.title || 'Untitled'}`,
+				run: () => newPage(t.id),
+			})),
+		]}
+		onclose={() => (pagePick = false)}
+	/>
+{/if}
 
 <style>
 	.mbar {

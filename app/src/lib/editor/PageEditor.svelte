@@ -5,6 +5,8 @@
 	import { backCloses } from '$lib/client/layers';
 	import { modal } from '$lib/client/modal';
 	import { isPhone } from '$lib/client/phone';
+	import { invalidateAll } from '$lib/client/refresh';
+	import { undoLast } from '$lib/client/undo.svelte';
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
 	import Reminders from '$lib/components/Reminders.svelte';
 	import { onMount } from 'svelte';
@@ -18,6 +20,7 @@
 	import {
 		BlockKeys,
 		DatabaseBlock,
+		Mention,
 		PageLink,
 		Slash,
 		TodoIds,
@@ -25,10 +28,11 @@
 		TodoReminders,
 		blockOps,
 		newBlockId,
+		type MentionItem,
 		type SlashItem,
 		type TodoReminderStore,
 	} from './extensions.svelte';
-	import type { PageDTO } from '$lib/types';
+	import type { PageDTO, UndoRef } from '$lib/types';
 
 	let {
 		page,
@@ -139,11 +143,6 @@
 	}
 
 	// ---------- "/" menu ----------
-	let picker = $state<{
-		q: string;
-		hits: { id: string; title: string; archived: number; icon: string | null }[];
-		at: number;
-	} | null>(null);
 	const ITEMS: SlashItem[] = [
 		{ title: 'Text', run: (e, r) => e.chain().focus().deleteRange(r).setParagraph().run() },
 		{ title: 'Heading 1', hint: '#', run: (e, r) => e.chain().focus().deleteRange(r).setNode('heading', { level: 1 }).run() },
@@ -157,7 +156,7 @@
 		{ title: 'Quote', run: (e, r) => e.chain().focus().deleteRange(r).toggleBlockquote().run() },
 		{ title: 'Code', run: (e, r) => e.chain().focus().deleteRange(r).toggleCodeBlock().run() },
 		{ title: 'Database', hint: 'table of records', run: (e, r) => { e.chain().focus().deleteRange(r).run(); void addDatabase(); } },
-		{ title: 'Link to page', hint: 'internal', run: (e, r) => { e.chain().focus().deleteRange(r).run(); picker = { q: '', hits: [], at: e.state.selection.from }; void findPages(''); } },
+		{ title: 'Link to page', hint: 'internal', run: (e, r) => { e.chain().focus().deleteRange(r).insertContent('[[').run(); } },
 		{ title: 'Image', hint: 'upload', run: (e, r) => { e.chain().focus().deleteRange(r).run(); pickFile('image'); } },
 		{ title: 'File', hint: 'upload', run: (e, r) => { e.chain().focus().deleteRange(r).run(); pickFile('file'); } },
 	]; // prettier-ignore
@@ -176,31 +175,96 @@
 			showError(e);
 		}
 	}
-	async function findPages(q: string) {
+	// ---------- "[[" link picker (PR 19) ----------
+	async function fetchMentions(q: string): Promise<MentionItem[]> {
 		try {
-			const r = await get<{ hits: { id: string; title: string; archived: number; icon: string | null }[] }>(
-				`/api/pages/find?q=${encodeURIComponent(q)}`,
-			);
-			if (picker) picker.hits = r.hits.filter((h) => h.id !== page.id);
+			const r = await get<{
+				hits: {
+					id: string;
+					title: string;
+					icon: string | null;
+					parentTitle: string | null;
+					archived: number;
+				}[];
+			}>(`/api/pages/find?q=${encodeURIComponent(q)}`);
+			const rows: MentionItem[] = r.hits
+				.filter((h) => h.id !== page.id)
+				.map((h) => ({
+					id: h.id,
+					title: h.title,
+					icon: h.icon,
+					path: h.parentTitle,
+					archived: !!h.archived,
+				}));
+			const t = q.trim();
+			if (t) rows.push({ title: t, icon: null, create: t }); // last row, Obsidian style
+			return rows;
 		} catch (e) {
 			showError(e);
+			return [];
 		}
 	}
-	function insertLink(h: { id: string; title: string; archived: number }) {
-		if (!editor || !picker) return;
-		(editor.storage as unknown as { pageLink: { titles: PageDTO['links'] } }).pageLink.titles[h.id] = {
-			title: h.title,
-			archived: !!h.archived,
+	function remember(ed: Editor, id: string, title: string, archived: boolean) {
+		(ed.storage as unknown as { pageLink: { titles: PageDTO['links'] } }).pageLink.titles[id] = {
+			title,
+			archived,
 		};
-		editor
-			.chain()
+	}
+	function pickMention(h: MentionItem, range: { from: number; to: number }) {
+		const ed = editor;
+		if (!ed) return;
+		if (h.create) return void createMention(h.create, range);
+		if (!h.id) return;
+		remember(ed, h.id, h.title, !!h.archived);
+		ed.chain()
 			.focus()
-			.insertContentAt(picker.at, [
+			.deleteRange(range)
+			.insertContent([
 				{ type: 'pageLink', attrs: { pageId: h.id } },
 				{ type: 'text', text: ' ' },
 			])
 			.run();
-		picker = null;
+	}
+	async function createMention(title: string, range: { from: number; to: number }) {
+		try {
+			const r = await post<{ page: PageDTO; undo: UndoRef }>('/api/pages', { title, parentId: page.id });
+			await invalidateAll(); // the new child page appears in the tree
+			const ed = editor;
+			if (!ed) return;
+			remember(ed, r.page.id, r.page.title || title, false);
+			ed.chain()
+				.focus()
+				.deleteRange(range)
+				.insertContent([
+					{ type: 'pageLink', attrs: { pageId: r.page.id } },
+					{ type: 'text', text: ' ' },
+				])
+				.run();
+			showToast(`Created "${title}"`, {
+				undo: async () => {
+					// deterministic: remove the chip by page id wherever it is now (typing since must not matter)
+					let at = -1;
+					let size = 1;
+					editor?.state.doc.descendants((node, pos) => {
+						if (node.type.name === 'pageLink' && node.attrs.pageId === r.page.id) {
+							at = pos;
+							size = node.nodeSize;
+							return false;
+						}
+						return true;
+					});
+					if (at >= 0 && editor)
+						editor
+							.chain()
+							.focus()
+							.deleteRange({ from: at, to: Math.min(editor.state.doc.content.size, at + size + 1) })
+							.run();
+					if (await undoLast(r.undo.id)) await invalidateAll();
+				},
+			});
+		} catch (e) {
+			showError(e);
+		}
 	}
 
 	// ---------- uploads ----------
@@ -284,6 +348,7 @@
 				DatabaseBlock,
 				BlockKeys,
 				Slash.configure({ items }),
+				Mention.configure({ items: fetchMentions, pick: pickMention }),
 			],
 			content: (page.doc.content.length ? page.doc : { type: 'doc', content: [{ type: 'paragraph' }] }) as Content,
 			editable: page.access !== 'view',
@@ -501,36 +566,6 @@
 		<button class="btn sm" type="button" onclick={closeRemind}>Close</button>
 	</div>
 {/if}
-{#if picker}
-	<div class="scrim" role="presentation" onclick={() => (picker = null)}></div>
-	<div
-		use:backCloses={() => (picker = null)}
-		use:modal={() => (picker = null)}
-		class="picker card"
-		role="dialog"
-		aria-modal="true"
-		aria-label="Link to page"
-	>
-		<!-- svelte-ignore a11y_autofocus -->
-		<input
-			placeholder="Search your pages"
-			aria-label="Search your pages"
-			autofocus
-			bind:value={picker.q}
-			oninput={() => picker && findPages(picker.q)}
-			onkeydown={(e) => {
-				if (e.key === 'Escape') picker = null;
-				if (e.key === 'Enter' && picker?.hits[0]) insertLink(picker.hits[0]);
-			}}
-		/>
-		{#each picker.hits as h (h.id)}
-			<button type="button" onclick={() => insertLink(h)}
-				>{h.icon ? `${h.icon} ` : ''}{h.title || 'Untitled'}{#if h.archived}
-					<span class="hint">archived</span>{/if}</button
-			>
-		{:else}<span class="hint">No pages match.</span>{/each}
-	</div>
-{/if}
 
 <style>
 	.tools {
@@ -601,11 +636,6 @@
 		}
 		.doc {
 			padding-bottom: calc(64px + var(--bar-h, 0px)); /* last line clears the docked toolbar + the tab bar */
-		}
-		/* div.picker beats the base 36 / 32 px rules further down (#223) */
-		div.picker input,
-		div.picker button {
-			min-height: 48px;
 		}
 		/* 22 px box, 48 dp to tap */
 		.doc :global(ul[data-type='taskList'] li > label) {
@@ -795,15 +825,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
-	}
-	.picker input {
-		min-height: 36px;
-		padding: 0 10px;
-		font: inherit;
-		border-radius: 8px;
-		border: 1.5px solid var(--border);
-		background: var(--card);
-		color: var(--ink);
 	}
 	.picker button {
 		text-align: left;

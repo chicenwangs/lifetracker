@@ -5,16 +5,20 @@
 	let {
 		title,
 		actions,
+		hint,
 		onclose,
 	}: {
 		title: string;
 		actions: { label: string; danger?: boolean; run: () => unknown }[];
+		/** optional line under the title (empty states) */
+		hint?: string;
 		onclose: () => void;
 	} = $props();
 </script>
 
 <BottomSheet label="Actions for {title}" {onclose}>
 	<h2>{title}</h2>
+	{#if hint}<p class="hint">{hint}</p>{/if}
 	{#each actions as a (a.label)}
 		<button
 			class="act"
@@ -49,5 +53,8 @@
 	}
 	.danger {
 		color: var(--danger);
+	}
+	.hint {
+		margin: 0 4px 8px;
 	}
 </style>

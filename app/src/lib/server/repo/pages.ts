@@ -18,7 +18,7 @@ export const SUGGEST_DAYS = 90; // PG-1b
 const MAX_DOC_BYTES = 1_000_000;
 
 const db = () => handle().sqlite;
-type Row = { id: string; owner_id: string; parent_page_id: string | null; title: string; icon: string | null; cover_attachment_id: string | null; position: number; archived_at: string | null; archived_batch: string | null; last_opened_at: string | null; deleted_at: string | null; deleted_batch: string | null; created_at: string; updated_at: string; revision: number }; // prettier-ignore
+type Row = { id: string; owner_id: string; parent_page_id: string | null; title: string; icon: string | null; is_template: number; cover_attachment_id: string | null; position: number; archived_at: string | null; archived_batch: string | null; last_opened_at: string | null; deleted_at: string | null; deleted_batch: string | null; created_at: string; updated_at: string; revision: number }; // prettier-ignore
 
 const row = (ownerId: string, id: string): Row | undefined =>
 	db().prepare(`SELECT * FROM pages WHERE id = ? AND owner_id = ?`).get(id, ownerId) as Row | undefined;
@@ -33,16 +33,26 @@ const own = (ownerId: string, id: string): Row => {
 export function tree(ownerId: string): PageNode[] {
 	return (
 		db()
-			.prepare(`SELECT id, parent_page_id, title, icon FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND archived_at IS NULL AND NOT EXISTS (SELECT 1 FROM database_records r WHERE r.page_id = pages.id) ORDER BY position`)
+			.prepare(`SELECT id, parent_page_id, title, icon FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND archived_at IS NULL AND is_template = 0 AND NOT EXISTS (SELECT 1 FROM database_records r WHERE r.page_id = pages.id) ORDER BY position`)
 			.all(ownerId) as { id: string; parent_page_id: string | null; title: string; icon: string | null }[]
 	).map((r) => ({ id: r.id, parentId: r.parent_page_id, title: r.title, icon: r.icon })); // prettier-ignore
 }
 
-/** last opened live pages (phone All pages · Recent, wireframe MPages) */
-export function recent(ownerId: string, n = 5): { id: string; title: string; lastOpenedAt: string }[] {
+/** live templates (v4.0 PR 22): not in the sidebar tree, listed in the New page menu */
+export function templates(ownerId: string): PageNode[] {
 	return db()
-		.prepare(`SELECT id, title, last_opened_at AS lastOpenedAt FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND archived_at IS NULL AND last_opened_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM database_records r WHERE r.page_id = pages.id) ORDER BY last_opened_at DESC LIMIT ?`)
-		.all(ownerId, n) as { id: string; title: string; lastOpenedAt: string }[]; // prettier-ignore
+		.prepare(`SELECT id, parent_page_id AS parentId, title, icon FROM pages WHERE owner_id = ? AND is_template = 1 AND deleted_at IS NULL AND archived_at IS NULL ORDER BY title COLLATE NOCASE`)
+		.all(ownerId) as PageNode[]; // prettier-ignore
+}
+
+/** last opened live pages (phone All pages · Recent, wireframe MPages) */
+export function recent(
+	ownerId: string,
+	n = 5,
+): { id: string; title: string; icon: string | null; parentTitle: string | null; lastOpenedAt: string }[] {
+	return db()
+		.prepare(`SELECT p.id, p.title, p.icon, pp.title AS parentTitle, p.last_opened_at AS lastOpenedAt FROM pages p LEFT JOIN pages pp ON pp.id = p.parent_page_id WHERE p.owner_id = ? AND p.deleted_at IS NULL AND p.archived_at IS NULL AND p.last_opened_at IS NOT NULL AND NOT EXISTS (SELECT 1 FROM database_records r WHERE r.page_id = p.id) ORDER BY p.last_opened_at DESC LIMIT ?`)
+		.all(ownerId, n) as { id: string; title: string; icon: string | null; parentTitle: string | null; lastOpenedAt: string }[]; // prettier-ignore
 }
 
 type Node = { type?: string; text?: string; attrs?: { pageId?: string }; content?: Node[] };
@@ -174,6 +184,7 @@ export function get(ownerId: string, id: string, opened = true, viewer = ownerId
 		parentId: r.parent_page_id,
 		title: r.title,
 		icon: r.icon,
+		isTemplate: !!r.is_template,
 		coverAttachmentId: r.cover_attachment_id,
 		archived: !!r.archived_at,
 		revision: r.revision,
@@ -277,6 +288,8 @@ export const patchSchema = z
 	.object({
 		title: z.string().max(300),
 		icon: z.string().max(8).nullable(),
+		/** v4.0 PR 22: a template page (not in the sidebar tree) */
+		isTemplate: z.boolean(),
 		/** v4.0 PR 31: an uploaded image owned by the page owner, or null to remove */
 		coverAttachmentId: z
 			.string()
@@ -368,6 +381,7 @@ export function update(
 		const set: string[] = ['updated_at = @now', 'updated_by = @me', 'revision = revision + 1'];
 		if (p.title !== undefined) set.push('title = @title');
 		if (p.icon !== undefined) set.push('icon = @icon');
+		if (p.isTemplate !== undefined) set.push('is_template = @template');
 		if (p.coverAttachmentId !== undefined) {
 			// v4.0 PR 31: the cover is a file the page owner uploaded (never someone else's), kept by a ref
 			if (p.coverAttachmentId && !attachments.ownedReady(p.coverAttachmentId, ownerId))
@@ -383,6 +397,7 @@ export function update(
 				me: actor,
 				title: p.title ?? null,
 				icon: p.icon ?? null,
+				template: p.isTemplate === undefined ? null : p.isTemplate ? 1 : 0,
 				cover: p.coverAttachmentId ?? null,
 				id,
 			});
@@ -526,8 +541,8 @@ export function suggestions(ownerId: string, now: number = Date.now()) {
 export function findByTitle(ownerId: string, q: string, limit = 10) {
 	const like = `%${q.trim().replace(/[\\%_]/g, (c) => '\\' + c)}%`;
 	return db()
-		.prepare(`SELECT id, title, icon, archived_at IS NOT NULL AS archived FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND title LIKE ? ESCAPE '\\' ORDER BY archived_at IS NOT NULL, last_opened_at DESC LIMIT ?`)
-		.all(ownerId, like, limit) as { id: string; title: string; icon: string | null; archived: number }[]; // prettier-ignore
+		.prepare(`SELECT p.id, p.title, p.icon, pp.title AS parentTitle, p.archived_at IS NOT NULL AS archived FROM pages p LEFT JOIN pages pp ON pp.id = p.parent_page_id WHERE p.owner_id = ? AND p.deleted_at IS NULL AND p.title LIKE ? ESCAPE '\\' ORDER BY p.archived_at IS NOT NULL, p.last_opened_at DESC LIMIT ?`)
+		.all(ownerId, like, limit) as { id: string; title: string; icon: string | null; parentTitle: string | null; archived: number }[]; // prettier-ignore
 }
 
 // ---------- pins (FEATURES §2, D-20: title = page title) ----------
