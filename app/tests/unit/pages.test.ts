@@ -180,4 +180,15 @@ describe('Pages', () => {
 		).toEqual([a.id, n.id].sort());
 		expect(search(me, '"* OR NEAR(')).toEqual([]);
 	});
+
+	it('PR 18: callout, toggle and TOC survive save + load with their attrs', () => {
+		const a = page('Blocks');
+		const docIn = doc(
+			{ type: 'callout', attrs: { tone: 'blue', emoji: '🔥' }, content: [p('note')] },
+			{ type: 'toggle', attrs: { open: false }, content: [p('summary'), p('body')] },
+			{ type: 'toc' },
+		);
+		pages.update(me, a.id, { doc: docIn });
+		expect(pages.get(me, a.id, false).doc).toEqual(docIn);
+	});
 });

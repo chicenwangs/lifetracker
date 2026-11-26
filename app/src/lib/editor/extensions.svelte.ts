@@ -7,6 +7,7 @@ import { Suggestion } from '@tiptap/suggestion';
 import { mount, unmount } from 'svelte';
 import SlashMenu from './SlashMenu.svelte';
 import DatabaseView from '$lib/database/DatabaseView.svelte';
+import PageIcon from '$lib/components/PageIcon.svelte';
 
 /** internal link by page id (PG-10): shows the page's CURRENT title, or "unavailable". Titles come from storage. */
 export const PageLink = Node.create<{ titles: Record<string, { title: string; archived: boolean } | null> }>({
@@ -71,6 +72,253 @@ export const DatabaseBlock = Node.create({
 		};
 	},
 });
+
+/** PR 18: callout (emoji + 4 tones, holds paragraphs/lists). Old clients/export see a blockquote. */
+export const Callout = Node.create({
+	name: 'callout',
+	group: 'block',
+	content: 'block+',
+	defining: true,
+	addAttributes: () => ({
+		tone: { default: 'grey' },
+		emoji: { default: '💡' },
+	}),
+	parseHTML: () => [
+		{
+			tag: 'div[data-callout]',
+			getAttrs: (el) => ({
+				tone: (el as HTMLElement).dataset.tone || 'grey',
+				emoji: (el as HTMLElement).dataset.emoji || '💡',
+			}),
+		},
+	],
+	renderHTML: ({ node }) => [
+		'blockquote',
+		{ 'data-callout': '', 'data-tone': node.attrs.tone, 'data-emoji': node.attrs.emoji },
+		0,
+	],
+	addNodeView() {
+		return ({ node, editor, getPos }) => {
+			const dom = document.createElement('div');
+			dom.className = 'co';
+			const ico = document.createElement('span');
+			ico.className = 'co-ico';
+			ico.contentEditable = 'false';
+			const body = document.createElement('div');
+			body.className = 'co-body';
+			const tones = document.createElement('span');
+			tones.className = 'co-tones';
+			tones.contentEditable = 'false';
+			dom.append(ico, body, tones);
+			let comp: ReturnType<typeof mount> | undefined;
+			let emoji = String(node.attrs.emoji ?? '💡');
+			const now = () => {
+				const pos = getPos();
+				return pos === undefined ? null : { pos, node: editor.state.doc.nodeAt(pos) };
+			};
+			const setAttrs = (patch: Record<string, unknown>) => {
+				const cur = now();
+				if (!cur?.node) return;
+				editor.view.dispatch(
+					editor.state.tr.setNodeMarkup(cur.pos, undefined, { ...cur.node.attrs, ...patch }),
+				);
+			};
+			const mountIcon = () => {
+				if (comp) unmount(comp);
+				ico.textContent = '';
+				comp = mount(PageIcon, {
+					target: ico,
+					props: {
+						icon: emoji,
+						compact: true,
+						label: 'Callout icon',
+						onpick: (v) => v && setAttrs({ emoji: v }),
+					},
+				});
+			};
+			const swatches: HTMLButtonElement[] = [];
+			for (const t of ['grey', 'blue', 'yellow', 'red']) {
+				const b = document.createElement('button');
+				b.type = 'button';
+				b.className = 'co-tone';
+				b.dataset.tone = t;
+				b.setAttribute('aria-label', `Tone ${t}`);
+				b.title = t;
+				b.onclick = () => setAttrs({ tone: t });
+				tones.append(b);
+				swatches.push(b);
+			}
+			const paint = (n: typeof node) => {
+				dom.dataset.tone = String(n.attrs.tone ?? 'grey');
+				dom.dataset.emoji = String(n.attrs.emoji ?? '');
+				for (const b of swatches) b.setAttribute('aria-pressed', String(b.dataset.tone === n.attrs.tone));
+			};
+			paint(node);
+			mountIcon();
+			return {
+				dom,
+				contentDOM: body,
+				update(n: typeof node) {
+					if (String(n.attrs.emoji ?? '💡') !== emoji) {
+						emoji = String(n.attrs.emoji ?? '💡');
+						mountIcon();
+					}
+					paint(n);
+					return true;
+				},
+				stopEvent: (e: Event) => !!(e.target as HTMLElement).closest?.('.co-ico, .co-tone'),
+				destroy() {
+					if (comp) unmount(comp);
+				},
+			};
+		};
+	},
+}); // prettier-ignore
+
+/** PR 18: toggle. `open` is saved in the JSON; the first child is the summary, the rest is hidden when closed. */
+export const Toggle = Node.create({
+	name: 'toggle',
+	group: 'block',
+	content: 'block+',
+	defining: true,
+	addAttributes: () => ({
+		open: {
+			default: true,
+			parseHTML: (el: HTMLElement) => el.dataset.open !== 'false',
+			renderHTML: (a: Record<string, unknown>) => ({ 'data-open': String(!!a.open) }),
+		},
+	}),
+	parseHTML: () => [{ tag: 'div[data-toggle]' }],
+	renderHTML: ({ node }) => [
+		'details',
+		{ 'data-toggle': '', ...(node.attrs.open ? { open: '' } : {}) },
+		['summary', {}, 'Toggle'],
+		['div', {}, 0],
+	],
+	addNodeView() {
+		return ({ node, editor, getPos }) => {
+			const dom = document.createElement('div');
+			dom.className = 'tg';
+			const btn = document.createElement('button');
+			btn.type = 'button';
+			btn.className = 'tg-btn';
+			btn.contentEditable = 'false';
+			btn.setAttribute('aria-label', 'Toggle body');
+			const body = document.createElement('div');
+			body.className = 'tg-body';
+			dom.append(btn, body);
+			const now = () => {
+				const pos = getPos();
+				return pos === undefined ? null : { pos, node: editor.state.doc.nodeAt(pos) };
+			};
+			const toggle = () => {
+				const cur = now();
+				if (!cur?.node) return;
+				editor.view.dispatch(
+					editor.state.tr.setNodeMarkup(cur.pos, undefined, {
+						...cur.node.attrs,
+						open: !cur.node.attrs.open,
+					}),
+				);
+			};
+			btn.onclick = toggle;
+			// Enter on the summary opens a closed toggle (once open, Enter edits normally)
+			body.addEventListener(
+				'keydown',
+				(e) => {
+					if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+					const cur = now();
+					const first = cur?.node?.firstChild;
+					if (!cur?.node || !first || cur.node.attrs.open) return;
+					const from = editor.state.selection.$from.pos;
+					if (from > cur.pos && from <= cur.pos + first.nodeSize) {
+						e.preventDefault();
+						e.stopPropagation();
+						toggle();
+					}
+				},
+				true,
+			);
+			const paint = (n: typeof node) => {
+				dom.dataset.open = String(!!n.attrs.open);
+				btn.setAttribute('aria-expanded', String(!!n.attrs.open));
+				dom.dataset.empty = String(n.childCount <= 1);
+			};
+			paint(node);
+			return {
+				dom,
+				contentDOM: body,
+				update(n: typeof node) {
+					paint(n);
+					return true;
+				},
+				stopEvent: (e: Event) => !!(e.target as HTMLElement).closest?.('.tg-btn'),
+			};
+		};
+	},
+}); // prettier-ignore
+
+/** PR 18: table of contents (read-only list of H1-H3, live, click scrolls). */
+export const Toc = Node.create({
+	name: 'toc',
+	group: 'block',
+	atom: true,
+	selectable: true,
+	parseHTML: () => [{ tag: 'nav[data-toc]' }],
+	renderHTML: () => ['nav', { 'data-toc': '' }, ['p', {}, 'On this page']],
+	addNodeView() {
+		return ({ editor }) => {
+			const dom = document.createElement('div');
+			dom.className = 'toc';
+			const title = document.createElement('p');
+			title.className = 'toc-title';
+			title.textContent = 'On this page';
+			const list = document.createElement('div');
+			list.className = 'toc-list';
+			dom.append(title, list);
+			const build = () => {
+				const rows: { level: number; text: string; pos: number }[] = [];
+				editor.state.doc.descendants((n, pos) => {
+					if (n.type.name === 'heading' && Number(n.attrs.level) <= 3)
+						rows.push({ level: Number(n.attrs.level), text: n.textContent, pos });
+					return true;
+				});
+				list.textContent = '';
+				if (!rows.length) {
+					const empty = document.createElement('span');
+					empty.className = 'toc-empty';
+					empty.textContent = 'Add headings to fill this';
+					list.append(empty);
+					return;
+				}
+				for (const r of rows) {
+					const b = document.createElement('button');
+					b.type = 'button';
+					b.className = 'toc-row';
+					b.dataset.level = String(r.level);
+					b.textContent = r.text || 'Untitled heading';
+					b.onclick = () => {
+						const el = editor.view.nodeDOM(r.pos);
+						if (el instanceof HTMLElement) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+					};
+					list.append(b);
+				}
+			};
+			build();
+			const onTx = (p: { transaction: { docChanged: boolean } }) => {
+				if (p.transaction.docChanged) build();
+			};
+			editor.on('transaction', onTx);
+			return {
+				dom,
+				stopEvent: (e: Event) => !!(e.target as HTMLElement).closest?.('.toc'),
+				destroy() {
+					editor.off('transaction', onTx);
+				},
+			};
+		};
+	},
+}); // prettier-ignore
 
 /** keep undo groups apart: a block op right after typing must undo on its own (ADR-002 finding) */
 const send = (view: EditorView, tr: Transaction) => view.dispatch(closeHistory(tr));

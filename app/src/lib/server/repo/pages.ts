@@ -115,6 +115,9 @@ const NODES: Record<string, string[]> = {
 	image: ['src', 'alt', 'title', 'width', 'height'],
 	pageLink: ['pageId'],
 	database: ['databaseId'],
+	callout: ['tone', 'emoji'],
+	toggle: ['open'],
+	toc: [],
 	text: [],
 };
 const MARKS: Record<string, string[]> = {

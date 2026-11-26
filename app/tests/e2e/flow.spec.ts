@@ -1050,6 +1050,68 @@ test('v2 P3 Pages: tree, slash menu, internal link survives rename, pin cap, arc
 	await expect(page.getByRole('tree', { name: 'Page tree' })).toContainText('Gym');
 });
 
+test('v4 PR 18: callout, toggle and TOC insert, persist and behave', async () => {
+	await page.goto('/pages');
+	await page.getByRole('button', { name: 'New page' }).last().click();
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	const id = page.url().match(/pg_[0-9a-z]+/)![0];
+	const ed = page.locator('.pm');
+	await ed.click();
+	await page.keyboard.type('/callout');
+	await page.keyboard.press('Enter');
+	await expect(ed.locator('.co')).toBeVisible();
+	await page.keyboard.type('note');
+	await ed.locator('.co-tone[data-tone="blue"]').click();
+	await expect(ed.locator('.co')).toHaveAttribute('data-tone', 'blue');
+	// the compact picker in the callout is the PR 16 one
+	await page.getByRole('button', { name: 'Callout icon: 💡' }).click();
+	const pop = page.getByRole('dialog', { name: 'Callout icon' });
+	await expect(pop).toBeVisible();
+	await pop.getByRole('option', { name: '📄' }).click();
+	await expect(page.getByRole('button', { name: 'Callout icon: 📄' })).toBeVisible();
+	await expect(page.locator('.state')).toContainText('Saved');
+	// a saved doc with heading + callout + toggle + TOC renders every node and keeps the attrs
+	const doc = {
+		type: 'doc',
+		content: [
+			{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Section one' }] },
+			{
+				type: 'callout',
+				attrs: { tone: 'blue', emoji: '📄' },
+				content: [{ type: 'paragraph', content: [{ type: 'text', text: 'note' }] }],
+			},
+			{
+				type: 'toggle',
+				attrs: { open: true },
+				content: [
+					{ type: 'paragraph', content: [{ type: 'text', text: 'summary' }] },
+					{ type: 'paragraph', content: [{ type: 'text', text: 'hidden body' }] },
+				],
+			},
+			{ type: 'toc' },
+		],
+	};
+	await api('PATCH', `/api/pages/${id}`, { doc });
+	await page.reload();
+	await expect(ed.locator('.co')).toHaveAttribute('data-tone', 'blue');
+	await expect(ed.locator('.co')).toHaveAttribute('data-emoji', '📄');
+	await expect(ed.locator('.co')).toContainText('note');
+	const toc = ed.locator('.toc');
+	await expect(toc).toContainText('On this page');
+	await expect(toc).toContainText('Section one');
+	await expect(toc.locator('.toc-empty')).toHaveCount(0);
+	// toggle closes (body hidden) and the open attr survives a reload
+	const tg = ed.locator('.tg');
+	await expect(tg).toHaveAttribute('data-open', 'true');
+	await expect(tg).toContainText('hidden body');
+	await tg.locator('.tg-btn').click();
+	await expect(tg).toHaveAttribute('data-open', 'false');
+	await expect(tg.locator('.tg-body > p').nth(1)).toHaveCSS('display', 'none');
+	await page.reload();
+	await expect(ed.locator('.tg')).toHaveAttribute('data-open', 'false');
+	await expect(ed.locator('.tg-body > p').nth(1)).toHaveCSS('display', 'none');
+});
+
 test('v4 PR 16: page emoji icon - keyboard pick, sidebar, Undo', async () => {
 	await page.goto('/pages');
 	await page.getByRole('button', { name: 'New page' }).last().click();

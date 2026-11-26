@@ -10,7 +10,17 @@
 		icon,
 		disabled = false,
 		onpick,
-	}: { icon: string | null; disabled?: boolean; onpick: (v: string | null) => unknown } = $props();
+		label = 'Page icon',
+		compact = false,
+	}: {
+		icon: string | null;
+		disabled?: boolean;
+		onpick: (v: string | null) => unknown;
+		/** accessible name prefix (the callout uses "Callout icon") */
+		label?: string;
+		/** small inline button (callout), same popover / sheet */
+		compact?: boolean;
+	} = $props();
 
 	// DESIGN 2.2: the exact 40 curated emoji (no search, no full set)
 	const EMOJI = [
@@ -68,7 +78,7 @@
 	}
 </script>
 
-<span class="wrap">
+<span class="wrap" class:compact>
 	<button
 		bind:this={btn}
 		class="pickbtn"
@@ -77,7 +87,7 @@
 		{disabled}
 		aria-haspopup="dialog"
 		aria-expanded={open}
-		aria-label={icon ? `Page icon: ${icon}` : 'Page icon: Add icon'}
+		aria-label={icon ? `${label}: ${icon}` : `${label}: Add icon`}
 		onclick={show}>{icon ?? 'Add icon'}</button
 	>
 	{#if open && !phone}
@@ -85,7 +95,7 @@
 			class="pop card"
 			role="dialog"
 			tabindex="-1"
-			aria-label="Page icon"
+			aria-label={label}
 			use:backCloses={close}
 			onkeydown={keys}
 		>
@@ -109,7 +119,7 @@
 </span>
 
 {#if open && phone}
-	<BottomSheet label="Page icon" onclose={close}>
+	<BottomSheet {label} onclose={close}>
 		<div class="sheet">
 			<div class="head">
 				<b>Page icon</b>
@@ -170,6 +180,18 @@
 	.pickbtn:disabled {
 		cursor: default;
 		opacity: 0.6;
+	}
+	/* inline variant for the callout: 24 px (48 dp phone), same picker */
+	.wrap.compact .pickbtn {
+		min-width: 24px;
+		min-height: 24px;
+		padding: 0 2px;
+		font-size: 16px;
+	}
+	.wrap.compact .pickbtn.empty {
+		min-width: 24px;
+		min-height: 24px;
+		font-size: 11px;
 	}
 	.pop {
 		position: absolute;
@@ -233,6 +255,11 @@
 			min-width: 48px;
 			min-height: 48px;
 			font-size: 32px;
+		}
+		.wrap.compact .pickbtn {
+			min-width: 48px;
+			min-height: 48px;
+			font-size: 26px;
 		}
 		.pickbtn.empty {
 			display: none;

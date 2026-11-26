@@ -14,7 +14,17 @@
 	import Image from '@tiptap/extension-image';
 	import { patch, get, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
-	import { BlockKeys, DatabaseBlock, PageLink, Slash, blockOps, type SlashItem } from './extensions.svelte';
+	import {
+		BlockKeys,
+		Callout,
+		DatabaseBlock,
+		PageLink,
+		Slash,
+		Toc,
+		Toggle,
+		blockOps,
+		type SlashItem,
+	} from './extensions.svelte';
 	import type { PageDTO } from '$lib/types';
 
 	let {
@@ -53,6 +63,9 @@
 		{ title: 'Table', run: (e, r) => e.chain().focus().deleteRange(r).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
 		{ title: 'Quote', run: (e, r) => e.chain().focus().deleteRange(r).toggleBlockquote().run() },
 		{ title: 'Code', run: (e, r) => e.chain().focus().deleteRange(r).toggleCodeBlock().run() },
+		{ title: 'Callout', hint: 'Highlight a note', run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'callout', attrs: { tone: 'grey', emoji: '💡' }, content: [{ type: 'paragraph' }] }).run() },
+		{ title: 'Toggle', hint: 'Hide details under a line', run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'toggle', attrs: { open: true }, content: [{ type: 'paragraph' }] }).run() },
+		{ title: 'Table of contents', hint: "List this page's headings", run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'toc' }).run() },
 		{ title: 'Database', hint: 'table of records', run: (e, r) => { e.chain().focus().deleteRange(r).run(); void addDatabase(); } },
 		{ title: 'Link to page', hint: 'internal', run: (e, r) => { e.chain().focus().deleteRange(r).run(); picker = { q: '', hits: [], at: e.state.selection.from }; void findPages(''); } },
 		{ title: 'Image', hint: 'upload', run: (e, r) => { e.chain().focus().deleteRange(r).run(); pickFile('image'); } },
@@ -176,6 +189,9 @@
 				Image.configure({ inline: false }),
 				PageLink.configure({ titles: page.links }),
 				DatabaseBlock,
+				Callout,
+				Toggle,
+				Toc,
 				BlockKeys,
 				Slash.configure({ items }),
 			],
@@ -429,9 +445,205 @@
 	.ph {
 		display: none;
 	}
+	/* PR 18: callout, toggle, TOC node views (plain DOM from the extensions, so global) */
+	:global(.pm .co) {
+		--co-bg: #f3f2fa;
+		--co-bar: #6b6b8f;
+		position: relative;
+		display: grid;
+		grid-template-columns: 30px minmax(0, 1fr);
+		gap: 2px 8px;
+		margin: 8px 0;
+		padding: 10px 12px 10px 10px;
+		border-radius: 10px;
+		border-left: 3px solid var(--co-bar);
+		background: var(--co-bg);
+	}
+	:global(.pm .co[data-tone='blue']) {
+		--co-bg: #e3ecf7;
+		--co-bar: #2f5e8e;
+	}
+	:global(.pm .co[data-tone='yellow']) {
+		--co-bg: #faedb8;
+		--co-bar: #8a6d00;
+	}
+	:global(.pm .co[data-tone='red']) {
+		--co-bg: #fbe3e1;
+		--co-bar: #a83a35;
+	}
+	:global(:root[data-theme='dark'] .pm .co) {
+		--co-bg: #201f48;
+		--co-bar: #8e8bb5;
+	}
+	:global(:root[data-theme='dark'] .pm .co[data-tone='blue']) {
+		--co-bg: #16304a;
+		--co-bar: #8db4da;
+	}
+	:global(:root[data-theme='dark'] .pm .co[data-tone='yellow']) {
+		--co-bg: #3a3416;
+		--co-bar: #f3d053;
+	}
+	:global(:root[data-theme='dark'] .pm .co[data-tone='red']) {
+		--co-bg: #4a1f1d;
+		--co-bar: #f2a19c;
+	}
+	:global(.pm .co-ico) {
+		grid-column: 1;
+		grid-row: 1;
+	}
+	:global(.pm .co-body) {
+		grid-column: 2;
+		min-width: 0;
+	}
+	:global(.pm .co-body > :first-child) {
+		margin-top: 0;
+	}
+	:global(.pm .co-body > :last-child) {
+		margin-bottom: 0;
+	}
+	:global(.pm .co-tones) {
+		position: absolute;
+		right: 8px;
+		bottom: 5px;
+		display: flex;
+		gap: 3px;
+		opacity: 0;
+		transition: opacity 120ms var(--ease);
+	}
+	:global(.pm .co:hover .co-tones),
+	:global(.pm .co:focus-within .co-tones) {
+		opacity: 1;
+	}
+	:global(.pm .co-tone) {
+		width: 12px;
+		height: 12px;
+		padding: 0;
+		border: 1px solid rgb(0 0 0 / 0.25);
+		border-radius: 50%;
+		cursor: pointer;
+	}
+	:global(.pm .co-tone[data-tone='grey']) {
+		background: #6b6b8f;
+	}
+	:global(.pm .co-tone[data-tone='blue']) {
+		background: #2f5e8e;
+	}
+	:global(.pm .co-tone[data-tone='yellow']) {
+		background: #8a6d00;
+	}
+	:global(.pm .co-tone[data-tone='red']) {
+		background: #a83a35;
+	}
+	:global(.pm .tg) {
+		position: relative;
+		margin: 6px 0;
+		padding-left: 30px;
+	}
+	:global(.pm .tg-btn) {
+		position: absolute;
+		left: 0;
+		top: 1px;
+		width: 24px;
+		height: 24px;
+		padding: 0;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: var(--quiet);
+		font: inherit;
+		font-size: 14px;
+		cursor: pointer;
+	}
+	:global(.pm .tg-btn::before) {
+		content: '▸';
+		display: inline-block;
+		transition: transform 120ms var(--ease);
+	}
+	:global(.pm .tg[data-open='true'] .tg-btn::before) {
+		transform: rotate(90deg);
+	}
+	:global(.pm .tg-btn:hover) {
+		background: var(--hover);
+		color: var(--ink);
+	}
+	:global(.pm .tg-body) {
+		padding-left: 24px;
+	}
+	:global(.pm .tg[data-open='false'] .tg-body > *:not(:first-child)) {
+		display: none;
+	}
+	:global(.pm .tg[data-empty='true'][data-open='true'] .tg-body::after) {
+		content: 'Empty toggle. Type or drop blocks inside.';
+		color: var(--faint);
+		font-size: 13px;
+	}
+	:global(.pm .toc) {
+		margin: 10px 0;
+		padding: 12px 14px;
+		border-radius: 10px;
+		background: var(--ground);
+	}
+	:global(.pm .toc-title) {
+		margin: 0 0 6px;
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--quiet);
+	}
+	:global(.pm .toc-row) {
+		display: block;
+		min-height: 24px;
+		width: 100%;
+		padding: 0;
+		text-align: left;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 13.5px;
+		cursor: pointer;
+	}
+	:global(.pm .toc-row[data-level='1']) {
+		padding-left: 0;
+		font-weight: 600;
+	}
+	:global(.pm .toc-row[data-level='2']) {
+		padding-left: 16px;
+	}
+	:global(.pm .toc-row[data-level='3']) {
+		padding-left: 32px;
+	}
+	:global(.pm .toc-row:hover) {
+		background: var(--hover);
+	}
+	:global(.pm .toc-empty) {
+		font-size: 13px;
+		color: var(--faint);
+	}
 	/* phone (#98): 48 dp, one scrolling row docked above the tab bar (and so above the keyboard when it is up,
 	   #433) while typing, gone otherwise */
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		:global(.pm .tg-btn) {
+			width: 48px;
+			height: 48px;
+			top: -10px;
+			font-size: 18px;
+		}
+		:global(.pm .tg) {
+			padding-left: 52px;
+		}
+		:global(.pm .tg-body) {
+			padding-left: 0;
+		}
+		:global(.pm .co-tones) {
+			opacity: 1;
+		}
+		:global(.pm .co-tone) {
+			width: 24px;
+			height: 24px;
+		}
 		.t {
 			min-width: 48px;
 			min-height: 48px;
