@@ -31,9 +31,10 @@ Tests: 0 pins → Home Week Keep Pages only · 1–3 pins after Pages · 4th fai
 
 - **Home / Week / item / quick add (KEEP).** As BUILD-NOTES. Failed refresh keeps last good data + error, never blank calendar. Week ≠ Pages DB calendar view.
 - **X fix (CORE).** Every deletable chip/block/all-day chip/row: control on hover + focus, stays while pointer on it, not clipped (check stacking context / overflow), touch alternative, name "Delete <title>". Double-click = one delete. Fail → item stays + error. Linked blocks follow existing delete rules (one undo unit).
+- **Reschedule (v4 card 03, D-V4-04 / D-V4-16).** One list in the item sheet (desktop + phone) beside the Date field and in the phone Today row ⋯ sheet: Today · Tomorrow · Next weekday (Mon–Thu = +1 day, Fri–Sun = Monday) · +1 week · Pick date…. Postpone keeps the time; a multi-day item moves `end_date` by the same span; on `id@date` it detaches that one occurrence (no scope dialog). One toast names the earliest linked block's day (the block stays). `Skip this one` only on a repeating occurrence: one EXDATE, no new row, that date's reminders cancelled (a relative one moves to the next occurrence). Undo restores dates / removes the EXDATE; offline postpone queues, Skip only toasts. Undated items hide Postpone.
 - **Undo (CORE).**
   - Ctrl+Z / Cmd+Z when focus not in input/textarea/contenteditable/editor/drawing canvas. In those, native/editor undo wins.
-  - Covers: planner create/edit/move/resize/dup/delete · Keep create/edit/reorder/binder move/pin/archive/trash/checklist · Pages page create/rename/move, block create/edit/reorder/dup/delete, DB record + safe property edits.
+  - Covers: planner create/edit/move/resize/dup/delete, reschedule (postpone) + skip one occurrence of a series · Keep create/edit/reorder/binder move/pin/archive/trash/checklist · Pages page create/rename/move, block create/edit/reorder/dup/delete, DB record + safe property edits.
   - Newest first. One UI operation = one undo unit (item + its blocks). Restores order, dates, props, links. All-or-nothing; fail → error, state unchanged.
   - Refuse if target changed since (later edit/collaborator) → "can't undo safely".
   - Scope = this session (server journal with expiry, see DESIGN §11). Not version history. No redo. New action after undo starts new branch.

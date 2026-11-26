@@ -7,11 +7,12 @@
 	let value = $state('');
 	let scope = $state<'this' | 'following' | 'all'>('this');
 	$effect(() => {
-		if (dialog.current?.kind === 'text') value = dialog.current.value;
-		else if (dialog.current?.kind === 'scope') scope = 'this';
+		const d = dialog.current;
+		if (d?.kind === 'text' || d?.kind === 'date') value = d.value;
+		else if (d?.kind === 'scope') scope = 'this';
 	});
 	const ok = () =>
-		answer(dialog.current?.kind === 'text' ? value : dialog.current?.kind === 'scope' ? scope : true);
+		answer(dialog.current?.kind === 'confirm' ? true : dialog.current?.kind === 'scope' ? scope : value);
 	const cancel = () => answer(null);
 </script>
 
@@ -44,6 +45,9 @@
 			{#if d.kind === 'text'}
 				<!-- svelte-ignore a11y_autofocus -->
 				<input class="in" bind:value aria-label={d.label} autofocus />
+			{:else if d.kind === 'date'}
+				<!-- svelte-ignore a11y_autofocus -->
+				<input class="in" type="date" bind:value aria-label={d.label} autofocus />
 			{:else if d.kind === 'scope'}
 				<div class="scopes" role="radiogroup" aria-labelledby="dlg-t">
 					<label class="sopt">
@@ -67,7 +71,7 @@
 					class="btn primary"
 					class:danger={(d.kind === 'confirm' || d.kind === 'scope') && d.danger}
 					type="submit"
-					autofocus={d.kind !== 'text'}>{d.ok}</button
+					autofocus={d.kind === 'confirm' || d.kind === 'scope'}>{d.ok}</button
 				>
 			</div>
 		</form>

@@ -19,13 +19,35 @@ const hhmm = (m: number) =>
 	`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const mins = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 
-async function change(x: Row, body: Record<string, unknown>, text: string, refresh: Refresh) {
+export interface RescheduleOpts {
+	/** C7: day of the earliest linked planner block (it stays where it is) */
+	blockDay?: string | null;
+	/** the PATCH response, before the refresh (the item sheet follows a detached occurrence) */
+	onResult?: (r: { item?: { id: string }; undo?: UndoRef }) => void;
+	/** Undo from the toast: a detached occurrence's row is gone, so the caller may close instead of refetching */
+	onUndone?: () => void | Promise<void>;
+}
+
+export async function change(
+	x: Row,
+	body: Record<string, unknown>,
+	text: string,
+	refresh: Refresh,
+	opts: RescheduleOpts = {},
+) {
 	try {
 		// #163: Undo = the server's undo journal (a repeating date was detached; a reverse PATCH would copy it again)
-		const u = (await patch<{ undo?: UndoRef }>(path(x), body)).undo;
+		const r = await patch<{ undo?: UndoRef; item?: { id: string } }>(path(x), body);
+		opts.onResult?.(r);
 		await refresh();
+		const u = r.undo;
 		showToast(text, {
-			undo: u ? async () => void ((await undoLast(u.id)) && (await refresh())) : undefined,
+			undo: u
+				? async () => {
+						if (!(await undoLast(u.id))) return;
+						await (opts.onUndone ? opts.onUndone() : refresh());
+					}
+				: undefined,
 		});
 	} catch (e) {
 		if (isOffline(e)) {

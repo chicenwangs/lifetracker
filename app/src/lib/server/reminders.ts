@@ -7,7 +7,16 @@ import { newId } from './crypto';
 import { bad, notFound } from './http';
 import { itemRef, offsetMs, parseOffset, type Unit } from '$lib/remind';
 import { baseItemId, expandRRule, parseExdates } from '$lib/rrule';
-import { addDays, diffDays, isoPlus, localToUtc, nowUtcIso, todayLocal, utcToLocal } from '$lib/time';
+import {
+	addDays,
+	DEFAULT_TZ,
+	diffDays,
+	isoPlus,
+	localToUtc,
+	nowUtcIso,
+	todayLocal,
+	utcToLocal,
+} from '$lib/time';
 import type { ReminderDTO } from '$lib/types';
 import * as itemsRepo from './repo/items';
 
@@ -195,6 +204,36 @@ export function splitSeries(ownerId: string, oldId: string, toId: string, now = 
 	}
 	recalc(ownerId, 'planner_item', oldId, now);
 	recalc(ownerId, 'planner_item', toId, now);
+}
+
+/**
+ * Card 03 C10 (D-V4-04): after one occurrence was skipped. Relative reminders re-resolve through recalc (the
+ * next occurrence). An absolute reminder due inside the skipped occurrence is deleted, so nothing fires for it.
+ * shortcut: the journal has no reminders table, so Undo brings the date back without that reminder.
+ */
+export function afterSkip(
+	ownerId: string,
+	sourceId: string,
+	occDate: string,
+	endDate: string | null,
+	now = Date.now(),
+): void {
+	recalcOwner(ownerId, now);
+	const tz =
+		(db().prepare(`SELECT timezone FROM users WHERE id = ?`).get(ownerId) as { timezone: string } | undefined)
+			?.timezone ?? DEFAULT_TZ;
+	const last = endDate && endDate > occDate ? endDate : occDate;
+	const rows = db()
+		.prepare(
+			`SELECT id, due_at FROM reminders WHERE owner_id = ? AND source_type = 'planner_item' AND source_id = ? AND rule_kind = 'absolute' AND status IN ('scheduled','processing')`,
+		)
+		.all(ownerId, sourceId) as { id: string; due_at: string | null }[];
+	for (const r of rows) {
+		if (!r.due_at) continue;
+		const day = utcToLocal(r.due_at, tz).date;
+		if (day >= occDate && day <= last)
+			db().prepare(`DELETE FROM reminders WHERE id = ? AND owner_id = ?`).run(r.id, ownerId);
+	}
 }
 
 /** After a reminder on a repeating item fires (#72, #261), schedule the next occurrence if one exists. */
