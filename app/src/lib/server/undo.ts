@@ -8,6 +8,7 @@ import { ApiFail } from './http';
 import { newId } from './crypto';
 import * as fts from './search';
 import { isoPlus, nowUtcIso } from '$lib/time';
+import * as attachments from './attachments';
 
 /** tables the journal may touch. Never sessions, users, grants, share codes. */
 const TABLES = ['items', 'blocks', 'item_types', 'pages'] as const;
@@ -31,6 +32,13 @@ const EXPIRES_MS = 12 * 3_600_000;
 const db = () => handle().sqlite;
 const get = (t: Table, id: string) =>
 	db().prepare(`SELECT * FROM ${t} WHERE id = ?`).get(id) as Row | undefined;
+/** pages.last_opened_at moves on every page load; opening a page must not block undoing what created it (#440) */
+const comparable = (t: Table, row: Row | null | undefined) => {
+	if (!row || t !== 'pages') return row ?? null;
+	const rest = { ...row };
+	delete rest.last_opened_at;
+	return rest;
+};
 
 /**
  * Run `fn` and journal what it changed. `targets` = rows that exist before (they are captured first);
@@ -70,16 +78,21 @@ export function undo(userId: string, id?: string): { label: string } {
 		const rows = JSON.parse(a.rows) as Snap[];
 		for (const r of rows) {
 			const cur = get(r.t, r.id);
-			const same = JSON.stringify(cur ?? null) === JSON.stringify(r.after);
+			const same = JSON.stringify(comparable(r.t, cur)) === JSON.stringify(comparable(r.t, r.after));
 			if (!same) throw new ApiFail(409, 'cant_undo', `Can't undo safely: "${a.label}" was changed since.`);
 		}
 		// parents before children on re-insert (a step needs its item), children first on delete
 		const order = (t: Table) => TABLES.indexOf(t);
 		for (const r of [...rows].sort((x, y) => order(x.t) - order(y.t) || Number(!!y.before?.parent_id) - Number(!!x.before?.parent_id)).reverse())
 			if (!r.before) {
+				// pages keep side tables synced by repo helpers, not triggers: clear them before the row (and its
+				// blocks/links/databases, which cascade) goes
+				if (r.t === 'pages') {
+					fts.unindex('page', r.id);
+					attachments.dropRefs('page_block', r.id);
+					attachments.dropRefs('page_cover', r.id); // v4.0 PR 31: a cover ref would pin the image
+				}
 				db().prepare(`DELETE FROM ${r.t} WHERE id = ?`).run(r.id);
-				// a page deleted by undo must not stay in the search index (#442: undo of a created [[ page)
-				if (r.t === 'pages') fts.unindex('page', r.id);
 			}
 		for (const r of [...rows].sort((x, y) => (x.t === y.t ? Number(!!x.before?.parent_id) - Number(!!y.before?.parent_id) : order(x.t) - order(y.t)))) {
 			if (!r.before) continue;
@@ -91,6 +104,16 @@ export function undo(userId: string, id?: string): { label: string } {
 				const all = Object.keys(r.before);
 				db().prepare(`INSERT INTO ${r.t} (${all.map((c) => `"${c}"`).join(', ')}) VALUES (${all.map((c) => `@${c}`).join(', ')})`).run(r.before);
 			}
+		}
+		// v4.0 PR 31: a cover change moves attachment_refs too (a side table the journal does not hold)
+		for (const r of rows) {
+			if (r.t !== 'pages' || !r.before || !r.after) continue;
+			const b = r.before as { cover_attachment_id?: string | null; owner_id?: string };
+			const a = r.after as { cover_attachment_id?: string | null };
+			if ((b.cover_attachment_id ?? null) === (a.cover_attachment_id ?? null)) continue;
+			attachments.dropRefs('page_cover', r.id);
+			if (b.cover_attachment_id)
+				attachments.addRef(b.owner_id ?? '', b.cover_attachment_id, 'page_cover', r.id);
 		}
 		db().prepare(`UPDATE undo_actions SET undone_at = ? WHERE id = ?`).run(now, a.id);
 		return { label: a.label };

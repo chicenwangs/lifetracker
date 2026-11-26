@@ -10,8 +10,9 @@ import { baseItemId, expandRRule, parseExdates } from '$lib/rrule';
 import { addDays, diffDays, isoPlus, localToUtc, nowUtcIso, todayLocal, utcToLocal } from '$lib/time';
 import type { ReminderDTO } from '$lib/types';
 import * as itemsRepo from './repo/items';
+import { level, need } from './repo/shares';
 
-export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record';
+export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record' | 'page_todo';
 const db = () => handle().sqlite;
 export const MAX_OPEN = 500;
 type Row = { id: string; owner_id: string; source_type: Source; source_id: string; rule_kind: 'relative' | 'absolute'; rel_value: number | null; rel_unit: Unit | null; at_time: string | null; due_at: string | null; status: string; attempts: number; sent_at: string | null }; // prettier-ignore
@@ -27,6 +28,35 @@ export interface SourceInfo {
 	route: string;
 	kind: 'planner' | 'keep' | 'pages';
 }
+
+type DocNode = { type?: string; text?: string; attrs?: Record<string, unknown>; content?: DocNode[] };
+const textOf = (n: DocNode): string => (n.text ?? '') + (n.content ?? []).map(textOf).join(' ');
+/** the to-do with this block id anywhere in the page's saved blocks */
+function todoIn(n: DocNode, blockId: string): { text: string; checked: boolean } | undefined {
+	if (n.type === 'taskItem' && n.attrs?.blockId === blockId) {
+		const text = (n.content ?? []).map(textOf).join(' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+		return { text, checked: n.attrs.checked === true };
+	}
+	for (const c of n.content ?? []) {
+		const r = todoIn(c, blockId);
+		if (r) return r;
+	}
+	return undefined;
+}
+/** v4.0 PR 30: blockId -> checked for every to-do in a saved page doc */
+function todoStates(n: DocNode, out: Map<string, boolean>): void {
+	if (n.type === 'taskItem' && typeof n.attrs?.blockId === 'string')
+		out.set(n.attrs.blockId, n.attrs.checked === true);
+	for (const c of n.content ?? []) todoStates(c, out);
+}
+/** page_todo source id = pageId:blockId (v4.0 PR 30) */
+const pageTodoParts = (rawId: string): { pageId: string; blockId: string } | null => {
+	const i = rawId.indexOf(':');
+	if (i < 1) return null;
+	const pageId = rawId.slice(0, i);
+	const blockId = rawId.slice(i + 1);
+	return /^pg_[0-9a-z]{16}$/.test(pageId) && /^pbl_[0-9a-z]{16}$/.test(blockId) ? { pageId, blockId } : null;
+};
 
 /** what a source is right now, if it belongs to ownerId; undefined = not mine / never existed */
 export function sourceInfo(ownerId: string, type: Source, rawId: string): SourceInfo | undefined {
@@ -71,6 +101,27 @@ export function sourceInfo(ownerId: string, type: Source, rawId: string): Source
 				kind: 'keep',
 			}
 		);
+	}
+	if (type === 'page_todo') {
+		const parts = pageTodoParts(rawId);
+		if (!parts) return undefined;
+		// a share grants the reminder owner at least read access; revoked / trashed page -> stop
+		if (!level('page', ownerId, parts.pageId)) return undefined;
+		const blocks = db()
+			.prepare(`SELECT content_json FROM page_blocks WHERE page_id = ? ORDER BY position`)
+			.all(parts.pageId) as { content_json: string }[];
+		for (const b of blocks) {
+			const t = todoIn(JSON.parse(b.content_json) as DocNode, parts.blockId);
+			if (t)
+				return {
+					title: t.text || 'To-do',
+					ref: null, // a to-do has no date: exact-time reminders only
+					live: !t.checked,
+					route: `/pages/${parts.pageId}`,
+					kind: 'pages',
+				};
+		}
+		return undefined; // block gone (deleted on a later save)
 	}
 	const r = db().prepare(`SELECT r.page_id, d.page_id AS db_page FROM database_records r JOIN page_databases d ON d.id = r.database_id WHERE r.id = ? AND d.owner_id = ?`).get(id, ownerId) as { page_id: string | null; db_page: string } | undefined; // prettier-ignore
 	if (!r) return undefined;
@@ -129,6 +180,12 @@ export function add(
 	now = Date.now(),
 ): ReminderDTO {
 	const sourceId = type === 'planner_item' ? baseItemId(rawSourceId) : rawSourceId;
+	if (type === 'page_todo') {
+		// only the page owner or an editor may put a reminder on its to-dos
+		const parts = pageTodoParts(sourceId);
+		if (!parts) return notFound();
+		need('page', ownerId, parts.pageId, 'edit');
+	}
 	const info = sourceInfo(ownerId, type, sourceId);
 	if (!info || !info.live) notFound();
 	let rel: { value: number; unit: Unit } | null = null;
@@ -140,7 +197,7 @@ export function add(
 	const rule = { rule_kind: rel ? ('relative' as const) : ('absolute' as const), rel_value: rel?.value ?? null, rel_unit: rel?.unit ?? null, at_time: p.at ?? null }; // prettier-ignore
 	const due = dueOf(rule, info as SourceInfo, now) as string;
 	if (!due || Date.parse(due) <= now) bad('That reminder time has already passed.', 'past');
-	const dup = db().prepare(`SELECT 1 FROM reminders WHERE source_type = ? AND source_id = ? AND due_at = ? AND status IN ('scheduled','processing')`).get(type, sourceId, due); // prettier-ignore
+	const dup = db().prepare(`SELECT 1 FROM reminders WHERE owner_id = ? AND source_type = ? AND source_id = ? AND due_at = ? AND status IN ('scheduled','processing')`).get(ownerId, type, sourceId, due); // prettier-ignore
 	if (dup) bad('There is already a reminder at that time.', 'duplicate');
 	// one global queue drains 50 per tick: an owner with thousands due at once would delay everyone else's
 	const open = db().prepare(`SELECT count(*) AS n FROM reminders WHERE owner_id = ? AND status IN ('scheduled','processing')`).get(ownerId) as { n: number }; // prettier-ignore
@@ -349,6 +406,46 @@ export const backlog = () =>
 			.prepare(`SELECT count(*) AS n FROM reminders WHERE status = 'scheduled' AND due_at <= ?`)
 			.get(nowUtcIso()) as { n: number }
 	).n;
+
+/** v4.0 PR 30: this user's to-do reminders on one page, blockId -> dueAt (the editor chips) */
+export function forPage(ownerId: string, pageId: string): Record<string, string> {
+	if (!level('page', ownerId, pageId)) return {};
+	const prefix = `${pageId}:`;
+	const rows = db()
+		.prepare(
+			`SELECT source_id, due_at, status FROM reminders WHERE owner_id = ? AND source_type = 'page_todo' AND status IN ('scheduled','cancelled') AND substr(source_id, 1, ?) = ? ORDER BY due_at`,
+		)
+		.all(ownerId, prefix.length, prefix) as {
+		source_id: string;
+		due_at: string | null;
+		status: string;
+	}[];
+	// a ticked to-do keeps its chip struck through until it is un-ticked (DESIGN 2.9), but a cancelled
+	// reminder on an unchecked / gone block is not shown
+	const checked = new Map<string, boolean>();
+	for (const b of db()
+		.prepare(`SELECT content_json FROM page_blocks WHERE page_id = ? ORDER BY position`)
+		.all(pageId) as { content_json: string }[])
+		todoStates(JSON.parse(b.content_json) as DocNode, checked);
+	const out: Record<string, string> = {};
+	for (const r of rows) {
+		const blockId = r.source_id.slice(prefix.length);
+		if (r.status === 'cancelled' && checked.get(blockId) !== true) continue;
+		if (r.due_at) out[blockId] ??= r.due_at;
+	}
+	return out;
+}
+
+/** v4.0 PR 30: a page saved -> reminders follow their to-do (ticked / deleted cancels; un-ticked restores). */
+export function syncPageTodos(pageId: string): void {
+	const prefix = `${pageId}:`;
+	const rows = db()
+		.prepare(
+			`SELECT DISTINCT owner_id, source_id FROM reminders WHERE source_type = 'page_todo' AND status IN ('scheduled','cancelled') AND substr(source_id, 1, ?) = ?`,
+		)
+		.all(prefix.length, prefix) as { owner_id: string; source_id: string }[];
+	for (const r of rows) recalc(r.owner_id, 'page_todo', r.source_id);
+}
 
 /** after planner / Keep writes (move, delete, restore, undo): bring every open reminder of this user in step.
  * shortcut: re-checks all of one user's open reminders (tens); key by source if users get thousands */
