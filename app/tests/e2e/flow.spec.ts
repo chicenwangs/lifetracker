@@ -1107,6 +1107,9 @@ test('v4 PR 18: callout, toggle and TOC insert, persist and behave', async () =>
 	await tg.locator('.tg-btn').click();
 	await expect(tg).toHaveAttribute('data-open', 'false');
 	await expect(tg.locator('.tg-body > p').nth(1)).toHaveCSS('display', 'none');
+	// the toggle state is a doc change: let the 600 ms autosave land before reloading
+	await expect(page.locator('.state')).toContainText('Saving');
+	await expect(page.locator('.state')).toContainText('Saved');
 	await page.reload();
 	await expect(ed.locator('.tg')).toHaveAttribute('data-open', 'false');
 	await expect(ed.locator('.tg-body > p').nth(1)).toHaveCSS('display', 'none');
