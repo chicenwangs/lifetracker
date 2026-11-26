@@ -143,7 +143,7 @@ export async function noDesktopHints(page: Page) {
 		for (let n = w.nextNode(); n; n = w.nextNode()) {
 			const t = n.textContent ?? '';
 			if (
-				/\b(ctrl|click|esc)\b|pc view/i.test(t) &&
+				/\b(ctrl|click|esc)\b|double-click|right-click|pc view/i.test(t) &&
 				n.parentElement?.checkVisibility({ checkVisibilityCSS: true })
 			)
 				out.push(t.trim().slice(0, 60));
@@ -153,7 +153,8 @@ export async function noDesktopHints(page: Page) {
 			if (!el.checkVisibility({ checkVisibilityCSS: true })) continue;
 			for (const at of ['aria-label', 'aria-description', 'title']) {
 				const t = el.getAttribute(at) ?? '';
-				if (/\b(ctrl|click|esc)\b|pc view/i.test(t)) out.push(`[${at}] ${t.slice(0, 60)}`);
+				if (/\b(ctrl|click|esc)\b|double-click|right-click|pc view/i.test(t))
+					out.push(`[${at}] ${t.slice(0, 60)}`);
 			}
 		}
 		return out;

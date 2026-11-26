@@ -25,6 +25,15 @@
 		gap: 10px;
 		align-items: flex-start;
 	}
+	/* the Ctrl+K tip is a key hint: fine pointers only (D-V4-03) */
+	.hint {
+		display: none;
+	}
+	@media (pointer: fine) {
+		.hint {
+			display: block;
+		}
+	}
 	/* phone: the tree above is the screen and has its own New page */
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.has,

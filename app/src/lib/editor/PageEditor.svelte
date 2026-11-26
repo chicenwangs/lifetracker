@@ -4,7 +4,7 @@
 	import { askText } from '$lib/client/dialog.svelte';
 	import { backCloses } from '$lib/client/layers';
 	import { modal } from '$lib/client/modal';
-	import { isPhone } from '$lib/client/phone';
+	import { isFine } from '$lib/client/phone';
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
 	import { onMount } from 'svelte';
 	import { Editor, type Content } from '@tiptap/core';
@@ -232,11 +232,11 @@
 	}
 	const op = (f: keyof typeof blockOps) => editor && (f === 'move' ? null : blockOps[f](editor.view));
 	// phone (#98): toolbar docks above the keyboard only while typing; block actions in one sheet
-	let phone = $state(false);
+	let fine = $state(false); // the Ctrl titles are key hints: fine pointers only (D-V4-03)
 	let typing = $state(false);
 	let blockMenu = $state(false);
 	onMount(() => {
-		phone = isPhone();
+		fine = isFine();
 		const dom = el?.querySelector('.pm');
 		const on = () => (typing = true);
 		const off = (e: Event) => {
@@ -267,7 +267,7 @@
 		class="t"
 		aria-pressed={marks.bold}
 		aria-label="Bold"
-		title={phone ? undefined : 'Bold (Ctrl+B)'}
+		title={fine ? 'Bold (Ctrl+B)' : undefined}
 		onclick={() => cmd((c) => c.toggleBold())}><b>B</b></button
 	>
 	<button
@@ -275,7 +275,7 @@
 		class="t"
 		aria-pressed={marks.italic}
 		aria-label="Italic"
-		title={phone ? undefined : 'Italic (Ctrl+I)'}
+		title={fine ? 'Italic (Ctrl+I)' : undefined}
 		onclick={() => cmd((c) => c.toggleItalic())}><i>I</i></button
 	>
 	<button
@@ -283,7 +283,7 @@
 		class="t"
 		aria-pressed={marks.underline}
 		aria-label="Underline"
-		title={phone ? undefined : 'Underline (Ctrl+U)'}
+		title={fine ? 'Underline (Ctrl+U)' : undefined}
 		onclick={() => cmd((c) => c.toggleUnderline())}><u>U</u></button
 	>
 	<button
