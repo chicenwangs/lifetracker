@@ -17,7 +17,7 @@ export const SUGGEST_DAYS = 90; // PG-1b
 const MAX_DOC_BYTES = 1_000_000;
 
 const db = () => handle().sqlite;
-type Row = { id: string; owner_id: string; parent_page_id: string | null; title: string; icon: string | null; position: number; archived_at: string | null; archived_batch: string | null; last_opened_at: string | null; deleted_at: string | null; deleted_batch: string | null; created_at: string; updated_at: string; revision: number }; // prettier-ignore
+type Row = { id: string; owner_id: string; parent_page_id: string | null; title: string; icon: string | null; is_template: number; position: number; archived_at: string | null; archived_batch: string | null; last_opened_at: string | null; deleted_at: string | null; deleted_batch: string | null; created_at: string; updated_at: string; revision: number }; // prettier-ignore
 
 const row = (ownerId: string, id: string): Row | undefined =>
 	db().prepare(`SELECT * FROM pages WHERE id = ? AND owner_id = ?`).get(id, ownerId) as Row | undefined;
@@ -32,9 +32,16 @@ const own = (ownerId: string, id: string): Row => {
 export function tree(ownerId: string): PageNode[] {
 	return (
 		db()
-			.prepare(`SELECT id, parent_page_id, title, icon FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND archived_at IS NULL AND NOT EXISTS (SELECT 1 FROM database_records r WHERE r.page_id = pages.id) ORDER BY position`)
+			.prepare(`SELECT id, parent_page_id, title, icon FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND archived_at IS NULL AND is_template = 0 AND NOT EXISTS (SELECT 1 FROM database_records r WHERE r.page_id = pages.id) ORDER BY position`)
 			.all(ownerId) as { id: string; parent_page_id: string | null; title: string; icon: string | null }[]
 	).map((r) => ({ id: r.id, parentId: r.parent_page_id, title: r.title, icon: r.icon })); // prettier-ignore
+}
+
+/** live templates (v4.0 PR 22): not in the sidebar tree, listed in the New page menu */
+export function templates(ownerId: string): PageNode[] {
+	return db()
+		.prepare(`SELECT id, parent_page_id AS parentId, title, icon FROM pages WHERE owner_id = ? AND is_template = 1 AND deleted_at IS NULL AND archived_at IS NULL ORDER BY title COLLATE NOCASE`)
+		.all(ownerId) as PageNode[]; // prettier-ignore
 }
 
 /** last opened live pages (phone All pages · Recent, wireframe MPages) */
@@ -82,6 +89,7 @@ export function get(ownerId: string, id: string, opened = true, viewer = ownerId
 		parentId: r.parent_page_id,
 		title: r.title,
 		icon: r.icon,
+		isTemplate: !!r.is_template,
 		archived: !!r.archived_at,
 		revision: r.revision,
 		updatedAt: r.updated_at,
@@ -183,6 +191,8 @@ export const patchSchema = z
 	.object({
 		title: z.string().max(300),
 		icon: z.string().max(8).nullable(),
+		/** v4.0 PR 22: a template page (not in the sidebar tree) */
+		isTemplate: z.boolean(),
 		doc: z.object({ type: z.literal('doc'), content: z.array(z.unknown()).max(5000) }).passthrough(),
 		/** optimistic lock (409 on mismatch, DESIGN §18) */
 		revision: z.number().int(),
@@ -268,7 +278,17 @@ export function update(
 		const set: string[] = ['updated_at = @now', 'updated_by = @me', 'revision = revision + 1'];
 		if (p.title !== undefined) set.push('title = @title');
 		if (p.icon !== undefined) set.push('icon = @icon');
-		db().prepare(`UPDATE pages SET ${set.join(', ')} WHERE id = @id`).run({ now, me: actor, title: p.title ?? null, icon: p.icon ?? null, id }); // prettier-ignore
+		if (p.isTemplate !== undefined) set.push('is_template = @template');
+		db()
+			.prepare(`UPDATE pages SET ${set.join(', ')} WHERE id = @id`)
+			.run({
+				now,
+				me: actor,
+				title: p.title ?? null,
+				icon: p.icon ?? null,
+				template: p.isTemplate === undefined ? null : p.isTemplate ? 1 : 0,
+				id,
+			}); // prettier-ignore
 		reindex(ownerId, id);
 		return get(ownerId, id, false);
 	});

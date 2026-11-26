@@ -7,12 +7,11 @@ import { showError } from './toast.svelte';
 
 let creating = false;
 
-/** returns the new page id, or null when another create is in flight or it failed */
-export async function createPage(parentId: string | null): Promise<string | null> {
+async function openNew(url: string, body: unknown): Promise<string | null> {
 	if (creating) return null;
 	creating = true;
 	try {
-		const r = await post<{ page: { id: string } }>('/api/pages', { parentId });
+		const r = await post<{ page: { id: string } }>(url, body);
 		await invalidateAll();
 		await goto(`/pages/${r.page.id}`);
 		return r.page.id;
@@ -23,3 +22,13 @@ export async function createPage(parentId: string | null): Promise<string | null
 		creating = false;
 	}
 }
+
+/** returns the new page id, or null when another create is in flight or it failed */
+export const createPage = (parentId: string | null): Promise<string | null> =>
+	openNew('/api/pages', { parentId });
+
+/** v4.0 PR 22: a copy of a template, titled "Untitled <name>", at the chosen parent (default top level) */
+export const createFromTemplate = (
+	templateId: string,
+	parentId: string | null = null,
+): Promise<string | null> => openNew(`/api/pages/${templateId}/from-template`, { parentId });

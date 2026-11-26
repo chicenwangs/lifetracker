@@ -6,11 +6,25 @@ import { nowUtcIso } from '$lib/time';
 import type { PageDTO } from '$lib/types';
 import * as pages from './pages';
 import * as databases from './databases';
-import { notFound } from '../http';
+import { bad, notFound } from '../http';
 
 type Node = { type: string; attrs?: { databaseId?: string } };
 
-export function duplicatePage(meId: string, ownerId: string, sourceId: string): PageDTO {
+export interface DuplicateOptions {
+	/** title override (templates: "Untitled <name>") */
+	title?: string;
+	/** chosen parent; undefined = the source's parent when the copier owns it, else top level */
+	parentId?: string | null;
+	/** new page is a template (default false) */
+	isTemplate?: boolean;
+}
+
+export function duplicatePage(
+	meId: string,
+	ownerId: string,
+	sourceId: string,
+	opts: DuplicateOptions = {},
+): PageDTO {
 	const src = pages.get(ownerId, sourceId, false, meId); // doc + title/icon; never bump the source's last-opened
 	const row = handle()
 		.sqlite.prepare(
@@ -19,16 +33,31 @@ export function duplicatePage(meId: string, ownerId: string, sourceId: string): 
 		.get(sourceId, ownerId) as { pid: string | null; pos: number; icon: string | null } | undefined;
 	if (!row) return notFound();
 	// same parent only when the copier owns a live page there; otherwise top level
-	let parentId: string | null = null;
-	if (row.pid) {
+	let parentId: string | null;
+	if (opts.parentId !== undefined) {
+		if (opts.parentId) {
+			const par = handle()
+				.sqlite.prepare(
+					'SELECT id FROM pages WHERE id = ? AND owner_id = ? AND deleted_at IS NULL AND archived_at IS NULL',
+				)
+				.get(opts.parentId, meId);
+			if (!par) bad('Pick a page you own that is not in the trash.');
+		}
+		parentId = opts.parentId;
+	} else if (row.pid) {
 		const p = handle()
 			.sqlite.prepare('SELECT id FROM pages WHERE id = ? AND owner_id = ? AND deleted_at IS NULL')
 			.get(row.pid, meId);
-		if (p) parentId = row.pid;
-	}
+		parentId = p ? row.pid : null;
+	} else parentId = null;
 	const db = handle().sqlite;
 	let position: number;
-	if (parentId === row.pid) {
+	if (opts.parentId !== undefined) {
+		const max = db
+			.prepare('SELECT max(position) AS m FROM pages WHERE owner_id = ? AND parent_page_id IS ?')
+			.get(meId, parentId) as { m: number | null };
+		position = (max.m ?? 0) + 1;
+	} else if (parentId === row.pid) {
 		const next = db
 			.prepare(
 				'SELECT min(position) AS p FROM pages WHERE owner_id = ? AND parent_page_id IS ? AND position > ? AND id <> ? AND deleted_at IS NULL',
@@ -43,11 +72,11 @@ export function duplicatePage(meId: string, ownerId: string, sourceId: string): 
 	}
 	const id = newId('pg');
 	const now = nowUtcIso();
-	const title = `Copy of ${src.title.trim() || 'Untitled'}`.slice(0, 300);
+	const title = (opts.title ?? `Copy of ${src.title.trim() || 'Untitled'}`).slice(0, 300);
 	db.prepare(
-		`INSERT INTO pages (id, owner_id, parent_page_id, title, icon, position, created_at, updated_at, created_by, updated_by, last_opened_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-	).run(id, meId, parentId, title, row.icon, position, now, now, meId, meId, now);
+		`INSERT INTO pages (id, owner_id, parent_page_id, title, icon, is_template, position, created_at, updated_at, created_by, updated_by, last_opened_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	).run(id, meId, parentId, title, row.icon, opts.isTemplate ? 1 : 0, position, now, now, meId, meId, now);
 	// copy the blocks; a database block gets a fresh schema and a rewritten databaseId
 	const doc = structuredClone(src.doc) as { type: 'doc'; content: Node[] };
 	for (const node of doc.content) {

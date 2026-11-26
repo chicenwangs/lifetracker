@@ -168,6 +168,8 @@ export interface PageDTO extends PageNode {
 	crumbs: { id: string; title: string }[];
 	/** internal link targets in this page -> current title, or null = unavailable (gone / not mine) */
 	links: Record<string, { title: string; archived: boolean } | null>;
+	/** v4.0 PR 22: template pages live outside the sidebar tree */
+	isTemplate: boolean;
 	pinned: boolean;
 	/** what the viewer may do: their own page, or a share (D-01: explicit only) */
 	access: 'owner' | 'edit' | 'view';

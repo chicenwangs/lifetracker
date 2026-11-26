@@ -149,3 +149,31 @@ test('duplicate from the page menu: the copy opens (#440)', async () => {
 		[id, copyId] as string[],
 	);
 });
+
+test('Pages + offers templates and makes a copy (#447)', async () => {
+	const T = 'Phone tpl page';
+	const id = await page.evaluate(async (t) => {
+		const r = await fetch('/api/pages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: t }) }); // prettier-ignore
+		const p = (await r.json()) as { page: { id: string } };
+		const doc = {
+			type: 'doc',
+			content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Tpl body' }] }],
+		};
+		await fetch(`/api/pages/${p.page.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ doc }) }); // prettier-ignore
+		await fetch(`/api/pages/${p.page.id}/template`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ isTemplate: true }) }); // prettier-ignore
+		return p.page.id;
+	}, T);
+	await page.goto('/pages');
+	await page.locator('nav.mbar').getByRole('button', { name: 'New page' }).click();
+	await page.getByRole('button', { name: T }).click();
+	await expect.poll(() => page.url()).not.toBe('/pages');
+	await expect(page.getByLabel('Page title')).toHaveValue(`Untitled ${T}`);
+	await expect(page.locator('.pm')).toContainText('Tpl body');
+	const copyId = page.url().split('/').pop() as string;
+	await page.evaluate(
+		async (ids) => {
+			for (const x of ids) await fetch(`/api/pages/${x}`, { method: 'DELETE' });
+		},
+		[id, copyId] as string[],
+	);
+});

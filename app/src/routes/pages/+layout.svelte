@@ -4,12 +4,15 @@
 	import { invalidateAll } from '$lib/client/refresh';
 	import { page } from '$app/state';
 	import { post } from '$lib/client/api';
-	import { createPage } from '$lib/client/newPage';
+	import { createPage, createFromTemplate } from '$lib/client/newPage';
+	import { backCloses } from '$lib/client/layers';
 	import { showError } from '$lib/client/toast.svelte';
 	import type { PageNode } from '$lib/types';
 
 	let { data, children } = $props();
 	const nodes = $derived(data.tree as PageNode[]);
+	const templates = $derived((data.templates ?? []) as PageNode[]);
+	let newOpen = $state(false);
 	const kids = (id: string | null) => nodes.filter((n) => n.parentId === id);
 	let open = $state<Record<string, boolean>>({});
 	let hidden = $state(false);
@@ -92,9 +95,35 @@
 	{#if !hidden}
 		<nav class="tree card" aria-label="Pages">
 			<div class="head">
-				<button class="btn primary sm grow newpage" type="button" onclick={() => create(null)}
-					>New page</button
-				>
+				<div class="new">
+					<button
+						class="btn primary sm grow newpage"
+						type="button"
+						onclick={() => (templates.length ? (newOpen = !newOpen) : create(null))}>New page</button
+					>
+					{#if newOpen && templates.length}
+						<div class="newscrim" role="presentation" onclick={() => (newOpen = false)}></div>
+						<div
+							class="newmenu card"
+							role="menu"
+							aria-label="New page"
+							use:backCloses={() => (newOpen = false)}
+						>
+							<button role="menuitem" type="button" onclick={() => ((newOpen = false), void create(null))}
+								>Blank page</button
+							>
+							<span class="hint">From template</span>
+							{#each templates as t (t.id)}
+								<button
+									role="menuitem"
+									type="button"
+									onclick={() => ((newOpen = false), void createFromTemplate(t.id))}
+									>{t.icon ? `${t.icon} ` : ''}{t.title || 'Untitled'}</button
+								>
+							{/each}
+						</div>
+					{/if}
+				</div>
 				<button class="mini" type="button" aria-label="New database" title="New database" onclick={createDb}
 					>▤</button
 				>
@@ -194,6 +223,45 @@
 		align-items: center;
 		gap: 6px;
 		margin-bottom: 8px;
+	}
+	.new {
+		position: relative;
+		display: flex;
+		flex: 1;
+	}
+	.newscrim {
+		position: fixed;
+		inset: 0;
+		z-index: 40;
+	}
+	.newmenu {
+		position: absolute;
+		top: calc(100% + 4px);
+		left: 0;
+		z-index: 41;
+		min-width: 200px;
+		padding: 6px;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+	.newmenu button {
+		min-height: 32px;
+		padding: 0 8px;
+		text-align: left;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		cursor: pointer;
+	}
+	.newmenu button:hover {
+		background: var(--pill);
+		color: var(--pill-ink);
+	}
+	.newmenu .hint {
+		padding: 4px 8px 0;
 	}
 	.grow {
 		flex: 1;

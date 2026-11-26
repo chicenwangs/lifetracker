@@ -163,6 +163,24 @@
 			showError(e);
 		}
 	}
+	// v4.0 PR 22: template pages live under Templates in the New page menu, not the sidebar tree
+	async function toggleTemplate() {
+		menu = false;
+		try {
+			const r = await post<{ page: PageDTO; undo: UndoRef }>(`/api/pages/${pg.id}/template`, {
+				isTemplate: !pg.isTemplate,
+			});
+			await invalidateAll();
+			showToast(r.page.isTemplate ? 'Template created' : 'Template removed', {
+				undo: async () => {
+					await undoLast(r.undo.id);
+					await invalidateAll();
+				},
+			});
+		} catch (e) {
+			showError(e);
+		}
+	}
 </script>
 
 <svelte:head><title>{pg.title || 'Untitled'} · Pages · Life Tracker</title></svelte:head>
@@ -239,6 +257,11 @@
 						<button role="menuitem" type="button" onclick={() => reorder(1)}>Move down</button>
 					{/if}
 					<button role="menuitem" type="button" onclick={duplicate}>Duplicate</button>
+					{#if mine}
+						<button role="menuitem" type="button" onclick={toggleTemplate}
+							>{pg.isTemplate ? 'Stop being a template' : 'Make template'}</button
+						>
+					{/if}
 					<button
 						role="menuitem"
 						type="button"
@@ -257,6 +280,9 @@
 		</div>
 	</div>
 	<div class="body">
+		{#if pg.isTemplate}
+			<span class="tpl">Template · edits don't change pages made from it</span>
+		{/if}
 		<input
 			class="title"
 			autocomplete="off"
@@ -391,6 +417,16 @@
 		max-width: 1400px;
 		margin: 0 auto;
 		padding: 32px 56px 48px;
+	}
+	/* v4.0 PR 22: template pill in the header */
+	.tpl {
+		display: inline-block;
+		margin: 0 0 8px;
+		padding: 3px 10px;
+		border-radius: 999px;
+		background: var(--ground);
+		color: var(--quiet);
+		font-size: 12px;
 	}
 	/* database pages need the room for columns (wireframe Database) */
 	.body:has(:global(section[data-db])) {
