@@ -27,12 +27,23 @@ function Say([string]$m) { Write-Host "== $m" }
 function Get-Pids { if (Test-Path $pidFile) { @(Get-Content $pidFile -Raw | ConvertFrom-Json) } else { @() } }
 function Save-Pids($list) { (ConvertTo-Json -InputObject @($list)) | Set-Content $pidFile -Encoding utf8 }
 
-function Stop-Servers {
+function Stop-Servers([int[]]$ports = @(4401, 4402, 4403, 4404)) {
 	foreach ($p in Get-Pids) { if ($p.pid -and (Get-Process -Id $p.pid -ErrorAction SilentlyContinue)) { & taskkill /PID $p.pid /T /F 2>&1 | Out-Null } }
+	# also anything still listening on our ports (a server from an older run): only node processes
+	foreach ($port in $ports) {
+		foreach ($c in @(Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue)) {
+			$proc = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue
+			if ($proc -and $proc.ProcessName -eq 'node') { & taskkill /PID $proc.Id /T /F 2>&1 | Out-Null }
+		}
+	}
 	Remove-Item $pidFile -ErrorAction SilentlyContinue
 }
-function Test-Up([int]$port, [int]$tries = 30) {
-	for ($i = 0; $i -lt $tries; $i++) { try { $null = Invoke-RestMethod "http://127.0.0.1:$port/healthz" -TimeoutSec 3; return $true } catch { Start-Sleep -Seconds 1 } }
+# up = answers /healthz with exactly this build's version (a stale server from an older build doesn't count)
+function Test-Up([int]$port, [string]$version, [int]$tries = 30) {
+	for ($i = 0; $i -lt $tries; $i++) {
+		try { $h = Invoke-RestMethod "http://127.0.0.1:$port/healthz" -TimeoutSec 3; if ($h.version -eq $version) { return $true } } catch {}
+		Start-Sleep -Seconds 1
+	}
 	$false
 }
 function Show-Status {
@@ -123,7 +134,7 @@ if ($Up -or $Reset) {
 	$lines += '', "Emulator: qa-env.ps1 -Emulator adds server 4404 (copy of the new seed) and an app pointed at $emuUrl."
 	Set-Content (Join-Path $envDir 'ENV.md') ($lines -join "`n") -Encoding utf8
 	Start-Sleep -Seconds 3
-	$bad = @($servers | Where-Object { -not (Test-Up $_.port) }).Count
+	$bad = @($servers | Where-Object { -not (Test-Up $_.port "qa-$sha7") }).Count
 	Show-Status
 	if ($bad) { "QA ENV FAILED: $bad server(s) down (see server.err files)"; exit 1 }
 	"QA ENV UP at $sha7"
@@ -138,12 +149,15 @@ if ($Emulator) {
 	Say "server 4404 for the emulator (ORIGIN $emuUrl)"
 	$dir = Join-Path $envDir 'servers\emulator'
 	$keep = @(Get-Pids | Where-Object { $_.name -ne 'emulator' })
-	foreach ($p in @(Get-Pids | Where-Object { $_.name -eq 'emulator' })) { & taskkill /PID $p.pid /T /F 2>&1 | Out-Null }
+	foreach ($c in @(Get-NetTCPConnection -State Listen -LocalPort 4404 -ErrorAction SilentlyContinue)) {
+		$proc = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue
+		if ($proc -and $proc.ProcessName -eq 'node') { & taskkill /PID $proc.Id /T /F 2>&1 | Out-Null }
+	}
 	Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force $dir | Out-Null
 	Copy-Item "$envDir\db\new\*" $dir -Exclude '*.bak' -Force
 	$keep += Start-QaServer 'emulator' 4404 $emuUrl "$dir\new.db" $dir 'emulator-no-setup' "qa-$sha7"
 	Save-Pids $keep
-	if (-not (Test-Up 4404)) { 'server 4404 did not start (see its server.err)'; exit 1 }
+	if (-not (Test-Up 4404 "qa-$sha7")) { 'server 4404 did not start (see its server.err)'; exit 1 }
 	Add-Content (Join-Path $envDir 'ENV.md') "- $emuUrl (emulator only; from the PC: http://127.0.0.1:4404): copy of the new seed. Login: $(Get-Login $dir '')."
 
 	$dev = (& $adb devices) -match '^emulator-\d+\s+device'
