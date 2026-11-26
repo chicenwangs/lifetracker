@@ -89,6 +89,8 @@ export interface ViewConfig {
 	/** gallery view: the url property used as a card cover, and the card size */
 	coverProp?: string | null;
 	cardSize?: 'S' | 'M' | 'L';
+	/** calendar view: the date property a record sits on */
+	dateProp?: string | null;
 }
 
 const empty = (v: unknown) => v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length);

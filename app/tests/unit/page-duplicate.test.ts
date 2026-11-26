@@ -44,9 +44,17 @@ function source() {
 		config: { options: [{ id: 'o1', label: 'A', color: 'blue' }] },
 	});
 	const link = databases.addProp(u1, db.id, { name: 'Link', type: 'url', config: {} });
+	const when = databases.addProp(u1, db.id, { name: 'When', type: 'date', config: {} });
 	const view = databases.addView(u1, db.id, 'Sorted');
 	databases.patchView(u1, view.id, {
-		config: { sort: { prop: sel.id, dir: 'asc' }, coverProp: link.id, cardSize: 'L' },
+		config: {
+			sort: { prop: sel.id, dir: 'asc' },
+			groupBy: sel.id,
+			cardProps: [sel.id],
+			coverProp: link.id,
+			cardSize: 'L',
+			dateProp: when.id,
+		},
 	});
 	databases.addRecord(u1, db.id);
 	pages.update(u1, p.id, {
@@ -59,7 +67,7 @@ function source() {
 			],
 		},
 	});
-	return { parent, p, target, child, db, sel, link };
+	return { parent, p, target, child, db, sel, link, when };
 }
 
 const blockIds = (pageId: string) =>
@@ -92,7 +100,7 @@ describe('duplicatePage', () => {
 		]);
 	});
 	it('copies database schema only: new db, props and view config remapped, no records', () => {
-		const { p, db, sel, link } = source();
+		const { p, db, sel, link, when } = source();
 		const copy = duplicatePage(u1, u1, p.id);
 		const node = (copy.doc.content as { type: string; attrs: { databaseId: string } }[]).find(
 			(n) => n.type === 'database',
@@ -109,6 +117,11 @@ describe('duplicatePage', () => {
 		expect(madeLink?.id).not.toBe(link.id);
 		expect(madeView?.config.coverProp).toBe(madeLink?.id);
 		expect(madeView?.config.cardSize).toBe('L');
+		const madeWhen = made.props.find((x) => x.name === 'When'); // calendar date prop remapped
+		expect(madeWhen?.id).not.toBe(when.id);
+		expect(madeView?.config.groupBy).toBe(madeSel?.id);
+		expect(madeView?.config.cardProps).toEqual([madeSel?.id]);
+		expect(madeView?.config.dateProp).toBe(madeWhen?.id);
 		expect(made.rows).toHaveLength(0);
 		expect(src.rows).toHaveLength(1); // the source keeps its record
 	});

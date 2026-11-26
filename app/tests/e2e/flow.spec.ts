@@ -1050,6 +1050,44 @@ test('v2 P3 Pages: tree, slash menu, internal link survives rename, pin cap, arc
 	await expect(page.getByRole('tree', { name: 'Page tree' })).toContainText('Gym');
 });
 
+test('v4 PR 16: page emoji icon - keyboard pick, sidebar, Undo', async () => {
+	await page.goto('/pages');
+	await page.getByRole('button', { name: 'New page' }).last().click();
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	await page.getByLabel('Page title').fill('Icon test');
+	await expect(page.locator('.state')).toContainText('Saved');
+	await page.getByRole('button', { name: 'Page icon: Add icon' }).click();
+	const pop = page.getByRole('dialog', { name: 'Page icon' });
+	await expect(pop).toBeVisible();
+	await expect(pop.getByRole('option', { name: '📄' })).toBeFocused();
+	await page.keyboard.press('ArrowDown'); // 8 columns -> second row, first cell
+	await expect(pop.getByRole('option', { name: '✅' })).toBeFocused();
+	await page.keyboard.press('Enter');
+	await expect(pop).toBeHidden();
+	await expect(page.getByRole('button', { name: 'Page icon: ✅' })).toHaveText('✅');
+	await expect(page.getByRole('button', { name: 'Page icon: ✅' })).toBeFocused();
+	// sidebar shows it; toast Undo puts the old icon (none) back
+	await expect(page.getByRole('tree', { name: 'Page tree' })).toContainText('✅ Icon test');
+	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('button', { name: 'Page icon: Add icon' })).toHaveText('Add icon');
+	await expect(page.getByRole('tree', { name: 'Page tree' })).not.toContainText('✅');
+	// set it again, then Esc from Remove (outside the grid) closes and returns focus to the trigger
+	await page.getByRole('button', { name: 'Page icon: Add icon' }).click();
+	await page.getByRole('dialog', { name: 'Page icon' }).getByRole('option', { name: '✅' }).click();
+	await expect(page.getByRole('button', { name: 'Page icon: ✅' })).toHaveText('✅');
+	await page.getByRole('button', { name: 'Page icon: ✅' }).click();
+	await expect(pop).toBeVisible();
+	await page.keyboard.press('Shift+Tab'); // grid cell -> Remove (it comes before the grid in the DOM)
+	await expect(pop.getByRole('button', { name: 'Remove' })).toBeFocused();
+	await page.keyboard.press('Escape');
+	await expect(pop).toBeHidden();
+	await expect(page.getByRole('button', { name: 'Page icon: ✅' })).toBeFocused();
+	// the graph label carries the icon too
+	await page.goto('/pages/graph');
+	await page.getByRole('button', { name: 'Show as list instead' }).click();
+	await expect(page.getByRole('list', { name: 'Pages and their links' })).toContainText('✅ Icon test');
+});
+
 test('v2 P4 Databases: new database, number property rejects text, records, sort, record opens as page', async () => {
 	await page.goto('/pages');
 	await page.getByRole('button', { name: 'New database' }).click();
@@ -1278,6 +1316,40 @@ test('v2 P8: phone Week/Month/More, PWA manifest, offline badge + Keep queue, He
 	await d.reload();
 	await expect(d.locator('.tcard')).toHaveCount(0);
 	await ctx.close();
+});
+
+test('page Linked from: the sources that link here, hidden when none (#443)', async () => {
+	const target = (await api('POST', '/api/pages', { title: 'Link target' })).j.page;
+	const src = (await api('POST', '/api/pages', { title: 'Link source' })).j.page;
+	const doc = {
+		type: 'doc',
+		content: [
+			{
+				type: 'paragraph',
+				content: [
+					{ type: 'text', text: 'see ' },
+					{ type: 'pageLink', attrs: { pageId: target.id } },
+				],
+			},
+		],
+	};
+	expect((await api('PATCH', `/api/pages/${src.id}`, { doc })).s).toBe(200);
+	await page.goto(`/pages/${target.id}`);
+	const panel = page.getByRole('region', { name: /Linked from \(1\)/ });
+	await expect(panel).toBeVisible();
+	const row = panel.getByRole('link', { name: 'Link source' });
+	await expect(row).toHaveAttribute('href', `/pages/${src.id}`);
+	await expect(panel.locator('.snip b')).toHaveText('Link target');
+	// collapse, then expand again
+	const toggle = panel.getByRole('button', { name: /Linked from \(1\)/ });
+	await toggle.click();
+	await expect(panel.getByRole('link')).toHaveCount(0);
+	await toggle.click();
+	await expect(panel.getByRole('link', { name: 'Link source' })).toBeVisible();
+	// no links at all: the whole panel is hidden
+	const lonely = (await api('POST', '/api/pages', { title: 'Lonely page' })).j.page;
+	await page.goto(`/pages/${lonely.id}`);
+	await expect(page.getByRole('region', { name: /Linked from/ })).toHaveCount(0);
 });
 
 test('database board: group by a select property, move by menu + undo, drag, keyboard, empty state', async () => {
@@ -1931,6 +2003,60 @@ test('database gallery: cover, title + props, size, click opens a record, empty 
 	await expect(
 		page.getByRole('list', { name: 'Cards' }).getByRole('button', { name: 'Untitled' }),
 	).toBeVisible();
+});
+
+test('database calendar: records on their date, create from a day, No date rail (#445)', async () => {
+	const db = (await api('POST', '/api/databases', { title: 'Cal DB' })).j.database as {
+		id: string;
+		pageId: string;
+	};
+	const when = (
+		await api('POST', `/api/databases/${db.id}/properties`, { name: 'When', type: 'date', config: {} })
+	).j.prop as { id: string };
+	const info = (await api('GET', `/api/databases/${db.id}`)).j.database as {
+		props: { id: string; type: string }[];
+	};
+	const tp = info.props.find((p) => p.type === 'title')!;
+	const ym = await page.evaluate(() =>
+		new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date()).slice(0, 7),
+	);
+	await api('POST', `/api/databases/${db.id}/records`, {
+		values: { [tp.id]: 'Dated', [when.id]: `${ym}-12` },
+	});
+	await api('POST', `/api/databases/${db.id}/records`, { values: { [tp.id]: 'Undated' } });
+	await api('POST', `/api/databases/${db.id}/views`, { name: 'Calendar', type: 'calendar' });
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Calendar/ }).click();
+	const grid = page.getByRole('group', { name: /records/ });
+	await expect(grid.getByRole('button', { name: 'Dated' })).toBeVisible(); // the record sits on the 12th
+	await expect(page.locator('[aria-label="No date"]')).toContainText('Undated');
+	// click a day = a new record dated that day
+	await page.getByRole('button', { name: `New record on ${ym}-20` }).click();
+	await expect(grid.getByRole('button', { name: 'Untitled' })).toBeVisible();
+	await expect
+		.poll(async () => {
+			const rows = (await api('GET', `/api/databases/${db.id}`)).j.database.rows as {
+				values: Record<string, unknown>;
+			}[];
+			return rows.filter((r) => r.values[when.id] === `${ym}-20`).length;
+		})
+		.toBe(1);
+	// D-19: a text value left over after converting a property to date stays visible in No date
+	const note = (
+		await api('POST', `/api/databases/${db.id}/properties`, { name: 'Note', type: 'text', config: {} })
+	).j.prop as { id: string };
+	const view2 = (await api('POST', `/api/databases/${db.id}/views`, { name: 'Calendar 2', type: 'calendar' }))
+		.j.view as { id: string };
+	await api('POST', `/api/databases/${db.id}/records`, {
+		values: { [tp.id]: 'Bad date', [note.id]: 'hello' },
+	});
+	expect((await api('PATCH', `/api/database-properties/${note.id}`, { type: 'date', confirm: true })).s).toBe(
+		200,
+	);
+	await api('PATCH', `/api/database-views/${view2.id}`, { config: { dateProp: note.id } });
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Calendar 2/ }).click();
+	await expect(page.locator('[aria-label="No date"]')).toContainText('Bad date');
 });
 
 test('reset-password script works', async ({ browser }) => {

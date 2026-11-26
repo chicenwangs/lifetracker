@@ -14,6 +14,7 @@ export const load: PageServerLoad = ({ locals, params }) => {
 		return {
 			page: pages.get(owner, params.id, true, uid),
 			record: rec && { ...rec, ...dbs.getRecord(owner, rec.recordId) },
+			backlinks: pages.backlinks(uid, params.id),
 		};
 	} catch (e) {
 		if (e instanceof ApiFail && e.status === 404)

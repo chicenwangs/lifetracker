@@ -6,23 +6,38 @@
 	import { modal } from '$lib/client/modal';
 	import { isPhone } from '$lib/client/phone';
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
+	import Reminders from '$lib/components/Reminders.svelte';
 	import { onMount } from 'svelte';
 	import { Editor, type Content } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import { TableKit } from '@tiptap/extension-table';
-	import { TaskItem, TaskList } from '@tiptap/extension-list';
+	import { TaskList } from '@tiptap/extension-list';
 	import Image from '@tiptap/extension-image';
 	import { patch, get, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
-	import { BlockKeys, DatabaseBlock, PageLink, Slash, blockOps, type SlashItem } from './extensions.svelte';
+	import {
+		BlockKeys,
+		DatabaseBlock,
+		PageLink,
+		Slash,
+		TodoIds,
+		TodoItem,
+		TodoReminders,
+		blockOps,
+		newBlockId,
+		type SlashItem,
+		type TodoReminderStore,
+	} from './extensions.svelte';
 	import type { PageDTO } from '$lib/types';
 
 	let {
 		page,
+		tz,
 		onsaved,
 		onstate,
 	}: {
 		page: PageDTO;
+		tz: string;
 		onsaved?: (p: PageDTO) => void;
 		onstate?: (s: 'saving' | 'saved' | 'failed' | 'conflict') => void;
 	} = $props();
@@ -35,10 +50,98 @@
 	let inTable = $state(false);
 	let marks = $state<Record<string, boolean>>({});
 
+	// ---------- to-do reminders (v4.0 PR 30) ----------
+	let inTodo = $state(false);
+	let remindId = $state<string | null>(null);
+	let todoLabels = $state<Record<string, string>>({});
+	let checkedBefore: Record<string, boolean> = {};
+	let todoSig = '';
+	const todoItems = () => {
+		const out: { id: string; checked: boolean; pos: number }[] = [];
+		editor?.state.doc.descendants((node, pos) => {
+			if (node.type.name !== 'taskItem') return;
+			const id = node.attrs.blockId as string | null;
+			if (id) out.push({ id, checked: node.attrs.checked === true, pos });
+		});
+		return out;
+	};
+	const todoSigOf = () =>
+		todoItems()
+			.map((t) => `${t.id}:${+t.checked}`)
+			.join(',');
+	const chipLabel = (z: string) =>
+		new Intl.DateTimeFormat(undefined, { timeZone: tz, weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(z)); // prettier-ignore
+	async function loadTodoLabels() {
+		try {
+			const r = await get<{ todos: Record<string, string> }>(`/api/reminders?page=${page.id}`);
+			todoLabels = Object.fromEntries(Object.entries(r.todos).map(([id, due]) => [id, chipLabel(due)]));
+		} catch {
+			return; // chips are decoration: a failed refresh keeps the last known ones
+		}
+		const store = editor
+			? (editor.storage as unknown as { todoReminders: TodoReminderStore }).todoReminders
+			: undefined;
+		if (store) {
+			store.labels = todoLabels;
+			store.onOpen = (id) => void openRemind(id);
+			editor?.view.dispatch(editor.state.tr);
+		}
+		checkedBefore = Object.fromEntries(todoItems().map((t) => [t.id, t.checked]));
+		todoSig = todoSigOf();
+	}
+	/** the to-do block around the cursor, given an id it did not have yet */
+	function ensureTodoId(): string | null {
+		if (!editor) return null;
+		const { state, view } = editor;
+		const from = state.selection.$from;
+		for (let d = from.depth; d > 0; d--) {
+			const node = from.node(d);
+			if (node.type.name !== 'taskItem') continue;
+			const id = node.attrs.blockId as string | null;
+			if (id) return id;
+			const next = newBlockId();
+			view.dispatch(state.tr.setNodeMarkup(from.before(d), undefined, { ...node.attrs, blockId: next }));
+			return next;
+		}
+		return null;
+	}
+	async function openRemind(id?: string) {
+		const blockId = id ?? ensureTodoId();
+		if (!blockId) return showToast('Put the cursor in a to-do first.', { kind: 'error' });
+		await flush(); // the server finds the to-do in the saved blocks
+		remindId = blockId;
+	}
+	function closeRemind() {
+		remindId = null;
+		void loadTodoLabels();
+	}
+	function untick(id: string) {
+		if (!editor) return;
+		let pos = -1;
+		let attrs: Record<string, unknown> = {};
+		editor.state.doc.descendants((n, p) => {
+			if (n.type.name === 'taskItem' && n.attrs.blockId === id) {
+				pos = p;
+				attrs = n.attrs;
+			}
+		});
+		if (pos < 0) return;
+		editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...attrs, checked: false }));
+		void flush().then(() => loadTodoLabels());
+	}
+	/** ticking a to-do with a chip cancels its reminder on the next save; Undo un-ticks it */
+	function checkTicks() {
+		for (const t of todoItems()) {
+			if (t.checked && checkedBefore[t.id] === false && todoLabels[t.id])
+				showToast('Reminder cancelled', { undo: () => untick(t.id) });
+			checkedBefore[t.id] = t.checked;
+		}
+	}
+
 	// ---------- "/" menu ----------
 	let picker = $state<{
 		q: string;
-		hits: { id: string; title: string; archived: number }[];
+		hits: { id: string; title: string; archived: number; icon: string | null }[];
 		at: number;
 	} | null>(null);
 	const ITEMS: SlashItem[] = [
@@ -75,7 +178,7 @@
 	}
 	async function findPages(q: string) {
 		try {
-			const r = await get<{ hits: { id: string; title: string; archived: number }[] }>(
+			const r = await get<{ hits: { id: string; title: string; archived: number; icon: string | null }[] }>(
 				`/api/pages/find?q=${encodeURIComponent(q)}`,
 			);
 			if (picker) picker.hits = r.hits.filter((h) => h.id !== page.id);
@@ -149,6 +252,7 @@
 				revision = r.page.revision;
 				onstate?.(pending ? 'saving' : 'saved');
 				onsaved?.(r.page);
+				if (todoSigOf() !== todoSig) void loadTodoLabels();
 			} catch (e) {
 				pending = true; // text stays here; next change or Retry tries again
 				const conflict = (e as { status?: number }).status === 409;
@@ -172,7 +276,9 @@
 				StarterKit.configure({ link: { openOnClick: false, autolink: true, protocols: ['http', 'https', 'mailto'], HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' } } }),
 				TableKit.configure({ table: { resizable: false } }),
 				TaskList,
-				TaskItem.configure({ nested: true }),
+				TodoItem.configure({ nested: true }),
+				TodoIds,
+				TodoReminders,
 				Image.configure({ inline: false }),
 				PageLink.configure({ titles: page.links }),
 				DatabaseBlock,
@@ -182,9 +288,13 @@
 			content: (page.doc.content.length ? page.doc : { type: 'doc', content: [{ type: 'paragraph' }] }) as Content,
 			editable: page.access !== 'view',
 			editorProps: { attributes: { 'aria-label': 'Page content', class: 'pm' } },
-			onUpdate: changed,
+			onUpdate: () => {
+				changed();
+				checkTicks();
+			},
 			onTransaction: ({ editor: e }) => {
 				inTable = e.isActive('table');
+				inTodo = e.isActive('taskItem');
 				marks = { bold: e.isActive('bold'), italic: e.isActive('italic'), underline: e.isActive('underline'), strike: e.isActive('strike'), code: e.isActive('code'), link: e.isActive('link') };
 			},
 		}); // prettier-ignore
@@ -197,6 +307,7 @@
 			}
 		});
 		editor = ed;
+		void loadTodoLabels();
 		// Ctrl+Z / Ctrl+Y on a page = this page's undo, even after a toolbar click took focus out of the text
 		// (the app-wide undo would otherwise undo the last planner action instead)
 		const keys = (e: KeyboardEvent) => {
@@ -333,6 +444,11 @@
 		>Duplicate</button
 	>
 	<button type="button" class="t desk" title="Delete block" onclick={() => op('remove')}>Delete block</button>
+	{#if inTodo}
+		<button type="button" class="t desk" title="Reminder on this to-do" onclick={() => void openRemind()}
+			>Remind me</button
+		>
+	{/if}
 	{#if inTable}
 		<span class="sep"></span>
 		<button type="button" class="t" onclick={() => cmd((c) => c.addRowAfter())}>+ Row</button>
@@ -361,6 +477,7 @@
 	<ActionSheet
 		title="Block"
 		actions={[
+			...(inTodo ? [{ label: 'Remind me', run: () => void openRemind() }] : []),
 			{ label: 'Move up', run: run(() => editor && blockOps.move(editor.view, -1)) },
 			{ label: 'Move down', run: run(() => editor && blockOps.move(editor.view, 1)) },
 			{ label: 'Duplicate', run: run(() => op('duplicate')) },
@@ -368,6 +485,21 @@
 		]}
 		onclose={() => (blockMenu = false)}
 	/>
+{/if}
+{#if remindId}
+	<div class="scrim" role="presentation" onclick={closeRemind}></div>
+	<div
+		use:backCloses={closeRemind}
+		use:modal={closeRemind}
+		class="picker card"
+		role="dialog"
+		aria-modal="true"
+		aria-label="Reminder"
+	>
+		<h2 class="rt">Remind me</h2>
+		<Reminders source="page_todo" sourceId={`${page.id}:${remindId}`} {tz} relative={false} />
+		<button class="btn sm" type="button" onclick={closeRemind}>Close</button>
+	</div>
 {/if}
 {#if picker}
 	<div class="scrim" role="presentation" onclick={() => (picker = null)}></div>
@@ -393,7 +525,7 @@
 		/>
 		{#each picker.hits as h (h.id)}
 			<button type="button" onclick={() => insertLink(h)}
-				>{h.title || 'Untitled'}{#if h.archived}
+				>{h.icon ? `${h.icon} ` : ''}{h.title || 'Untitled'}{#if h.archived}
 					<span class="hint">archived</span>{/if}</button
 			>
 		{:else}<span class="hint">No pages match.</span>{/each}
@@ -687,5 +819,40 @@
 	.picker button:hover {
 		background: var(--pill);
 		color: var(--pill-ink);
+	}
+	.rt {
+		margin: 0 0 6px;
+		font-size: 16px;
+	}
+	/* v4.0 PR 30: the reminder chip after a to-do (a ProseMirror decoration, not saved content) */
+	.doc :global(.todo-rem) {
+		display: inline-block;
+		min-height: 24px;
+		margin-left: 8px;
+		padding: 1px 8px;
+		border: 1px solid var(--rule);
+		border-radius: 999px;
+		background: var(--ground);
+		color: var(--quiet);
+		font: inherit;
+		font-size: 12px;
+		line-height: 20px;
+		vertical-align: baseline;
+		cursor: pointer;
+	}
+	.doc :global(.todo-rem:hover) {
+		background: var(--pill);
+		color: var(--pill-ink);
+	}
+	.doc :global(li[data-checked='true'] .todo-rem) {
+		text-decoration: line-through;
+		opacity: 0.6;
+	}
+	.doc :global(.todo-rem[disabled]) {
+		cursor: default;
+	}
+	.doc :global(.todo-rem[disabled]:hover) {
+		background: var(--ground);
+		color: var(--quiet);
 	}
 </style>

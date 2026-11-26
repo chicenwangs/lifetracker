@@ -2,10 +2,15 @@
 // GET = limits for the UI (check size + type before sending: an early refusal can look like a dropped connection).
 import { json } from '@sveltejs/kit';
 import { api, me } from '$lib/server/http';
-import { ALLOWED_EXT, save } from '$lib/server/attachments';
+import { ALLOWED_EXT, images, save } from '$lib/server/attachments';
 import { env } from '$lib/server/env';
 
-export const GET = api(() => json({ maxBytes: env().MAX_UPLOAD_BYTES, types: ALLOWED_EXT }));
+// GET = limits for the UI, or ?list=images = the owner's ready images (page cover picker, v4.0 PR 31)
+export const GET = api((e) =>
+	e.url.searchParams.get('list') === 'images'
+		? json({ images: images(me(e).id) })
+		: json({ maxBytes: env().MAX_UPLOAD_BYTES, types: ALLOWED_EXT }),
+);
 
 export const POST = api(async (e) => {
 	const u = me(e);

@@ -1,15 +1,17 @@
 <!-- One page: breadcrumbs, title, ⋯ menu (pin, move, archive, delete, copy link), "Archived · Restore" bar, editor. -->
 <script lang="ts">
 	import { backCloses } from '$lib/client/layers';
+	import { modal } from '$lib/client/modal';
 	import { goto } from '$app/navigation';
 	import { invalidateAll } from '$lib/client/refresh';
 	import { del, get, patch, post, apiFetch } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { undoLast } from '$lib/client/undo.svelte';
 	import PageEditor from '$lib/editor/PageEditor.svelte';
+	import PageIcon from '$lib/components/PageIcon.svelte';
 	import DbCell from '$lib/database/DbCell.svelte';
 	import ShareDialog from '$lib/components/ShareDialog.svelte';
-	import type { PageDTO, PageNode, UndoRef } from '$lib/types';
+	import type { BacklinkDTO, PageDTO, PageNode, UndoRef } from '$lib/types';
 
 	let { data } = $props();
 	const pg = $derived(data.page as PageDTO);
@@ -20,6 +22,7 @@
 	let menu = $state(false);
 	let moving = $state(false);
 	let sharing = $state(false);
+	let iconPicker: PageIcon | undefined = $state();
 	const mine = $derived(pg.access === 'owner');
 	// new page opened: take its title; a reload of the same page keeps what is being typed
 	let shownId = '';
@@ -31,6 +34,13 @@
 	});
 
 	const rec = $derived(data.record);
+	// Linked from (PR 20): open by default for 1-5 sources; hidden when 0. Re-evaluated when the page changes.
+	const backlinks = $derived((data.backlinks ?? []) as BacklinkDTO[]);
+	let linksOpen = $state(true);
+	$effect.pre(() => {
+		void pg.id;
+		linksOpen = backlinks.length > 0 && backlinks.length <= 5;
+	});
 	async function setValue(propId: string, v: unknown): Promise<string | null> {
 		if (!rec) return null;
 		try {
@@ -57,6 +67,29 @@
 			await invalidateAll();
 		} catch (e) {
 			saveState = 'failed';
+			showError(e);
+		}
+	}
+
+	async function setIcon(icon: string | null) {
+		if (icon === pg.icon) return;
+		try {
+			await editor?.flush(); // one writer at a time: the revision must line up
+			const r = await patch<{ page: PageDTO; undo?: UndoRef }>(`/api/pages/${pg.id}`, { icon });
+			editor?.setRevision(r.page.revision);
+			await invalidateAll();
+			const u = r.undo;
+			showToast(icon ? 'Icon updated' : 'Icon removed', {
+				undo: u
+					? async () => {
+							if (!(await undoLast(u.id))) return;
+							const fresh = await get<{ page: PageDTO }>(`/api/pages/${pg.id}`);
+							editor?.setRevision(fresh.page.revision);
+							await invalidateAll();
+						}
+					: undefined,
+			});
+		} catch (e) {
 			showError(e);
 		}
 	}
@@ -163,6 +196,72 @@
 			showError(e);
 		}
 	}
+	// v4.0 PR 31: cover image (the page owner uploads it or picks one of their images; the toast Undo restores)
+	let coverInput: HTMLInputElement | undefined = $state();
+	let coverBusy = $state(false);
+	let coverPick = $state(false);
+	let coverImages = $state<{ id: string; name: string }[]>([]);
+	async function openCover() {
+		menu = false;
+		coverPick = true;
+		try {
+			coverImages = (await get<{ images: { id: string; name: string }[] }>('/api/attachments?list=images'))
+				.images;
+		} catch (e) {
+			showError(e);
+		}
+	}
+	function pickCoverFile() {
+		coverInput?.click();
+	}
+	async function setCover(attId: string | null) {
+		const prev = pg.coverAttachmentId ?? null;
+		try {
+			await patch(`/api/pages/${pg.id}`, { coverAttachmentId: attId });
+			await invalidateAll();
+			coverPick = false;
+			showToast(attId ? 'Cover added' : 'Cover removed', {
+				undo:
+					prev === attId
+						? undefined
+						: async () => {
+								await patch(`/api/pages/${pg.id}`, { coverAttachmentId: prev });
+								await invalidateAll();
+							},
+			});
+		} catch (e) {
+			showError(e);
+		}
+	}
+	async function uploadCover(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const f = input.files?.[0];
+		input.value = '';
+		if (!f) return;
+		coverBusy = true;
+		try {
+			const lim = (await (await fetch('/api/attachments')).json()) as { maxBytes: number; types: string[] };
+			if (f.size > lim.maxBytes)
+				return showToast(`That image is too big (max ${Math.round(lim.maxBytes / 1048576)} MB).`, {
+					kind: 'error',
+				});
+			const ext = (/\.([a-z0-9]+)$/i.exec(f.name)?.[1] ?? '').toLowerCase();
+			if (!lim.types.includes(ext))
+				return showToast(`${f.name}: this file type isn't allowed.`, { kind: 'error' });
+			const res = await fetch(`/api/attachments?name=${encodeURIComponent(f.name)}`, {
+				method: 'POST',
+				headers: { 'content-type': f.type || 'application/octet-stream' },
+				body: f,
+			});
+			const j = (await res.json()) as { attachment?: { id: string }; error?: { message?: string } };
+			if (!res.ok) throw new Error(j.error?.message ?? 'Upload failed');
+			if (j.attachment) await setCover(j.attachment.id);
+		} catch (err) {
+			showError(err);
+		} finally {
+			coverBusy = false;
+		}
+	}
 </script>
 
 <svelte:head><title>{pg.title || 'Untitled'} · Pages · Life Tracker</title></svelte:head>
@@ -223,6 +322,12 @@
 				<div use:backCloses={() => (menu = false)} class="menu card" role="menu">
 					{#if mine}
 						<!-- phone (#98): Pin + Share live here, the bar only has room for ⋯ -->
+						{#if !pg.icon}<button
+								role="menuitem"
+								type="button"
+								class="narrow"
+								onclick={() => ((menu = false), iconPicker?.openPicker())}>Add icon</button
+							>{/if}
 						{#if !pg.archived}<button role="menuitem" type="button" class="narrow" onclick={pin}
 								>{pg.pinned ? 'Unpin from header' : 'Pin to header'}</button
 							>{/if}
@@ -237,6 +342,11 @@
 						>
 						<button role="menuitem" type="button" onclick={() => reorder(-1)}>Move up</button>
 						<button role="menuitem" type="button" onclick={() => reorder(1)}>Move down</button>
+					{/if}
+					{#if mine}
+						<button role="menuitem" type="button" onclick={openCover}
+							>{pg.coverAttachmentId ? 'Change cover…' : 'Add cover…'}</button
+						>
 					{/if}
 					<button role="menuitem" type="button" onclick={duplicate}>Duplicate</button>
 					<button
@@ -257,6 +367,23 @@
 		</div>
 	</div>
 	<div class="body">
+		{#if pg.coverAttachmentId}
+			<div class="cover">
+				<img src="/api/attachments/{pg.coverAttachmentId}" alt="Page cover" />
+				{#if mine && !pg.archived}
+					<div class="cover-acts">
+						<button class="btn sm" type="button" disabled={coverBusy} onclick={openCover}>Change cover</button
+						>
+						<button class="btn sm" type="button" disabled={coverBusy} onclick={() => setCover(null)}
+							>Remove</button
+						>
+					</div>
+				{/if}
+			</div>
+		{/if}
+		<div class="pico" class:blank={!pg.icon}>
+			<PageIcon bind:this={iconPicker} icon={pg.icon} disabled={pg.access === 'view'} onpick={setIcon} />
+		</div>
 		<input
 			class="title"
 			autocomplete="off"
@@ -267,6 +394,46 @@
 			bind:value={title}
 			oninput={onTitle}
 		/>
+		<input
+			type="file"
+			accept="image/png,image/jpeg,image/gif,image/webp"
+			aria-label="Cover image"
+			bind:this={coverInput}
+			hidden
+			onchange={uploadCover}
+		/>
+		{#if coverPick}
+			<div class="scrim" role="presentation" onclick={() => (coverPick = false)}></div>
+			<div
+				use:backCloses={() => (coverPick = false)}
+				use:modal={() => (coverPick = false)}
+				class="picker cpick card"
+				role="dialog"
+				aria-modal="true"
+				aria-label="Cover picker"
+			>
+				<h2 class="cp">Cover image</h2>
+				<button class="btn sm" type="button" onclick={pickCoverFile}>Upload image</button>
+				{#if coverImages.length}
+					<div class="cgrid">
+						{#each coverImages as img (img.id)}
+							<button
+								type="button"
+								class="cthumb"
+								aria-label={img.name}
+								title={img.name}
+								onclick={() => setCover(img.id)}
+							>
+								<img src="/api/attachments/{img.id}" alt={img.name} />
+							</button>
+						{/each}
+					</div>
+				{:else}
+					<p class="hint">No images yet. Upload one.</p>
+				{/if}
+				<button class="btn sm" type="button" onclick={() => (coverPick = false)}>Close</button>
+			</div>
+		{/if}
 		{#if !mine}<p class="shared" role="status">
 				Shared with you · {pg.access === 'edit' ? 'you can edit' : 'view only'}
 			</p>{/if}
@@ -305,8 +472,38 @@
 			</div>
 		{/if}
 		{#key pg.id}
-			<PageEditor bind:this={editor} page={pg} onstate={(s) => (saveState = s)} />
+			<PageEditor
+				bind:this={editor}
+				page={pg}
+				tz={data.user?.timezone ?? 'Asia/Kuala_Lumpur'}
+				onstate={(s) => (saveState = s)}
+			/>
 		{/key}
+		{#if backlinks.length}
+			<section class="linked" aria-labelledby="linked-h">
+				<h2 id="linked-h">
+					<button type="button" aria-expanded={linksOpen} onclick={() => (linksOpen = !linksOpen)}>
+						<span aria-hidden="true">{linksOpen ? '▾' : '▸'}</span> Linked from ({backlinks.length})
+					</button>
+				</h2>
+				{#if linksOpen}
+					<ul>
+						{#each backlinks as b (b.id)}
+							<li class:bl-arch={b.archived}>
+								<a class="lt" href="/pages/{b.id}">
+									{#if b.icon}<span class="ico" aria-hidden="true">{b.icon}</span>{/if}
+									<span class="tt">{b.title || 'Untitled'}</span>
+								</a>
+								{#if b.archived}<span class="hint">· archived</span>{/if}
+								<span class="snip"
+									>{#each b.snippet as s, i (i)}{#if s.b}<b>{s.t}</b>{:else}{s.t}{/if}{/each}</span
+								>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</section>
+		{/if}
 	</div>
 </article>
 <svelte:window
@@ -397,6 +594,93 @@
 		max-width: none;
 		padding: 28px 40px 40px;
 	}
+	/* v4.0 PR 31: cover image (180 px desktop, 120 px phone) */
+	.cover {
+		position: relative;
+		margin: 0 0 14px;
+		border-radius: 12px;
+		overflow: hidden;
+		background: var(--ground);
+	}
+	.cover img {
+		display: block;
+		width: 100%;
+		height: 180px;
+		object-fit: cover;
+	}
+	.cover-acts {
+		position: absolute;
+		right: 8px;
+		bottom: 8px;
+		display: flex;
+		gap: 6px;
+		opacity: 0;
+		transition: opacity 120ms var(--ease);
+	}
+	.cover:hover .cover-acts,
+	.cover:focus-within .cover-acts {
+		opacity: 1;
+	}
+	/* v4.0 PR 31: upload or pick one of the owner's images */
+	.scrim {
+		position: fixed;
+		inset: 0;
+		z-index: 90;
+		background: rgb(0 0 0 / 0.2);
+	}
+	.picker {
+		position: fixed;
+		top: 18vh;
+		left: 50%;
+		translate: -50% 0;
+		z-index: 91;
+		width: min(560px, 92vw);
+		max-height: calc(100vh - 18vh - 8px);
+		overflow-y: auto;
+		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+	.cp {
+		margin: 0;
+		font-size: 16px;
+	}
+	.cgrid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+		gap: 8px;
+	}
+	.cthumb {
+		padding: 0;
+		border: 1.5px solid var(--rule);
+		border-radius: 8px;
+		overflow: hidden;
+		background: var(--ground);
+		cursor: pointer;
+	}
+	.cthumb img {
+		display: block;
+		width: 100%;
+		height: 72px;
+		object-fit: cover;
+	}
+	.cthumb:hover {
+		border-color: var(--ink);
+	}
+	/* icon row (DESIGN 2.1): 56 px emoji above the title; when empty a faint 13 px "Add icon" shows on hover */
+	.pico {
+		margin-bottom: 6px;
+	}
+	@media (hover: hover) and (min-width: 700px) {
+		.pico.blank {
+			opacity: 0;
+		}
+		.body:hover .pico.blank,
+		.pico.blank:focus-within {
+			opacity: 1;
+		}
+	}
 	.title {
 		display: block;
 		width: 100%;
@@ -441,6 +725,18 @@
 		.body {
 			padding: 20px 16px 32px;
 		}
+		.cover img {
+			height: 120px;
+		}
+		.cover-acts {
+			opacity: 1;
+		}
+		.cover-acts .btn {
+			min-height: 48px;
+		}
+		.pico {
+			margin-bottom: 2px;
+		}
 		.title {
 			font-size: 26px;
 		}
@@ -483,5 +779,84 @@
 		align-items: center;
 		margin-bottom: 8px;
 		font-size: 13px;
+	}
+	/* Linked from (PR 20): under the editor, one row per source page */
+	.linked {
+		margin: 18px 0 4px;
+		padding-top: 12px;
+		border-top: 1px solid var(--rule);
+		font-size: 13.5px;
+	}
+	.linked h2 {
+		margin: 0 0 6px;
+		font-size: 14px;
+	}
+	.linked h2 button {
+		min-height: 24px;
+		padding: 4px 0;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.linked ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.linked li {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
+	}
+	.linked li.bl-arch {
+		opacity: 0.6;
+	}
+	.linked .lt {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		flex: none;
+		max-width: 45%;
+		color: var(--ink);
+		text-decoration: none;
+	}
+	.linked .lt:hover {
+		text-decoration: underline;
+	}
+	.linked .tt {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.linked .snip {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: var(--quiet);
+	}
+	.linked .snip b {
+		color: var(--ink);
+		font-weight: 600;
+	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.linked h2 button {
+			min-height: 48px;
+		}
+		.linked li {
+			min-height: 48px;
+			flex-wrap: wrap;
+		}
+		.linked .lt {
+			min-height: 48px;
+			max-width: 100%;
+		}
 	}
 </style>
