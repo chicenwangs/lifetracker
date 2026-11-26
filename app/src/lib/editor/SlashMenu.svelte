@@ -1,11 +1,11 @@
 <!-- "/" menu popup. Driven by one $state object from the Slash extension; click or Enter picks. -->
 <script lang="ts">
-	import type { SlashItem } from './extensions.svelte';
+	import type { MenuState, SlashItem } from './extensions.svelte';
 	let {
 		s,
 		onpick,
 	}: {
-		s: { items: SlashItem[]; index: number; x: number; y: number; top: number };
+		s: MenuState<SlashItem>;
 		onpick: (i: SlashItem) => void;
 	} = $props();
 	let ih = $state(innerHeight); // shrinks with the on-screen keyboard (#282)

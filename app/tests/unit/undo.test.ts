@@ -7,6 +7,7 @@ import * as blocks from '../../src/lib/server/repo/blocks';
 import * as pages from '../../src/lib/server/repo/pages';
 import { handle } from '../../src/lib/server/db';
 import { undo, undoable } from '../../src/lib/server/undo';
+import { search } from '../../src/lib/server/search';
 import { quickAdd } from '../../src/lib/server/quickadd-server';
 
 let me: string;
@@ -74,6 +75,16 @@ describe('undo journal', () => {
 		items.patch(me, i.id, { title: 'X' });
 		expect(() => undo(me)).toThrow(/can't undo safely|Can't undo safely/i);
 		expect(items.getOwn(me, i.id)?.title).toBe('X');
+	});
+
+	it('undo of a created page removes it from the search index too (#442)', () => {
+		const r = undoable(me, 'Create page', [], () => {
+			const p = pages.create(me, { parentId: null, title: 'Stale hit' });
+			return { result: p, created: [{ t: 'pages' as const, id: p.id }] };
+		});
+		expect(search(me, 'Stale').map((h) => h.id)).toContain(r.result.id);
+		undo(me, r.undo.id);
+		expect(search(me, 'Stale')).toEqual([]);
 	});
 
 	it('opening the page does not block undoing a page change', () => {

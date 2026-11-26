@@ -1003,8 +1003,12 @@ test('v2 P3 Pages: tree, slash menu, internal link survives rename, pin cap, arc
 	await page.keyboard.press('Enter');
 	await page.keyboard.type('/link');
 	await page.keyboard.press('Enter');
-	await page.getByLabel('Search your pages').fill('Leg');
-	await page.getByRole('button', { name: 'Leg day' }).click();
+	// PR 19: the slash item types "[[", so the mention menu opens with Recent; typing filters
+	const linkMenu = page.getByRole('listbox', { name: 'Link a page' });
+	await expect(linkMenu).toBeVisible();
+	await page.keyboard.type('Leg');
+	await expect(linkMenu).toContainText('Leg day');
+	await page.keyboard.press('Enter');
 	await expect(page.locator('.state')).toContainText('Saved');
 	await page.goto(childUrl);
 	await expect(page.locator('.pm')).toBeVisible(); // hydrated (the editor mounts on the client)
@@ -1113,6 +1117,75 @@ test('v4 PR 18: callout, toggle and TOC insert, persist and behave', async () =>
 	await page.reload();
 	await expect(ed.locator('.tg')).toHaveAttribute('data-open', 'false');
 	await expect(ed.locator('.tg-body > p').nth(1)).toHaveCSS('display', 'none');
+});
+
+test('v4 PR 19: [[ picker - recent, search, arrows, create page + undo', async () => {
+	await api('POST', '/api/pages', { title: 'PR19 Alpha' });
+	await api('POST', '/api/pages', { title: 'PR19 Beta' });
+	await page.goto('/pages');
+	await page.getByRole('button', { name: 'New page' }).last().click();
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	await page.getByLabel('Page title').fill('Mention source');
+	await expect(page.locator('.state')).toContainText('Saved');
+	const ed = page.locator('.pm');
+	const menu = page.getByRole('listbox', { name: 'Link a page' });
+	await ed.click();
+	await page.keyboard.type('[[');
+	await expect(menu).toBeVisible();
+	await expect(menu).toContainText('Recent'); // empty query = the 10 most recent pages
+	await page.keyboard.type('PR19');
+	await expect(menu).toContainText('Pages');
+	await expect(menu).toContainText('PR19 Alpha');
+	await expect(menu).toContainText('PR19 Beta');
+	await expect(menu.getByRole('option')).toHaveCount(3); // both pages + the create row
+	// arrows move the selection (the shared Suggestion render); Enter links the picked row
+	const second = menu.getByRole('option').nth(1);
+	await page.keyboard.press('ArrowDown');
+	await expect(second).toHaveAttribute('aria-selected', 'true');
+	const picked = (await second.locator('.t').innerText()).trim();
+	await page.keyboard.press('Enter');
+	await expect(ed.locator('a.pl')).toHaveText(`↗ ${picked}`);
+	await expect(page.locator('.state')).toContainText('Saved');
+	// create-new: no match -> the create row; one toast Undo removes the page and its link
+	await page.keyboard.press('Control+End');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('[[ZZ fresh');
+	await expect(menu).toContainText('+ Create page "ZZ fresh"');
+	await expect(menu.getByRole('option')).toHaveCount(1);
+	await page.keyboard.press('Enter');
+	await expect(ed.locator('a.pl')).toHaveText([`↗ ${picked}`, '↗ ZZ fresh']);
+	const created = await ed.locator('a.pl').last().getAttribute('data-page-link');
+	const tree = page.getByRole('tree', { name: 'Page tree' });
+	await page.getByRole('button', { name: 'Expand Mention source' }).click();
+	await expect(tree).toContainText('ZZ fresh');
+	// typing after the create must not break the toast Undo: the chip is found by page id, not editor history
+	await ed.click();
+	await page.keyboard.press('Control+End');
+	await page.keyboard.type('!');
+	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
+	await expect(ed.locator('a.pl')).toHaveCount(1);
+	await expect(tree).not.toContainText('ZZ fresh');
+	expect((await page.request.get(`/pages/${created}`)).status()).toBe(404);
+	// Esc leaves "[[text" as plain text
+	await ed.click();
+	await page.keyboard.press('Control+End');
+	await page.keyboard.type('[[escape me');
+	await expect(menu).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(menu).toBeHidden();
+	await expect(ed).toContainText('[[escape me');
+	// popover clamp (#403): a caret near the right edge in a narrow window keeps the menu inside
+	await page.setViewportSize({ width: 800, height: 900 });
+	await ed.click();
+	await page.keyboard.press('Control+End');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('word '.repeat(14) + '[[');
+	await expect(menu).toBeVisible();
+	const mb = (await menu.boundingBox())!;
+	expect(Math.round(mb.x)).toBeGreaterThanOrEqual(12);
+	expect(Math.round(mb.x + mb.width)).toBeLessThanOrEqual(800 - 12);
+	await page.keyboard.press('Escape');
+	await page.setViewportSize({ width: 1440, height: 900 });
 });
 
 test('v4 PR 16: page emoji icon - keyboard pick, sidebar, Undo', async () => {
@@ -1381,6 +1454,40 @@ test('v2 P8: phone Week/Month/More, PWA manifest, offline badge + Keep queue, He
 	await d.reload();
 	await expect(d.locator('.tcard')).toHaveCount(0);
 	await ctx.close();
+});
+
+test('page Linked from: the sources that link here, hidden when none (#443)', async () => {
+	const target = (await api('POST', '/api/pages', { title: 'Link target' })).j.page;
+	const src = (await api('POST', '/api/pages', { title: 'Link source' })).j.page;
+	const doc = {
+		type: 'doc',
+		content: [
+			{
+				type: 'paragraph',
+				content: [
+					{ type: 'text', text: 'see ' },
+					{ type: 'pageLink', attrs: { pageId: target.id } },
+				],
+			},
+		],
+	};
+	expect((await api('PATCH', `/api/pages/${src.id}`, { doc })).s).toBe(200);
+	await page.goto(`/pages/${target.id}`);
+	const panel = page.getByRole('region', { name: /Linked from \(1\)/ });
+	await expect(panel).toBeVisible();
+	const row = panel.getByRole('link', { name: 'Link source' });
+	await expect(row).toHaveAttribute('href', `/pages/${src.id}`);
+	await expect(panel.locator('.snip b')).toHaveText('Link target');
+	// collapse, then expand again
+	const toggle = panel.getByRole('button', { name: /Linked from \(1\)/ });
+	await toggle.click();
+	await expect(panel.getByRole('link')).toHaveCount(0);
+	await toggle.click();
+	await expect(panel.getByRole('link', { name: 'Link source' })).toBeVisible();
+	// no links at all: the whole panel is hidden
+	const lonely = (await api('POST', '/api/pages', { title: 'Lonely page' })).j.page;
+	await page.goto(`/pages/${lonely.id}`);
+	await expect(page.getByRole('region', { name: /Linked from/ })).toHaveCount(0);
 });
 
 test('database board: group by a select property, move by menu + undo, drag, keyboard, empty state', async () => {
@@ -1981,6 +2088,96 @@ test('ICS feed: create link, fetch without login, private = Busy, rotate kills t
 	await expect(page.getByRole('button', { name: 'Create feed link' })).toBeVisible();
 	expect((await anon.get(url2)).status()).toBe(404);
 	await anon.dispose();
+});
+
+test('local graph: opens from the page menu, depth 1/2, no console errors (#444)', async () => {
+	const a = (await api('POST', '/api/pages', { title: 'Graph A' })).j.page;
+	const b = (await api('POST', '/api/pages', { title: 'Graph B' })).j.page;
+	const c = (await api('POST', '/api/pages', { title: 'Graph C' })).j.page;
+	const d = (await api('POST', '/api/pages', { title: 'Graph D' })).j.page;
+	const doc = (ids: string[]) => ({
+		type: 'doc',
+		content: ids.map((id) => ({
+			type: 'paragraph',
+			content: [{ type: 'pageLink', attrs: { pageId: id } }],
+		})),
+	});
+	await api('PATCH', `/api/pages/${a.id}`, { doc: doc([b.id]) });
+	await api('PATCH', `/api/pages/${b.id}`, { doc: doc([c.id]) });
+	await api('PATCH', `/api/pages/${c.id}`, { doc: doc([d.id]) });
+	const errors: string[] = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	page.on('console', (m) => {
+		if (m.type() === 'error') errors.push(m.text());
+	});
+	await page.goto(`/pages/${a.id}`);
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Local graph' }).click();
+	const dlg = page.getByRole('dialog', { name: 'Links around Graph A' });
+	await expect(dlg).toBeVisible();
+	await expect(dlg.getByRole('status')).toHaveText(/3 pages/); // A + B + C at depth 2
+	await dlg.getByRole('button', { name: '1', exact: true }).click();
+	await expect(dlg.getByRole('status')).toHaveText(/2 pages/);
+	await dlg.getByRole('button', { name: '2', exact: true }).click();
+	await expect(dlg.getByRole('status')).toHaveText(/3 pages/);
+	await expect(dlg.getByRole('link', { name: 'Open full graph' })).toHaveAttribute('href', '/pages/graph');
+	await page.keyboard.press('Escape');
+	await expect(dlg).toBeHidden();
+	expect(errors.filter((e) => !e.includes('favicon'))).toEqual([]);
+});
+
+test('database calendar: records on their date, create from a day, No date rail (#445)', async () => {
+	const db = (await api('POST', '/api/databases', { title: 'Cal DB' })).j.database as {
+		id: string;
+		pageId: string;
+	};
+	const when = (
+		await api('POST', `/api/databases/${db.id}/properties`, { name: 'When', type: 'date', config: {} })
+	).j.prop as { id: string };
+	const info = (await api('GET', `/api/databases/${db.id}`)).j.database as {
+		props: { id: string; type: string }[];
+	};
+	const tp = info.props.find((p) => p.type === 'title')!;
+	const ym = await page.evaluate(() =>
+		new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date()).slice(0, 7),
+	);
+	await api('POST', `/api/databases/${db.id}/records`, {
+		values: { [tp.id]: 'Dated', [when.id]: `${ym}-12` },
+	});
+	await api('POST', `/api/databases/${db.id}/records`, { values: { [tp.id]: 'Undated' } });
+	await api('POST', `/api/databases/${db.id}/views`, { name: 'Calendar', type: 'calendar' });
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Calendar/ }).click();
+	const grid = page.getByRole('group', { name: /records/ });
+	await expect(grid.getByRole('button', { name: 'Dated' })).toBeVisible(); // the record sits on the 12th
+	await expect(page.locator('[aria-label="No date"]')).toContainText('Undated');
+	// click a day = a new record dated that day
+	await page.getByRole('button', { name: `New record on ${ym}-20` }).click();
+	await expect(grid.getByRole('button', { name: 'Untitled' })).toBeVisible();
+	await expect
+		.poll(async () => {
+			const rows = (await api('GET', `/api/databases/${db.id}`)).j.database.rows as {
+				values: Record<string, unknown>;
+			}[];
+			return rows.filter((r) => r.values[when.id] === `${ym}-20`).length;
+		})
+		.toBe(1);
+	// D-19: a text value left over after converting a property to date stays visible in No date
+	const note = (
+		await api('POST', `/api/databases/${db.id}/properties`, { name: 'Note', type: 'text', config: {} })
+	).j.prop as { id: string };
+	const view2 = (await api('POST', `/api/databases/${db.id}/views`, { name: 'Calendar 2', type: 'calendar' }))
+		.j.view as { id: string };
+	await api('POST', `/api/databases/${db.id}/records`, {
+		values: { [tp.id]: 'Bad date', [note.id]: 'hello' },
+	});
+	expect((await api('PATCH', `/api/database-properties/${note.id}`, { type: 'date', confirm: true })).s).toBe(
+		200,
+	);
+	await api('PATCH', `/api/database-views/${view2.id}`, { config: { dateProp: note.id } });
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Calendar 2/ }).click();
+	await expect(page.locator('[aria-label="No date"]')).toContainText('Bad date');
 });
 
 test('reset-password script works', async ({ browser }) => {

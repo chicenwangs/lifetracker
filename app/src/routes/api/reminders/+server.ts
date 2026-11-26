@@ -4,14 +4,17 @@ import { z } from 'zod';
 import { api, bad, body, me } from '$lib/server/http';
 import * as rem from '$lib/server/reminders';
 
-const SOURCES = ['planner_item', 'planner_block', 'keep_note', 'database_record'] as const;
+const SOURCES = ['planner_item', 'planner_block', 'keep_note', 'database_record', 'page_todo'] as const;
 export const GET = api((e) => {
+	// v4.0 PR 30: every to-do reminder on one page (the page editor's chips), blockId -> dueAt
+	const pg = e.url.searchParams.get('page');
+	if (pg) return json({ todos: rem.forPage(me(e).id, pg) });
 	const s = e.url.searchParams.get('source');
 	if (!SOURCES.includes(s as never)) bad('unknown source');
 	return json({ reminders: rem.list(me(e).id, s as rem.Source, e.url.searchParams.get('id') ?? '') });
 });
 const schema = z
-	.object({ source: z.enum(SOURCES), sourceId: z.string().max(40), offset: z.string().max(10).optional(), at: z.string().max(25).optional() })
+	.object({ source: z.enum(SOURCES), sourceId: z.string().max(64), offset: z.string().max(10).optional(), at: z.string().max(25).optional() })
 	.strict(); // prettier-ignore
 export const POST = api(async (e) => {
 	const u = me(e);

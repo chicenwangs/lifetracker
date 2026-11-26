@@ -15,7 +15,7 @@
 		relative = true,
 		quick = false,
 		repeating = false,
-	}: { source: 'planner_item' | 'planner_block' | 'keep_note' | 'database_record'; sourceId: string; tz: string; relative?: boolean; quick?: boolean; repeating?: boolean } = $props(); // prettier-ignore
+	}: { source: 'planner_item' | 'planner_block' | 'keep_note' | 'database_record' | 'page_todo'; sourceId: string; tz: string; relative?: boolean; quick?: boolean; repeating?: boolean } = $props(); // prettier-ignore
 	// svelte-ignore state_referenced_locally
 	let picking = $state(!quick); // starts open unless the quick picks show
 	let list = $state<ReminderDTO[]>([]);

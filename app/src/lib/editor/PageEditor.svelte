@@ -5,12 +5,15 @@
 	import { backCloses } from '$lib/client/layers';
 	import { modal } from '$lib/client/modal';
 	import { isPhone } from '$lib/client/phone';
+	import { invalidateAll } from '$lib/client/refresh';
+	import { undoLast } from '$lib/client/undo.svelte';
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
+	import Reminders from '$lib/components/Reminders.svelte';
 	import { onMount } from 'svelte';
 	import { Editor, type Content } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import { TableKit } from '@tiptap/extension-table';
-	import { TaskItem, TaskList } from '@tiptap/extension-list';
+	import { TaskList } from '@tiptap/extension-list';
 	import Image from '@tiptap/extension-image';
 	import { patch, get, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
@@ -18,21 +21,30 @@
 		BlockKeys,
 		Callout,
 		DatabaseBlock,
+		Mention,
 		PageLink,
 		Slash,
 		Toc,
+		TodoIds,
+		TodoItem,
+		TodoReminders,
 		Toggle,
 		blockOps,
+		newBlockId,
+		type MentionItem,
 		type SlashItem,
+		type TodoReminderStore,
 	} from './extensions.svelte';
-	import type { PageDTO } from '$lib/types';
+	import type { PageDTO, UndoRef } from '$lib/types';
 
 	let {
 		page,
+		tz,
 		onsaved,
 		onstate,
 	}: {
 		page: PageDTO;
+		tz: string;
 		onsaved?: (p: PageDTO) => void;
 		onstate?: (s: 'saving' | 'saved' | 'failed' | 'conflict') => void;
 	} = $props();
@@ -45,12 +57,95 @@
 	let inTable = $state(false);
 	let marks = $state<Record<string, boolean>>({});
 
+	// ---------- to-do reminders (v4.0 PR 30) ----------
+	let inTodo = $state(false);
+	let remindId = $state<string | null>(null);
+	let todoLabels = $state<Record<string, string>>({});
+	let checkedBefore: Record<string, boolean> = {};
+	let todoSig = '';
+	const todoItems = () => {
+		const out: { id: string; checked: boolean; pos: number }[] = [];
+		editor?.state.doc.descendants((node, pos) => {
+			if (node.type.name !== 'taskItem') return;
+			const id = node.attrs.blockId as string | null;
+			if (id) out.push({ id, checked: node.attrs.checked === true, pos });
+		});
+		return out;
+	};
+	const todoSigOf = () =>
+		todoItems()
+			.map((t) => `${t.id}:${+t.checked}`)
+			.join(',');
+	const chipLabel = (z: string) =>
+		new Intl.DateTimeFormat(undefined, { timeZone: tz, weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(z)); // prettier-ignore
+	async function loadTodoLabels() {
+		try {
+			const r = await get<{ todos: Record<string, string> }>(`/api/reminders?page=${page.id}`);
+			todoLabels = Object.fromEntries(Object.entries(r.todos).map(([id, due]) => [id, chipLabel(due)]));
+		} catch {
+			return; // chips are decoration: a failed refresh keeps the last known ones
+		}
+		const store = editor
+			? (editor.storage as unknown as { todoReminders: TodoReminderStore }).todoReminders
+			: undefined;
+		if (store) {
+			store.labels = todoLabels;
+			store.onOpen = (id) => void openRemind(id);
+			editor?.view.dispatch(editor.state.tr);
+		}
+		checkedBefore = Object.fromEntries(todoItems().map((t) => [t.id, t.checked]));
+		todoSig = todoSigOf();
+	}
+	/** the to-do block around the cursor, given an id it did not have yet */
+	function ensureTodoId(): string | null {
+		if (!editor) return null;
+		const { state, view } = editor;
+		const from = state.selection.$from;
+		for (let d = from.depth; d > 0; d--) {
+			const node = from.node(d);
+			if (node.type.name !== 'taskItem') continue;
+			const id = node.attrs.blockId as string | null;
+			if (id) return id;
+			const next = newBlockId();
+			view.dispatch(state.tr.setNodeMarkup(from.before(d), undefined, { ...node.attrs, blockId: next }));
+			return next;
+		}
+		return null;
+	}
+	async function openRemind(id?: string) {
+		const blockId = id ?? ensureTodoId();
+		if (!blockId) return showToast('Put the cursor in a to-do first.', { kind: 'error' });
+		await flush(); // the server finds the to-do in the saved blocks
+		remindId = blockId;
+	}
+	function closeRemind() {
+		remindId = null;
+		void loadTodoLabels();
+	}
+	function untick(id: string) {
+		if (!editor) return;
+		let pos = -1;
+		let attrs: Record<string, unknown> = {};
+		editor.state.doc.descendants((n, p) => {
+			if (n.type.name === 'taskItem' && n.attrs.blockId === id) {
+				pos = p;
+				attrs = n.attrs;
+			}
+		});
+		if (pos < 0) return;
+		editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...attrs, checked: false }));
+		void flush().then(() => loadTodoLabels());
+	}
+	/** ticking a to-do with a chip cancels its reminder on the next save; Undo un-ticks it */
+	function checkTicks() {
+		for (const t of todoItems()) {
+			if (t.checked && checkedBefore[t.id] === false && todoLabels[t.id])
+				showToast('Reminder cancelled', { undo: () => untick(t.id) });
+			checkedBefore[t.id] = t.checked;
+		}
+	}
+
 	// ---------- "/" menu ----------
-	let picker = $state<{
-		q: string;
-		hits: { id: string; title: string; archived: number; icon: string | null }[];
-		at: number;
-	} | null>(null);
 	const ITEMS: SlashItem[] = [
 		{ title: 'Text', run: (e, r) => e.chain().focus().deleteRange(r).setParagraph().run() },
 		{ title: 'Heading 1', hint: '#', run: (e, r) => e.chain().focus().deleteRange(r).setNode('heading', { level: 1 }).run() },
@@ -67,7 +162,7 @@
 		{ title: 'Toggle', hint: 'Hide details under a line', run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'toggle', attrs: { open: true }, content: [{ type: 'paragraph' }] }).run() },
 		{ title: 'Table of contents', hint: "List this page's headings", run: (e, r) => e.chain().focus().deleteRange(r).insertContent({ type: 'toc' }).run() },
 		{ title: 'Database', hint: 'table of records', run: (e, r) => { e.chain().focus().deleteRange(r).run(); void addDatabase(); } },
-		{ title: 'Link to page', hint: 'internal', run: (e, r) => { e.chain().focus().deleteRange(r).run(); picker = { q: '', hits: [], at: e.state.selection.from }; void findPages(''); } },
+		{ title: 'Link to page', hint: 'internal', run: (e, r) => { e.chain().focus().deleteRange(r).insertContent('[[').run(); } },
 		{ title: 'Image', hint: 'upload', run: (e, r) => { e.chain().focus().deleteRange(r).run(); pickFile('image'); } },
 		{ title: 'File', hint: 'upload', run: (e, r) => { e.chain().focus().deleteRange(r).run(); pickFile('file'); } },
 	]; // prettier-ignore
@@ -86,31 +181,96 @@
 			showError(e);
 		}
 	}
-	async function findPages(q: string) {
+	// ---------- "[[" link picker (PR 19) ----------
+	async function fetchMentions(q: string): Promise<MentionItem[]> {
 		try {
-			const r = await get<{ hits: { id: string; title: string; archived: number; icon: string | null }[] }>(
-				`/api/pages/find?q=${encodeURIComponent(q)}`,
-			);
-			if (picker) picker.hits = r.hits.filter((h) => h.id !== page.id);
+			const r = await get<{
+				hits: {
+					id: string;
+					title: string;
+					icon: string | null;
+					parentTitle: string | null;
+					archived: number;
+				}[];
+			}>(`/api/pages/find?q=${encodeURIComponent(q)}`);
+			const rows: MentionItem[] = r.hits
+				.filter((h) => h.id !== page.id)
+				.map((h) => ({
+					id: h.id,
+					title: h.title,
+					icon: h.icon,
+					path: h.parentTitle,
+					archived: !!h.archived,
+				}));
+			const t = q.trim();
+			if (t) rows.push({ title: t, icon: null, create: t }); // last row, Obsidian style
+			return rows;
 		} catch (e) {
 			showError(e);
+			return [];
 		}
 	}
-	function insertLink(h: { id: string; title: string; archived: number }) {
-		if (!editor || !picker) return;
-		(editor.storage as unknown as { pageLink: { titles: PageDTO['links'] } }).pageLink.titles[h.id] = {
-			title: h.title,
-			archived: !!h.archived,
+	function remember(ed: Editor, id: string, title: string, archived: boolean) {
+		(ed.storage as unknown as { pageLink: { titles: PageDTO['links'] } }).pageLink.titles[id] = {
+			title,
+			archived,
 		};
-		editor
-			.chain()
+	}
+	function pickMention(h: MentionItem, range: { from: number; to: number }) {
+		const ed = editor;
+		if (!ed) return;
+		if (h.create) return void createMention(h.create, range);
+		if (!h.id) return;
+		remember(ed, h.id, h.title, !!h.archived);
+		ed.chain()
 			.focus()
-			.insertContentAt(picker.at, [
+			.deleteRange(range)
+			.insertContent([
 				{ type: 'pageLink', attrs: { pageId: h.id } },
 				{ type: 'text', text: ' ' },
 			])
 			.run();
-		picker = null;
+	}
+	async function createMention(title: string, range: { from: number; to: number }) {
+		try {
+			const r = await post<{ page: PageDTO; undo: UndoRef }>('/api/pages', { title, parentId: page.id });
+			await invalidateAll(); // the new child page appears in the tree
+			const ed = editor;
+			if (!ed) return;
+			remember(ed, r.page.id, r.page.title || title, false);
+			ed.chain()
+				.focus()
+				.deleteRange(range)
+				.insertContent([
+					{ type: 'pageLink', attrs: { pageId: r.page.id } },
+					{ type: 'text', text: ' ' },
+				])
+				.run();
+			showToast(`Created "${title}"`, {
+				undo: async () => {
+					// deterministic: remove the chip by page id wherever it is now (typing since must not matter)
+					let at = -1;
+					let size = 1;
+					editor?.state.doc.descendants((node, pos) => {
+						if (node.type.name === 'pageLink' && node.attrs.pageId === r.page.id) {
+							at = pos;
+							size = node.nodeSize;
+							return false;
+						}
+						return true;
+					});
+					if (at >= 0 && editor)
+						editor
+							.chain()
+							.focus()
+							.deleteRange({ from: at, to: Math.min(editor.state.doc.content.size, at + size + 1) })
+							.run();
+					if (await undoLast(r.undo.id)) await invalidateAll();
+				},
+			});
+		} catch (e) {
+			showError(e);
+		}
 	}
 
 	// ---------- uploads ----------
@@ -162,6 +322,7 @@
 				revision = r.page.revision;
 				onstate?.(pending ? 'saving' : 'saved');
 				onsaved?.(r.page);
+				if (todoSigOf() !== todoSig) void loadTodoLabels();
 			} catch (e) {
 				pending = true; // text stays here; next change or Retry tries again
 				const conflict = (e as { status?: number }).status === 409;
@@ -185,7 +346,9 @@
 				StarterKit.configure({ link: { openOnClick: false, autolink: true, protocols: ['http', 'https', 'mailto'], HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' } } }),
 				TableKit.configure({ table: { resizable: false } }),
 				TaskList,
-				TaskItem.configure({ nested: true }),
+				TodoItem.configure({ nested: true }),
+				TodoIds,
+				TodoReminders,
 				Image.configure({ inline: false }),
 				PageLink.configure({ titles: page.links }),
 				DatabaseBlock,
@@ -194,13 +357,18 @@
 				Toc,
 				BlockKeys,
 				Slash.configure({ items }),
+				Mention.configure({ items: fetchMentions, pick: pickMention }),
 			],
 			content: (page.doc.content.length ? page.doc : { type: 'doc', content: [{ type: 'paragraph' }] }) as Content,
 			editable: page.access !== 'view',
 			editorProps: { attributes: { 'aria-label': 'Page content', class: 'pm' } },
-			onUpdate: changed,
+			onUpdate: () => {
+				changed();
+				checkTicks();
+			},
 			onTransaction: ({ editor: e }) => {
 				inTable = e.isActive('table');
+				inTodo = e.isActive('taskItem');
 				marks = { bold: e.isActive('bold'), italic: e.isActive('italic'), underline: e.isActive('underline'), strike: e.isActive('strike'), code: e.isActive('code'), link: e.isActive('link') };
 			},
 		}); // prettier-ignore
@@ -213,6 +381,7 @@
 			}
 		});
 		editor = ed;
+		void loadTodoLabels();
 		// Ctrl+Z / Ctrl+Y on a page = this page's undo, even after a toolbar click took focus out of the text
 		// (the app-wide undo would otherwise undo the last planner action instead)
 		const keys = (e: KeyboardEvent) => {
@@ -349,6 +518,11 @@
 		>Duplicate</button
 	>
 	<button type="button" class="t desk" title="Delete block" onclick={() => op('remove')}>Delete block</button>
+	{#if inTodo}
+		<button type="button" class="t desk" title="Reminder on this to-do" onclick={() => void openRemind()}
+			>Remind me</button
+		>
+	{/if}
 	{#if inTable}
 		<span class="sep"></span>
 		<button type="button" class="t" onclick={() => cmd((c) => c.addRowAfter())}>+ Row</button>
@@ -377,6 +551,7 @@
 	<ActionSheet
 		title="Block"
 		actions={[
+			...(inTodo ? [{ label: 'Remind me', run: () => void openRemind() }] : []),
 			{ label: 'Move up', run: run(() => editor && blockOps.move(editor.view, -1)) },
 			{ label: 'Move down', run: run(() => editor && blockOps.move(editor.view, 1)) },
 			{ label: 'Duplicate', run: run(() => op('duplicate')) },
@@ -385,34 +560,19 @@
 		onclose={() => (blockMenu = false)}
 	/>
 {/if}
-{#if picker}
-	<div class="scrim" role="presentation" onclick={() => (picker = null)}></div>
+{#if remindId}
+	<div class="scrim" role="presentation" onclick={closeRemind}></div>
 	<div
-		use:backCloses={() => (picker = null)}
-		use:modal={() => (picker = null)}
+		use:backCloses={closeRemind}
+		use:modal={closeRemind}
 		class="picker card"
 		role="dialog"
 		aria-modal="true"
-		aria-label="Link to page"
+		aria-label="Reminder"
 	>
-		<!-- svelte-ignore a11y_autofocus -->
-		<input
-			placeholder="Search your pages"
-			aria-label="Search your pages"
-			autofocus
-			bind:value={picker.q}
-			oninput={() => picker && findPages(picker.q)}
-			onkeydown={(e) => {
-				if (e.key === 'Escape') picker = null;
-				if (e.key === 'Enter' && picker?.hits[0]) insertLink(picker.hits[0]);
-			}}
-		/>
-		{#each picker.hits as h (h.id)}
-			<button type="button" onclick={() => insertLink(h)}
-				>{h.icon ? `${h.icon} ` : ''}{h.title || 'Untitled'}{#if h.archived}
-					<span class="hint">archived</span>{/if}</button
-			>
-		{:else}<span class="hint">No pages match.</span>{/each}
+		<h2 class="rt">Remind me</h2>
+		<Reminders source="page_todo" sourceId={`${page.id}:${remindId}`} {tz} relative={false} />
+		<button class="btn sm" type="button" onclick={closeRemind}>Close</button>
 	</div>
 {/if}
 
@@ -705,11 +865,6 @@
 		.doc {
 			padding-bottom: calc(64px + var(--bar-h, 0px)); /* last line clears the docked toolbar + the tab bar */
 		}
-		/* div.picker beats the base 36 / 32 px rules further down (#223) */
-		div.picker input,
-		div.picker button {
-			min-height: 48px;
-		}
 		/* 22 px box, 48 dp to tap */
 		.doc :global(ul[data-type='taskList'] li > label) {
 			position: relative;
@@ -899,15 +1054,6 @@
 		flex-direction: column;
 		gap: 4px;
 	}
-	.picker input {
-		min-height: 36px;
-		padding: 0 10px;
-		font: inherit;
-		border-radius: 8px;
-		border: 1.5px solid var(--border);
-		background: var(--card);
-		color: var(--ink);
-	}
 	.picker button {
 		text-align: left;
 		min-height: 32px;
@@ -922,5 +1068,40 @@
 	.picker button:hover {
 		background: var(--pill);
 		color: var(--pill-ink);
+	}
+	.rt {
+		margin: 0 0 6px;
+		font-size: 16px;
+	}
+	/* v4.0 PR 30: the reminder chip after a to-do (a ProseMirror decoration, not saved content) */
+	.doc :global(.todo-rem) {
+		display: inline-block;
+		min-height: 24px;
+		margin-left: 8px;
+		padding: 1px 8px;
+		border: 1px solid var(--rule);
+		border-radius: 999px;
+		background: var(--ground);
+		color: var(--quiet);
+		font: inherit;
+		font-size: 12px;
+		line-height: 20px;
+		vertical-align: baseline;
+		cursor: pointer;
+	}
+	.doc :global(.todo-rem:hover) {
+		background: var(--pill);
+		color: var(--pill-ink);
+	}
+	.doc :global(li[data-checked='true'] .todo-rem) {
+		text-decoration: line-through;
+		opacity: 0.6;
+	}
+	.doc :global(.todo-rem[disabled]) {
+		cursor: default;
+	}
+	.doc :global(.todo-rem[disabled]:hover) {
+		background: var(--ground);
+		color: var(--quiet);
 	}
 </style>
