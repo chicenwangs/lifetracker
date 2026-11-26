@@ -14,6 +14,8 @@
 		origin,
 		intro = 'rise',
 		back = true,
+		/** true = leave focus where it is (a sheet over a typing editor must not steal it and close the keyboard) */
+		keepFocus = false,
 		children,
 	}: {
 		onclose: () => void;
@@ -23,6 +25,7 @@
 		intro?: 'rise' | 'grow';
 		/** false = the caller has its own history entry (item peek: /item/<id>) */
 		back?: boolean;
+		keepFocus?: boolean;
 		children: Snippet;
 	} = $props();
 
@@ -51,7 +54,7 @@
 	}
 
 	onMount(() => {
-		if (!panel?.contains(document.activeElement)) panel?.focus();
+		if (!keepFocus && !panel?.contains(document.activeElement)) panel?.focus();
 		const prev = document.body.style.overflow;
 		document.body.style.overflow = 'hidden';
 		return () => {

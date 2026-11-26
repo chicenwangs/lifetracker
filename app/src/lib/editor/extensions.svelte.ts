@@ -4,10 +4,15 @@ import { TaskItem } from '@tiptap/extension-list';
 import { closeHistory } from '@tiptap/pm/history';
 import { NodeSelection, Plugin, PluginKey, type EditorState, type Transaction } from '@tiptap/pm/state';
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view';
-import { Suggestion } from '@tiptap/suggestion';
-import { mount, unmount } from 'svelte';
+import { Suggestion, exitSuggestion } from '@tiptap/suggestion';
+import { mount, unmount, type Component } from 'svelte';
 import SlashMenu from './SlashMenu.svelte';
+import MentionMenu from './MentionMenu.svelte';
 import DatabaseView from '$lib/database/DatabaseView.svelte';
+
+// each Suggestion needs its own plugin key: two defaults collide ("Adding different instances of a keyed plugin")
+const SLASH_KEY = new PluginKey('slashMenu');
+const MENTION_KEY = new PluginKey('mentionMenu');
 
 /** internal link by page id (PG-10): shows the page's CURRENT title, or "unavailable". Titles come from storage. */
 export const PageLink = Node.create<{ titles: Record<string, { title: string; archived: boolean } | null> }>({
@@ -235,6 +240,69 @@ export interface SlashItem {
 	run: (editor: import('@tiptap/core').Editor, range: { from: number; to: number }) => void;
 }
 
+/** one suggestion popup's state; both menus render it (SlashMenu, MentionMenu) */
+export interface MenuState<T> {
+	items: T[];
+	index: number;
+	x: number;
+	y: number;
+	top: number;
+	q: string;
+}
+
+/** shared Suggestion render: ArrowUp/Down cycle, Enter picks, Esc exits (the plugin's own exit) */
+function menuRender<T>(
+	Comp: Component<{ s: MenuState<T>; onpick: (i: T) => void; onclose?: () => void }>,
+	close?: () => void,
+) {
+	return () => {
+		const s = $state<MenuState<T>>({ items: [], index: 0, x: 0, y: 0, top: 0, q: '' });
+		let host: HTMLElement | undefined;
+		let comp: ReturnType<typeof mount> | undefined;
+		let pick: ((i: T) => void) | undefined;
+		const sync = (p: {
+			items: T[];
+			query?: string;
+			command: (i: T) => void;
+			clientRect?: (() => DOMRect | null) | null;
+		}) => {
+			const r = p.clientRect?.();
+			Object.assign(s, {
+				items: p.items,
+				index: 0,
+				x: r?.left ?? 0,
+				y: r?.bottom ?? 0,
+				top: r?.top ?? 0,
+				q: p.query ?? '',
+			});
+			pick = p.command;
+		};
+		return {
+			onStart(p: Parameters<typeof sync>[0]) {
+				host = document.body.appendChild(document.createElement('div'));
+				host.dataset.slash = '';
+				sync(p);
+				comp = mount(Comp, { target: host, props: { s, onpick: (i: T) => pick?.(i), onclose: close } });
+			},
+			onUpdate: sync,
+			onKeyDown({ event }: { event: KeyboardEvent }) {
+				const n = Math.max(1, s.items.length);
+				if (event.key === 'ArrowDown') s.index = (s.index + 1) % n;
+				else if (event.key === 'ArrowUp') s.index = (s.index + n - 1) % n;
+				else if (event.key === 'Enter') {
+					// consumed even while the async list is still empty: Enter must not insert a newline under a picker
+					if (s.items[s.index]) pick?.(s.items[s.index] as T);
+				} else return false;
+				return true;
+			},
+			onExit() {
+				if (comp) unmount(comp);
+				host?.remove();
+			},
+		};
+	};
+}
+
 /** "/" menu (PG-SLASH). Esc / cancel leaves "/text" as plain text. Not inside code. */
 export const Slash = Extension.create<{ items: (q: string) => SlashItem[] }>({
 	name: 'slash',
@@ -244,42 +312,48 @@ export const Slash = Extension.create<{ items: (q: string) => SlashItem[] }>({
 		return [
 			Suggestion<SlashItem>({
 				editor: this.editor,
+				pluginKey: SLASH_KEY,
 				char: '/',
 				allow: ({ state, range }) => !state.doc.resolve(range.from).parent.type.spec.code,
 				items: ({ query }) => items(query),
 				command: ({ editor, range, props }) => props.run(editor, range),
-				render: () => {
-					const s = $state({ items: [] as SlashItem[], index: 0, x: 0, y: 0, top: 0 });
-					let host: HTMLElement | undefined;
-					let comp: ReturnType<typeof mount> | undefined;
-					let pick: ((i: SlashItem) => void) | undefined;
-					const sync = (p: { items: SlashItem[]; command: (i: SlashItem) => void; clientRect?: (() => DOMRect | null) | null }) => {
-						const r = p.clientRect?.();
-						Object.assign(s, { items: p.items, index: 0, x: r?.left ?? 0, y: r?.bottom ?? 0, top: r?.top ?? 0 });
-						pick = p.command;
-					};
-					return {
-						onStart(p) {
-							host = document.body.appendChild(document.createElement('div'));
-							host.dataset.slash = '';
-							sync(p);
-							comp = mount(SlashMenu, { target: host, props: { s, onpick: (i: SlashItem) => pick?.(i) } });
-						},
-						onUpdate: sync,
-						onKeyDown({ event }) {
-							const n = Math.max(1, s.items.length);
-							if (event.key === 'ArrowDown') s.index = (s.index + 1) % n;
-							else if (event.key === 'ArrowUp') s.index = (s.index + n - 1) % n;
-							else if (event.key === 'Enter' && s.items[s.index]) pick?.(s.items[s.index] as SlashItem);
-							else return false;
-							return true;
-						},
-						onExit() {
-							if (comp) unmount(comp);
-							host?.remove();
-						},
-					};
-				},
+				render: menuRender(SlashMenu),
+			}),
+		];
+	},
+}); // prettier-ignore
+
+export interface MentionItem {
+	/** linked page (absent on the create row) */
+	id?: string;
+	title: string;
+	icon: string | null;
+	/** parent page title, shown faint */
+	path?: string | null;
+	archived?: boolean;
+	/** create-a-page row: the typed query */
+	create?: string;
+}
+
+/** "[[" link picker (PR 19). Same Suggestion render + keys as the "/" menu. */
+export const Mention = Extension.create<{
+	items: (q: string) => Promise<MentionItem[]>;
+	pick: (i: MentionItem, range: { from: number; to: number }) => void;
+}>({
+	name: 'mention',
+	addOptions: () => ({ items: async () => [], pick: () => {} }),
+	addProseMirrorPlugins() {
+		return [
+			Suggestion<MentionItem>({
+				editor: this.editor,
+				pluginKey: MENTION_KEY,
+				char: '[[',
+				allowSpaces: true, // page titles have spaces: "[[Plan for friday" must keep matching
+				allowedPrefixes: null, // "see [[Plan" mid-sentence must open too
+				allow: ({ state, range }) => !state.doc.resolve(range.from).parent.type.spec.code,
+				items: ({ query }) => this.options.items(query),
+				command: ({ range, props }) => this.options.pick(props, range),
+				render: menuRender(MentionMenu, () => exitSuggestion(this.editor.view, MENTION_KEY)),
 			}),
 		];
 	},

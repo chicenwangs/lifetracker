@@ -1003,8 +1003,12 @@ test('v2 P3 Pages: tree, slash menu, internal link survives rename, pin cap, arc
 	await page.keyboard.press('Enter');
 	await page.keyboard.type('/link');
 	await page.keyboard.press('Enter');
-	await page.getByLabel('Search your pages').fill('Leg');
-	await page.getByRole('button', { name: 'Leg day' }).click();
+	// PR 19: the slash item types "[[", so the mention menu opens with Recent; typing filters
+	const linkMenu = page.getByRole('listbox', { name: 'Link a page' });
+	await expect(linkMenu).toBeVisible();
+	await page.keyboard.type('Leg');
+	await expect(linkMenu).toContainText('Leg day');
+	await page.keyboard.press('Enter');
 	await expect(page.locator('.state')).toContainText('Saved');
 	await page.goto(childUrl);
 	await expect(page.locator('.pm')).toBeVisible(); // hydrated (the editor mounts on the client)
@@ -1048,6 +1052,75 @@ test('v2 P3 Pages: tree, slash menu, internal link survives rename, pin cap, arc
 		.getByRole('button', { name: 'Restore' })
 		.click();
 	await expect(page.getByRole('tree', { name: 'Page tree' })).toContainText('Gym');
+});
+
+test('v4 PR 19: [[ picker - recent, search, arrows, create page + undo', async () => {
+	await api('POST', '/api/pages', { title: 'PR19 Alpha' });
+	await api('POST', '/api/pages', { title: 'PR19 Beta' });
+	await page.goto('/pages');
+	await page.getByRole('button', { name: 'New page' }).last().click();
+	await expect(page).toHaveURL(/\/pages\/pg_/);
+	await page.getByLabel('Page title').fill('Mention source');
+	await expect(page.locator('.state')).toContainText('Saved');
+	const ed = page.locator('.pm');
+	const menu = page.getByRole('listbox', { name: 'Link a page' });
+	await ed.click();
+	await page.keyboard.type('[[');
+	await expect(menu).toBeVisible();
+	await expect(menu).toContainText('Recent'); // empty query = the 10 most recent pages
+	await page.keyboard.type('PR19');
+	await expect(menu).toContainText('Pages');
+	await expect(menu).toContainText('PR19 Alpha');
+	await expect(menu).toContainText('PR19 Beta');
+	await expect(menu.getByRole('option')).toHaveCount(3); // both pages + the create row
+	// arrows move the selection (the shared Suggestion render); Enter links the picked row
+	const second = menu.getByRole('option').nth(1);
+	await page.keyboard.press('ArrowDown');
+	await expect(second).toHaveAttribute('aria-selected', 'true');
+	const picked = (await second.locator('.t').innerText()).trim();
+	await page.keyboard.press('Enter');
+	await expect(ed.locator('a.pl')).toHaveText(`↗ ${picked}`);
+	await expect(page.locator('.state')).toContainText('Saved');
+	// create-new: no match -> the create row; one toast Undo removes the page and its link
+	await page.keyboard.press('Control+End');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('[[ZZ fresh');
+	await expect(menu).toContainText('+ Create page "ZZ fresh"');
+	await expect(menu.getByRole('option')).toHaveCount(1);
+	await page.keyboard.press('Enter');
+	await expect(ed.locator('a.pl')).toHaveText([`↗ ${picked}`, '↗ ZZ fresh']);
+	const created = await ed.locator('a.pl').last().getAttribute('data-page-link');
+	const tree = page.getByRole('tree', { name: 'Page tree' });
+	await page.getByRole('button', { name: 'Expand Mention source' }).click();
+	await expect(tree).toContainText('ZZ fresh');
+	// typing after the create must not break the toast Undo: the chip is found by page id, not editor history
+	await ed.click();
+	await page.keyboard.press('Control+End');
+	await page.keyboard.type('!');
+	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
+	await expect(ed.locator('a.pl')).toHaveCount(1);
+	await expect(tree).not.toContainText('ZZ fresh');
+	expect((await page.request.get(`/pages/${created}`)).status()).toBe(404);
+	// Esc leaves "[[text" as plain text
+	await ed.click();
+	await page.keyboard.press('Control+End');
+	await page.keyboard.type('[[escape me');
+	await expect(menu).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(menu).toBeHidden();
+	await expect(ed).toContainText('[[escape me');
+	// popover clamp (#403): a caret near the right edge in a narrow window keeps the menu inside
+	await page.setViewportSize({ width: 800, height: 900 });
+	await ed.click();
+	await page.keyboard.press('Control+End');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('word '.repeat(14) + '[[');
+	await expect(menu).toBeVisible();
+	const mb = (await menu.boundingBox())!;
+	expect(Math.round(mb.x)).toBeGreaterThanOrEqual(12);
+	expect(Math.round(mb.x + mb.width)).toBeLessThanOrEqual(800 - 12);
+	await page.keyboard.press('Escape');
+	await page.setViewportSize({ width: 1440, height: 900 });
 });
 
 test('v4 PR 16: page emoji icon - keyboard pick, sidebar, Undo', async () => {

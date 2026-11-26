@@ -77,8 +77,10 @@ test('Pages: "/" menu and link picker stay above the keyboard (#282)', async () 
 	await expect(menu).toBeVisible();
 	await onScreen(menu);
 	await menu.getByRole('option', { name: /Link to page/ }).click();
-	const picker = page.getByRole('dialog', { name: 'Link to page' });
-	await expect(picker.getByRole('button').nth(5)).toBeVisible();
+	// PR 19: the slash item types "[[" and opens the same mention picker (BottomSheet on phone)
+	const picker = page.getByRole('dialog', { name: 'Link a page' });
+	await expect(picker.getByRole('option').first()).toBeVisible();
+	await page.waitForTimeout(250); // the sheet's 200 ms rise animation must settle before the on-screen check
 	await onScreen(picker);
 });
 
