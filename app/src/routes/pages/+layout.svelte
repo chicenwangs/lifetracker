@@ -96,12 +96,10 @@
 		<nav class="tree card" aria-label="Pages">
 			<div class="head">
 				<div class="new">
-					<button
-						class="btn primary sm grow newpage"
-						type="button"
-						onclick={() => (templates.length ? (newOpen = !newOpen) : create(null))}>New page</button
+					<button class="btn primary sm grow newpage" type="button" onclick={() => (newOpen = !newOpen)}
+						>New page</button
 					>
-					{#if newOpen && templates.length}
+					{#if newOpen}
 						<div class="newscrim" role="presentation" onclick={() => (newOpen = false)}></div>
 						<div
 							class="newmenu card"
@@ -120,6 +118,8 @@
 									onclick={() => ((newOpen = false), void createFromTemplate(t.id))}
 									>{t.icon ? `${t.icon} ` : ''}{t.title || 'Untitled'}</button
 								>
+							{:else}
+								<span class="hint">No templates yet. Use the page menu &gt; Make template on any page.</span>
 							{/each}
 						</div>
 					{/if}
@@ -240,6 +240,7 @@
 		left: 0;
 		z-index: 41;
 		min-width: 200px;
+		max-width: 260px;
 		padding: 6px;
 		display: flex;
 		flex-direction: column;

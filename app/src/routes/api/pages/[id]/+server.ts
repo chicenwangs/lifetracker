@@ -16,6 +16,8 @@ export const PATCH = api(async (e) => {
 	const id = e.params.id ?? '';
 	const owner = need('page', u.id, id, 'edit');
 	const p = await body(e, pages.patchSchema);
+	// v4.0 PR 22: isTemplate is owner-level; the generic PATCH only needs edit, so check it here too
+	if (p.isTemplate !== undefined) need('page', u.id, id, 'owner');
 	const page = pages.update(owner, id, p, u.id);
 	if (p.title !== undefined) syncTitleFromPage(page.id, p.title); // record page: the title value follows
 	return json({ page });

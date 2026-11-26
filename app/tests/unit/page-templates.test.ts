@@ -9,6 +9,7 @@ import * as search from '../../src/lib/server/search';
 import { duplicatePage } from '../../src/lib/server/repo/page-duplicate';
 import { POST as templatePost } from '../../src/routes/api/pages/[id]/template/+server';
 import { POST as fromTemplatePost } from '../../src/routes/api/pages/[id]/from-template/+server';
+import { PATCH as pagePatch } from '../../src/routes/api/pages/[id]/+server';
 import { POST as undoPost } from '../../src/routes/api/undo/+server';
 
 let u1: string;
@@ -33,6 +34,15 @@ const undoEvent = (userId: string, id: string) => ({
 		method: 'POST',
 		headers: { 'content-type': 'application/json' },
 		body: JSON.stringify({ id }),
+	}),
+});
+const patchEvent = (userId: string, id: string, b: unknown) => ({
+	locals: { user: usersRepo.safe(usersRepo.byId(userId)!) },
+	params: { id },
+	request: new Request(`http://localhost/api/pages/${id}`, {
+		method: 'PATCH',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify(b),
 	}),
 });
 const textOf = (p: PageDTO) =>
@@ -88,6 +98,13 @@ describe('page templates', () => {
 		expect(ok.page.isTemplate).toBe(true);
 		await undoPost(undoEvent(u1, ok.undo.id) as never);
 		expect(pages.get(u1, p.id).isTemplate).toBe(false);
+	});
+	it('a shared editor cannot flip isTemplate through the generic PATCH', async () => {
+		const p = pages.create(u1, { parentId: null, title: 'Mine' });
+		shares.put('page', u1, p.id, { username: 'two', permission: 'edit' });
+		expect((await pagePatch(patchEvent(u2, p.id, { isTemplate: true }) as never)).status).toBe(403);
+		expect((await pagePatch(patchEvent(u1, p.id, { isTemplate: true }) as never)).status).toBe(200);
+		expect(pages.tree(u1).some((n) => n.id === p.id)).toBe(false);
 	});
 	it('from-template route copies, and its undo removes the copy', async () => {
 		const tpl = pages.create(u1, { parentId: null, title: 'Recipe' });

@@ -127,8 +127,7 @@
 			return goto(u, { noScroll: true, keepFocus: true });
 		}
 		if (p.startsWith('/pages')) {
-			if (templates.length) return (pagePick = true);
-			return void newPage(null);
+			return (pagePick = true);
 		}
 		const d = page.data as { day?: string; from?: string; to?: string; today?: string; sel?: string };
 		const day = p.startsWith('/today')
@@ -180,6 +179,7 @@
 {#if pagePick}
 	<ActionSheet
 		title="New page"
+		hint={templates.length ? undefined : 'No templates yet. Use the page menu > Make template on any page.'}
 		actions={[
 			{ label: 'Blank page', run: () => newPage(null) },
 			...templates.map((t) => ({

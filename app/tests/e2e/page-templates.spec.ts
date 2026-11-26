@@ -27,6 +27,16 @@ test('template: make it, it leaves the tree, New page from template copies the b
 	};
 	expect((await api(page, 'PATCH', `/api/pages/${id}`, { doc })).s).toBe(200);
 	await page.goto(`/pages/${id}`);
+	// empty state: the New page menu always opens, with the hint when there are no templates
+	await page.getByRole('button', { name: 'New page', exact: true }).click();
+	await expect(
+		page.getByText('No templates yet. Use the page menu > Make template on any page.'),
+	).toBeVisible();
+	await page.getByRole('menuitem', { name: 'Blank page' }).click();
+	await expect.poll(() => page.url()).not.toContain(`/pages/${id}`);
+	const blankId = page.url().split('/').pop() as string;
+	await api(page, 'DELETE', `/api/pages/${blankId}`);
+	await page.goto(`/pages/${id}`);
 	await page.getByRole('button', { name: 'Page menu' }).click();
 	await page.getByRole('menuitem', { name: 'Make template' }).click();
 	await expect(page.locator('.tpl')).toContainText('Template · edits don');
