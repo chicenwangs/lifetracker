@@ -149,7 +149,24 @@ test('C5 fine pointer at 1440x900 keeps every key hint', async ({ page }) => {
 	await expect(page.getByRole('listbox', { name: 'Insert block' })).toBeVisible();
 	await expect(page.getByText(/Esc cancel/)).toBeVisible();
 
-	// C8: the Pages Ctrl+K tip is shown for a fine pointer
+	// C8: the Pages Ctrl+K tip is shown for a fine pointer, with a page present so the card renders
 	await page.goto('/pages');
+	await expect(page.getByText('Open a page from the list, or start a new one.')).toBeVisible();
 	await expect(page.getByText(/Tip: Ctrl\+K/)).toBeVisible();
+});
+
+test.describe('C8 coarse pointer at desktop width', () => {
+	test.use({ viewport: { width: 900, height: 700 }, hasTouch: true });
+
+	test('C8 coarse pointer: the Pages Ctrl+K tip is hidden by the hint gate', async ({ page }) => {
+		await signIn(page);
+		// a page exists, so the phone media query is not in play at 900 px and does not hide the card:
+		// what hides the tip here is the `.hint` / `pointer: fine` gate C8 is about
+		await makePage(page, 'Blind coarse tip page');
+		await page.goto('/pages');
+		await expect(page.getByText('Open a page from the list, or start a new one.')).toBeVisible();
+		const tip = page.getByText(/Tip: Ctrl\+K/);
+		await expect(tip).toBeAttached();
+		await expect(tip).toBeHidden();
+	});
 });

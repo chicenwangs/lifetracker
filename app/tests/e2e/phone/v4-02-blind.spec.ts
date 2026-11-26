@@ -295,6 +295,8 @@ test('C7 reading the screens creates no undo entry and loses none', async () => 
 test('C8 the Ctrl+K tip on Pages is gated like the other hints', async () => {
 	await page.goto('/pages');
 	const tip = page.getByText(/Tip: Ctrl\+K/);
-	await expect(tip).toBeAttached(); // still shipped, just not rendered for a coarse pointer
+	// the phone surface: no Ctrl+K tip is readable. The card is hidden by the phone media query here, so the
+	// `.hint` / pointer:fine gate itself is proven at 900x700 coarse in tests/e2e/v4/02-blind.spec.ts.
+	await expect(tip).toBeAttached();
 	await expect(tip).toBeHidden();
 });
