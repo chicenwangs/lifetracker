@@ -256,6 +256,48 @@ test('Pages + offers templates and makes a copy (#445)', async () => {
 	);
 });
 
+test('local graph: full-screen dialog, Back closes it, no console errors (#444)', async () => {
+	const [a] = (await page.evaluate(async () => {
+		const post = (u: string, b: unknown) =>
+			fetch(u, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(b),
+			}).then((r) => r.json());
+		const ta = (await post('/api/pages', { title: 'Phone graph A' })).page as { id: string };
+		const tb = (await post('/api/pages', { title: 'Phone graph B' })).page as { id: string };
+		await fetch(`/api/pages/${ta.id}`, {
+			method: 'PATCH',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				doc: {
+					type: 'doc',
+					content: [{ type: 'paragraph', content: [{ type: 'pageLink', attrs: { pageId: tb.id } }] }],
+				},
+			}),
+		});
+		return [ta, tb];
+	})) as [{ id: string }, { id: string }];
+	const errors: string[] = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	page.on('console', (m) => {
+		if (m.type() === 'error') errors.push(m.text());
+	});
+	await page.goto(`/pages/${a.id}`);
+	const before = page.url();
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Local graph' }).click();
+	const dlg = page.getByRole('dialog', { name: 'Links around Phone graph A' });
+	await expect(dlg).toBeVisible();
+	await expect(dlg.getByRole('status')).toHaveText(/2 pages/);
+	const vp = page.viewportSize()!;
+	expect(await dlg.boundingBox()).toMatchObject({ x: 0, y: 0, width: vp.width, height: vp.height });
+	await page.goBack();
+	await expect(dlg).toBeHidden();
+	expect(page.url()).toBe(before);
+	expect(errors.filter((e) => !e.includes('favicon'))).toEqual([]);
+});
+
 test('to-do reminder from the block sheet (#453)', async () => {
 	const BID = 'pbl_00000000000000bb';
 	const doc = {

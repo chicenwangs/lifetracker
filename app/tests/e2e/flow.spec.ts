@@ -1952,6 +1952,42 @@ test('ICS feed: create link, fetch without login, private = Busy, rotate kills t
 	await anon.dispose();
 });
 
+test('local graph: opens from the page menu, depth 1/2, no console errors (#444)', async () => {
+	const a = (await api('POST', '/api/pages', { title: 'Graph A' })).j.page;
+	const b = (await api('POST', '/api/pages', { title: 'Graph B' })).j.page;
+	const c = (await api('POST', '/api/pages', { title: 'Graph C' })).j.page;
+	const d = (await api('POST', '/api/pages', { title: 'Graph D' })).j.page;
+	const doc = (ids: string[]) => ({
+		type: 'doc',
+		content: ids.map((id) => ({
+			type: 'paragraph',
+			content: [{ type: 'pageLink', attrs: { pageId: id } }],
+		})),
+	});
+	await api('PATCH', `/api/pages/${a.id}`, { doc: doc([b.id]) });
+	await api('PATCH', `/api/pages/${b.id}`, { doc: doc([c.id]) });
+	await api('PATCH', `/api/pages/${c.id}`, { doc: doc([d.id]) });
+	const errors: string[] = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	page.on('console', (m) => {
+		if (m.type() === 'error') errors.push(m.text());
+	});
+	await page.goto(`/pages/${a.id}`);
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Local graph' }).click();
+	const dlg = page.getByRole('dialog', { name: 'Links around Graph A' });
+	await expect(dlg).toBeVisible();
+	await expect(dlg.getByRole('status')).toHaveText(/3 pages/); // A + B + C at depth 2
+	await dlg.getByRole('button', { name: '1', exact: true }).click();
+	await expect(dlg.getByRole('status')).toHaveText(/2 pages/);
+	await dlg.getByRole('button', { name: '2', exact: true }).click();
+	await expect(dlg.getByRole('status')).toHaveText(/3 pages/);
+	await expect(dlg.getByRole('link', { name: 'Open full graph' })).toHaveAttribute('href', '/pages/graph');
+	await page.keyboard.press('Escape');
+	await expect(dlg).toBeHidden();
+	expect(errors.filter((e) => !e.includes('favicon'))).toEqual([]);
+});
+
 test('database calendar: records on their date, create from a day, No date rail (#445)', async () => {
 	const db = (await api('POST', '/api/databases', { title: 'Cal DB' })).j.database as {
 		id: string;
