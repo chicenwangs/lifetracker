@@ -110,7 +110,7 @@ export const Callout = Node.create({
 			tones.className = 'co-tones';
 			tones.contentEditable = 'false';
 			dom.append(ico, body, tones);
-			let comp: ReturnType<typeof mount> | undefined;
+			let iconApi: { setIcon?: (v: string | null) => void } = {};
 			let emoji = String(node.attrs.emoji ?? '💡');
 			const now = () => {
 				const pos = getPos();
@@ -123,19 +123,18 @@ export const Callout = Node.create({
 					editor.state.tr.setNodeMarkup(cur.pos, undefined, { ...cur.node.attrs, ...patch }),
 				);
 			};
-			const mountIcon = () => {
-				if (comp) unmount(comp);
-				ico.textContent = '';
-				comp = mount(PageIcon, {
-					target: ico,
-					props: {
-						icon: emoji,
-						compact: true,
-						label: 'Callout icon',
-						onpick: (v) => v && setAttrs({ emoji: v }),
-					},
-				});
-			};
+			// one PageIcon instance for the life of the node view: an editor update must not remount it and close
+			// the picker (W1 accept_fail #441); a changed emoji goes through the exported setIcon instead.
+			const comp = mount(PageIcon, {
+				target: ico,
+				props: {
+					icon: emoji,
+					compact: true,
+					label: 'Callout icon',
+					onpick: (v) => v && setAttrs({ emoji: v }),
+				},
+			});
+			iconApi = comp as unknown as { setIcon?: (v: string | null) => void };
 			const swatches: HTMLButtonElement[] = [];
 			for (const t of ['grey', 'blue', 'yellow', 'red']) {
 				const b = document.createElement('button');
@@ -154,21 +153,21 @@ export const Callout = Node.create({
 				for (const b of swatches) b.setAttribute('aria-pressed', String(b.dataset.tone === n.attrs.tone));
 			};
 			paint(node);
-			mountIcon();
 			return {
 				dom,
 				contentDOM: body,
 				update(n: typeof node) {
-					if (String(n.attrs.emoji ?? '💡') !== emoji) {
-						emoji = String(n.attrs.emoji ?? '💡');
-						mountIcon();
+					const e = String(n.attrs.emoji ?? '💡');
+					if (e !== emoji) {
+						emoji = e;
+						iconApi.setIcon?.(e);
 					}
 					paint(n);
 					return true;
 				},
 				stopEvent: (e: Event) => !!(e.target as HTMLElement).closest?.('.co-ico, .co-tone'),
 				destroy() {
-					if (comp) unmount(comp);
+					unmount(comp);
 				},
 			};
 		};

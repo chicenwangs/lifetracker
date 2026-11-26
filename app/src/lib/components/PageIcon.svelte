@@ -34,6 +34,12 @@
 	let active = $state(0);
 	let btn: HTMLButtonElement | undefined = $state();
 	let grid: HTMLDivElement | undefined = $state();
+	// the callout keeps one instance mounted and pushes a new emoji through setIcon (no remount on editor updates)
+	let override = $state<string | null | undefined>(undefined);
+	const shown = $derived(override === undefined ? icon : override);
+	export function setIcon(v: string | null) {
+		override = v;
+	}
 	onMount(() => (phone = isPhone()));
 	const cols = $derived(phone ? 6 : 8);
 
@@ -49,7 +55,7 @@
 		if (disabled) return;
 		open = !open;
 		if (open) {
-			active = Math.max(0, icon ? EMOJI.indexOf(icon) : 0);
+			active = Math.max(0, shown ? EMOJI.indexOf(shown) : 0);
 			queueMicrotask(() => focusCell(active));
 		}
 	}
@@ -82,13 +88,13 @@
 	<button
 		bind:this={btn}
 		class="pickbtn"
-		class:empty={!icon}
+		class:empty={!shown}
 		type="button"
 		{disabled}
 		aria-haspopup="dialog"
 		aria-expanded={open}
-		aria-label={icon ? `${label}: ${icon}` : `${label}: Add icon`}
-		onclick={show}>{icon ?? 'Add icon'}</button
+		aria-label={shown ? `${label}: ${shown}` : `${label}: Add icon`}
+		onclick={show}>{shown ?? 'Add icon'}</button
 	>
 	{#if open && !phone}
 		<div
@@ -122,7 +128,7 @@
 	<BottomSheet {label} onclose={close}>
 		<div class="sheet">
 			<div class="head">
-				<b>Page icon</b>
+				<b>{label}</b>
 				<button class="remove" type="button" onclick={() => choose(null)}>Remove</button>
 			</div>
 			<div class="grid" bind:this={grid} role="listbox" tabindex="-1" aria-label="Emoji" style:--cols={cols}>
