@@ -12,3 +12,4 @@ playwright-report
 *.db-shm
 tunnel.env
 .opencode/
+app/build-serve
