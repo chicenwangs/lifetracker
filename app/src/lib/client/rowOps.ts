@@ -5,6 +5,7 @@ import { patch, post } from './api';
 import { buzz } from './haptics';
 import { enqueueAction, isOffline } from './offline';
 import { removeBlock, removeItem } from './remove';
+import { raiseShield } from './tapShield';
 import { showError, showToast } from './toast.svelte';
 import { undoLast } from './undo.svelte';
 import type { UndoRef } from '$lib/types';
@@ -43,6 +44,8 @@ const TICK_TEXT: Record<Status, string> = { todo: 'Not started', doing: 'Started
  * Tap a status square (#293, #310): POST /cycle, then a toast with Undo. Offline = queued PATCH. One helper
  * for every tick, so Today and the item sheet cannot drift apart.
  * `onResult` runs before `refresh` (the item sheet follows a repeating date that was detached into its own row).
+ * #379: the list re-renders on this tick, so a touch burst is shielded from the raise until 250 ms after it;
+ * there is no second raise after the refresh (a deliberate double-tap inside the window counts once).
  */
 export async function cycleRow(
 	kind: 'items' | 'blocks',
@@ -54,6 +57,7 @@ export async function cycleRow(
 ): Promise<'ok' | 'queued' | 'failed'> {
 	const next = nextStatus(cur);
 	const p = `/api/${kind}/${encodeURIComponent(id)}`;
+	raiseShield(); // touch / coarse only: desktop ticks stay unshielded
 	try {
 		const r = await post<{ item?: { id: string }; undo?: UndoRef }>(`${p}/cycle`);
 		onResult?.(r);
