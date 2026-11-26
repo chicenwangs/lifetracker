@@ -127,9 +127,9 @@ test('C2 permission (API): another user and a shared-with user get 404 not_found
 	await page.getByRole('button', { name: 'Save' }).click();
 	await expect(page.getByText('Saved.')).toBeVisible();
 
-	const users = [await newUser(browser, `blind${RUN}s`), await newUser(browser, `blind${RUN}h`)];
+	const stranger = await newUser(browser, `blind${RUN}s`);
+	const sharedWith = await newUser(browser, `blind${RUN}h`);
 	try {
-		const [stranger, sharedWith] = users;
 		const id = await createNote(page, `C2 blind ${RUN}`);
 		// share while the note is live: level() is owner-only once the row is trashed
 		const share = await page.evaluate(
@@ -156,7 +156,8 @@ test('C2 permission (API): another user and a shared-with user get 404 not_found
 		}
 		expect(await scopeIds(page, 'trash')).toContain(id);
 	} finally {
-		for (const u of users) await u.ctx.close();
+		await stranger.ctx.close();
+		await sharedWith.ctx.close();
 	}
 });
 
