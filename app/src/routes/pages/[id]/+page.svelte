@@ -7,6 +7,7 @@
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { undoLast } from '$lib/client/undo.svelte';
 	import PageEditor from '$lib/editor/PageEditor.svelte';
+	import PageIcon from '$lib/components/PageIcon.svelte';
 	import DbCell from '$lib/database/DbCell.svelte';
 	import ShareDialog from '$lib/components/ShareDialog.svelte';
 	import type { PageDTO, PageNode, UndoRef } from '$lib/types';
@@ -20,6 +21,7 @@
 	let menu = $state(false);
 	let moving = $state(false);
 	let sharing = $state(false);
+	let iconPicker: PageIcon | undefined = $state();
 	const mine = $derived(pg.access === 'owner');
 	// new page opened: take its title; a reload of the same page keeps what is being typed
 	let shownId = '';
@@ -57,6 +59,29 @@
 			await invalidateAll();
 		} catch (e) {
 			saveState = 'failed';
+			showError(e);
+		}
+	}
+
+	async function setIcon(icon: string | null) {
+		if (icon === pg.icon) return;
+		try {
+			await editor?.flush(); // one writer at a time: the revision must line up
+			const r = await patch<{ page: PageDTO; undo?: UndoRef }>(`/api/pages/${pg.id}`, { icon });
+			editor?.setRevision(r.page.revision);
+			await invalidateAll();
+			const u = r.undo;
+			showToast(icon ? 'Icon updated' : 'Icon removed', {
+				undo: u
+					? async () => {
+							if (!(await undoLast(u.id))) return;
+							const fresh = await get<{ page: PageDTO }>(`/api/pages/${pg.id}`);
+							editor?.setRevision(fresh.page.revision);
+							await invalidateAll();
+						}
+					: undefined,
+			});
+		} catch (e) {
 			showError(e);
 		}
 	}
@@ -223,6 +248,12 @@
 				<div use:backCloses={() => (menu = false)} class="menu card" role="menu">
 					{#if mine}
 						<!-- phone (#98): Pin + Share live here, the bar only has room for ⋯ -->
+						{#if !pg.icon}<button
+								role="menuitem"
+								type="button"
+								class="narrow"
+								onclick={() => ((menu = false), iconPicker?.openPicker())}>Add icon</button
+							>{/if}
 						{#if !pg.archived}<button role="menuitem" type="button" class="narrow" onclick={pin}
 								>{pg.pinned ? 'Unpin from header' : 'Pin to header'}</button
 							>{/if}
@@ -257,6 +288,9 @@
 		</div>
 	</div>
 	<div class="body">
+		<div class="pico" class:blank={!pg.icon}>
+			<PageIcon bind:this={iconPicker} icon={pg.icon} disabled={pg.access === 'view'} onpick={setIcon} />
+		</div>
 		<input
 			class="title"
 			autocomplete="off"
@@ -397,6 +431,19 @@
 		max-width: none;
 		padding: 28px 40px 40px;
 	}
+	/* icon row (DESIGN 2.1): 56 px emoji above the title; when empty a faint 13 px "Add icon" shows on hover */
+	.pico {
+		margin-bottom: 6px;
+	}
+	@media (hover: hover) and (min-width: 700px) {
+		.pico.blank {
+			opacity: 0;
+		}
+		.body:hover .pico.blank,
+		.pico.blank:focus-within {
+			opacity: 1;
+		}
+	}
 	.title {
 		display: block;
 		width: 100%;
@@ -440,6 +487,9 @@
 		}
 		.body {
 			padding: 20px 16px 32px;
+		}
+		.pico {
+			margin-bottom: 2px;
 		}
 		.title {
 			font-size: 26px;

@@ -408,8 +408,8 @@ export function suggestions(ownerId: string, now: number = Date.now()) {
 export function findByTitle(ownerId: string, q: string, limit = 10) {
 	const like = `%${q.trim().replace(/[\\%_]/g, (c) => '\\' + c)}%`;
 	return db()
-		.prepare(`SELECT id, title, archived_at IS NOT NULL AS archived FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND title LIKE ? ESCAPE '\\' ORDER BY archived_at IS NOT NULL, last_opened_at DESC LIMIT ?`)
-		.all(ownerId, like, limit) as { id: string; title: string; archived: number }[]; // prettier-ignore
+		.prepare(`SELECT id, title, icon, archived_at IS NOT NULL AS archived FROM pages WHERE owner_id = ? AND deleted_at IS NULL AND title LIKE ? ESCAPE '\\' ORDER BY archived_at IS NOT NULL, last_opened_at DESC LIMIT ?`)
+		.all(ownerId, like, limit) as { id: string; title: string; icon: string | null; archived: number }[]; // prettier-ignore
 }
 
 // ---------- pins (FEATURES §2, D-20: title = page title) ----------

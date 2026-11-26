@@ -76,6 +76,16 @@ describe('undo journal', () => {
 		expect(items.getOwn(me, i.id)?.title).toBe('X');
 	});
 
+	it('opening the page does not block undoing a page change', () => {
+		const p = pages.create(me, { title: 'Icon page', parentId: null });
+		const r = undoable(me, 'Page icon', [{ t: 'pages', id: p.id }], () => ({
+			result: pages.update(me, p.id, { icon: '📕' }),
+		}));
+		pages.get(me, p.id, true); // every page load stamps last_opened_at
+		undo(me, r.undo.id);
+		expect(pages.get(me, p.id, false).icon).toBeNull();
+	});
+
 	it('quick add /both = one undo removes item + block', () => {
 		const r = quickAdd(user, 'gym tmr 6pm /both', Date.parse('2026-11-13T02:00:00Z'));
 		undo(me);

@@ -110,6 +110,28 @@ test('Pin toast says Pinned, Unpin toast says Unpinned (#348)', async () => {
 	await expect(page.getByText('Unpinned from header')).toBeVisible();
 });
 
+test('page icon sheet: 48 dp grid, Close hides, Remove clears', async () => {
+	// phone: the header has no "Add icon" row; the page ⋯ sheet opens the picker (DESIGN 2.1)
+	await page.locator('.pagev .bar').getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Add icon' }).click();
+	await page.waitForTimeout(250); // the menu's history entry is swapped for the sheet's (layers.ts)
+	const sheet = page.getByRole('dialog', { name: 'Page icon' });
+	await expect(sheet).toBeVisible();
+	await expectTargets48(page);
+	await sheet.getByRole('option', { name: '⭐' }).click();
+	await expect(page.getByRole('button', { name: 'Page icon: ⭐' })).toHaveText('⭐');
+	await page.getByRole('button', { name: 'Page icon: ⭐' }).click();
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole('button', { name: 'Close' }).click(); // BottomSheet's own close (Back is covered by #91)
+	await expect(sheet).toBeHidden();
+	await page.getByRole('button', { name: 'Page icon: ⭐' }).click();
+	await sheet.getByRole('button', { name: 'Remove' }).click();
+	await expect(page.getByRole('button', { name: 'Page icon: ⭐' })).toHaveCount(0);
+	// empty again: no header row on phone, the ⋯ sheet offers Add icon again
+	await page.locator('.pagev .bar').getByRole('button', { name: 'Page menu' }).click();
+	await expect(page.getByRole('menuitem', { name: 'Add icon' })).toBeVisible();
+});
+
 test('Archive: 48 dp search field and no sideways scroll at 320 px (#405)', async () => {
 	await page.goto('/pages/archive');
 	await expect(page.getByLabel('Search archive')).toBeVisible();

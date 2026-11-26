@@ -38,7 +38,7 @@
 	// ---------- "/" menu ----------
 	let picker = $state<{
 		q: string;
-		hits: { id: string; title: string; archived: number }[];
+		hits: { id: string; title: string; archived: number; icon: string | null }[];
 		at: number;
 	} | null>(null);
 	const ITEMS: SlashItem[] = [
@@ -75,7 +75,7 @@
 	}
 	async function findPages(q: string) {
 		try {
-			const r = await get<{ hits: { id: string; title: string; archived: number }[] }>(
+			const r = await get<{ hits: { id: string; title: string; archived: number; icon: string | null }[] }>(
 				`/api/pages/find?q=${encodeURIComponent(q)}`,
 			);
 			if (picker) picker.hits = r.hits.filter((h) => h.id !== page.id);
@@ -393,7 +393,7 @@
 		/>
 		{#each picker.hits as h (h.id)}
 			<button type="button" onclick={() => insertLink(h)}
-				>{h.title || 'Untitled'}{#if h.archived}
+				>{h.icon ? `${h.icon} ` : ''}{h.title || 'Untitled'}{#if h.archived}
 					<span class="hint">archived</span>{/if}</button
 			>
 		{:else}<span class="hint">No pages match.</span>{/each}

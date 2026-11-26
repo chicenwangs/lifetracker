@@ -78,8 +78,7 @@ export function undo(userId: string, id?: string): { label: string } {
 		const rows = JSON.parse(a.rows) as Snap[];
 		for (const r of rows) {
 			const cur = get(r.t, r.id);
-			const same =
-				JSON.stringify(comparable(r.t, cur)) === JSON.stringify(comparable(r.t, r.after));
+			const same = JSON.stringify(comparable(r.t, cur)) === JSON.stringify(comparable(r.t, r.after));
 			if (!same) throw new ApiFail(409, 'cant_undo', `Can't undo safely: "${a.label}" was changed since.`);
 		}
 		// parents before children on re-insert (a step needs its item), children first on delete
