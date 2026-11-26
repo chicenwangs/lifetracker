@@ -152,6 +152,30 @@ test('Archive: 48 dp search field and no sideways scroll at 320 px (#405)', asyn
 	}
 });
 
+test('cover: add from the page menu, 120 px banner, remove (#454)', async () => {
+	const PNG = Buffer.from(
+		'89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c62f8cfc0f01f00050001ff9a5ee73f0000000049454e44ae426082',
+		'hex',
+	);
+	const id = await page.evaluate(async () => {
+		const r = await fetch('/api/pages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'Phone cover page' }) }); // prettier-ignore
+		return ((await r.json()) as { page: { id: string } }).page.id;
+	});
+	await page.goto(`/pages/${id}`);
+	await page.locator('.pagev .bar').getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: /Add cover/ }).click();
+	await page
+		.getByLabel('Cover image')
+		.setInputFiles({ name: 'cover.png', mimeType: 'image/png', buffer: PNG });
+	const img = page.locator('.cover img');
+	await expect(img).toBeVisible();
+	const box = await img.boundingBox();
+	expect(Math.round(box!.height)).toBe(120);
+	await page.getByRole('button', { name: 'Remove' }).click();
+	await expect(page.locator('.cover')).toHaveCount(0);
+	await page.evaluate(async (x) => fetch(`/api/pages/${x}`, { method: 'DELETE' }), id);
+});
+
 test('Linked from: the source page under the editor, 48 dp row (#443)', async () => {
 	const [target, src] = (await page.evaluate(async () => {
 		const post = (u: string, b: unknown) =>
