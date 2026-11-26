@@ -1902,7 +1902,7 @@ test('database calendar: records on their date, create from a day, No date rail 
 	await api('POST', `/api/databases/${db.id}/views`, { name: 'Calendar', type: 'calendar' });
 	await page.goto(`/pages/${db.pageId}`);
 	await page.getByRole('tab', { name: /Calendar/ }).click();
-	const grid = page.getByRole('grid', { name: /records/ });
+	const grid = page.getByRole('group', { name: /records/ });
 	await expect(grid.getByRole('button', { name: 'Dated' })).toBeVisible(); // the record sits on the 12th
 	await expect(page.locator('[aria-label="No date"]')).toContainText('Undated');
 	// click a day = a new record dated that day
@@ -1916,6 +1916,22 @@ test('database calendar: records on their date, create from a day, No date rail 
 			return rows.filter((r) => r.values[when.id] === `${ym}-20`).length;
 		})
 		.toBe(1);
+	// D-19: a text value left over after converting a property to date stays visible in No date
+	const note = (
+		await api('POST', `/api/databases/${db.id}/properties`, { name: 'Note', type: 'text', config: {} })
+	).j.prop as { id: string };
+	const view2 = (await api('POST', `/api/databases/${db.id}/views`, { name: 'Calendar 2', type: 'calendar' }))
+		.j.view as { id: string };
+	await api('POST', `/api/databases/${db.id}/records`, {
+		values: { [tp.id]: 'Bad date', [note.id]: 'hello' },
+	});
+	expect((await api('PATCH', `/api/database-properties/${note.id}`, { type: 'date', confirm: true })).s).toBe(
+		200,
+	);
+	await api('PATCH', `/api/database-views/${view2.id}`, { config: { dateProp: note.id } });
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Calendar 2/ }).click();
+	await expect(page.locator('[aria-label="No date"]')).toContainText('Bad date');
 });
 
 test('reset-password script works', async ({ browser }) => {

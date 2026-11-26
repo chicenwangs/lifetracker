@@ -6,7 +6,7 @@
 	import { goto } from '$app/navigation';
 	import { del, get, patch, post, ApiError } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
-	import { asText, NO_VALUE_OPS, OP_LABEL, OPS, PROP_TYPES, type Filter, type PropType, type ViewConfig } from '$lib/dbvalues'; // prettier-ignore
+	import { asText, checkValue, NO_VALUE_OPS, OP_LABEL, OPS, PROP_TYPES, type Filter, type PropType, type ViewConfig } from '$lib/dbvalues'; // prettier-ignore
 	import type { DatabaseDTO, DbProp, DbRow } from '$lib/types';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -75,8 +75,11 @@
 	const isCalendar = $derived(view?.type === 'calendar');
 	const dateProps = $derived((d?.props ?? []).filter((p) => p.type === 'date'));
 	const calProp = $derived<DbProp | undefined>(
-		(cfg.dateProp ? prop(cfg.dateProp) : undefined) ?? dateProps[0],
+		// a saved dateProp may point at a property whose type changed since (D-19): only a date property counts
+		(cfg.dateProp && prop(cfg.dateProp)?.type === 'date' ? prop(cfg.dateProp) : undefined) ?? dateProps[0],
 	);
+	/** a stored value that really is a day; a text value left over from a type change stays visible in No date (D-19) */
+	const isDay = (v: unknown) => checkValue('date', v).ok;
 	const calCells = $derived(calYm ? monthCells(calYm) : []);
 	const byDate = $derived.by(() => {
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- a plain lookup built fresh in the derived, never mutated after
@@ -84,15 +87,16 @@
 		if (!calProp) return m;
 		for (const r of d?.rows ?? []) {
 			const v = r.values[calProp.id];
-			if (typeof v !== 'string') continue;
-			const list = m.get(v);
+			if (!isDay(v)) continue;
+			const day = v as string;
+			const list = m.get(day);
 			if (list) list.push(r);
-			else m.set(v, [r]);
+			else m.set(day, [r]);
 		}
 		return m;
 	});
 	const noDate = $derived(
-		calProp ? (d?.rows ?? []).filter((r) => typeof r.values[calProp.id as string] !== 'string') : [],
+		calProp ? (d?.rows ?? []).filter((r) => !isDay(r.values[calProp.id as string])) : [],
 	);
 	const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']; // prettier-ignore
 	const monthName = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1] ?? ''} ${ym.slice(0, 4)}`;
@@ -689,7 +693,7 @@
 					<span class="hint">{d.total} record{d.total === 1 ? '' : 's'}</span>
 				</div>
 				<div class="calwrap">
-					<div class="calgrid" role="grid" aria-label="{monthName(calYm)} records">
+					<div class="calgrid" role="group" aria-label="{monthName(calYm)} records">
 						{#each ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as w (w)}
 							<span class="wd" aria-hidden="true">{w}</span>
 						{/each}
@@ -713,7 +717,7 @@
 							{/if}
 						{/each}
 					</div>
-					<div class="norail" aria-label="No date">
+					<div class="norail" role="group" aria-label="No date">
 						<b>No date ({noDate.length})</b>
 						{#each noDate as r (r.id)}
 							<button type="button" class="chip rec" onclick={() => openRecord(r)}>{title(r)}</button>
