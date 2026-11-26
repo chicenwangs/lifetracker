@@ -189,6 +189,9 @@ export interface DbView {
 export interface DbRow {
 	id: string;
 	pageId: string | null;
+	/** the record page's emoji and cover attachment (gallery fallback; empty until the page exists) */
+	icon?: string | null;
+	coverId?: string | null;
 	/** propertyId -> stored value */
 	values: Record<string, unknown>;
 	/** properties whose stored value no longer fits the type (D-19: kept, flagged) */

@@ -64,18 +64,20 @@
 			.filter((p): p is DbProp => !!p && p.type !== 'title');
 		return picked.length ? picked.slice(0, 2) : d.props.filter((p) => p.type !== 'title').slice(0, 2);
 	});
-	// gallery (PR 25): cards with a cover (a url property holding an attachment), title and the chosen properties
+	// gallery (PR 25): cards with a cover chain (picture link, page cover, page icon), title and the chosen properties
 	const isGallery = $derived(view?.type === 'gallery');
 	const coverProp = $derived(cfg.coverProp ? prop(cfg.coverProp) : undefined);
 	const cardSize = $derived<'S' | 'M' | 'L'>(cfg.cardSize ?? 'M');
 	const coverOf = (r: DbRow) => {
 		const v = coverProp ? r.values[coverProp.id] : null;
-		// cover = a link to a picture (the page cover arrives with PR 31); anything else falls back to --ground
-		return typeof v === 'string' &&
+		// DESIGN 2.7: a picture link on the record -> its page cover -> --ground with the page icon
+		if (
+			typeof v === 'string' &&
 			(/^https?:\/\/\S+\.(png|jpe?g|gif|webp|avif|svg)([?#]\S*)?$/i.test(v) ||
 				/^\/api\/attachments\/att_[0-9a-z]+$/.test(v))
-			? v
-			: '';
+		)
+			return v;
+		return r.coverId ? `/api/attachments/${r.coverId}` : '';
 	};
 	function setCover(e: Event) {
 		const id = (e.currentTarget as HTMLSelectElement).value;
@@ -646,9 +648,10 @@
 				<div class="gal" data-size={cardSize} role="list" aria-label="Cards">
 					{#each d?.rows ?? [] as r (r.id)}
 						<article class="gcard" role="listitem">
-							<button type="button" class="gbody" aria-label={title(r)} onclick={() => openRecord(r)}>
+							<button type="button" class="gbody" onclick={() => openRecord(r)}>
 								<span class="gcover">
-									{#if coverOf(r)}<img src={coverOf(r)} alt="" loading="lazy" />{/if}
+									{#if coverOf(r)}<img src={coverOf(r)} alt="" loading="lazy" />
+									{:else if r.icon}<span class="gicon" aria-hidden="true">{r.icon}</span>{/if}
 								</span>
 								<span class="gmeta">
 									<b>{title(r)}</b>
@@ -1332,9 +1335,15 @@
 		cursor: pointer;
 	}
 	.gcover {
-		display: block;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		aspect-ratio: 16 / 9;
 		background: var(--ground);
+	}
+	.gicon {
+		font-size: 30px;
+		line-height: 1;
 	}
 	.gcover img {
 		display: block;

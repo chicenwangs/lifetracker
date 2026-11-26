@@ -131,7 +131,7 @@ export function get(
 	const ps = props(id);
 	const vs = views(id);
 	const view = vs.find((v) => v.id === o.viewId) ?? vs[0];
-	const recs = db().prepare(`SELECT id, page_id FROM database_records WHERE database_id = ? ORDER BY position LIMIT ?`).all(id, MAX_RECORDS) as { id: string; page_id: string | null }[]; // prettier-ignore
+	const recs = db().prepare(`SELECT r.id, r.page_id, p.icon, p.cover_attachment_id AS cover_id FROM database_records r LEFT JOIN pages p ON p.id = r.page_id WHERE r.database_id = ? ORDER BY r.position LIMIT ?`).all(id, MAX_RECORDS) as { id: string; page_id: string | null; icon: string | null; cover_id: string | null }[]; // prettier-ignore
 	const vals = db().prepare(`SELECT v.record_id, v.property_id, v.value_json FROM database_values v JOIN database_records r ON r.id = v.record_id WHERE r.database_id = ?`).all(id) as { record_id: string; property_id: string; value_json: string }[]; // prettier-ignore
 	const byRec = new Map<string, Record<string, unknown>>();
 	for (const v of vals)
@@ -144,7 +144,14 @@ export function get(
 		const invalid = ps
 			.filter((p) => values[p.id] !== undefined && !checkValue(p.type, values[p.id], p.config).ok)
 			.map((p) => p.id);
-		return { id: r.id, pageId: r.page_id, values, ...(invalid.length ? { invalid } : {}) };
+		return {
+			id: r.id,
+			pageId: r.page_id,
+			icon: r.icon,
+			coverId: r.cover_id,
+			values,
+			...(invalid.length ? { invalid } : {}),
+		};
 	});
 	const cfg = view?.config ?? {};
 	const typeOf = (pid: string) => ps.find((p) => p.id === pid);

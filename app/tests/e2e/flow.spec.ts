@@ -1910,6 +1910,12 @@ test('database gallery: cover, title + props, size, click opens a record, empty 
 	await expect(card).toContainText('Hello');
 	await card.click();
 	await expect(page).toHaveURL(/\/pages\//);
+	// the record page icon is the gallery fallback cover when no picture link is set (DESIGN 2.7)
+	const recPage = page.url().split('/').pop() as string;
+	expect((await api('PATCH', `/api/pages/${recPage}`, { icon: '🍿' })).s).toBe(200);
+	await page.goto(`/pages/${db.pageId}`);
+	await page.getByRole('tab', { name: /Gallery/ }).click();
+	await expect(page.locator('.gal .gicon')).toHaveText('🍿');
 	// no records = empty state
 	const empty = (await api('POST', '/api/databases', { title: 'Empty DB' })).j.database as {
 		id: string;

@@ -42,6 +42,18 @@ describe('Databases', () => {
 		expect(checkValue('date', '2026-02-30').ok).toBe(false);
 	});
 
+	it('rows expose the record page icon and cover for the gallery fallback', () => {
+		const { id } = dbs.create(me, { pageId: null, title: 'Watch' });
+		const r = dbs.addRecord(me, id);
+		expect(dbs.get(me, id).rows[0]?.icon ?? null).toBe(null); // no page yet
+		const pid = dbs.recordPage(me, r.id);
+		pages.update(me, pid, { icon: '🍿' });
+		const row = dbs.get(me, id).rows.find((x) => x.id === r.id)!;
+		expect(row.pageId).toBe(pid);
+		expect(row.icon).toBe('🍿');
+		expect(row.coverId).toBe(null); // cover_attachment_id is null until a page cover exists
+	});
+
 	it('PAGE-014: sort + filter are correct and stay on the view', () => {
 		const { id } = dbs.create(me, { pageId: null, title: 'W' });
 		const d0 = dbs.get(me, id);
