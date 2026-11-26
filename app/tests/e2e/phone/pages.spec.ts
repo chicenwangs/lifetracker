@@ -110,6 +110,28 @@ test('Pin toast says Pinned, Unpin toast says Unpinned (#348)', async () => {
 	await expect(page.getByText('Unpinned from header')).toBeVisible();
 });
 
+test('page icon sheet: 48 dp grid, Close hides, Remove clears', async () => {
+	// phone: the header has no "Add icon" row; the page ⋯ sheet opens the picker (DESIGN 2.1)
+	await page.locator('.pagev .bar').getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Add icon' }).click();
+	await page.waitForTimeout(250); // the menu's history entry is swapped for the sheet's (layers.ts)
+	const sheet = page.getByRole('dialog', { name: 'Page icon' });
+	await expect(sheet).toBeVisible();
+	await expectTargets48(page);
+	await sheet.getByRole('option', { name: '⭐' }).click();
+	await expect(page.getByRole('button', { name: 'Page icon: ⭐' })).toHaveText('⭐');
+	await page.getByRole('button', { name: 'Page icon: ⭐' }).click();
+	await expect(sheet).toBeVisible();
+	await sheet.getByRole('button', { name: 'Close' }).click(); // BottomSheet's own close (Back is covered by #91)
+	await expect(sheet).toBeHidden();
+	await page.getByRole('button', { name: 'Page icon: ⭐' }).click();
+	await sheet.getByRole('button', { name: 'Remove' }).click();
+	await expect(page.getByRole('button', { name: 'Page icon: ⭐' })).toHaveCount(0);
+	// empty again: no header row on phone, the ⋯ sheet offers Add icon again
+	await page.locator('.pagev .bar').getByRole('button', { name: 'Page menu' }).click();
+	await expect(page.getByRole('menuitem', { name: 'Add icon' })).toBeVisible();
+});
+
 test('Archive: 48 dp search field and no sideways scroll at 320 px (#405)', async () => {
 	await page.goto('/pages/archive');
 	await expect(page.getByLabel('Search archive')).toBeVisible();
@@ -128,6 +150,38 @@ test('Archive: 48 dp search field and no sideways scroll at 320 px (#405)', asyn
 	} finally {
 		await page.setViewportSize(vp);
 	}
+});
+
+test('Linked from: the source page under the editor, 48 dp row (#443)', async () => {
+	const [target, src] = (await page.evaluate(async () => {
+		const post = (u: string, b: unknown) =>
+			fetch(u, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(b),
+			}).then((r) => r.json());
+		const t = (await post('/api/pages', { title: 'Phone link target' })).page as { id: string };
+		const s = (await post('/api/pages', { title: 'Phone link source' })).page as { id: string };
+		await fetch(`/api/pages/${s.id}`, {
+			method: 'PATCH',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				doc: {
+					type: 'doc',
+					content: [{ type: 'paragraph', content: [{ type: 'pageLink', attrs: { pageId: t.id } }] }],
+				},
+			}),
+		});
+		return [t, s];
+	})) as [{ id: string }, { id: string }];
+	await page.goto(`/pages/${target.id}`);
+	const panel = page.getByRole('region', { name: /Linked from \(1\)/ });
+	await expect(panel).toBeVisible();
+	const link = panel.getByRole('link', { name: 'Phone link source' });
+	await expect(link).toHaveAttribute('href', `/pages/${src.id}`);
+	await expect(link).toBeVisible();
+	expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+	await noDesktopHints(page);
 });
 
 test('duplicate from the page menu: the copy opens (#440)', async () => {

@@ -8,11 +8,12 @@
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { undoLast } from '$lib/client/undo.svelte';
 	import PageEditor from '$lib/editor/PageEditor.svelte';
+	import PageIcon from '$lib/components/PageIcon.svelte';
 	import DbCell from '$lib/database/DbCell.svelte';
 	import ShareDialog from '$lib/components/ShareDialog.svelte';
 	import LocalGraph from '$lib/components/LocalGraph.svelte';
 	import { modal } from '$lib/client/modal';
-	import type { PageDTO, PageNode, UndoRef } from '$lib/types';
+	import type { BacklinkDTO, PageDTO, PageNode, UndoRef } from '$lib/types';
 
 	let { data } = $props();
 	const pg = $derived(data.page as PageDTO);
@@ -25,6 +26,7 @@
 	let sharing = $state(false);
 	// PR 21: the local graph is a query state (?lg=1), so Back closes it like any other history entry
 	const lgOpen = $derived(page.url.searchParams.get('lg') === '1');
+	let iconPicker: PageIcon | undefined = $state();
 	const mine = $derived(pg.access === 'owner');
 	// new page opened: take its title; a reload of the same page keeps what is being typed
 	let shownId = '';
@@ -36,6 +38,13 @@
 	});
 
 	const rec = $derived(data.record);
+	// Linked from (PR 20): open by default for 1-5 sources; hidden when 0. Re-evaluated when the page changes.
+	const backlinks = $derived((data.backlinks ?? []) as BacklinkDTO[]);
+	let linksOpen = $state(true);
+	$effect.pre(() => {
+		void pg.id;
+		linksOpen = backlinks.length > 0 && backlinks.length <= 5;
+	});
 	async function setValue(propId: string, v: unknown): Promise<string | null> {
 		if (!rec) return null;
 		try {
@@ -62,6 +71,29 @@
 			await invalidateAll();
 		} catch (e) {
 			saveState = 'failed';
+			showError(e);
+		}
+	}
+
+	async function setIcon(icon: string | null) {
+		if (icon === pg.icon) return;
+		try {
+			await editor?.flush(); // one writer at a time: the revision must line up
+			const r = await patch<{ page: PageDTO; undo?: UndoRef }>(`/api/pages/${pg.id}`, { icon });
+			editor?.setRevision(r.page.revision);
+			await invalidateAll();
+			const u = r.undo;
+			showToast(icon ? 'Icon updated' : 'Icon removed', {
+				undo: u
+					? async () => {
+							if (!(await undoLast(u.id))) return;
+							const fresh = await get<{ page: PageDTO }>(`/api/pages/${pg.id}`);
+							editor?.setRevision(fresh.page.revision);
+							await invalidateAll();
+						}
+					: undefined,
+			});
+		} catch (e) {
 			showError(e);
 		}
 	}
@@ -238,6 +270,12 @@
 				<div use:backCloses={() => (menu = false)} class="menu card" role="menu">
 					{#if mine}
 						<!-- phone (#98): Pin + Share live here, the bar only has room for ⋯ -->
+						{#if !pg.icon}<button
+								role="menuitem"
+								type="button"
+								class="narrow"
+								onclick={() => ((menu = false), iconPicker?.openPicker())}>Add icon</button
+							>{/if}
 						{#if !pg.archived}<button role="menuitem" type="button" class="narrow" onclick={pin}
 								>{pg.pinned ? 'Unpin from header' : 'Pin to header'}</button
 							>{/if}
@@ -273,6 +311,9 @@
 		</div>
 	</div>
 	<div class="body">
+		<div class="pico" class:blank={!pg.icon}>
+			<PageIcon bind:this={iconPicker} icon={pg.icon} disabled={pg.access === 'view'} onpick={setIcon} />
+		</div>
 		<input
 			class="title"
 			autocomplete="off"
@@ -336,6 +377,31 @@
 		{#key pg.id}
 			<PageEditor bind:this={editor} page={pg} onstate={(s) => (saveState = s)} />
 		{/key}
+		{#if backlinks.length}
+			<section class="linked" aria-labelledby="linked-h">
+				<h2 id="linked-h">
+					<button type="button" aria-expanded={linksOpen} onclick={() => (linksOpen = !linksOpen)}>
+						<span aria-hidden="true">{linksOpen ? '▾' : '▸'}</span> Linked from ({backlinks.length})
+					</button>
+				</h2>
+				{#if linksOpen}
+					<ul>
+						{#each backlinks as b (b.id)}
+							<li class:bl-arch={b.archived}>
+								<a class="lt" href="/pages/{b.id}">
+									{#if b.icon}<span class="ico" aria-hidden="true">{b.icon}</span>{/if}
+									<span class="tt">{b.title || 'Untitled'}</span>
+								</a>
+								{#if b.archived}<span class="hint">· archived</span>{/if}
+								<span class="snip"
+									>{#each b.snippet as s, i (i)}{#if s.b}<b>{s.t}</b>{:else}{s.t}{/if}{/each}</span
+								>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</section>
+		{/if}
 	</div>
 </article>
 <svelte:window
@@ -426,6 +492,19 @@
 		max-width: none;
 		padding: 28px 40px 40px;
 	}
+	/* icon row (DESIGN 2.1): 56 px emoji above the title; when empty a faint 13 px "Add icon" shows on hover */
+	.pico {
+		margin-bottom: 6px;
+	}
+	@media (hover: hover) and (min-width: 700px) {
+		.pico.blank {
+			opacity: 0;
+		}
+		.body:hover .pico.blank,
+		.pico.blank:focus-within {
+			opacity: 1;
+		}
+	}
 	.title {
 		display: block;
 		width: 100%;
@@ -469,6 +548,9 @@
 		}
 		.body {
 			padding: 20px 16px 32px;
+		}
+		.pico {
+			margin-bottom: 2px;
 		}
 		.title {
 			font-size: 26px;
@@ -544,6 +626,85 @@
 			border-radius: 0;
 			border: 0;
 			box-shadow: none;
+		}
+	}
+	/* Linked from (PR 20): under the editor, one row per source page */
+	.linked {
+		margin: 18px 0 4px;
+		padding-top: 12px;
+		border-top: 1px solid var(--rule);
+		font-size: 13.5px;
+	}
+	.linked h2 {
+		margin: 0 0 6px;
+		font-size: 14px;
+	}
+	.linked h2 button {
+		min-height: 24px;
+		padding: 4px 0;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.linked ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.linked li {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
+	}
+	.linked li.bl-arch {
+		opacity: 0.6;
+	}
+	.linked .lt {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		flex: none;
+		max-width: 45%;
+		color: var(--ink);
+		text-decoration: none;
+	}
+	.linked .lt:hover {
+		text-decoration: underline;
+	}
+	.linked .tt {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.linked .snip {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: var(--quiet);
+	}
+	.linked .snip b {
+		color: var(--ink);
+		font-weight: 600;
+	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.linked h2 button {
+			min-height: 48px;
+		}
+		.linked li {
+			min-height: 48px;
+			flex-wrap: wrap;
+		}
+		.linked .lt {
+			min-height: 48px;
+			max-width: 100%;
 		}
 	}
 </style>

@@ -18,9 +18,9 @@ export function graph(ownerId: string): GraphDTO {
 		.all(ownerId, MAX_NODES) as {
 		id: string;
 		title: string;
+		icon: string | null;
 		parentId: string | null;
 		archived: number;
-		icon: string | null;
 		record: number;
 	}[];
 	const ids = new Set(nodes.map((n) => n.id));
