@@ -9,6 +9,8 @@
 	import { asText, NO_VALUE_OPS, OP_LABEL, OPS, PROP_TYPES, type Filter, type PropType, type ViewConfig } from '$lib/dbvalues'; // prettier-ignore
 	import type { DatabaseDTO, DbProp, DbRow } from '$lib/types';
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
+	import { todayLocal } from '$lib/time';
 	import { isPhone } from '$lib/client/phone';
 	import { peerSwipe } from '$lib/client/peerSwipe';
 	import { backCloses } from '$lib/client/layers';
@@ -34,6 +36,11 @@
 	let moving = $state<string | null>(null); // drag (desktop) or long-press pick-up (phone)
 	let activeCol = $state(0);
 	let phoneNow = $state(false);
+	// v4 PR 24: calendar view state
+	let calYm = $state('');
+	let selDay = $state('');
+	const tz = $derived(page.data.user?.timezone ?? 'Asia/Kuala_Lumpur');
+	const today = $derived(todayLocal(tz));
 	let pressTimer: ReturnType<typeof setTimeout> | undefined;
 	let swallowedClick = false; // the click a long press would otherwise fire on the card's title
 	onMount(() => (phoneNow = isPhone()));
@@ -63,6 +70,51 @@
 			.map((id) => prop(id))
 			.filter((p): p is DbProp => !!p && p.type !== 'title');
 		return picked.length ? picked.slice(0, 2) : d.props.filter((p) => p.type !== 'title').slice(0, 2);
+	});
+	// calendar (PR 24): records with a date sit on that day; the rest wait in the "No date" rail
+	const isCalendar = $derived(view?.type === 'calendar');
+	const dateProps = $derived((d?.props ?? []).filter((p) => p.type === 'date'));
+	const calProp = $derived<DbProp | undefined>(
+		(cfg.dateProp ? prop(cfg.dateProp) : undefined) ?? dateProps[0],
+	);
+	const calCells = $derived(calYm ? monthCells(calYm) : []);
+	const byDate = $derived.by(() => {
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- a plain lookup built fresh in the derived, never mutated after
+		const m = new Map<string, DbRow[]>();
+		if (!calProp) return m;
+		for (const r of d?.rows ?? []) {
+			const v = r.values[calProp.id];
+			if (typeof v !== 'string') continue;
+			const list = m.get(v);
+			if (list) list.push(r);
+			else m.set(v, [r]);
+		}
+		return m;
+	});
+	const noDate = $derived(
+		calProp ? (d?.rows ?? []).filter((r) => typeof r.values[calProp.id as string] !== 'string') : [],
+	);
+	const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']; // prettier-ignore
+	const monthName = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1] ?? ''} ${ym.slice(0, 4)}`;
+	/** Monday-first cells for a YYYY-MM month; '' pads the first/last week */
+	function monthCells(ym: string): { date: string; day: number }[] {
+		const [y, m] = ym.split('-').map(Number);
+		const first = new Date(Date.UTC(y as number, (m as number) - 1, 1));
+		const offset = (first.getUTCDay() + 6) % 7; // Mon = 0
+		const days = new Date(Date.UTC(y as number, m as number, 0)).getUTCDate();
+		const out: { date: string; day: number }[] = [];
+		for (let i = 0; i < offset; i++) out.push({ date: '', day: 0 });
+		for (let day = 1; day <= days; day++) out.push({ date: `${ym}-${String(day).padStart(2, '0')}`, day });
+		while (out.length % 7) out.push({ date: '', day: 0 });
+		return out;
+	}
+	function shiftMonth(n: number) {
+		const [y, m] = calYm.split('-').map(Number);
+		const d = new Date(Date.UTC(y as number, (m as number) - 1 + n, 1));
+		calYm = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+	}
+	$effect.pre(() => {
+		if (!calYm && d) calYm = today.slice(0, 7);
 	});
 
 	async function load(viewId: string | undefined = d?.viewId) {
@@ -234,11 +286,11 @@
 	const toggle = (p: typeof panel) => (panel = panel === p ? null : p);
 
 	// ---------- board (v4 PR 23) ----------
-	function addViewOfType(type: 'table' | 'board') {
+	function addViewOfType(type: 'table' | 'board' | 'calendar') {
 		addingView = false;
 		void (async () => {
 			const name = await askText('Name the view', {
-				value: type === 'board' ? 'Board' : 'Table',
+				value: type === 'calendar' ? 'Calendar' : type === 'board' ? 'Board' : 'Table',
 				ok: 'Add',
 			});
 			if (!name) return;
@@ -255,6 +307,19 @@
 	function setGroup(e: Event) {
 		const id = (e.currentTarget as HTMLSelectElement).value;
 		void saveBoard({ groupBy: id || null });
+	}
+	function setDateProp(e: Event) {
+		const id = (e.currentTarget as HTMLSelectElement).value;
+		void saveBoard({ dateProp: id || null });
+	}
+	/** PR 24: a new record dated that day (the record's page opens from the chip) */
+	async function newOn(date: string) {
+		await run(async () => {
+			const r = await post<{ row: DbRow }>(`/api/databases/${databaseId}/records`, {});
+			if (calProp) await patch(`/api/database-records/${r.row.id}`, { values: { [calProp.id]: date } });
+			await load();
+		}, false);
+		selDay = date;
 	}
 	function setCard(i: 0 | 1, e: Event) {
 		const v = (e.currentTarget as HTMLSelectElement).value;
@@ -353,28 +418,37 @@
 			if (phoneNow && (e.target as HTMLElement).closest('button, .bcard')) e.preventDefault();
 		}}
 	>
-		{#snippet boardCfg()}
-			<label
-				>Group by
-				<select aria-label="Group by" value={groupProp?.id ?? ''} onchange={setGroup}>
-					{#each selectProps as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
-				</select>
-			</label>
-			<label
-				>Card shows
-				<select aria-label="Card property 1" value={cardProps[0]?.id ?? ''} onchange={(e) => setCard(0, e)}>
-					<option value="">None</option>
-					{#each (d?.props ?? []).filter((p) => p.type !== 'title') as p (p.id)}
-						<option value={p.id}>{p.name}</option>
-					{/each}
-				</select>
-				<select aria-label="Card property 2" value={cardProps[1]?.id ?? ''} onchange={(e) => setCard(1, e)}>
-					<option value="">None</option>
-					{#each (d?.props ?? []).filter((p) => p.type !== 'title') as p (p.id)}
-						<option value={p.id}>{p.name}</option>
-					{/each}
-				</select>
-			</label>
+		{#snippet viewCfg()}
+			{#if isBoard}
+				<label
+					>Group by
+					<select aria-label="Group by" value={groupProp?.id ?? ''} onchange={setGroup}>
+						{#each selectProps as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+					</select>
+				</label>
+				<label
+					>Card shows
+					<select aria-label="Card property 1" value={cardProps[0]?.id ?? ''} onchange={(e) => setCard(0, e)}>
+						<option value="">None</option>
+						{#each (d?.props ?? []).filter((p) => p.type !== 'title') as p (p.id)}
+							<option value={p.id}>{p.name}</option>
+						{/each}
+					</select>
+					<select aria-label="Card property 2" value={cardProps[1]?.id ?? ''} onchange={(e) => setCard(1, e)}>
+						<option value="">None</option>
+						{#each (d?.props ?? []).filter((p) => p.type !== 'title') as p (p.id)}
+							<option value={p.id}>{p.name}</option>
+						{/each}
+					</select>
+				</label>
+			{:else if isCalendar}
+				<label
+					>Date property
+					<select aria-label="Date property" value={calProp?.id ?? ''} onchange={setDateProp}>
+						{#each dateProps as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+					</select>
+				</label>
+			{/if}
 		{/snippet}
 		<input
 			class="dbtitle"
@@ -402,10 +476,11 @@
 				<div class="panel row" role="group" aria-label="New view type">
 					<button type="button" onclick={() => addViewOfType('table')}>Table</button>
 					<button type="button" onclick={() => addViewOfType('board')}>Board</button>
+					<button type="button" onclick={() => addViewOfType('calendar')}>Calendar</button>
 				</div>
 			{/if}
 			<span class="grow"></span>
-			{#if isBoard}
+			{#if isBoard || isCalendar}
 				<button
 					type="button"
 					class="soft"
@@ -419,23 +494,24 @@
 			{/if}
 		</div>
 
-		{#if isBoard && viewCfgOpen && !phoneNow}
+		{#if (isBoard || isCalendar) && viewCfgOpen && !phoneNow}
 			<div class="panel row" role="group" aria-label="Board settings">
-				{@render boardCfg()}
+				{@render viewCfg()}
 			</div>
 		{/if}
 		{#if phoneNow && addingView}
 			<BottomSheet label="New view" onclose={() => (addingView = false)}>
 				<div class="row">
 					<button type="button" class="btn" onclick={() => addViewOfType('table')}>Table</button>
+					<button type="button" class="btn" onclick={() => addViewOfType('calendar')}>Calendar</button>
 					<button type="button" class="btn primary" onclick={() => addViewOfType('board')}>Board</button>
 				</div>
 			</BottomSheet>
 		{/if}
-		{#if phoneNow && isBoard && viewCfgOpen}
+		{#if phoneNow && (isBoard || isCalendar) && viewCfgOpen}
 			<BottomSheet label="View settings" onclose={() => (viewCfgOpen = false)}>
 				<div class="panel row" role="group" aria-label="Board settings">
-					{@render boardCfg()}
+					{@render viewCfg()}
 				</div>
 			</BottomSheet>
 		{/if}
@@ -594,7 +670,76 @@
 			</div>
 		{/if}
 
-		{#if isBoard}
+		{#if isCalendar}
+			{#if !dateProps.length}
+				<div class="panel bempty" role="group" aria-label="Calendar view">
+					<p>The calendar needs a date property.</p>
+					<button type="button" class="btn sm primary" onclick={() => (panel = 'add')}
+						>Add a date property</button
+					>
+				</div>
+			{:else}
+				<div class="calbar">
+					<button type="button" class="mini" aria-label="Previous month" onclick={() => shiftMonth(-1)}
+						>‹</button
+					>
+					<b>{monthName(calYm)}</b>
+					<button type="button" class="mini" aria-label="Next month" onclick={() => shiftMonth(1)}>›</button>
+					<span class="grow"></span>
+					<span class="hint">{d.total} record{d.total === 1 ? '' : 's'}</span>
+				</div>
+				<div class="calwrap">
+					<div class="calgrid" role="grid" aria-label="{monthName(calYm)} records">
+						{#each ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as w (w)}
+							<span class="wd" aria-hidden="true">{w}</span>
+						{/each}
+						{#each calCells as c, i (i)}
+							{#if c.date}
+								{@const rows = byDate.get(c.date) ?? []}
+								<div class="day" class:today={c.date === today}>
+									<button
+										type="button"
+										class="dn"
+										aria-label={phoneNow ? `Show ${c.date}` : `New record on ${c.date}`}
+										onclick={() => (phoneNow ? (selDay = c.date) : newOn(c.date))}>{c.day}</button
+									>
+									{#each rows as r (r.id)}
+										<button type="button" class="chip rec" onclick={() => openRecord(r)}>{title(r)}</button>
+									{/each}
+									{#if phoneNow && rows.length}<span class="dot" aria-hidden="true"></span>{/if}
+								</div>
+							{:else}
+								<div class="day pad"></div>
+							{/if}
+						{/each}
+					</div>
+					<div class="norail" aria-label="No date">
+						<b>No date ({noDate.length})</b>
+						{#each noDate as r (r.id)}
+							<button type="button" class="chip rec" onclick={() => openRecord(r)}>{title(r)}</button>
+						{/each}
+						{#if !noDate.length}<span class="hint">Every record has a date.</span>{/if}
+					</div>
+				</div>
+				{#if selDay}
+					<div class="daylist">
+						<div class="calbar">
+							<b>{selDay}</b>
+							<span class="grow"></span>
+							<button type="button" class="soft" onclick={() => newOn(selDay)}>+ New record</button>
+							<button type="button" class="mini" aria-label="Close the day list" onclick={() => (selDay = '')}
+								>✕</button
+							>
+						</div>
+						{#each byDate.get(selDay) ?? [] as r (r.id)}
+							<button type="button" class="chip rec" onclick={() => openRecord(r)}>{title(r)}</button>
+						{:else}
+							<span class="hint">Nothing on this day.</span>
+						{/each}
+					</div>
+				{/if}
+			{/if}
+		{:else if isBoard}
 			{#if !selectProps.length}
 				<div class="panel bempty" role="group" aria-label="Board">
 					<p>Board groups cards by a select property.</p>
@@ -1260,6 +1405,119 @@
 		}
 		.bcol.on {
 			display: flex;
+		}
+	}
+	/* v4 PR 24: calendar view (grid + No date rail; phone shows dots and a day list) */
+	.calbar {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 0;
+	}
+	.calgrid {
+		display: grid;
+		grid-template-columns: repeat(7, minmax(0, 1fr));
+		gap: 4px;
+		flex: 1;
+		min-width: 0;
+	}
+	.wd {
+		font-size: 11px;
+		color: var(--quiet);
+		text-align: center;
+		padding: 2px 0;
+	}
+	.day {
+		min-height: 72px;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 4px;
+		border: 1px solid var(--border);
+		border-radius: 8px;
+		background: var(--card);
+	}
+	.day.pad {
+		border: 0;
+		background: transparent;
+	}
+	.day.today {
+		outline: 2px solid var(--accent);
+	}
+	.dn {
+		align-self: flex-start;
+		min-width: 24px;
+		min-height: 24px;
+		padding: 0 4px;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		cursor: pointer;
+	}
+	.dn:hover {
+		background: var(--hover, rgb(0 0 0 / 0.06));
+	}
+	.chip.rec {
+		display: block;
+		width: 100%;
+		padding: 2px 6px;
+		border: 0;
+		border-radius: 6px;
+		background: var(--ground);
+		color: var(--ink);
+		font: inherit;
+		font-size: 12px;
+		text-align: left;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		cursor: pointer;
+	}
+	.calwrap {
+		display: flex;
+		gap: 12px;
+		align-items: flex-start;
+	}
+	.norail {
+		flex: 0 0 220px;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+	.daylist {
+		margin-top: 10px;
+		padding-top: 6px;
+		border-top: 1px solid var(--rule);
+	}
+	.dot {
+		width: 6px;
+		height: 6px;
+		margin: 2px 0 0 4px;
+		border-radius: 3px;
+		background: var(--accent);
+	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.calwrap {
+			display: block;
+		}
+		.norail {
+			margin-top: 10px;
+			flex: none;
+		}
+		.day {
+			min-height: 48px;
+		}
+		.day .chip.rec {
+			display: none;
+		}
+		.dn {
+			min-width: 48px;
+			min-height: 48px;
+		}
+		.chip.rec {
+			min-height: 48px;
 		}
 	}
 </style>
