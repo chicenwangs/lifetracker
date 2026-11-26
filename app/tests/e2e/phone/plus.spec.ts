@@ -109,6 +109,7 @@ test('Pages: + makes a page and opens it; no second New page button', async () =
 	await page.goto('/pages');
 	await expect(page.getByRole('button', { name: 'New page', exact: true })).toHaveCount(1); // the bar's +
 	await plus().click();
+	await page.getByRole('button', { name: 'Blank page' }).click();
 	await expect(page).toHaveURL(/\/pages\/pg_/);
 });
 

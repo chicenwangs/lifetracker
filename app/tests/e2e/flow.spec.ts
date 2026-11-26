@@ -972,6 +972,7 @@ test('v2 P2 phone: opens on Today, Now card, + Add, Keep quick note, no sideways
 test('v2 P3 Pages: tree, slash menu, internal link survives rename, pin cap, archive, Ctrl+K', async () => {
 	await page.goto('/pages');
 	await page.getByRole('button', { name: 'New page' }).last().click();
+	await page.getByRole('menuitem', { name: 'Blank page' }).click();
 	await expect(page).toHaveURL(/\/pages\/pg_/);
 	const parentUrl = page.url();
 	await page.getByLabel('Page title').fill('Gym');
@@ -1053,6 +1054,7 @@ test('v2 P3 Pages: tree, slash menu, internal link survives rename, pin cap, arc
 test('v4 PR 16: page emoji icon - keyboard pick, sidebar, Undo', async () => {
 	await page.goto('/pages');
 	await page.getByRole('button', { name: 'New page' }).last().click();
+	await page.getByRole('menuitem', { name: 'Blank page' }).click();
 	await expect(page).toHaveURL(/\/pages\/pg_/);
 	await page.getByLabel('Page title').fill('Icon test');
 	await expect(page.locator('.state')).toContainText('Saved');
