@@ -3,6 +3,10 @@
 Caveman doc. Was P1-NOTES.md (renamed in v2 P1). Wins over REQUIREMENTS + TECHNICAL where they differ. History is in git log.
 Newest first. Latest release = v3.1.2 (2026-11-24; v3.1.1 + v3.1.0 2026-11-20, v3.0.0 2026-11-18). Sections below cover v2 phases, then the v1.1.0 state from 2026-11-08. Live was last verified at v3.0.0 on 2026-11-19. Read `AGENTS.md` for current bugs.
 
+## v4.0.0 (in progress, 2026-11-26 →)
+
+- Phone Add sheet: rapid taps after "Save note" no longer reach the row underneath (#378, 250 ms tap shield, Undo toast exempt).
+
 ## v3.1.2 patch (2026-11-24, milestone 3.1.2, QA-loop bugs #272–#313, #324, #348, #362–#364, #375)
 
 - Offline: sign-out keeps queued edits if it fails and waits for a pending notes autosave; Keep create/Retry is idempotent; a 409 offline note edit becomes an "(offline copy)" note; Home ticks + desktop quick add queue offline; quick add typed at session expiry is sent after sign-in.
