@@ -165,6 +165,8 @@ export interface PageDTO extends PageNode {
 	createdAt: string;
 	/** Tiptap JSON doc assembled from the page's blocks */
 	doc: { type: 'doc'; content: unknown[] };
+	/** v4.0 PR 31: uploaded cover image, or null */
+	coverAttachmentId: string | null;
 	crumbs: { id: string; title: string }[];
 	/** internal link targets in this page -> current title, or null = unavailable (gone / not mine) */
 	links: Record<string, { title: string; archived: boolean } | null>;

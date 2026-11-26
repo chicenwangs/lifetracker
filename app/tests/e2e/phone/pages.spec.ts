@@ -152,6 +152,30 @@ test('Archive: 48 dp search field and no sideways scroll at 320 px (#405)', asyn
 	}
 });
 
+test('cover: add from the page menu, 120 px banner, remove (#454)', async () => {
+	const PNG = Buffer.from(
+		'89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d49444154789c62f8cfc0f01f00050001ff9a5ee73f0000000049454e44ae426082',
+		'hex',
+	);
+	const id = await page.evaluate(async () => {
+		const r = await fetch('/api/pages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'Phone cover page' }) }); // prettier-ignore
+		return ((await r.json()) as { page: { id: string } }).page.id;
+	});
+	await page.goto(`/pages/${id}`);
+	await page.locator('.pagev .bar').getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: /Add cover/ }).click();
+	await page
+		.getByLabel('Cover image')
+		.setInputFiles({ name: 'cover.png', mimeType: 'image/png', buffer: PNG });
+	const img = page.locator('.cover img');
+	await expect(img).toBeVisible();
+	const box = await img.boundingBox();
+	expect(Math.round(box!.height)).toBe(120);
+	await page.getByRole('button', { name: 'Remove' }).click();
+	await expect(page.locator('.cover')).toHaveCount(0);
+	await page.evaluate(async (x) => fetch(`/api/pages/${x}`, { method: 'DELETE' }), id);
+});
+
 test('Linked from: the source page under the editor, 48 dp row (#443)', async () => {
 	const [target, src] = (await page.evaluate(async () => {
 		const post = (u: string, b: unknown) =>
@@ -244,4 +268,44 @@ test('local graph: full-screen dialog, Back closes it, no console errors (#444)'
 	await expect(dlg).toBeHidden();
 	expect(page.url()).toBe(before);
 	expect(errors.filter((e) => !e.includes('favicon'))).toEqual([]);
+});
+
+test('to-do reminder from the block sheet (#453)', async () => {
+	const BID = 'pbl_00000000000000bb';
+	const doc = {
+		type: 'doc',
+		content: [
+			{
+				type: 'taskList',
+				content: [
+					{
+						type: 'taskItem',
+						attrs: { checked: false, blockId: BID },
+						content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Water plants' }] }],
+					},
+				],
+			},
+		],
+	};
+	const id = await page.evaluate(async (d) => {
+		const r = await fetch('/api/pages', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: 'Phone to-do reminder' }) }); // prettier-ignore
+		const p = (await r.json()) as { page: { id: string } };
+		await fetch(`/api/pages/${p.page.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ doc: d }) }); // prettier-ignore
+		return p.page.id;
+	}, doc);
+	await page.goto(`/pages/${id}`);
+	await page.getByText('Water plants', { exact: true }).click();
+	await tools().getByRole('button', { name: 'Block actions' }).click();
+	await page.getByRole('button', { name: 'Remind me' }).click();
+	const dialog = page.getByRole('dialog', { name: 'Reminder' });
+	await expect(dialog).toBeVisible();
+	const d = new Date(Date.now() + 3 * 86_400_000);
+	const when = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T12:00`;
+	await dialog.getByLabel('Exact reminder time').fill(when);
+	await dialog.getByRole('button', { name: 'Add at time' }).click();
+	await expect(dialog.getByRole('button', { name: /Remove reminder/ })).toBeVisible();
+	await dialog.getByRole('button', { name: 'Close' }).click();
+	await expect(page.locator('.todo-rem')).toBeVisible();
+	await expect(page.locator('.todo-rem')).toContainText(/\d{1,2}:\d{2}/);
+	await page.evaluate(async (x) => fetch(`/api/pages/${x}`, { method: 'DELETE' }), id);
 });
