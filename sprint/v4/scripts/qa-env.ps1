@@ -164,8 +164,14 @@ if ($Emulator) {
 	if (-not $dev) {
 		Say 'starting emulator lt_pixel7'
 		Start-Process "$env:LOCALAPPDATA\Android\Sdk\emulator\emulator.exe" -ArgumentList '-avd', 'lt_pixel7', '-no-snapshot-save' -WindowStyle Minimized | Out-Null
-		& $adb wait-for-device; for ($i = 0; $i -lt 90 -and ((& $adb shell getprop sys.boot_completed 2>$null) -notmatch '1'); $i++) { Start-Sleep -Seconds 2 }
+		# bounded wait (adb wait-for-device hangs forever if the emulator never starts)
+		for ($i = 0; $i -lt 90; $i++) {
+			$dev = (& $adb devices) -match '^emulator-\d+\s+device'
+			if ($dev -and ((& $adb shell getprop sys.boot_completed 2>$null) -match '1')) { break }
+			Start-Sleep -Seconds 2
+		}
 		$dev = (& $adb devices) -match '^emulator-\d+\s+device'
+		if ($dev -and ((& $adb shell getprop sys.boot_completed 2>$null) -notmatch '1')) { $dev = $null }
 	}
 	if (-not $dev) { 'no emulator came up'; exit 1 }
 	if (@((& $adb devices) -match '\sdevice$' | Where-Object { $_ -notmatch '^emulator-' }).Count -gt 0) { 'a real phone is connected: unplug it (QA installs on the emulator only)'; exit 1 }
