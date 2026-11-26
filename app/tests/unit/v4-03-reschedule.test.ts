@@ -107,6 +107,7 @@ describe('C10 reminders on the skipped occurrence', () => {
 			() => {
 				const result = items.skip(me, `${i.id}@2028-01-05`);
 				rem.removeIds(me, ids);
+				rem.afterSkip(me, NOW); // the route does both inside its undo entry
 				return { result };
 			},
 		);

@@ -275,7 +275,7 @@ test('C11 a foreign id is 404 from the item view, the PATCH and the skip route',
 		const code = (await page.locator('[role="status"] code').first().innerText()).trim();
 		expect(code).toMatch(/^INV-/);
 
-		// Playwright closes a context it created at test end: closing it here can hang after a navigation
+		// left for the worker to reap: an explicit close hung once after a navigation (60 s timeout)
 		const ctx = await browser.newContext();
 		const other = await ctx.newPage();
 		await other.goto('/signup');

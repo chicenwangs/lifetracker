@@ -24,9 +24,9 @@ export const POST = api((e) => {
 		() => {
 			const result = items.skip(u.id, raw); // a non-occurrence throws: the whole entry rolls back
 			removeIds(u.id, reminderIds);
+			afterSkip(u.id); // inside the entry: a throw must not commit a skip without its undo ref
 			return { result };
 		},
 	);
-	afterSkip(u.id);
 	return json({ item: items.withCounts([r.result])[0], undo: r.undo });
 });
