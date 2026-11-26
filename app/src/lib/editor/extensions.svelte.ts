@@ -2,7 +2,7 @@
 import { Extension, Node } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
 import { NodeSelection, type EditorState, type Transaction } from '@tiptap/pm/state';
-import type { EditorView } from '@tiptap/pm/view';
+import type { EditorView, ViewMutationRecord } from '@tiptap/pm/view';
 import { Suggestion } from '@tiptap/suggestion';
 import { mount, unmount } from 'svelte';
 import SlashMenu from './SlashMenu.svelte';
@@ -166,6 +166,9 @@ export const Callout = Node.create({
 					return true;
 				},
 				stopEvent: (e: Event) => !!(e.target as HTMLElement).closest?.('.co-ico, .co-tone'),
+				// the emoji picker/tone buttons mutate DOM outside contentDOM; without this ProseMirror rebuilds the
+				// whole node view (W1 root cause #441)
+				ignoreMutation: (m: ViewMutationRecord) => !body.contains(m.target),
 				destroy() {
 					unmount(comp);
 				},
@@ -252,6 +255,7 @@ export const Toggle = Node.create({
 					return true;
 				},
 				stopEvent: (e: Event) => !!(e.target as HTMLElement).closest?.('.tg-btn'),
+				ignoreMutation: (m: ViewMutationRecord) => !body.contains(m.target),
 			};
 		};
 	},
@@ -311,6 +315,7 @@ export const Toc = Node.create({
 			return {
 				dom,
 				stopEvent: (e: Event) => !!(e.target as HTMLElement).closest?.('.toc'),
+				ignoreMutation: () => true, // atom block: the list is rebuilt by us on every doc change
 				destroy() {
 					editor.off('transaction', onTx);
 				},
