@@ -109,6 +109,19 @@ describe('Keep', () => {
 		expect(ids(keep.list(me))).toEqual([n.id]);
 	});
 
+	it('C1 restore (repo): get() reads a trashed note; update({trashed:false}) brings it back', () => {
+		const n = note({ title: 'restore me' });
+		keep.update(me, n.id, { trashed: true });
+		// the #244 route reads the owner's trashed row before clearing deleted_at
+		expect(keep.get(me, n.id)).toMatchObject({ trashed: true });
+		expect(ids(keep.list(me, { scope: 'trash' }))).toContain(n.id);
+		expect(ids(keep.list(me))).not.toContain(n.id);
+		expect(() => keep.get(other, n.id)).toThrow(/Not found/); // owner-only, as every Keep write
+		expect(keep.update(me, n.id, { trashed: false })).toMatchObject({ trashed: false });
+		expect(ids(keep.list(me))).toContain(n.id);
+		expect(ids(keep.list(me, { scope: 'trash' }))).not.toContain(n.id);
+	});
+
 	it('KEEP-013: permanent delete only from Trash; 30-day purge', () => {
 		const n = note();
 		expect(() => keep.destroy(me, n.id)).toThrow(/Trash first/);

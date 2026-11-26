@@ -1,6 +1,6 @@
 // Keep on phone (#97): swipe a card = archive with Undo, hold = select, hold + drag = reorder; ↑ ↓ only for TalkBack.
 import { expect, test, type Page } from '@playwright/test';
-import { finger, signIn, swipe } from './helpers';
+import { expectTargets48, finger, noDesktopHints, signIn, swipe } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 let page: Page;
@@ -81,4 +81,29 @@ test('hold + drag a card onto another = it moves before it', async () => {
 	await f.send('touchEnd');
 	await f.done();
 	await expect.poll(async () => (await order())[0]).toBe(last);
+});
+
+test('C6 phone Trash: Restore + Delete forever are 48 dp; Restore brings the note back', async () => {
+	const title = `C6 restore ${P}`;
+	await page.evaluate(async (t) => {
+		const r = await fetch('/api/keep/notes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: t, body: 'x' }) }); // prettier-ignore
+		const { note } = (await r.json()) as { note: { id: string } };
+		await fetch(`/api/keep/notes/${note.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ trashed: true }) }); // prettier-ignore
+	}, title);
+	await page.goto('/keep?scope=trash');
+	const card = page.locator('article.note', { hasText: title });
+	await expect(card).toBeVisible();
+	for (const name of ['Restore', 'Delete forever']) {
+		const b = card.getByRole('button', { name, exact: true });
+		await expect(b).toBeVisible();
+		const box = (await b.boundingBox())!;
+		expect(Math.round(box.width)).toBeGreaterThanOrEqual(48);
+		expect(Math.round(box.height)).toBeGreaterThanOrEqual(48);
+	}
+	await expectTargets48(page);
+	await noDesktopHints(page);
+	await card.getByRole('button', { name: 'Restore', exact: true }).click();
+	await expect(card).toBeHidden();
+	await page.goto('/keep');
+	await expect(page.locator('article.note', { hasText: title })).toBeVisible();
 });
