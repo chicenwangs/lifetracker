@@ -17,6 +17,7 @@
 	import { pendingPatch } from '$lib/client/offline';
 	import { calendarBus } from '$lib/client/bus.svelte';
 	import { shown } from '$lib/client/itemtypes.svelte';
+	import { withoutLinkedBlocks } from '$lib/day-rows';
 	import { openItem } from '$lib/client/peek.svelte';
 	import { entryColors } from '$lib/client/partner';
 	import { without } from '$lib/client/obj';
@@ -64,10 +65,11 @@
 		const l = utcToLocal(iso, tz);
 		return l.minutes + (l.date < data.day ? -1440 : l.date > data.day ? 1440 : 0);
 	};
+	const dayItems = $derived(shown(data.cal.items));
 	const entries = $derived<Entry[]>(
 		[
-			...shown(data.cal.blocks).map((b: BlockDTO) => ({ key: b.id, start: mins(b.startAt), end: mins(b.endAt), label: b.label, block: b })),
-			...shown(data.cal.items)
+			...shown(withoutLinkedBlocks(data.cal.blocks, dayItems, data.day)).map((b: BlockDTO) => ({ key: b.id, start: mins(b.startAt), end: mins(b.endAt), label: b.label, block: b })),
+			...dayItems
 				.filter((i: ItemDTO) => i.time && i.date === data.day)
 				.map((i: ItemDTO) => {
 					const s = Number(i.time?.slice(0, 2)) * 60 + Number(i.time?.slice(3, 5));
