@@ -85,6 +85,33 @@ test('C12 the Today row ⋯ sheet carries the same list (Skip on a repeating occ
 	}
 });
 
+test('C7 a linked block on another day is still named in the Today sheet toast', async ({ page }) => {
+	await signIn(page);
+	const title = `C7 other day ${RUN}`;
+	const id = await mkItem(page, { title, date: DAY, time: '10:00' });
+	// the block is four days after the viewed day: it is not in the Today page's calendar payload
+	const blk = await api(page, 'POST', '/api/blocks', { startAt: '2035-03-09T02:00:00Z', itemId: id });
+	expect(blk.s).toBe(201);
+	try {
+		await page.goto(`/today?d=${DAY}`);
+		const row = page.locator('.ent', { hasText: title });
+		await expect(row).toBeVisible();
+		await row.getByRole('button', { name: `Actions for ${title}` }).click();
+		await page
+			.getByRole('dialog', { name: `Actions for ${title}` })
+			.getByRole('button', { name: 'Tomorrow', exact: true })
+			.click();
+		const toast = page.locator('.toast');
+		await expect(toast).toContainText('Planner block stays on');
+		await expect(toast).toContainText('9 Mar 2035');
+		const blocks = (await api(page, 'GET', '/api/calendar?from=2035-03-09&to=2035-03-10')).j.blocks;
+		expect(blocks.some((b: { id: string }) => b.id === blk.j.block.id)).toBe(true); // the block did not move
+	} finally {
+		await api(page, 'DELETE', `/api/blocks/${blk.j.block.id}`);
+		await drop(page, id);
+	}
+});
+
 test('C12/C15 Tomorrow in the Today sheet moves the row off the day and Undo brings it back', async ({
 	page,
 }) => {

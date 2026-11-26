@@ -85,9 +85,36 @@ describe('C10 reminders on the skipped occurrence', () => {
 		rem.add(me, 'planner_item', i.id, { offset: '2h' }, NOW); // next: 5 Jan 10:00 KL - 2 h
 		rem.add(me, 'planner_item', i.id, { at: '2028-01-05T01:00:00Z' }, NOW); // 09:00 KL on the skipped day
 		rem.add(me, 'planner_item', i.id, { at: '2028-01-06T01:00:00Z' }, NOW); // the next day: stays
+		const ids = rem.absoluteInRange(me, i.id, '2028-01-05', '2028-01-05'); // what the route journals
+		expect(ids).toHaveLength(1);
 		items.skip(me, `${i.id}@2028-01-05`);
-		rem.afterSkip(me, i.id, '2028-01-05', null, NOW);
+		rem.removeIds(me, ids); // inside the route's undo entry
+		rem.afterSkip(me, NOW);
 		const due = rem.list(me, 'planner_item', i.id).map((r) => r.dueAt);
 		expect(due).toEqual(['2028-01-06T00:00:00Z', '2028-01-06T01:00:00Z']);
+	});
+
+	it('C9/C10 Undo restores the absolute reminder removed with the skipped occurrence', () => {
+		const NOW = Date.parse('2028-01-04T05:00:00Z');
+		const i = mk({ date: '2028-01-03', time: '10:00', rrule: 'FREQ=DAILY;COUNT=6' });
+		rem.add(me, 'planner_item', i.id, { at: '2028-01-05T01:00:00Z' }, NOW);
+		const ids = rem.absoluteInRange(me, i.id, '2028-01-05', '2028-01-05');
+		expect(ids).toHaveLength(1);
+		const r = undoable(
+			me,
+			'Skip',
+			[{ t: 'items', id: i.id }, ...ids.map((id) => ({ t: 'reminders' as const, id }))],
+			() => {
+				const result = items.skip(me, `${i.id}@2028-01-05`);
+				rem.removeIds(me, ids);
+				return { result };
+			},
+		);
+		expect(rem.list(me, 'planner_item', i.id)).toEqual([]); // gone with the occurrence
+		undo(me, r.undo.id);
+		const back = rem.list(me, 'planner_item', i.id);
+		expect(back).toHaveLength(1);
+		expect(back[0]).toMatchObject({ dueAt: '2028-01-05T01:00:00Z', status: 'scheduled' });
+		expect(parseExdates(items.mustOwn(me, i.id).exdates)).toEqual([]); // the occurrence is back too
 	});
 });

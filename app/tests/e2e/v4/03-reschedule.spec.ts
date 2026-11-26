@@ -212,10 +212,25 @@ test('C3 Pick date… moves the item to the chosen day', async ({ page }) => {
 	}
 });
 
-test('C8/C9 Skip removes one occurrence, writes one EXDATE and Undo brings it back', async ({ page }) => {
+test('C8/C9 Skip removes one occurrence, writes one EXDATE and Undo brings it (and its reminder) back', async ({
+	page,
+}) => {
 	await signIn(page);
 	const id = await mkItem(page, { title: 'C8 skip', date: '2032-05-03', rrule: 'FREQ=WEEKLY;COUNT=4' });
+	const reminders = async () =>
+		(await api(page, 'GET', `/api/reminders?source=planner_item&id=${id}`)).j.reminders as {
+			dueAt: string;
+			status: string;
+		}[];
 	try {
+		// an absolute reminder due inside the skipped occurrence
+		const rem = await api(page, 'POST', '/api/reminders', {
+			source: 'planner_item',
+			sourceId: id,
+			at: '2032-05-10T01:00:00Z',
+		});
+		expect(rem.s).toBe(201);
+
 		await page.goto(`/item/${id}@2032-05-10`);
 		await postpone(page);
 		await menu(page).getByRole('button', { name: 'Skip this one' }).click();
@@ -228,11 +243,14 @@ test('C8/C9 Skip removes one occurrence, writes one EXDATE and Undo brings it ba
 			'2032-05-24',
 		]);
 		expect((await api(page, 'GET', `/api/items/${id}`)).j.item.rrule).toBe('FREQ=WEEKLY;COUNT=4');
+		expect(await reminders()).toEqual([]); // C10: nothing fires for the skipped date
 
 		await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
 		await expect
 			.poll(async () => seriesDates(page, id, '2032-05-01', '2032-06-01'))
 			.toEqual(['2032-05-03', '2032-05-10', '2032-05-17', '2032-05-24']);
+		// C9: the same undo entry puts the reminder row back, as it was
+		await expect.poll(reminders).toMatchObject([{ dueAt: '2032-05-10T01:00:00Z', status: 'scheduled' }]);
 		expect((await api(page, 'GET', `/api/items/${id}`)).j.item.rrule).toBe('FREQ=WEEKLY;COUNT=4');
 	} finally {
 		await drop(page, id);

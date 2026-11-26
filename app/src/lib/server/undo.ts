@@ -8,8 +8,9 @@ import { ApiFail } from './http';
 import { newId } from './crypto';
 import { isoPlus, nowUtcIso } from '$lib/time';
 
-/** tables the journal may touch. Never sessions, users, grants, share codes. */
-const TABLES = ['items', 'blocks', 'item_types', 'pages'] as const;
+/** tables the journal may touch. Never sessions, users, grants, share codes. Append-only: Undo deletes/inserts
+ *  in this order, so a child table goes after its parent (reminders before their item on restore). */
+const TABLES = ['items', 'blocks', 'item_types', 'pages', 'reminders'] as const;
 export type Table = (typeof TABLES)[number];
 export interface Target {
 	t: Table;

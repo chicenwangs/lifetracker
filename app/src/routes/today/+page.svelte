@@ -31,7 +31,7 @@
 	import { colorsFor } from '$lib/colors';
 	import StatusSquare from '$lib/components/StatusSquare.svelte';
 	import { addDays, clock, isDate, nowLocalMinutes, prettyDate, utcToLocal } from '$lib/time';
-	import { baseItemId } from '$lib/rrule';
+	import { get } from '$lib/client/api';
 	import { nextStatus, type BlockDTO, type ItemDTO, type Status } from '$lib/types';
 
 	let { data } = $props();
@@ -154,7 +154,10 @@
 			? [
 					...RESCHEDULE.map((a) => ({
 						label: a.label,
-						run: () => reschedule(item, a.kind, refreshDay, { blockDay: linkedBlockDay(item.id) }),
+						run: async () => {
+							const blockDay = await linkedBlockDay(item.id);
+							await reschedule(item, a.kind, refreshDay, { blockDay });
+						},
 					})),
 					{ label: PICK_DATE, run: () => pickReschedule(item) },
 				]
@@ -169,17 +172,21 @@
 			{ label: 'Delete', danger: true, run: () => deleteRow(r, refreshDay) },
 		];
 	};
-	/** C7: the earliest linked block's local day (it stays where it is) */
-	const linkedBlockDay = (itemId: string) => {
-		const base = baseItemId(itemId);
-		const b = data.cal.blocks
-			.filter((x: BlockDTO) => x.itemId === base)
-			.sort((a: BlockDTO, c: BlockDTO) => (a.startAt < c.startAt ? -1 : 1))[0];
-		return b ? utcToLocal(b.startAt, tz).date : null;
-	};
+	/** C7: the earliest linked block's day (it stays where it is). The calendar payload only carries the viewed
+	 *  day's blocks, so read the item's own blocks (the view route lists every live one). */
+	async function linkedBlockDay(itemId: string): Promise<string | null> {
+		try {
+			const v = await get<{ blocks: BlockDTO[] }>(`/api/items/${encodeURIComponent(itemId)}/view`);
+			const b = [...v.blocks].sort((a, c) => (a.startAt < c.startAt ? -1 : 1))[0];
+			return b ? utcToLocal(b.startAt, tz).date : null;
+		} catch {
+			return null; // the move itself reports a real failure
+		}
+	}
 	async function pickReschedule(item: ItemDTO) {
 		const d = await askDate(`Postpone "${item.title}" to`, { value: item.date ?? data.day, ok: 'Move' });
-		if (d && isDate(d)) await rescheduleTo(item, d, refreshDay, { blockDay: linkedBlockDay(item.id) });
+		if (!d || !isDate(d)) return;
+		await rescheduleTo(item, d, refreshDay, { blockDay: await linkedBlockDay(item.id) });
 	}
 
 	// ---------- wheel ----------
