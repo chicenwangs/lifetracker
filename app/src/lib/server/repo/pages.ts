@@ -18,7 +18,7 @@ export const SUGGEST_DAYS = 90; // PG-1b
 const MAX_DOC_BYTES = 1_000_000;
 
 const db = () => handle().sqlite;
-type Row = { id: string; owner_id: string; parent_page_id: string | null; title: string; icon: string | null; position: number; archived_at: string | null; archived_batch: string | null; last_opened_at: string | null; deleted_at: string | null; deleted_batch: string | null; created_at: string; updated_at: string; revision: number }; // prettier-ignore
+type Row = { id: string; owner_id: string; parent_page_id: string | null; title: string; icon: string | null; cover_attachment_id: string | null; position: number; archived_at: string | null; archived_batch: string | null; last_opened_at: string | null; deleted_at: string | null; deleted_batch: string | null; created_at: string; updated_at: string; revision: number }; // prettier-ignore
 
 const row = (ownerId: string, id: string): Row | undefined =>
 	db().prepare(`SELECT * FROM pages WHERE id = ? AND owner_id = ?`).get(id, ownerId) as Row | undefined;
@@ -174,6 +174,7 @@ export function get(ownerId: string, id: string, opened = true, viewer = ownerId
 		parentId: r.parent_page_id,
 		title: r.title,
 		icon: r.icon,
+		coverAttachmentId: r.cover_attachment_id,
 		archived: !!r.archived_at,
 		revision: r.revision,
 		updatedAt: r.updated_at,
@@ -276,6 +277,11 @@ export const patchSchema = z
 	.object({
 		title: z.string().max(300),
 		icon: z.string().max(8).nullable(),
+		/** v4.0 PR 31: an uploaded image owned by the page owner, or null to remove */
+		coverAttachmentId: z
+			.string()
+			.regex(/^att_[0-9a-z]{16}$/, 'bad attachment')
+			.nullable(),
 		doc: z.object({ type: z.literal('doc'), content: z.array(z.unknown()).max(5000) }).passthrough(),
 		/** optimistic lock (409 on mismatch, DESIGN §18) */
 		revision: z.number().int(),
@@ -362,7 +368,24 @@ export function update(
 		const set: string[] = ['updated_at = @now', 'updated_by = @me', 'revision = revision + 1'];
 		if (p.title !== undefined) set.push('title = @title');
 		if (p.icon !== undefined) set.push('icon = @icon');
-		db().prepare(`UPDATE pages SET ${set.join(', ')} WHERE id = @id`).run({ now, me: actor, title: p.title ?? null, icon: p.icon ?? null, id }); // prettier-ignore
+		if (p.coverAttachmentId !== undefined) {
+			// v4.0 PR 31: the cover is a file the page owner uploaded (never someone else's), kept by a ref
+			if (p.coverAttachmentId && !attachments.ownedReady(p.coverAttachmentId, ownerId))
+				bad('Cover images must be files the page owner uploaded.', 'bad_cover');
+			set.push('cover_attachment_id = @cover');
+			attachments.dropRefs('page_cover', id);
+			if (p.coverAttachmentId) attachments.addRef(ownerId, p.coverAttachmentId, 'page_cover', id);
+		}
+		db()
+			.prepare(`UPDATE pages SET ${set.join(', ')} WHERE id = @id`)
+			.run({
+				now,
+				me: actor,
+				title: p.title ?? null,
+				icon: p.icon ?? null,
+				cover: p.coverAttachmentId ?? null,
+				id,
+			});
 		reindex(ownerId, id);
 		return get(ownerId, id, false);
 	});
@@ -481,6 +504,7 @@ export function purgeTrash(now: number = Date.now()): void {
 	for (const r of ids) {
 		fts.unindex('page', r.id);
 		attachments.dropRefs('page_block', r.id);
+		attachments.dropRefs('page_cover', r.id); // v4.0 PR 31: a purged page's cover is no longer referenced
 	}
 	db().prepare(`DELETE FROM pages WHERE deleted_at IS NOT NULL AND deleted_at < ?`).run(cut);
 }
