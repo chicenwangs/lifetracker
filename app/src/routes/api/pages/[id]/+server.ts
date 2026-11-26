@@ -17,6 +17,8 @@ export const PATCH = api(async (e) => {
 	const id = e.params.id ?? '';
 	const owner = need('page', u.id, id, 'edit');
 	const p = await body(e, pages.patchSchema);
+	// v4.0 PR 22: isTemplate is owner-level; the generic PATCH only needs edit, so check it here too
+	if (p.isTemplate !== undefined) need('page', u.id, id, 'owner');
 	// the cover is an owner-level field (v4.0 PR 31); the UI hides Change/Remove for shared editors
 	if (p.coverAttachmentId !== undefined) need('page', u.id, id, 'owner');
 	// one small metadata change = one undo entry: cover (PR 31) or icon (PR 16)
