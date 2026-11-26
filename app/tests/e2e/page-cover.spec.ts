@@ -27,6 +27,9 @@ test('cover: add, reload keeps it, change, remove with Undo', async ({ page }) =
 	await page.goto(`/pages/${id}`);
 	await page.getByRole('button', { name: 'Page menu' }).click();
 	await expect(page.getByRole('menuitem', { name: 'Add cover…' })).toBeVisible();
+	await page.getByRole('menuitem', { name: 'Add cover…' }).click();
+	const picker = page.getByRole('dialog', { name: 'Cover picker' });
+	await expect(picker).toBeVisible();
 	await page
 		.getByLabel('Cover image')
 		.setInputFiles({ name: 'cover.png', mimeType: 'image/png', buffer: PNG });
@@ -37,16 +40,21 @@ test('cover: add, reload keeps it, change, remove with Undo', async ({ page }) =
 	expect(await page.evaluate(async (s) => (await fetch(s)).status, first)).toBe(200);
 	await page.reload();
 	await expect(page.locator('.cover img')).toHaveAttribute('src', first);
-	// change: another upload gives a new attachment
+	// change: upload another image
 	await page
 		.getByLabel('Cover image')
 		.setInputFiles({ name: 'cover2.png', mimeType: 'image/png', buffer: PNG });
 	await expect(page.locator('.cover img')).not.toHaveAttribute('src', first);
-	const second = (await page.locator('.cover img').getAttribute('src')) as string;
+	// change again: pick the image already uploaded
+	await page.getByRole('button', { name: 'Page menu' }).click();
+	await page.getByRole('menuitem', { name: 'Change cover…' }).click();
+	await expect(picker).toBeVisible();
+	await picker.getByRole('button', { name: 'cover.png' }).click();
+	await expect(page.locator('.cover img')).toHaveAttribute('src', first);
 	// remove, then Undo puts it back
 	await page.getByRole('button', { name: 'Remove' }).click();
 	await expect(page.locator('.cover')).toHaveCount(0);
 	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
-	await expect(page.locator('.cover img')).toHaveAttribute('src', second);
+	await expect(page.locator('.cover img')).toHaveAttribute('src', first);
 	await api(page, 'DELETE', `/api/pages/${id}`);
 });

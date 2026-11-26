@@ -147,6 +147,16 @@ export function ownedReady(attachmentId: string, ownerId: string): boolean {
 	return !!r;
 }
 
+/** v4.0 PR 31: the owner's ready images, newest first (page cover picker) */
+export function images(ownerId: string): AttachmentDTO[] {
+	const rows = db()
+		.prepare(
+			`SELECT * FROM attachments WHERE owner_id = ? AND status = 'ready' AND deleted_at IS NULL AND mime_type LIKE 'image/%' ORDER BY created_at DESC LIMIT 60`,
+		)
+		.all(ownerId) as Row[];
+	return rows.map(toDTO);
+}
+
 /** the file to send, if `userId` owns it or can read a note/page that uses it (shares, DESIGN §12) */
 export function readable(userId: string, id: string): { row: Row; path: string; inline: boolean } {
 	const r = db().prepare(`SELECT * FROM attachments WHERE id = ?`).get(id) as Row | undefined;

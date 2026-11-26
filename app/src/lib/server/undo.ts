@@ -83,6 +83,7 @@ export function undo(userId: string, id?: string): { label: string } {
 				if (r.t === 'pages') {
 					fts.unindex('page', r.id);
 					attachments.dropRefs('page_block', r.id);
+					attachments.dropRefs('page_cover', r.id); // v4.0 PR 31: a cover ref would pin the image
 				}
 				db().prepare(`DELETE FROM ${r.t} WHERE id = ?`).run(r.id);
 			}
@@ -96,6 +97,16 @@ export function undo(userId: string, id?: string): { label: string } {
 				const all = Object.keys(r.before);
 				db().prepare(`INSERT INTO ${r.t} (${all.map((c) => `"${c}"`).join(', ')}) VALUES (${all.map((c) => `@${c}`).join(', ')})`).run(r.before);
 			}
+		}
+		// v4.0 PR 31: a cover change moves attachment_refs too (a side table the journal does not hold)
+		for (const r of rows) {
+			if (r.t !== 'pages' || !r.before || !r.after) continue;
+			const b = r.before as { cover_attachment_id?: string | null; owner_id?: string };
+			const a = r.after as { cover_attachment_id?: string | null };
+			if ((b.cover_attachment_id ?? null) === (a.cover_attachment_id ?? null)) continue;
+			attachments.dropRefs('page_cover', r.id);
+			if (b.cover_attachment_id)
+				attachments.addRef(b.owner_id ?? '', b.cover_attachment_id, 'page_cover', r.id);
 		}
 		db().prepare(`UPDATE undo_actions SET undone_at = ? WHERE id = ?`).run(now, a.id);
 		return { label: a.label };
