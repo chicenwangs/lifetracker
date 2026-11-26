@@ -11,7 +11,7 @@
 	import PageIcon from '$lib/components/PageIcon.svelte';
 	import DbCell from '$lib/database/DbCell.svelte';
 	import ShareDialog from '$lib/components/ShareDialog.svelte';
-	import type { PageDTO, PageNode, UndoRef } from '$lib/types';
+	import type { BacklinkDTO, PageDTO, PageNode, UndoRef } from '$lib/types';
 
 	let { data } = $props();
 	const pg = $derived(data.page as PageDTO);
@@ -34,6 +34,13 @@
 	});
 
 	const rec = $derived(data.record);
+	// Linked from (PR 20): open by default for 1-5 sources; hidden when 0. Re-evaluated when the page changes.
+	const backlinks = $derived((data.backlinks ?? []) as BacklinkDTO[]);
+	let linksOpen = $state(true);
+	$effect.pre(() => {
+		void pg.id;
+		linksOpen = backlinks.length > 0 && backlinks.length <= 5;
+	});
 	async function setValue(propId: string, v: unknown): Promise<string | null> {
 		if (!rec) return null;
 		try {
@@ -467,6 +474,31 @@
 		{#key pg.id}
 			<PageEditor bind:this={editor} page={pg} onstate={(s) => (saveState = s)} />
 		{/key}
+		{#if backlinks.length}
+			<section class="linked" aria-labelledby="linked-h">
+				<h2 id="linked-h">
+					<button type="button" aria-expanded={linksOpen} onclick={() => (linksOpen = !linksOpen)}>
+						<span aria-hidden="true">{linksOpen ? '▾' : '▸'}</span> Linked from ({backlinks.length})
+					</button>
+				</h2>
+				{#if linksOpen}
+					<ul>
+						{#each backlinks as b (b.id)}
+							<li class:bl-arch={b.archived}>
+								<a class="lt" href="/pages/{b.id}">
+									{#if b.icon}<span class="ico" aria-hidden="true">{b.icon}</span>{/if}
+									<span class="tt">{b.title || 'Untitled'}</span>
+								</a>
+								{#if b.archived}<span class="hint">· archived</span>{/if}
+								<span class="snip"
+									>{#each b.snippet as s, i (i)}{#if s.b}<b>{s.t}</b>{:else}{s.t}{/if}{/each}</span
+								>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</section>
+		{/if}
 	</div>
 </article>
 <svelte:window
@@ -742,5 +774,84 @@
 		align-items: center;
 		margin-bottom: 8px;
 		font-size: 13px;
+	}
+	/* Linked from (PR 20): under the editor, one row per source page */
+	.linked {
+		margin: 18px 0 4px;
+		padding-top: 12px;
+		border-top: 1px solid var(--rule);
+		font-size: 13.5px;
+	}
+	.linked h2 {
+		margin: 0 0 6px;
+		font-size: 14px;
+	}
+	.linked h2 button {
+		min-height: 24px;
+		padding: 4px 0;
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.linked ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.linked li {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-width: 0;
+	}
+	.linked li.bl-arch {
+		opacity: 0.6;
+	}
+	.linked .lt {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		flex: none;
+		max-width: 45%;
+		color: var(--ink);
+		text-decoration: none;
+	}
+	.linked .lt:hover {
+		text-decoration: underline;
+	}
+	.linked .tt {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.linked .snip {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: var(--quiet);
+	}
+	.linked .snip b {
+		color: var(--ink);
+		font-weight: 600;
+	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.linked h2 button {
+			min-height: 48px;
+		}
+		.linked li {
+			min-height: 48px;
+			flex-wrap: wrap;
+		}
+		.linked .lt {
+			min-height: 48px;
+			max-width: 100%;
+		}
 	}
 </style>
