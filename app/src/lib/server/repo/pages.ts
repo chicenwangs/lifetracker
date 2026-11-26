@@ -147,6 +147,13 @@ function check(n: unknown, depth: number): void {
 	}
 	if (node.type === 'pageLink' && !/^pg_[0-9a-z]+$/.test(String(node.attrs?.pageId ?? ''))) bad('bad page link');
 	if (node.type === 'database' && !/^pdb_[0-9a-z]+$/.test(String(node.attrs?.databaseId ?? ''))) bad('bad database'); // the viewer's browser fetches /api/databases/<id>
+	if (node.type === 'callout') {
+		const tone = node.attrs?.tone;
+		if (tone !== undefined && !['grey', 'blue', 'yellow', 'red'].includes(String(tone))) bad('bad callout tone');
+		const emoji = node.attrs?.emoji;
+		if (emoji !== undefined && (typeof emoji !== 'string' || [...emoji].length > 4)) bad('bad callout emoji');
+	}
+	if (node.type === 'toggle' && node.attrs?.open !== undefined && typeof node.attrs.open !== 'boolean') bad('bad toggle state'); // prettier-ignore
 	if (node.type === 'text' && typeof node.text !== 'string') bad('bad text');
 	if (node.marks !== undefined) {
 		if (!Array.isArray(node.marks)) bad('bad marks');

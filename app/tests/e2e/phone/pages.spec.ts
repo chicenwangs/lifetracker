@@ -132,6 +132,54 @@ test('page icon sheet: 48 dp grid, Close hides, Remove clears', async () => {
 	await expect(page.getByRole('menuitem', { name: 'Add icon' })).toBeVisible();
 });
 
+test('callout, toggle and TOC: 48 dp targets, icon sheet, toggle chevron', async () => {
+	const doc = {
+		type: 'doc',
+		content: [
+			{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Section' }] },
+			{
+				type: 'callout',
+				attrs: { tone: 'yellow', emoji: '💡' },
+				content: [{ type: 'paragraph', content: [{ type: 'text', text: 'note' }] }],
+			},
+			{
+				type: 'toggle',
+				attrs: { open: false },
+				content: [
+					{ type: 'paragraph', content: [{ type: 'text', text: 'summary' }] },
+					{ type: 'paragraph', content: [{ type: 'text', text: 'body' }] },
+				],
+			},
+			{ type: 'toc' },
+		],
+	};
+	await page.waitForTimeout(700); // let any earlier autosave land before replacing the doc
+	await page.evaluate(async (d) => {
+		const id = location.pathname.split('/').pop();
+		await fetch(`/api/pages/${id}`, {
+			method: 'PATCH',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ doc: d }),
+		});
+	}, doc);
+	await page.reload();
+	await expect(page.locator('.pm .co')).toBeVisible();
+	await expect(page.locator('.pm .tg')).toHaveAttribute('data-open', 'false');
+	await expect(page.locator('.pm .toc')).toContainText('Section');
+	await expectTargets48(page);
+	// the callout icon opens the same picker sheet; Back closes it
+	await page.getByRole('button', { name: 'Callout icon: 💡' }).click();
+	const sheet = page.getByRole('dialog', { name: 'Callout icon' });
+	await expect(sheet).toBeVisible();
+	await expectTargets48(page);
+	await page.waitForTimeout(250);
+	await page.goBack();
+	await expect(sheet).toBeHidden();
+	// the closed toggle opens from its chevron
+	await page.locator('.pm .tg-btn').click();
+	await expect(page.locator('.pm .tg')).toHaveAttribute('data-open', 'true');
+});
+
 test('Archive: 48 dp search field and no sideways scroll at 320 px (#405)', async () => {
 	await page.goto('/pages/archive');
 	await expect(page.getByLabel('Search archive')).toBeVisible();

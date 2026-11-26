@@ -191,4 +191,16 @@ describe('Pages', () => {
 		pages.update(me, a.id, { doc: docIn });
 		expect(pages.get(me, a.id, false).doc).toEqual(docIn);
 	});
+
+	it('PR 18: callout tone/emoji and toggle open are validated', () => {
+		const a = page('Validated');
+		const bad = (content: unknown) => () => pages.update(me, a.id, { doc: doc(content) });
+		expect(bad({ type: 'callout', attrs: { tone: 'pink', emoji: '💡' }, content: [p('x')] })).toThrow(
+			/callout tone/i,
+		);
+		expect(
+			bad({ type: 'callout', attrs: { tone: 'grey', emoji: 'way too long' }, content: [p('x')] }),
+		).toThrow(/callout emoji/i);
+		expect(bad({ type: 'toggle', attrs: { open: 'false' }, content: [p('x')] })).toThrow(/toggle state/i);
+	});
 });
