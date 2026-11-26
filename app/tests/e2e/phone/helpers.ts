@@ -134,7 +134,7 @@ export async function expectTargets48(page: Page) {
 	expect(small.filter((s) => !known.has(s.replace(/ \(\d+×\d+\)$/, '')))).toEqual([]);
 }
 
-/** Fails on desktop wording shown or read out on phone: Ctrl, Click, Esc, PC view (G13, #115). */
+/** Fails on desktop wording shown or read out on phone: Ctrl, Click, Esc, PC view, double-click, right-click (G13, #115, card 02). */
 export async function noDesktopHints(page: Page) {
 	await page.waitForLoadState('networkidle'); // hydrated: phone-only wording is set after mount
 	const hits = await page.evaluate(() => {

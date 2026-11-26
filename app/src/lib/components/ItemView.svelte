@@ -66,7 +66,7 @@
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { removeItem } from '$lib/client/remove';
 	import { duplicate } from '$lib/client/altdrag';
-	import { isPhone, isFine } from '$lib/client/phone';
+	import { isPhone, finePointer } from '$lib/client/phone';
 
 	interface View {
 		item: ItemDTO & { notes: string | null };
@@ -189,10 +189,8 @@
 	});
 
 	let phone = $state(false); // phone wording (#108); set after mount so SSR and hydration agree
-	let fine = $state(false); // the Close (Esc) title is a key hint: fine pointers only (D-V4-03)
 	onMount(async () => {
 		phone = isPhone();
-		fine = isFine();
 		if (!v) await load();
 		planDate = v ? startDay(v) : '';
 		await loadDay();
@@ -509,7 +507,7 @@
 					class="close"
 					type="button"
 					aria-label="Close"
-					title={fine ? 'Close (Esc)' : undefined}
+					title={$finePointer ? 'Close (Esc)' : undefined}
 					onclick={() => onclose?.()}
 				>
 					<svg

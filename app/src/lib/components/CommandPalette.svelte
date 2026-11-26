@@ -7,7 +7,7 @@
 	import { openItem } from '$lib/client/peek.svelte';
 	import { showError } from '$lib/client/toast.svelte';
 	import { tick } from 'svelte';
-	import { isPhone, isFine } from '$lib/client/phone';
+	import { isPhone, finePointer } from '$lib/client/phone';
 
 	let { onquickadd }: { onquickadd?: () => void } = $props();
 
@@ -41,7 +41,6 @@
 	// phone (#99): full screen, no desktop actions or key hints; empty box = recent results, then
 	// Planner · Keep · Pages
 	let phone = $state(false);
-	let fine = $state(false); // the key footer needs a fine pointer (D-V4-03)
 	const RECENT = 'lt-search-recent';
 	type Saved = Pick<Row, 'group' | 'label' | 'sub' | 'go'>;
 	const revive = (r: Saved): Row => ({
@@ -69,7 +68,6 @@
 	export async function show() {
 		open = true;
 		phone = isPhone();
-		fine = isFine();
 		q = '';
 		sel = 0;
 		results = start();
@@ -215,7 +213,7 @@
 						: `Nothing found${q ? ` for "${q}"` : ''}.`}
 				</p>{/each}
 		</div>
-		{#if fine}<p class="hint keys">↑↓ move · Enter open · Esc close</p>{/if}
+		{#if $finePointer}<p class="hint keys">↑↓ move · Enter open · Esc close</p>{/if}
 	</div>
 {/if}
 

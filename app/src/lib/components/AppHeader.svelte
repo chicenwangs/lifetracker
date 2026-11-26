@@ -9,7 +9,7 @@
 	import AppIcon from './AppIcon.svelte';
 	import CommandPalette from './CommandPalette.svelte';
 	import AccountSheet from './AccountSheet.svelte';
-	import { isPhone, isFine } from '$lib/client/phone';
+	import { isPhone, finePointer } from '$lib/client/phone';
 	import { initTheme, setTheme, themeState } from '$lib/client/prefs.svelte';
 
 	let { user }: { user: App.SafeUser } = $props();
@@ -65,8 +65,6 @@
 		if (n.from) inApp = true;
 	});
 	const back = () => (inApp ? history.back() : goto(parent));
-	let fine = $state(false); // key hints belong to a fine pointer (D-V4-03); after mount so hydration agrees
-	afterNavigate(() => (fine = isFine()));
 	let help = $state(false);
 	let cmdk: CommandPalette | undefined = $state();
 	let qa: QuickAdd | undefined = $state();
@@ -136,8 +134,8 @@
 		<button
 			class="search"
 			type="button"
-			aria-label={fine ? `Search ${mod}+K` : 'Search'}
-			title={fine ? 'Search  Ctrl+K' : undefined}
+			aria-label={$finePointer ? `Search ${mod}+K` : 'Search'}
+			title={$finePointer ? 'Search  Ctrl+K' : undefined}
 			onclick={() => cmdk?.show()}
 			><svg
 				class="sicon"
@@ -150,7 +148,7 @@
 				stroke-linecap="round"
 				aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg
 			><span class="stext">Search</span>
-			{#if fine}<kbd>{mod}+K</kbd>{/if}</button
+			{#if $finePointer}<kbd>{mod}+K</kbd>{/if}</button
 		>
 		<QuickAdd bind:this={qa} tz={user.timezone} />
 		<button

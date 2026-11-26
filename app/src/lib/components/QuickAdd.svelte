@@ -8,10 +8,10 @@
 -->
 <script lang="ts">
 	import { backCloses } from '$lib/client/layers';
-	import { tick, onMount } from 'svelte';
+	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import { qaPrefs, typeName } from '$lib/client/itemtypes.svelte';
-	import { isFine } from '$lib/client/phone';
+	import { finePointer } from '$lib/client/phone';
 	import { OFFSET_LABEL, type Offset } from '$lib/remind';
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
@@ -48,9 +48,6 @@
 	let cmd: CommandInput | undefined = $state();
 	let opener: HTMLButtonElement | undefined = $state();
 	let logEl: HTMLDivElement | undefined = $state();
-	// keyboard hints + the N shortcut belong to a fine pointer (D-V4-03); after mount so hydration agrees
-	let fine = $state(false);
-	onMount(() => (fine = isFine()));
 
 	const ctx = $derived({
 		today: todayLocal(tz),
@@ -227,7 +224,7 @@
 	}
 
 	function onWindowKey(e: KeyboardEvent) {
-		if (!fine) return; // no keyboard on a touch screen: N is just a letter
+		if (!$finePointer) return; // no keyboard on a touch screen: N is just a letter
 		if (open || (e.key !== 'n' && e.key !== 'N')) return;
 		if (e.ctrlKey || e.metaKey || e.altKey) return;
 		const t = e.target as HTMLElement | null;
@@ -249,7 +246,7 @@
 <svelte:window onkeydown={onWindowKey} />
 
 <button bind:this={opener} class="opener" type="button" onclick={show} aria-haspopup="dialog">
-	<span aria-hidden="true">+</span> Add {#if fine}<kbd>N</kbd>{/if}
+	<span aria-hidden="true">+</span> Add {#if $finePointer}<kbd>N</kbd>{/if}
 </button>
 
 {#if open}
@@ -319,7 +316,7 @@
 					</div>
 				{/if}
 
-				{#if fine}
+				{#if $finePointer}
 					<div class="ft">
 						<span><kbd>Enter</kbd> add · <kbd>/</kbd> options · <kbd>↑</kbd> last</span>
 						<span><kbd>Esc</kbd> close</span>
