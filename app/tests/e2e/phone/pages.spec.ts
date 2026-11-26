@@ -152,6 +152,38 @@ test('Archive: 48 dp search field and no sideways scroll at 320 px (#405)', asyn
 	}
 });
 
+test('Linked from: the source page under the editor, 48 dp row (#443)', async () => {
+	const [target, src] = (await page.evaluate(async () => {
+		const post = (u: string, b: unknown) =>
+			fetch(u, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(b),
+			}).then((r) => r.json());
+		const t = (await post('/api/pages', { title: 'Phone link target' })).page as { id: string };
+		const s = (await post('/api/pages', { title: 'Phone link source' })).page as { id: string };
+		await fetch(`/api/pages/${s.id}`, {
+			method: 'PATCH',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				doc: {
+					type: 'doc',
+					content: [{ type: 'paragraph', content: [{ type: 'pageLink', attrs: { pageId: t.id } }] }],
+				},
+			}),
+		});
+		return [t, s];
+	})) as [{ id: string }, { id: string }];
+	await page.goto(`/pages/${target.id}`);
+	const panel = page.getByRole('region', { name: /Linked from \(1\)/ });
+	await expect(panel).toBeVisible();
+	const link = panel.getByRole('link', { name: 'Phone link source' });
+	await expect(link).toHaveAttribute('href', `/pages/${src.id}`);
+	await expect(link).toBeVisible();
+	expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(48);
+	await noDesktopHints(page);
+});
+
 test('duplicate from the page menu: the copy opens (#440)', async () => {
 	const T = 'Phone dup source';
 	const id = await page.evaluate(async (t) => {
