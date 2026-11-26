@@ -182,4 +182,10 @@
 		font-size: 14px;
 		min-height: 32px;
 	}
+	/* phone: each checkbox row is a 48 dp target (this scoped .opt beats the global label rule) */
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.opt {
+			min-height: 48px;
+		}
+	}
 </style>

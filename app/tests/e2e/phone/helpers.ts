@@ -134,7 +134,7 @@ export async function expectTargets48(page: Page) {
 	expect(small.filter((s) => !known.has(s.replace(/ \(\d+×\d+\)$/, '')))).toEqual([]);
 }
 
-/** Fails on desktop wording shown or read out on phone: Ctrl, Click, Esc, PC view (G13, #115). */
+/** Fails on desktop wording shown or read out on phone: Ctrl, Click, Esc, PC view, double-click, right-click (G13, #115, card 02). */
 export async function noDesktopHints(page: Page) {
 	await page.waitForLoadState('networkidle'); // hydrated: phone-only wording is set after mount
 	const hits = await page.evaluate(() => {
@@ -143,7 +143,7 @@ export async function noDesktopHints(page: Page) {
 		for (let n = w.nextNode(); n; n = w.nextNode()) {
 			const t = n.textContent ?? '';
 			if (
-				/\b(ctrl|click|esc)\b|pc view/i.test(t) &&
+				/\b(ctrl|click|esc)\b|double-click|right-click|pc view/i.test(t) &&
 				n.parentElement?.checkVisibility({ checkVisibilityCSS: true })
 			)
 				out.push(t.trim().slice(0, 60));
@@ -153,7 +153,8 @@ export async function noDesktopHints(page: Page) {
 			if (!el.checkVisibility({ checkVisibilityCSS: true })) continue;
 			for (const at of ['aria-label', 'aria-description', 'title']) {
 				const t = el.getAttribute(at) ?? '';
-				if (/\b(ctrl|click|esc)\b|pc view/i.test(t)) out.push(`[${at}] ${t.slice(0, 60)}`);
+				if (/\b(ctrl|click|esc)\b|double-click|right-click|pc view/i.test(t))
+					out.push(`[${at}] ${t.slice(0, 60)}`);
 			}
 		}
 		return out;

@@ -7,7 +7,7 @@
 	import { openItem } from '$lib/client/peek.svelte';
 	import { showError } from '$lib/client/toast.svelte';
 	import { tick } from 'svelte';
-	import { isPhone } from '$lib/client/phone';
+	import { isPhone, finePointer } from '$lib/client/phone';
 
 	let { onquickadd }: { onquickadd?: () => void } = $props();
 
@@ -213,7 +213,7 @@
 						: `Nothing found${q ? ` for "${q}"` : ''}.`}
 				</p>{/each}
 		</div>
-		{#if !phone}<p class="hint keys">↑↓ move · Enter open · Esc close</p>{/if}
+		{#if $finePointer}<p class="hint keys">↑↓ move · Enter open · Esc close</p>{/if}
 	</div>
 {/if}
 

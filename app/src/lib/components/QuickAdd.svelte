@@ -11,6 +11,7 @@
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import { qaPrefs, typeName } from '$lib/client/itemtypes.svelte';
+	import { finePointer } from '$lib/client/phone';
 	import { OFFSET_LABEL, type Offset } from '$lib/remind';
 	import { cubicOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
@@ -223,6 +224,7 @@
 	}
 
 	function onWindowKey(e: KeyboardEvent) {
+		if (!$finePointer) return; // no keyboard on a touch screen: N is just a letter
 		if (open || (e.key !== 'n' && e.key !== 'N')) return;
 		if (e.ctrlKey || e.metaKey || e.altKey) return;
 		const t = e.target as HTMLElement | null;
@@ -244,7 +246,7 @@
 <svelte:window onkeydown={onWindowKey} />
 
 <button bind:this={opener} class="opener" type="button" onclick={show} aria-haspopup="dialog">
-	<span aria-hidden="true">+</span> Add <kbd>N</kbd>
+	<span aria-hidden="true">+</span> Add {#if $finePointer}<kbd>N</kbd>{/if}
 </button>
 
 {#if open}
@@ -314,10 +316,12 @@
 					</div>
 				{/if}
 
-				<div class="ft">
-					<span><kbd>Enter</kbd> add · <kbd>/</kbd> options · <kbd>↑</kbd> last</span>
-					<span><kbd>Esc</kbd> close</span>
-				</div>
+				{#if $finePointer}
+					<div class="ft">
+						<span><kbd>Enter</kbd> add · <kbd>/</kbd> options · <kbd>↑</kbd> last</span>
+						<span><kbd>Esc</kbd> close</span>
+					</div>
+				{/if}
 			</div>
 
 			{#if preview}

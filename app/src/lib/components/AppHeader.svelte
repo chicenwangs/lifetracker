@@ -9,7 +9,7 @@
 	import AppIcon from './AppIcon.svelte';
 	import CommandPalette from './CommandPalette.svelte';
 	import AccountSheet from './AccountSheet.svelte';
-	import { isPhone } from '$lib/client/phone';
+	import { isPhone, finePointer } from '$lib/client/phone';
 	import { initTheme, setTheme, themeState } from '$lib/client/prefs.svelte';
 
 	let { user }: { user: App.SafeUser } = $props();
@@ -65,8 +65,6 @@
 		if (n.from) inApp = true;
 	});
 	const back = () => (inApp ? history.back() : goto(parent));
-	let phone = $state(false); // no key hints in tooltips on phone (#115); after mount so hydration agrees
-	afterNavigate(() => (phone = isPhone()));
 	let help = $state(false);
 	let cmdk: CommandPalette | undefined = $state();
 	let qa: QuickAdd | undefined = $state();
@@ -136,8 +134,8 @@
 		<button
 			class="search"
 			type="button"
-			aria-label={phone ? 'Search' : `Search ${mod}+K`}
-			title={phone ? undefined : 'Search  Ctrl+K'}
+			aria-label={$finePointer ? `Search ${mod}+K` : 'Search'}
+			title={$finePointer ? 'Search  Ctrl+K' : undefined}
 			onclick={() => cmdk?.show()}
 			><svg
 				class="sicon"
@@ -149,7 +147,8 @@
 				stroke-width="2"
 				stroke-linecap="round"
 				aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></svg
-			><span class="stext">Search</span> <kbd>{mod}+K</kbd></button
+			><span class="stext">Search</span>
+			{#if $finePointer}<kbd>{mod}+K</kbd>{/if}</button
 		>
 		<QuickAdd bind:this={qa} tz={user.timezone} />
 		<button

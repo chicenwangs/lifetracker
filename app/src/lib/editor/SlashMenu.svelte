@@ -85,11 +85,16 @@
 		font-size: max(var(--fs-min), 11px);
 		color: var(--quiet);
 	}
-	/* keyboard hints mean nothing on a phone (#115) */
-	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+	/* keyboard hints belong to a fine pointer (D-V4-03) */
+	.keys {
+		display: none;
+	}
+	@media (pointer: fine) {
 		.keys {
-			display: none;
+			display: block;
 		}
+	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		[role='option'] {
 			min-height: 48px; /* #228 */
 			justify-content: center;

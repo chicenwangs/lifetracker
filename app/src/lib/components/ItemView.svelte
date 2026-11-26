@@ -66,7 +66,7 @@
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { removeItem } from '$lib/client/remove';
 	import { duplicate } from '$lib/client/altdrag';
-	import { isPhone } from '$lib/client/phone';
+	import { isPhone, finePointer } from '$lib/client/phone';
 
 	interface View {
 		item: ItemDTO & { notes: string | null };
@@ -507,7 +507,7 @@
 					class="close"
 					type="button"
 					aria-label="Close"
-					title="Close (Esc)"
+					title={$finePointer ? 'Close (Esc)' : undefined}
 					onclick={() => onclose?.()}
 				>
 					<svg
