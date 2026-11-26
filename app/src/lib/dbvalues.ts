@@ -58,7 +58,13 @@ export function checkValue(type: PropType, v: unknown, config: PropConfig = {}):
 			if (!Array.isArray(v) || !v.every((x) => typeof x === 'string' && config.options?.some((o) => o.id === x))) return { ok: false, error: 'Multi-select: pick from the options.' };
 			return { ok: true, value: v.length ? [...new Set(v as string[])] : null };
 		case 'url':
-			return typeof v === 'string' && /^(https?:\/\/|mailto:)\S+$/i.test(v.trim()) && v.length <= 2000 ? { ok: true, value: v.trim() } : { ok: false, error: 'URL: must start with http://, https:// or mailto:.' };
+			// http(s)/mailto, or an uploaded file path on this origin (CSP img-src is 'self' data:)
+			if (typeof v !== 'string' || v.length > 2000)
+				return { ok: false, error: 'URL: must start with http://, https:// or mailto:.' };
+			return /^(https?:\/\/|mailto:)\S+$/i.test(v.trim()) ||
+				/^\/api\/attachments\/att_[0-9a-z]{16}$/i.test(v.trim())
+				? { ok: true, value: v.trim() }
+				: { ok: false, error: 'URL: must start with http://, https:// or mailto:.' };
 	}
 } // prettier-ignore
 

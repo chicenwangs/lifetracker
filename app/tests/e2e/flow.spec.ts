@@ -1967,8 +1967,20 @@ test('database gallery: cover, title + props, size, click opens a record, empty 
 		props: { id: string; type: string }[];
 	};
 	const tp = info.props.find((p) => p.type === 'title')!;
+	// W1: img-src is 'self' data:, so an external picture cannot load; use a real uploaded attachment
+	const coverUrl = await page.evaluate(async () => {
+		const png = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='), (c) => c.charCodeAt(0)); // prettier-ignore
+		const up = await fetch('/api/attachments?name=cover.png', { method: 'POST', headers: { 'content-type': 'image/png' }, body: png }); // prettier-ignore
+		const att = (await up.json()) as { attachment?: { id: string }; id?: string };
+		return `/api/attachments/${att.attachment?.id ?? att.id}`;
+	});
+	expect(coverUrl).toMatch(/^\/api\/attachments\/att_[0-9a-z]{16}$/);
+	const csp: string[] = [];
+	page.on('console', (m) => {
+		if (/content security policy/i.test(m.text())) csp.push(m.text());
+	});
 	await api('POST', `/api/databases/${db.id}/records`, {
-		values: { [tp.id]: 'One', [pic.id]: 'https://example.com/pic.png', [note.id]: 'Hello' },
+		values: { [tp.id]: 'One', [pic.id]: coverUrl, [note.id]: 'Hello' },
 	});
 	const rec = (await api('GET', `/api/databases/${db.id}`)).j.database.rows[0] as { id: string };
 	const view = (await api('POST', `/api/databases/${db.id}/views`, { name: 'Gallery', type: 'gallery' })).j
@@ -1977,7 +1989,9 @@ test('database gallery: cover, title + props, size, click opens a record, empty 
 	await page.goto(`/pages/${db.pageId}`);
 	await page.getByRole('tab', { name: /Gallery/ }).click();
 	const cards = page.getByRole('list', { name: 'Cards' });
-	await expect(cards.locator('img')).toHaveAttribute('src', 'https://example.com/pic.png');
+	await expect(cards.locator('img')).toHaveAttribute('src', coverUrl);
+	expect(await cards.locator('img').evaluate((el: HTMLImageElement) => el.naturalWidth)).toBeGreaterThan(0);
+	expect(csp).toEqual([]);
 	await expect(page.locator('.gal')).toHaveAttribute('data-size', 'L');
 	const card = cards.getByRole('button', { name: 'One' });
 	await expect(card).toContainText('Hello');

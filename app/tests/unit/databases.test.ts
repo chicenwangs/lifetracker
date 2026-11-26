@@ -39,6 +39,9 @@ describe('Databases', () => {
 		dbs.setValues(me, r.id, { [kg.id]: '62.5' });
 		expect(dbs.get(me, id).rows[0]?.values[kg.id]).toBe(62.5);
 		expect(checkValue('url', 'javascript:alert(1)').ok).toBe(false);
+		// an uploaded file on this origin is a valid url value (gallery cover under CSP img-src 'self')
+		expect(checkValue('url', '/api/attachments/att_0123456789abcdef').ok).toBe(true);
+		expect(checkValue('url', '/api/attachments/att_short').ok).toBe(false);
 		expect(checkValue('date', '2026-02-30').ok).toBe(false);
 	});
 
