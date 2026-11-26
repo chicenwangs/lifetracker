@@ -11,4 +11,3 @@ export const POST = api(async (e) => {
 	const p = await body(e, schema);
 	return json({ view: dbs.addView(u.id, e.params.id ?? '', p.name, p.type ?? 'table') }, { status: 201 });
 }); // prettier-ignore
-
