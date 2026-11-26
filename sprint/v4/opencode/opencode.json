@@ -1,0 +1,36 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["CLAUDE.md"],
+  "permissions": [
+    { "action": "*", "resource": "*", "effect": "allow" },
+
+    { "action": "edit", "resource": ".opencode/**", "effect": "deny" },
+    { "action": "edit", "resource": ".github/**", "effect": "deny" },
+    { "action": "edit", "resource": "**/.env", "effect": "deny" },
+
+    { "action": "shell", "resource": "git push --force*", "effect": "deny" },
+    { "action": "shell", "resource": "git push -f*", "effect": "deny" },
+    { "action": "shell", "resource": "git push origin main*", "effect": "deny" },
+    { "action": "shell", "resource": "git push origin HEAD:main*", "effect": "deny" },
+    { "action": "shell", "resource": "git push --tags*", "effect": "deny" },
+    { "action": "shell", "resource": "git push origin v*", "effect": "deny" },
+    { "action": "shell", "resource": "git tag*", "effect": "deny" },
+    { "action": "shell", "resource": "git rebase*", "effect": "deny" },
+    { "action": "shell", "resource": "git worktree*", "effect": "deny" },
+    { "action": "shell", "resource": "gh release*", "effect": "deny" },
+    { "action": "shell", "resource": "gh secret*", "effect": "deny" },
+    { "action": "shell", "resource": "gh workflow*", "effect": "deny" },
+    { "action": "shell", "resource": "gh repo*", "effect": "deny" },
+    { "action": "shell", "resource": "gh api*", "effect": "deny" },
+    { "action": "shell", "resource": "gh issue delete*", "effect": "deny" },
+    { "action": "shell", "resource": "gh issue edit*", "effect": "deny" },
+    { "action": "shell", "resource": "gh label delete*", "effect": "deny" },
+    { "action": "shell", "resource": "*planner.jeremyjosh.org*", "effect": "deny" },
+    { "action": "shell", "resource": "*data/app.db*", "effect": "deny" },
+    { "action": "shell", "resource": "*data\\app.db*", "effect": "deny" },
+    { "action": "shell", "resource": "adb install*", "effect": "deny" },
+    { "action": "shell", "resource": "*adb*install*", "effect": "deny" },
+    { "action": "shell", "resource": "docker*", "effect": "deny" },
+    { "action": "shell", "resource": "ssh*", "effect": "deny" }
+  ]
+}

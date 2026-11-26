@@ -9,6 +9,7 @@ Read this first. One page of truth; deeper docs at the end. Caveman style: short
 - Latest release: **v3.1.2** (bug-fix patch, milestone 3.1.2; tag, GHCR image, GitHub Release, APK; 2026-11-24). `app/package.json` = 3.1.2. Live upgrade = owner.
 - Live: `https://planner.jeremyjosh.org` (homelab Docker Compose + Cloudflare Tunnel). Last verified 2026-11-19: `/healthz` → `{"ok":true,"db":true,"version":"3.0.0","jobs":true}`. Not re-checked since v3.1.x. **Owner deploys. Agents never deploy and never touch live data.**
 - Android app ships per release (`life-tracker-X.Y.Z.apk`), Capacitor 8 shell in `mobile/`.
+- v4 sprint (2026-11-26 →): `sprint/v4/SPRINT.md`. Plan: `docs/v4/PLAN.md` (§7 owner decisions), `BREAKDOWN.md`, `DESIGN.md`, `wireframes/v4/index.html`. Decisions: `sprint/v4/DECISIONS.md`. One release v4.0.0.
 
 ## Run it
 
