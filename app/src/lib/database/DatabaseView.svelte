@@ -79,7 +79,8 @@
 		(cfg.dateProp && prop(cfg.dateProp)?.type === 'date' ? prop(cfg.dateProp) : undefined) ?? dateProps[0],
 	);
 	/** a stored value that really is a day; a text value left over from a type change stays visible in No date (D-19) */
-	const isDay = (v: unknown) => typeof v === 'string' && checkValue('date', v).ok; // empty (undefined/null) is not a day
+	// only a real day string: empty is not a day (checkValue treats null/undefined/'' as valid 'empty')
+	const isDay = (v: unknown) => typeof v === 'string' && v.length > 0 && checkValue('date', v).ok;
 	const calCells = $derived(calYm ? monthCells(calYm) : []);
 	const byDate = $derived.by(() => {
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- a plain lookup built fresh in the derived, never mutated after
