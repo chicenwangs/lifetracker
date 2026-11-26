@@ -173,7 +173,7 @@ test('C1 one note per burst: 3 taps 20–60 ms apart make one note and close the
 	await page.waitForTimeout(600); // a late second POST would have landed by now
 	const found = await notes(body);
 	expect(found).toHaveLength(1);
-	expect(found[0].body).toBe(body);
+	expect(found[0]?.body).toBe(body); // same assertion: undefined can never equal the non-empty text
 });
 
 test('C2 no unrelated row changes: only the one new note, no toast names a row, no action sheet', async () => {
