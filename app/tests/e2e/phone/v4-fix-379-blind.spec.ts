@@ -7,10 +7,12 @@ import { expectTappable, expectTargets48, noDesktopHints, signIn } from './helpe
 
 let page: Page;
 let P = '';
+let RUN = '';
 
 test.beforeAll(async ({ browser }, info) => {
 	const { viewport, isMobile, hasTouch, userAgent, deviceScaleFactor } = info.project.use;
 	P = info.project.name;
+	RUN = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`; // unique rows per repeat
 	page = await (
 		await browser.newContext({
 			viewport,
@@ -37,7 +39,7 @@ const D = {
 	c6: '2032-03-16',
 	fail: '2032-03-23',
 	loading: '2032-03-30',
-	empty: '2032-04-06',
+	empty: '2024-02-20', // before the shared DB's endless daily series starts (2030-06-10), so it stays empty
 	home: '2032-04-13',
 	sheet: '2032-04-20',
 	share: '2032-04-27',
@@ -143,8 +145,8 @@ const waitTo = async (at: number) => {
 
 test('C1 one transition per burst: the target goes todo → doing once and is not done', async () => {
 	const day = D.c1;
-	const other = `F379 C1 other ${P}`;
-	const title = `F379 C1 target ${P}`;
+	const other = `F379 C1 other ${P} ${RUN}`;
+	const title = `F379 C1 target ${P} ${RUN}`;
 	await mkItem(other, day, '09:00');
 	const id = await mkItem(title, day, '10:00');
 
@@ -163,8 +165,8 @@ test('C1 one transition per burst: the target goes todo → doing once and is no
 
 test('C2 no unrelated row changes: the other row keeps todo, no toast names it, no focus', async () => {
 	const day = D.c2;
-	const other = `F379 C2 other ${P}`;
-	const title = `F379 C2 target ${P}`;
+	const other = `F379 C2 other ${P} ${RUN}`;
+	const title = `F379 C2 target ${P} ${RUN}`;
 	const otherId = await mkItem(other, day, '09:00');
 	const id = await mkItem(title, day, '10:00');
 
@@ -199,8 +201,8 @@ test('C2 no unrelated row changes: the other row keeps todo, no toast names it, 
 test('C3 one request: the burst sends exactly one POST /cycle and no queued PATCH', async () => {
 	phoneOnly();
 	const day = D.c3;
-	const other = `F379 C3 other ${P}`;
-	const title = `F379 C3 target ${P}`;
+	const other = `F379 C3 other ${P} ${RUN}`;
+	const title = `F379 C3 target ${P} ${RUN}`;
 	await mkItem(other, day, '09:00');
 	const id = await mkItem(title, day, '10:00');
 
@@ -228,7 +230,7 @@ test('C3 one request: the burst sends exactly one POST /cycle and no queued PATC
 test('C4 shield, then release: a tap at 200 ms does nothing, ~300 ms advances again, no overlay', async () => {
 	phoneOnly();
 	const day = D.c4;
-	const title = `F379 C4 target ${P}`;
+	const title = `F379 C4 target ${P} ${RUN}`;
 	const id = await mkItem(title, day, '10:00');
 
 	await page.goto(`/today?d=${day}`);
@@ -261,7 +263,7 @@ test('C4 shield, then release: a tap at 200 ms does nothing, ~300 ms advances ag
 test('C5 undo: the toast Undo restores the target to todo after the shield expires', async () => {
 	phoneOnly();
 	const day = D.c5;
-	const title = `F379 C5 target ${P}`;
+	const title = `F379 C5 target ${P} ${RUN}`;
 	const id = await mkItem(title, day, '10:00');
 
 	await page.goto(`/today?d=${day}`);
@@ -281,7 +283,7 @@ test('C5 undo: the toast Undo restores the target to todo after the shield expir
 test('C6 phone path: 48 dp square, ⋯ still works, Back unchanged, no extra layer', async () => {
 	phoneOnly();
 	const day = D.c6;
-	const title = `F379 C6 target ${P}`;
+	const title = `F379 C6 target ${P} ${RUN}`;
 	const id = await mkItem(title, day, '10:00');
 
 	await page.goto('/more');
@@ -318,7 +320,8 @@ test('C6 phone path: 48 dp square, ⋯ still works, Back unchanged, no extra lay
 
 test('C7 states: empty Today has no square, a failed cycle reverts, loading keeps the server list', async () => {
 	phoneOnly();
-	// empty: "Nothing planned.", no square, no shield absorbing the one action
+	// empty: "Nothing planned.", no square, no shield absorbing the one action. 2024-02-20 is before every
+	// repeating series in the shared E2E DB (they start 2030-06-10), so no other spec can put a row on it.
 	await page.goto(`/today?d=${D.empty}`);
 	await expect(page.getByText('Nothing planned.', { exact: true })).toBeVisible();
 	await expect(page.locator('button.sq')).toHaveCount(0);
@@ -343,8 +346,8 @@ test('C7 states: empty Today has no square, a failed cycle reverts, loading keep
 	await expect(page.locator('.toast')).toHaveCount(0);
 
 	// failed cycle: error toast, optimistic over[id] cleared, every row at its server status
-	const failOther = `F379 C7 other ${P}`;
-	const failTitle = `F379 C7 fail ${P}`;
+	const failOther = `F379 C7 other ${P} ${RUN}`;
+	const failTitle = `F379 C7 fail ${P} ${RUN}`;
 	const failOtherId = await mkItem(failOther, D.fail, '09:00');
 	const failId = await mkItem(failTitle, D.fail, '10:00');
 	await page.goto(`/today?d=${D.fail}`);
@@ -370,7 +373,7 @@ test('C7 states: empty Today has no square, a failed cycle reverts, loading keep
 	}
 
 	// loading: the server-rendered list stays while the cycle is pending, no skeleton added
-	const loadTitle = `F379 C7 loading ${P}`;
+	const loadTitle = `F379 C7 loading ${P} ${RUN}`;
 	const loadId = await mkItem(loadTitle, D.loading, '10:00');
 	await page.goto(`/today?d=${D.loading}`);
 	let release: () => void = () => {};
@@ -396,7 +399,7 @@ test('C7 states: empty Today has no square, a failed cycle reverts, loading keep
 test('C8 other callers: Home tick commits once; the item sheet follows before refresh and stays usable', async () => {
 	phoneOnly();
 	// Home: a planner-block tick still commits once
-	const homeLabel = `F379 C8 block ${P}`;
+	const homeLabel = `F379 C8 block ${P} ${RUN}`;
 	const blockId = await mkBlock(homeLabel, D.home, 9);
 	await page.goto(`/?d=${D.home}`);
 	const blk = page.locator('.blk').filter({ hasText: homeLabel }).first();
@@ -419,7 +422,7 @@ test('C8 other callers: Home tick commits once; the item sheet follows before re
 	expect(homeCycles).toEqual([`/api/blocks/${blockId}/cycle`]);
 
 	// item sheet: ticking a repeating occurrence follows the detached row, then a second tap after ~300 ms works
-	const repTitle = `F379 C8 repeat ${P}`;
+	const repTitle = `F379 C8 repeat ${P} ${RUN}`;
 	const repId = await mkItem(repTitle, D.sheet, '10:00', 'FREQ=DAILY;COUNT=4');
 	await page.goto(`/today?d=${D.sheet}`);
 	await row(repTitle).getByRole('button', { name: repTitle, exact: true }).tap();
@@ -452,9 +455,9 @@ test('C9 permission: a partner row shows no square and no ⋯, and cannot be cyc
 }) => {
 	phoneOnly();
 	const day = D.share;
-	const myTitle = `F379 C9 target ${P}`;
+	const myTitle = `F379 C9 target ${P} ${RUN}`;
 	const myId = await mkItem(myTitle, day, '10:00');
-	await mkItem(`F379 C9 other ${P}`, day, '09:00');
+	await mkItem(`F379 C9 other ${P} ${RUN}`, day, '09:00');
 
 	// open sign-up so a partner account can be made (admin)
 	await page.goto('/settings/users');
@@ -473,9 +476,8 @@ test('C9 permission: a partner row shows no square and no ⋯, and cannot be cyc
 	});
 	const p = await partnerCtx.newPage();
 	try {
-		const username = `blind379${P === 'phone' ? 'a' : 'b'}`;
 		await p.goto('/signup');
-		await p.fill('#nu', username);
+		await p.fill('#nu', `b379p${RUN}`);
 		await p.fill('#dn', 'Blind 379 Partner');
 		await p.fill('#np', 'good pass phrase 2');
 		await p.fill('#cp', 'good pass phrase 2');
@@ -496,7 +498,7 @@ test('C9 permission: a partner row shows no square and no ⋯, and cannot be cyc
 			page.getByText("You can now see Blind 379 Partner's calendar on Home and Week."),
 		).toBeVisible();
 
-		const partnerTitle = `F379 C9 partner ${P}`;
+		const partnerTitle = `F379 C9 partner ${P} ${RUN}`;
 		const partnerId = await p.evaluate(
 			async ([d, title]) => {
 				const r = await fetch('/api/items', {
@@ -569,7 +571,7 @@ test('C9 permission: a partner row shows no square and no ⋯, and cannot be cyc
 test('C10 desktop: a single click still cycles once and the toast Undo path works', async ({ browser }) => {
 	phoneOnly(); // a desktop pointer check; runs once from this file
 	const day = D.desk;
-	const title = `F379 C10 target ${P}`;
+	const title = `F379 C10 target ${P} ${RUN}`;
 	const id = await mkItem(title, day, '10:00');
 
 	const ctx = await browser.newContext(); // defaults = 1440×900, fine pointer (no touch)
