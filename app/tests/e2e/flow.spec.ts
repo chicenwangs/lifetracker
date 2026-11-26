@@ -1898,6 +1898,7 @@ test('database gallery: cover, title + props, size, click opens a record, empty 
 	await api('POST', `/api/databases/${db.id}/records`, {
 		values: { [tp.id]: 'One', [pic.id]: 'https://example.com/pic.png', [note.id]: 'Hello' },
 	});
+	const rec = (await api('GET', `/api/databases/${db.id}`)).j.database.rows[0] as { id: string };
 	const view = (await api('POST', `/api/databases/${db.id}/views`, { name: 'Gallery', type: 'gallery' })).j
 		.view as { id: string };
 	expect((await api('PATCH', `/api/database-views/${view.id}`, { config: { coverProp: pic.id, cardSize: 'L' } })).s).toBe(200); // prettier-ignore
@@ -1909,13 +1910,14 @@ test('database gallery: cover, title + props, size, click opens a record, empty 
 	const card = cards.getByRole('button', { name: 'One' });
 	await expect(card).toContainText('Hello');
 	await card.click();
-	await expect(page).toHaveURL(/\/pages\//);
+	await expect.poll(() => page.url()).not.toContain(db.pageId); // wait for the record page
 	// the record page icon is the gallery fallback cover when no picture link is set (DESIGN 2.7)
 	const recPage = page.url().split('/').pop() as string;
-	expect((await api('PATCH', `/api/pages/${recPage}`, { icon: '🍿' })).s).toBe(200);
+	expect((await api('PATCH', `/api/pages/${recPage}`, { icon: 'Pop' })).s).toBe(200);
+	expect((await api('PATCH', `/api/database-records/${rec.id}`, { values: { [pic.id]: null } })).s).toBe(200); // the link is gone, so the icon shows
 	await page.goto(`/pages/${db.pageId}`);
 	await page.getByRole('tab', { name: /Gallery/ }).click();
-	await expect(page.locator('.gal .gicon')).toHaveText('🍿');
+	await expect(page.locator('.gal .gicon')).toHaveText('Pop');
 	// no records = empty state
 	const empty = (await api('POST', '/api/databases', { title: 'Empty DB' })).j.database as {
 		id: string;
