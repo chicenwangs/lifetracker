@@ -52,22 +52,40 @@ describe('page to-do reminders', () => {
 	it('add on a to-do; ticking it on save cancels the reminder', () => {
 		const p = pages.create(u1, { parentId: null, title: 'Todos' });
 		pages.update(u1, p.id, { doc: doc(false) });
-		const r = rem.add(u1, 'page_todo', `${p.id}:${BID}`, { at: due() });
+		const at = due();
+		const r = rem.add(u1, 'page_todo', `${p.id}:${BID}`, { at });
 		expect(r.status).toBe('scheduled');
 		expect(Object.keys(rem.forPage(u1, p.id))).toEqual([BID]);
 		pages.update(u1, p.id, { doc: doc(true) });
 		expect(status(r.id)).toBe('cancelled');
+		expect(rem.forPage(u1, p.id)[BID]).toBe(at); // chip stays, struck through, until un-ticked
 	});
 	it('un-ticking restores it; deleting the to-do cancels it', () => {
 		const p = pages.create(u1, { parentId: null, title: 'Todos' });
 		pages.update(u1, p.id, { doc: doc(false) });
-		const r = rem.add(u1, 'page_todo', `${p.id}:${BID}`, { at: due() });
+		const at = due();
+		const r = rem.add(u1, 'page_todo', `${p.id}:${BID}`, { at });
 		pages.update(u1, p.id, { doc: doc(true) });
 		expect(status(r.id)).toBe('cancelled');
 		pages.update(u1, p.id, { doc: doc(false) });
 		expect(status(r.id)).toBe('scheduled');
+		expect(rem.forPage(u1, p.id)[BID]).toBe(at);
 		pages.update(u1, p.id, { doc: { type: 'doc', content: [para] } });
 		expect(status(r.id)).toBe('cancelled');
+	});
+	it('owner and editor may each have a reminder at the same time', () => {
+		const p = pages.create(u1, { parentId: null, title: 'Todos' });
+		pages.update(u1, p.id, { doc: doc(false) });
+		share(p.id, 'edit');
+		const at = due();
+		const a = rem.add(u1, 'page_todo', `${p.id}:${BID}`, { at });
+		const b = rem.add(u2, 'page_todo', `${p.id}:${BID}`, { at }); // not a duplicate: per owner
+		expect(a.status).toBe('scheduled');
+		expect(b.status).toBe('scheduled');
+		expect(rem.list(u1, 'page_todo', `${p.id}:${BID}`)).toHaveLength(1);
+		expect(rem.list(u2, 'page_todo', `${p.id}:${BID}`)).toHaveLength(1);
+		expect(rem.forPage(u1, p.id)[BID]).toBe(at);
+		expect(rem.forPage(u2, p.id)[BID]).toBe(at);
 	});
 	it('a stranger and a viewer are refused; an editor may add', () => {
 		const p = pages.create(u1, { parentId: null, title: 'Todos' });

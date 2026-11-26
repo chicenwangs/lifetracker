@@ -43,6 +43,12 @@ function todoIn(n: DocNode, blockId: string): { text: string; checked: boolean }
 	}
 	return undefined;
 }
+/** v4.0 PR 30: blockId -> checked for every to-do in a saved page doc */
+function todoStates(n: DocNode, out: Map<string, boolean>): void {
+	if (n.type === 'taskItem' && typeof n.attrs?.blockId === 'string')
+		out.set(n.attrs.blockId, n.attrs.checked === true);
+	for (const c of n.content ?? []) todoStates(c, out);
+}
 /** page_todo source id = pageId:blockId (v4.0 PR 30) */
 const pageTodoParts = (rawId: string): { pageId: string; blockId: string } | null => {
 	const i = rawId.indexOf(':');
@@ -191,7 +197,7 @@ export function add(
 	const rule = { rule_kind: rel ? ('relative' as const) : ('absolute' as const), rel_value: rel?.value ?? null, rel_unit: rel?.unit ?? null, at_time: p.at ?? null }; // prettier-ignore
 	const due = dueOf(rule, info as SourceInfo, now) as string;
 	if (!due || Date.parse(due) <= now) bad('That reminder time has already passed.', 'past');
-	const dup = db().prepare(`SELECT 1 FROM reminders WHERE source_type = ? AND source_id = ? AND due_at = ? AND status IN ('scheduled','processing')`).get(type, sourceId, due); // prettier-ignore
+	const dup = db().prepare(`SELECT 1 FROM reminders WHERE owner_id = ? AND source_type = ? AND source_id = ? AND due_at = ? AND status IN ('scheduled','processing')`).get(ownerId, type, sourceId, due); // prettier-ignore
 	if (dup) bad('There is already a reminder at that time.', 'duplicate');
 	// one global queue drains 50 per tick: an owner with thousands due at once would delay everyone else's
 	const open = db().prepare(`SELECT count(*) AS n FROM reminders WHERE owner_id = ? AND status IN ('scheduled','processing')`).get(ownerId) as { n: number }; // prettier-ignore
@@ -401,17 +407,32 @@ export const backlog = () =>
 			.get(nowUtcIso()) as { n: number }
 	).n;
 
-/** v4.0 PR 30: this user's scheduled to-do reminders on one page, blockId -> dueAt (the editor chips) */
+/** v4.0 PR 30: this user's to-do reminders on one page, blockId -> dueAt (the editor chips) */
 export function forPage(ownerId: string, pageId: string): Record<string, string> {
 	if (!level('page', ownerId, pageId)) return {};
 	const prefix = `${pageId}:`;
 	const rows = db()
 		.prepare(
-			`SELECT source_id, due_at FROM reminders WHERE owner_id = ? AND source_type = 'page_todo' AND status = 'scheduled' AND substr(source_id, 1, ?) = ? ORDER BY due_at`,
+			`SELECT source_id, due_at, status FROM reminders WHERE owner_id = ? AND source_type = 'page_todo' AND status IN ('scheduled','cancelled') AND substr(source_id, 1, ?) = ? ORDER BY due_at`,
 		)
-		.all(ownerId, prefix.length, prefix) as { source_id: string; due_at: string | null }[];
+		.all(ownerId, prefix.length, prefix) as {
+		source_id: string;
+		due_at: string | null;
+		status: string;
+	}[];
+	// a ticked to-do keeps its chip struck through until it is un-ticked (DESIGN 2.9), but a cancelled
+	// reminder on an unchecked / gone block is not shown
+	const checked = new Map<string, boolean>();
+	for (const b of db()
+		.prepare(`SELECT content_json FROM page_blocks WHERE page_id = ? ORDER BY position`)
+		.all(pageId) as { content_json: string }[])
+		todoStates(JSON.parse(b.content_json) as DocNode, checked);
 	const out: Record<string, string> = {};
-	for (const r of rows) if (r.due_at) out[r.source_id.slice(prefix.length)] ??= r.due_at;
+	for (const r of rows) {
+		const blockId = r.source_id.slice(prefix.length);
+		if (r.status === 'cancelled' && checked.get(blockId) !== true) continue;
+		if (r.due_at) out[blockId] ??= r.due_at;
+	}
 	return out;
 }
 

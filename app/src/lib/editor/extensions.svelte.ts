@@ -130,18 +130,20 @@ export interface TodoReminderStore {
 	labels: Record<string, string>;
 	onOpen: (blockId: string) => void;
 }
-function todoChip(label: string, open: () => void): HTMLElement {
+function todoChip(label: string, open: () => void, done: boolean): HTMLElement {
 	const b = document.createElement('button');
 	b.type = 'button';
 	b.className = 'todo-rem';
 	b.textContent = `\u{1F514} ${label}`;
-	b.title = 'Edit reminder';
+	b.disabled = done;
+	b.title = done ? 'To-do done: reminder cancelled' : 'Edit reminder';
 	b.contentEditable = 'false';
 	b.addEventListener('mousedown', (e) => e.preventDefault());
-	b.addEventListener('click', (e) => {
-		e.preventDefault();
-		open();
-	});
+	if (!done)
+		b.addEventListener('click', (e) => {
+			e.preventDefault();
+			open();
+		});
 	return b;
 }
 /** the bell chip after a to-do: a decoration, so the saved doc never carries reminder state */
@@ -165,7 +167,13 @@ export const TodoReminders = Extension.create({
 							if (!id || !label) return;
 							const first = node.firstChild;
 							const at = first ? pos + first.nodeSize : pos + node.nodeSize - 1;
-							decos.push(Decoration.widget(at, () => todoChip(label, () => store.onOpen(id)), { side: 1 }));
+							decos.push(
+								Decoration.widget(
+									at,
+									() => todoChip(label, () => store.onOpen(id), node.attrs.checked === true),
+									{ side: 1 },
+								),
+							);
 						});
 						return DecorationSet.create(state.doc, decos);
 					},

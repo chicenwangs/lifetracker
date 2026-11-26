@@ -848,4 +848,11 @@
 		text-decoration: line-through;
 		opacity: 0.6;
 	}
+	.doc :global(.todo-rem[disabled]) {
+		cursor: default;
+	}
+	.doc :global(.todo-rem[disabled]:hover) {
+		background: var(--ground);
+		color: var(--quiet);
+	}
 </style>

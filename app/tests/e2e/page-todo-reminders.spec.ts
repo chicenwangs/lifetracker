@@ -50,9 +50,11 @@ test('to-do reminder: set from the block tools, chip shows, ticking cancels it (
 	await dialog.getByRole('button', { name: 'Close' }).click();
 	const chip = page.locator('.todo-rem');
 	await expect(chip).toBeVisible();
-	await expect(chip).toHaveText(/Buy milk|🔔/);
-	// ticking cancels it: toast with Undo
+	await expect(chip).toContainText(/\d{1,2}:\d{2}/);
+	// ticking cancels it: the chip stays struck through and disabled; toast with Undo
 	await page.locator('ul[data-type="taskList"] input[type="checkbox"]').check();
 	await expect(page.locator('.toast')).toContainText('Reminder cancelled');
+	await expect(page.locator('.todo-rem')).toBeVisible();
+	await expect(page.locator('.todo-rem')).toBeDisabled();
 	await page.evaluate(async (x) => fetch(`/api/pages/${x}`, { method: 'DELETE' }), id);
 });

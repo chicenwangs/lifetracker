@@ -186,5 +186,6 @@ test('to-do reminder from the block sheet (#453)', async () => {
 	await expect(dialog.getByRole('button', { name: /Remove reminder/ })).toBeVisible();
 	await dialog.getByRole('button', { name: 'Close' }).click();
 	await expect(page.locator('.todo-rem')).toBeVisible();
+	await expect(page.locator('.todo-rem')).toContainText(/\d{1,2}:\d{2}/);
 	await page.evaluate(async (x) => fetch(`/api/pages/${x}`, { method: 'DELETE' }), id);
 });
