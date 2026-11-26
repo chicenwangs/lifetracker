@@ -10,13 +10,14 @@ export function graph(ownerId: string): GraphDTO {
 	const db = handle().sqlite;
 	const nodes = db
 		.prepare(
-			`SELECT p.id, p.title, p.parent_page_id AS parentId, p.archived_at IS NOT NULL AS archived,
+			`SELECT p.id, p.title, p.icon, p.parent_page_id AS parentId, p.archived_at IS NOT NULL AS archived,
 			        EXISTS (SELECT 1 FROM database_records r WHERE r.page_id = p.id) AS record
 			 FROM pages p WHERE p.owner_id = ? AND p.deleted_at IS NULL ORDER BY p.last_opened_at DESC LIMIT ?`,
 		)
 		.all(ownerId, MAX_NODES) as {
 		id: string;
 		title: string;
+		icon: string | null;
 		parentId: string | null;
 		archived: number;
 		record: number;
@@ -33,7 +34,7 @@ export function graph(ownerId: string): GraphDTO {
 		if (ids.has(l.s) && ids.has(l.t) && l.s !== l.t)
 			edges.push({ source: l.s, target: l.t, relation: 'link' });
 	return {
-		nodes: nodes.map((n) => ({ id: n.id, title: n.title, kind: n.record ? 'record' : 'page', archived: !!n.archived, parentId: n.parentId && ids.has(n.parentId) ? n.parentId : null })), // prettier-ignore
+		nodes: nodes.map((n) => ({ id: n.id, title: n.title, icon: n.icon, kind: n.record ? 'record' : 'page', archived: !!n.archived, parentId: n.parentId && ids.has(n.parentId) ? n.parentId : null })), // prettier-ignore
 		edges,
 		truncated: nodes.length >= MAX_NODES,
 		generatedAt: nowUtcIso(),

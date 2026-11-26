@@ -436,6 +436,7 @@
 		}
 		.wrap {
 			flex-direction: column;
+			align-items: stretch; /* phone: a wide child (title + icon row) must not push the page sideways */
 			padding: 8px 12px 24px;
 		}
 		.tree {

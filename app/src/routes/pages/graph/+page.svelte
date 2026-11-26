@@ -21,6 +21,10 @@
 	const archivedCount = $derived(g0.nodes.filter((n) => n.archived).length);
 	const byId = $derived(new Map(g0.nodes.map((n) => [n.id, n])));
 	const title = (id: string) => byId.get(id)?.title || 'Untitled';
+	const named = (id: string) => {
+		const n = byId.get(id);
+		return n ? `${n.icon ? `${n.icon} ` : ''}${n.title || 'Untitled'}` : 'Untitled';
+	};
 	const near = $derived.by(() => {
 		if (!around || !selected) return null;
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- built fresh inside $derived, never mutated after
@@ -84,7 +88,7 @@
 					x: Math.cos(i) * Math.sqrt(i + 1),
 					y: Math.sin(i) * Math.sqrt(i + 1),
 					size: 4 + Math.min(10, Math.sqrt(deg) * 2),
-					label: (n.title || 'Untitled') + (n.archived ? ' · archived' : ''),
+					label: (n.icon ? `${n.icon} ` : '') + (n.title || 'Untitled') + (n.archived ? ' · archived' : ''),
 					color: n.archived ? quiet : n.kind === 'record' ? '#3d5a80' : ink,
 				});
 			});
@@ -241,7 +245,9 @@
 						{@const out = g0.edges.filter((e) => e.source === n.id && e.relation === 'link').length}
 						{@const inn = g0.edges.filter((e) => e.target === n.id && e.relation === 'link').length}
 						<li>
-							<a href="/pages/{n.id}" class:arch={n.archived}>{n.title || 'Untitled'}</a>
+							<a href="/pages/{n.id}" class:arch={n.archived}
+								>{n.icon ? `${n.icon} ` : ''}{n.title || 'Untitled'}</a
+							>
 							<span class="hint"
 								>{n.archived ? 'archived · ' : ''}{out} links out · {inn} in{n.parentId
 									? ` · in ${title(n.parentId)}`
@@ -254,15 +260,17 @@
 			{#if sel && rel && !list}
 				<aside class="sel card" aria-label="Selected page">
 					<span class="label">Selected</span>
-					<b>{sel.title || 'Untitled'}</b>{#if sel.archived}<span class="hint">Archived page</span>{/if}
+					<b>{sel.icon ? `${sel.icon} ` : ''}{sel.title || 'Untitled'}</b>{#if sel.archived}<span class="hint"
+							>Archived page</span
+						>{/if}
 					{#if sel.parentId}<span class="hint"
-							>Parent: <a href="/pages/{sel.parentId}">{title(sel.parentId)}</a></span
+							>Parent: <a href="/pages/{sel.parentId}">{named(sel.parentId)}</a></span
 						>{/if}
 					{#each [['Children', rel.children], ['Links to', rel.linksTo], ['Linked from', rel.linkedFrom]] as const as [h, ids] (h)}
 						{#if ids.length}
 							<span class="label">{h}</span>
 							{#each ids as i (i)}<button type="button" class="lnk" onclick={() => select(i)}
-									>{title(i)}</button
+									>{named(i)}</button
 								>{/each}
 						{/if}
 					{/each}
