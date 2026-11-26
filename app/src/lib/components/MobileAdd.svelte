@@ -9,6 +9,7 @@
 	import { addSheet, closeAdd } from '$lib/client/mobile.svelte';
 	import { buzz } from '$lib/client/haptics';
 	import { showError, showToast } from '$lib/client/toast.svelte';
+	import { raiseShield } from '$lib/client/tapShield';
 	import { parseQuickAdd } from '$lib/quickadd';
 	import { nowLocalMinutes, todayLocal } from '$lib/time';
 	import BottomSheet from './BottomSheet.svelte';
@@ -28,6 +29,7 @@
 	let note = $state('');
 
 	const close = () => {
+		raiseShield(); // #378: a rapid tap after Save would otherwise reach the row under the sheet
 		closeAdd();
 		problem = '';
 	};
