@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Life Tracker v3.3 + v4.0 wireframes</title>
+<style>
+:root{--ink:#00003D;--quiet:#3D3D6B;--faint:#6B6B8F;--card:#fff;--ground:#F3F2FA;--rule:#E3E4F0;--accent:#F3D053;--pill:#CED3EE;--danger:#A83A35;--alert:#FBE3E1;--ok:#D3EECE;
+ --g-bg:#F3F2FA;--g-bar:#6B6B8F;--b-bg:#E3ECF7;--b-bar:#2F5E8E;--y-bg:#FAEDB8;--y-bar:#8A6D00;--r-bg:#FBE3E1;--r-bar:#A83A35}
+*{box-sizing:border-box;scrollbar-width:none}
+body{margin:0;font:14px/1.45 Inter,system-ui,sans-serif;color:var(--ink);background:#E9E8F3}
+header.top{padding:28px 32px 8px}
+header.top h1{margin:0;font-size:24px}
+header.top p{margin:4px 0 0;color:var(--quiet);max-width:860px}
+nav.toc{padding:4px 32px 16px;display:flex;flex-wrap:wrap;gap:6px}
+nav.toc a{font-size:12px;background:var(--card);border:1.5px solid var(--ink);border-radius:999px;padding:3px 10px;color:var(--ink);text-decoration:none}
+h2.row{margin:28px 32px 8px;font-size:18px}
+.rowp{margin:0 32px 12px;color:var(--quiet);font-size:13px}
+.boards{display:flex;flex-wrap:wrap;gap:28px;padding:0 32px 8px;align-items:flex-start}
+figure{margin:0}
+figcaption{font-size:12px;color:var(--quiet);margin-bottom:6px}
+figcaption b{color:var(--ink)}
+.d{width:900px;min-height:520px;background:var(--card);border:1.5px solid var(--ink);border-radius:12px;box-shadow:5px 5px 0 var(--accent);overflow:hidden;position:relative}
+.m{width:360px;height:740px;background:var(--card);border:1.5px solid var(--ink);border-radius:28px;box-shadow:5px 5px 0 var(--accent);overflow:hidden;position:relative}
+.bar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--rule);font-size:13px;color:var(--quiet)}
+.bar .sp{flex:1}
+.btn{display:inline-flex;align-items:center;gap:6px;font:600 13px Inter,system-ui,sans-serif;color:var(--ink);background:var(--card);border:1.5px solid var(--ink);border-radius:8px;padding:5px 11px}
+.btn.p{background:var(--ink);color:#fff}
+.btn.big{min-height:48px;padding:0 16px;border-radius:12px}
+.ghost{color:var(--faint);font-size:13px}
+.side{position:absolute;left:0;top:0;bottom:0;width:210px;background:var(--ground);border-right:1px solid var(--rule);padding:12px 10px;font-size:13px}
+.side .it{padding:4px 8px;border-radius:6px}
+.side .it.on{background:var(--pill);font-weight:600}
+.main{margin-left:210px}
+.ed{max-width:620px;margin:0 auto;padding:0 24px 24px;position:relative}
+.cover{height:120px;background:linear-gradient(120deg,#C9DAE7,#B6B1D9 60%,#F3A2BD)}
+.icon{font-size:44px;line-height:1;margin-top:-26px}
+.title{font-size:28px;font-weight:700;margin:6px 0 10px}
+.blk{position:relative;padding:3px 0}
+.gut{position:absolute;left:-46px;top:3px;color:var(--faint);font-size:13px;letter-spacing:1px}
+.call{display:flex;gap:10px;border-radius:10px;padding:10px 12px;border-left:3px solid;margin:6px 0}
+.toggle{margin:6px 0}
+.toggle .sum{display:flex;gap:6px;align-items:center;font-weight:600}
+.toggle .body{padding-left:24px;color:var(--quiet)}
+.tocb{background:var(--ground);border-radius:10px;padding:10px 14px;margin:6px 0;font-size:13px}
+.tocb .t{font-weight:600;margin-bottom:4px}
+.link{border-bottom:1.5px solid var(--faint);font-weight:500}
+.backl{border-top:1px solid var(--rule);margin-top:16px;padding-top:10px;font-size:13px}
+.backl .r{display:flex;gap:8px;padding:5px 0}
+.backl .s{color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pop{position:absolute;background:var(--card);border:1.5px solid var(--ink);border-radius:10px;box-shadow:4px 4px 0 var(--accent);font-size:13px;padding:6px;z-index:2}
+.pop .h{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);padding:4px 8px}
+.pop .o{display:flex;gap:8px;align-items:center;padding:6px 8px;border-radius:6px}
+.pop .o.on{background:var(--pill)}
+.pop .o small{color:var(--faint);margin-left:auto}
+.pop hr{border:0;border-top:1px solid var(--rule);margin:4px 0}
+.pop .f{font-size:11px;color:var(--faint);padding:4px 8px;border-top:1px solid var(--rule);margin-top:4px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-top:1.5px solid var(--ink);border-radius:20px 20px 0 0;padding:8px 0 16px;box-shadow:0 -4px 0 var(--accent);z-index:3}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:var(--rule);margin:2px auto 8px}
+.sheet .o{display:flex;gap:12px;align-items:center;min-height:48px;padding:0 20px;font-size:15px}
+.sheet .o small{color:var(--faint);margin-left:auto;font-size:12px}
+.sheet .h{font-size:12px;color:var(--faint);padding:6px 20px;text-transform:uppercase;letter-spacing:.05em}
+.scrim{position:absolute;inset:0;background:rgba(0,0,61,.28);z-index:2}
+.dlg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:520px;background:var(--card);border:1.5px solid var(--ink);border-radius:14px;box-shadow:6px 6px 0 var(--accent);padding:18px 20px;z-index:3}
+.dlg h3{margin:0 0 10px;font-size:17px}
+.dlg .acts{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.alert{background:var(--alert);color:#8E2B26;border-radius:8px;padding:8px 10px;font-size:13px}
+.note{color:var(--faint);font-size:12px}
+.tabs{display:flex;gap:4px;padding:8px 16px;border-bottom:1px solid var(--rule);font-size:13px;align-items:center}
+.tabs span{padding:4px 10px;border-radius:999px}
+.tabs .on{background:var(--pill);font-weight:600}
+.cols{display:flex;gap:12px;padding:14px 16px;overflow:hidden}
+.col{width:200px;flex:none;background:var(--ground);border-radius:10px;padding:8px}
+.col .ch{display:flex;gap:6px;align-items:center;font-weight:600;font-size:13px;margin-bottom:8px}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.card{background:var(--card);border:1.5px solid var(--ink);border-radius:8px;padding:7px 9px;margin-bottom:8px;font-size:13px}
+.chip{display:inline-block;font-size:11px;background:var(--ground);border-radius:999px;padding:1px 8px;margin:4px 4px 0 0}
+.month{display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--rule);border-left:1px solid var(--rule)}
+.month div{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);min-height:58px;padding:3px 5px;font-size:11px;color:var(--faint)}
+.month .ev{display:block;background:var(--pill);color:var(--ink);border-radius:4px;padding:0 4px;margin-top:2px;font-size:11px}
+.gal{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:14px 16px}
+.gcard{border:1.5px solid var(--ink);border-radius:10px;overflow:hidden}
+.gcard .cv{height:90px;background:var(--ground);display:flex;align-items:center;justify-content:center;font-size:30px}
+.gcard .b{padding:7px 9px;font-size:13px}
+.set{padding:16px 20px}
+.set .row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--rule)}
+.sw{width:36px;height:20px;border-radius:999px;background:var(--ink);position:relative;flex:none}
+.sw::after{content:"";position:absolute;right:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff}
+.sw.off{background:var(--rule)}.sw.off::after{left:3px;right:auto}
+.seg{display:inline-flex;border:1.5px solid var(--ink);border-radius:8px;overflow:hidden;font-size:12px}
+.seg span{padding:4px 10px}.seg .on{background:var(--ink);color:#fff}
+.radio{display:flex;gap:8px;align-items:center;padding:4px 0}
+.radio i{width:14px;height:14px;border:1.5px solid var(--ink);border-radius:50%;display:inline-block}
+.radio i.on{background:radial-gradient(var(--ink) 40%,transparent 45%)}
+.toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:10px;padding:8px 14px;font-size:13px;white-space:nowrap;z-index:4}
+.toast b{color:var(--accent);margin-left:12px}
+.sel{background:var(--pill);border-radius:6px}
+.fbar{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);background:var(--card);border:1.5px solid var(--ink);border-radius:10px;box-shadow:3px 3px 0 var(--accent);padding:6px 10px;display:flex;gap:14px;font-size:13px;z-index:3}
+.abar{position:absolute;left:0;right:0;bottom:0;border-top:1.5px solid var(--ink);background:var(--card);display:flex;justify-content:space-around;z-index:3}
+.abar span{min-height:56px;display:flex;align-items:center;font-weight:600}
+.pill{display:inline-block;background:var(--ground);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--quiet)}
+.mtop{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--rule);font-size:13px;color:var(--quiet)}
+.mtop .sp{flex:1}
+.mt{width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--ink)}
+.mbody{padding:14px 18px;font-size:15px}
+svg text{font:12px Inter,system-ui,sans-serif;fill:var(--ink)}
+</style>
+</head>
+<body>
+<header class="top">
+<h1>Life Tracker — v3.3 + v4.0 wireframes</h1>
+<p>Low-fi boards for <code>docs/v4/DESIGN.md</code>. Board ids match the doc (D = desktop, M = phone). PR numbers match <code>docs/v4/BREAKDOWN.md</code>. Layout, copy and states are the spec; colours are THEME.md tokens (light mode shown).</p>
+</header>
+<nav class="toc">
+<a href="#v33">v3.3 Planner</a><a href="#anat">Page anatomy</a><a href="#link">[[ link + icons</a><a href="#menus">Menus + templates</a><a href="#db">Database views</a><a href="#blocks">Blocks + reminders</a><a href="#graph">Graph + import</a>
+</nav>
+
+<!-- ================= v3.3 ================= -->
+<h2 class="row" id="v33">v3.3 — Planner</h2>
+<p class="rowp">Repeat from completion (PR 9) · Types switch + presets (PR 10, 14) · ICS import (PR 11) · Daily agenda (PR 12) · Voice note (PR 13).</p>
+<div class="boards">
+
+<figure><figcaption><b>D-R1</b> Repeat box · from completion (PR 9)</figcaption>
+<div class="d" style="width:440px;min-height:300px;padding:18px 20px">
+ <div style="font-weight:700;margin-bottom:10px">Repeat</div>
+ <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">Every <span class="btn">3</span> <span class="btn">days ▾</span></div>
+ <div class="note" style="margin-bottom:4px">Next one counts from</div>
+ <div class="radio"><i></i> Scheduled date</div>
+ <div class="radio"><i class="on"></i> <b>When I finish it</b></div>
+ <div class="pill" style="margin-top:12px">Every 3 days, counted from when you finish</div>
+ <p class="note" style="margin-top:14px">Hidden when weekdays are picked. Row glyph: ↻✓ "Repeats from completion".</p>
+</div></figure>
+
+<figure><figcaption><b>D-T1</b> Settings › Types · Month switch + presets (PR 10, 14)</figcaption>
+<div class="d" style="width:440px;min-height:400px">
+ <div class="set">
+  <div class="row"><span class="dot" style="background:#CED3EE"></span>Work<span class="sp" style="flex:1"></span><span class="note">Month calendar</span><span class="sw"></span></div>
+  <div class="row"><span class="dot" style="background:#C6534D"></span>Exam<span style="flex:1"></span><span class="note">Month calendar</span><span class="sw"></span></div>
+  <div class="row"><span class="dot" style="background:#D3EECE"></span>Class<span style="flex:1"></span><span class="note">Month calendar</span><span class="sw off"></span></div>
+  <p class="note">Off = hidden on Month, still on Week, Today and reminders.</p>
+  <span class="btn">+ Add a preset ▾</span>
+ </div>
+ <div class="pop" style="left:20px;top:232px;width:200px">
+  <div class="o"><span class="dot" style="background:#D3EECE"></span>Class <small>(have it)</small></div>
+  <div class="o on"><span class="dot" style="background:#FAEDB8"></span>Errand</div>
+  <div class="o"><span class="dot" style="background:#EECFD4"></span>Health</div>
+  <div class="o"><span class="dot" style="background:#E6E7F0"></span>Chore</div>
+ </div>
+</div></figure>
+
+<figure><figcaption><b>D-I1</b> Import calendar file · preview (PR 11)</figcaption>
+<div class="d" style="width:620px;min-height:420px">
+ <div class="scrim"></div>
+ <div class="dlg">
+  <h3>Import calendar file</h3>
+  <div style="font-size:20px;font-weight:700">38 events · 12 repeating · 3 skipped</div>
+  <p class="note">uni-timetable.ics · Already imported: 20 will be updated</p>
+  <div style="display:flex;gap:8px;align-items:center;margin:10px 0">Put them in type <span class="btn">Class ▾</span></div>
+  <details open><summary style="font-weight:600">Skipped (3)</summary>
+   <div class="note" style="padding:4px 0 0 14px">"Lab rota" — repeats by week number, not supported<br>"Office hours" — repeats every hour, not supported<br>"Old event" — no start date</div>
+  </details>
+  <div class="acts"><span class="btn">Cancel</span><span class="btn p">Import 38</span></div>
+ </div>
+</div></figure>
+
+<figure><figcaption><b>D-N1</b> Settings › Notifications · Daily agenda (PR 12)</figcaption>
+<div class="d" style="width:440px;min-height:220px">
+ <div class="set">
+  <div class="row"><div><b>Daily agenda</b><div class="note">One notification a day with today's items and blocks. Nothing on → no notification.</div></div></div>
+  <div class="row"><span class="seg"><span>Off</span><span class="on">On</span></span><span class="btn">07:30</span></div>
+  <div class="pill" style="margin-top:10px">Preview: 4 items · 2 blocks · first 09:00</div>
+ </div>
+</div></figure>
+
+<figure><figcaption><b>M-V1</b> Keep quick note · mic (PR 13, app only)</figcaption>
+<div class="m">
+ <div class="mtop"><span class="mt">‹</span><span class="sp"></span>Keep</div>
+ <div class="mbody"><div class="note">Notes…</div></div>
+ <div style="position:absolute;left:0;right:0;bottom:300px;padding:10px 12px;border-top:1px solid var(--rule);display:flex;gap:8px;align-items:center">
+  <div style="flex:1;border:1.5px solid var(--ink);border-radius:12px;min-height:48px;padding:12px;color:var(--faint)">Listening…</div>
+  <div style="width:48px;height:48px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 6px var(--pill)">🎤</div>
+ </div>
+ <div class="sheet" style="height:290px"><div class="grab"></div>
+  <div style="padding:6px 20px;font-weight:700;font-size:16px">Use the microphone?</div>
+  <div style="padding:4px 20px 14px;font-size:14px;color:var(--quiet)">Life Tracker uses the microphone only while you hold this on. Speech is turned into text on your phone.</div>
+  <div style="display:flex;gap:10px;padding:0 20px"><span class="btn big">Not now</span><span class="btn big p">Continue</span></div>
+ </div>
+</div></figure>
+</div>
+
+<!-- ================= Page anatomy ================= -->
+<h2 class="row" id="anat">v4.0 — Page anatomy</h2>
+<p class="rowp">Cover (PR 31) · icon (PR 16) · callout, toggle, TOC (PR 18) · gutter handles (PR 29) · Linked from (PR 20).</p>
+<div class="boards">
+<figure><figcaption><b>D-P1</b> Page, desktop, everything on</figcaption>
+<div class="d" style="min-height:760px">
+ <div class="side"><div class="ghost" style="margin-bottom:6px">PAGES <span style="float:right" class="btn">New ▾</span></div>
+  <div class="it">🎓 Uni</div><div class="it" style="padding-left:24px">📚 FYP</div><div class="it on" style="padding-left:40px">🧠 Chapter 2 plan</div><div class="it">🏠 Homelab</div><div class="it" style="padding-left:24px">🌐 Network map</div><div class="it">🎬 Watch list</div>
+ </div>
+ <div class="main">
+  <div class="bar">Uni / FYP / Chapter 2 plan<span class="sp"></span>Saved <span class="btn">Pin</span><span class="btn">Share</span><span class="btn">⋯</span></div>
+  <div class="cover" style="position:relative"><span class="btn" style="position:absolute;right:12px;bottom:10px">Change cover</span></div>
+  <div class="ed">
+   <div class="icon">🧠</div>
+   <div class="title">Chapter 2 plan</div>
+   <div class="tocb"><div class="t">On this page</div>Scope<br><span style="padding-left:16px">VPN overlays</span><br>Reading list</div>
+   <div class="blk"><span class="gut">+ ⋮⋮</span><b style="font-size:18px">Scope</b></div>
+   <div class="blk">Cover VPN overlay options behind CGNAT. Link findings back to <span class="link">🌐 Network map</span>.</div>
+   <div class="call" style="background:var(--y-bg);border-color:var(--y-bar)"><span>💡</span><div>Supervisor wants the comparison table by Friday.</div></div>
+   <div class="toggle"><div class="sum">▸ VPN overlays (4)</div></div>
+   <div class="toggle"><div class="sum">▾ Reading list</div><div class="body">☐ Collect 10 papers <span class="chip">🔔 Fri 09:00</span><br>☑ <s>Summary table draft</s></div></div>
+   <div class="backl"><b>Linked from (2) ▾</b>
+    <div class="r">📚 <span class="link">FYP</span><span class="s">…next: <b>Chapter 2 plan</b> then methods…</span></div>
+    <div class="r" style="opacity:.55">📝 <span class="link">Old notes</span> · archived<span class="s">…see <b>Chapter 2 plan</b>…</span></div>
+   </div>
+  </div>
+ </div>
+</div></figure>
+
+<figure><figcaption><b>M-P1</b> Page, phone</figcaption>
+<div class="m">
+ <div class="mtop"><span class="mt">‹</span><span class="sp" style="overflow:hidden;white-space:nowrap">FYP / Chapter 2 plan</span>Saved<span class="mt">⋯</span></div>
+ <div class="cover" style="height:90px"></div>
+ <div class="mbody" style="padding-top:0">
+  <div class="icon" style="font-size:36px;margin-top:-20px">🧠</div>
+  <div class="title" style="font-size:24px">Chapter 2 plan</div>
+  <div class="call" style="background:var(--y-bg);border-color:var(--y-bar)"><span>💡</span><div>Table by Friday.</div></div>
+  <div class="toggle"><div class="sum" style="min-height:48px">▸ VPN overlays (4)</div></div>
+  <div>☐ Collect 10 papers <span class="chip">🔔 Fri 09:00</span></div>
+  <div class="backl"><b>Linked from (2) ▾</b>
+   <div class="r" style="min-height:48px;align-items:center">📚 <span class="link">FYP</span></div>
+   <div class="r" style="min-height:48px;align-items:center;opacity:.55">📝 Old notes · archived</div>
+  </div>
+ </div>
+</div></figure>
+</div>
+
+<!-- ================= link + icons ================= -->
+<h2 class="row" id="link">v4.0 — [[ link picker + icon picker</h2>
+<p class="rowp">`[[` replaces the old Link-to-page dialog (PR 19). Icon picker (PR 16) is also used by callouts.</p>
+<div class="boards">
+<figure><figcaption><b>D-P4</b> [[ picker · empty query = recent, then typing</figcaption>
+<div class="d" style="width:620px;min-height:400px">
+ <div class="ed" style="padding-top:30px">
+  <div>Compare with [[net<span style="border-left:1.5px solid var(--ink)"></span></div>
+  <div class="pop" style="left:150px;top:58px;width:330px">
+   <div class="h">Pages</div>
+   <div class="o on">🌐 <span><b>Net</b>work map</span><small>Homelab</small></div>
+   <div class="o">📝 <span><b>Net</b>flix queue</span><small>Watch list</small></div>
+   <hr><div class="o">＋ Create page "net"</div>
+   <div class="f">↑↓ move · Enter link · Esc cancel</div>
+  </div>
+ </div>
+ <p class="note" style="position:absolute;left:24px;bottom:12px">Empty query: header "Recent", 10 rows, last opened first. No match: create row + "No page called that".</p>
+</div></figure>
+
+<figure><figcaption><b>M-P4</b> [[ picker, phone · sheet above keyboard</figcaption>
+<div class="m">
+ <div class="mtop"><span class="mt">‹</span><span class="sp"></span>Saved</div>
+ <div class="mbody">Compare with [[net|</div>
+ <div class="sheet" style="bottom:250px;border-radius:20px"><div class="grab"></div>
+  <div class="h">Pages</div>
+  <div class="o">🌐 Network map<small>Homelab</small></div>
+  <div class="o">📝 Netflix queue<small>Watch list</small></div>
+  <div class="o">＋ Create page "net"</div>
+ </div>
+ <div style="position:absolute;left:0;right:0;bottom:0;height:250px;background:#D9D9E3;display:flex;align-items:center;justify-content:center;color:var(--faint)">keyboard</div>
+</div></figure>
+
+<figure><figcaption><b>D-P2</b> Icon picker popover</figcaption>
+<div class="d" style="width:400px;min-height:300px">
+ <div class="pop" style="left:20px;top:20px;width:340px;padding:10px">
+  <div style="display:flex;justify-content:space-between;padding:0 4px 6px"><b>Icon</b><span class="link">Remove</span></div>
+  <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px;font-size:20px;text-align:center">
+   <span>📄</span><span>📝</span><span>📚</span><span>🎓</span><span>💼</span><span>🏠</span><span class="sel">🧠</span><span>💡</span><span>✅</span><span>📅</span><span>🗂️</span><span>📌</span><span>🔖</span><span>🧪</span><span>🛠️</span><span>💻</span><span>🖥️</span><span>🌐</span><span>🔒</span><span>💰</span><span>🛒</span><span>🍳</span><span>🏋️</span><span>🏃</span><span>🧘</span><span>🎮</span><span>🎬</span><span>📺</span><span>🎵</span><span>🎨</span><span>✈️</span><span>🚗</span><span>🌱</span><span>🐾</span><span>❤️</span><span>⭐</span><span>🔥</span><span>⚠️</span><span>❓</span><span>🎯</span>
+  </div>
+  <div class="f">Arrows move · Enter pick · Esc close</div>
+ </div>
+</div></figure>
+</div>
+
+<!-- ================= menus ================= -->
+<h2 class="row" id="menus">v4.0 — Page menu, New page, templates</h2>
+<p class="rowp">Duplicate (17) · Make template (22) · Local graph (21) · Export Markdown (28) · Starter templates (26) · Import Markdown (27).</p>
+<div class="boards">
+<figure><figcaption><b>D-P5</b> Page ⋯ menu + New page ▾</figcaption>
+<div class="d" style="width:620px;min-height:440px">
+ <div class="pop" style="right:20px;top:20px;width:240px">
+  <div class="o">Pin</div><div class="o">Share…</div><div class="o">Move to…</div><hr>
+  <div class="o on">Duplicate</div><div class="o">Make template</div><div class="o">Local graph</div><hr>
+  <div class="o">Export Markdown</div><div class="o">Export with sub-pages (.zip)</div><hr>
+  <div class="o">Archive</div><div class="o" style="color:var(--danger)">Move to Trash</div>
+ </div>
+ <div class="pop" style="left:20px;top:20px;width:290px">
+  <div class="o">📄 Blank page</div>
+  <div class="o on">🧩 From template<small>▸</small></div>
+  <div class="o">⭐ Starter templates<small>▸</small></div>
+  <hr><div class="o">⬆ Import Markdown…</div>
+ </div>
+ <div class="pop" style="left:150px;top:96px;width:300px">
+  <div class="o">🎬 Watch list<small>gallery</small></div>
+  <div class="o">🏋️ Workout log<small>table + calendar</small></div>
+  <div class="o">💻 Dev tracker<small>board</small></div>
+ </div>
+</div></figure>
+
+<figure><figcaption><b>M-P5</b> Page actions sheet, phone</figcaption>
+<div class="m">
+ <div class="mtop"><span class="mt">‹</span><span class="sp"></span><span class="mt">⋯</span></div>
+ <div class="scrim"></div>
+ <div class="sheet"><div class="grab"></div>
+  <div class="o">☺ Add icon</div><div class="o">▭ Add cover</div>
+  <div class="o">📌 Pin</div><div class="o">👥 Share</div><div class="o">↪ Move to…</div>
+  <div class="o">⧉ Duplicate</div><div class="o">🧩 Make template</div><div class="o">🕸 Local graph</div>
+  <div class="o">⬇ Export Markdown</div>
+  <div class="o" style="color:var(--danger)">🗑 Move to Trash</div>
+ </div>
+</div></figure>
+
+<figure><figcaption><b>D-P5b</b> Template page header</figcaption>
+<div class="d" style="width:440px;min-height:200px">
+ <div class="bar">Templates / Weekly review<span class="sp"></span><span class="btn">⋯</span></div>
+ <div class="ed" style="padding-top:16px">
+  <span class="pill">Template · edits don't change pages made from it</span>
+  <div class="title">📝 Weekly review</div>
+  <div>☐ Wins this week</div><div>☐ What slipped</div>
+ </div>
+</div></figure>
+</div>
+
+<!-- ================= db views ================= -->
+<h2 class="row" id="db">v4.0 — Database views (PR 23–25)</h2>
+<p class="rowp">One view tab row; ⚙ holds per-view settings. Board needs a select property; Calendar needs a date property.</p>
+<div class="boards">
+<figure><figcaption><b>D-DB1</b> Board · group by Status</figcaption>
+<div class="d">
+ <div class="tabs"><span>Table</span><span class="on">Board</span><span>Calendar</span><span>Gallery</span><span>+</span><span style="flex:1"></span>⚙ Group by: Status</div>
+ <div class="cols">
+  <div class="col"><div class="ch"><span class="dot" style="background:#B6B1D9"></span>Backlog <span class="note">3</span></div>
+   <div class="card">Offline sync tests<br><span class="chip">High</span><span class="chip">#106</span></div><div class="card">ICS import<br><span class="chip">Med</span></div><div class="ghost">+ New</div></div>
+  <div class="col"><div class="ch"><span class="dot" style="background:#F3D053"></span>Doing <span class="note">1</span></div>
+   <div class="card" style="box-shadow:3px 3px 0 var(--accent)">Backlinks panel ⋯<br><span class="chip">High</span></div></div>
+  <div class="col"><div class="ch"><span class="dot" style="background:#C9DAE7"></span>Review <span class="note">1</span></div><div class="card">Icon picker<br><span class="chip">Low</span></div></div>
+  <div class="col"><div class="ch"><span class="dot" style="background:#D3EECE"></span>Done <span class="note">0</span></div></div>
+ </div>
+ <div class="pop" style="left:440px;top:160px;width:200px">
+  <div class="o">Open</div><div class="o on">Move to<small>▸</small></div><div class="o" style="color:var(--danger)">Delete</div>
+ </div>
+ <div class="toast">Moved to Review<b>Undo</b></div>
+</div></figure>
+
+<figure><figcaption><b>M-DB1</b> Board, phone · one column at a time</figcaption>
+<div class="m">
+ <div class="mtop"><span class="mt">‹</span><span class="sp">Dev tracker</span><span class="mt">⚙</span></div>
+ <div class="tabs" style="overflow:hidden"><span>Table</span><span class="on">Board</span><span>Calendar</span></div>
+ <div style="display:flex;gap:6px;padding:10px 12px;overflow:hidden;font-size:13px"><span class="pill">Backlog 3</span><span class="pill" style="background:var(--pill);color:var(--ink);font-weight:600">Doing 1</span><span class="pill">Review 1</span><span class="pill">Done 0</span></div>
+ <div style="padding:0 14px">
+  <div class="card" style="min-height:64px">Backlinks panel<span style="float:right">⋯</span><br><span class="chip">High</span></div>
+  <div class="ghost" style="min-height:48px;display:flex;align-items:center">+ New</div>
+  <p class="note">Swipe left/right = next column (peers). Long press = pick up. ⋯ → Move to.</p>
+ </div>
+</div></figure>
+
+<figure><figcaption><b>D-DB2</b> Calendar · Date property</figcaption>
+<div class="d" style="width:700px;min-height:430px">
+ <div class="tabs"><span>Table</span><span>Board</span><span class="on">Calendar</span><span>Gallery</span><span style="flex:1"></span>⚙ Date: Date</div>
+ <div style="display:flex">
+  <div style="flex:1;padding:10px 12px">
+   <div style="display:flex;justify-content:space-between;margin-bottom:6px"><b>December 2026</b><span>‹ Today ›</span></div>
+   <div class="month">
+    <div>30</div><div>1<span class="ev">Legs 5×5</span></div><div>2</div><div>3<span class="ev">Push</span></div><div>4</div><div>5<span class="ev">Run 5k</span></div><div>6</div>
+    <div>7</div><div>8<span class="ev">Legs 5×5</span></div><div>9</div><div style="outline:2px dashed var(--faint)">10<br><span class="ghost">+ New</span></div><div>11</div><div>12</div><div>13</div>
+   </div>
+  </div>
+  <div style="width:180px;border-left:1px solid var(--rule);padding:10px 12px;font-size:13px"><b>No date (2)</b><div class="card" style="margin-top:6px">Stretch plan</div><div class="card">Deload week</div></div>
+ </div>
+</div></figure>
+
+<figure><figcaption><b>D-DB3</b> Gallery · card size M</figcaption>
+<div class="d" style="width:700px;min-height:380px">
+ <div class="tabs"><span>Table</span><span>Board</span><span>Calendar</span><span class="on">Gallery</span><span style="flex:1"></span>⚙ Size: S M <b>L</b></div>
+ <div class="gal">
+  <div class="gcard"><div class="cv" style="background:#C9DAE7">🎬</div><div class="b"><b>Dune: Part Two</b><br><span class="chip">Watching</span><span class="chip">★★★★</span></div></div>
+  <div class="gcard"><div class="cv" style="background:#F3A2BD">📺</div><div class="b"><b>Frieren</b><br><span class="chip">Done</span><span class="chip">★★★★★</span></div></div>
+  <div class="gcard"><div class="cv">🎬</div><div class="b"><b>Past Lives</b><br><span class="chip">Want</span></div></div>
+ </div>
+</div></figure>
+
+<figure><figcaption><b>D-DB4</b> Board empty state</figcaption>
+<div class="d" style="width:440px;min-height:200px">
+ <div class="tabs"><span>Table</span><span class="on">Board</span></div>
+ <div style="padding:40px 20px;text-align:center">Board groups cards by a select property.<br><br><span class="btn">Add a select property</span></div>
+</div></figure>
+</div>
+
+<!-- ================= blocks ================= -->
+<h2 class="row" id="blocks">v4.0 — Blocks: handles, multi-select, reminders</h2>
+<p class="rowp">PR 29 handles + multi-select (keyboard path: Alt+↑↓, Shift+↑↓) · PR 30 Remind me on to-dos.</p>
+<div class="boards">
+<figure><figcaption><b>D-P6</b> ⋮⋮ menu + multi-select bar</figcaption>
+<div class="d" style="width:700px;min-height:420px">
+ <div class="ed" style="padding-top:30px">
+  <div class="blk"><span class="gut">+ ⋮⋮</span>Scope paragraph…</div>
+  <div class="blk sel">Option A: WireGuard by hand.</div>
+  <div class="blk sel">Option B: Tailscale.</div>
+  <div class="blk sel">Option C: Cloudflare Tunnel.</div>
+  <div class="blk">☐ Collect 10 papers</div>
+  <div style="height:2px;background:#2F5E8E;margin:4px 0"></div>
+  <div class="pop" style="left:-30px;top:52px;width:210px">
+   <div class="o">Delete</div><div class="o">Duplicate</div><div class="o on">Turn into<small>▸</small></div><div class="o">Move to page…</div><div class="o">Remind me…</div>
+  </div>
+ </div>
+ <div class="fbar"><b>3 blocks</b><span>Delete</span><span>Duplicate</span><span>Move to page…</span></div>
+</div></figure>
+
+<figure><figcaption><b>M-P6</b> Block select, phone · action bar</figcaption>
+<div class="m">
+ <div class="mtop"><span class="mt">‹</span><span class="sp">2 selected</span></div>
+ <div class="mbody">
+  <div class="blk">Scope paragraph…</div>
+  <div class="blk sel" style="min-height:48px;display:flex;align-items:center">Option A: WireGuard.</div>
+  <div class="blk sel" style="min-height:48px;display:flex;align-items:center">Option B: Tailscale.</div>
+  <div class="blk" style="min-height:48px;display:flex;align-items:center">Option C: Tunnel.</div>
+  <p class="note">Long press = select. Tap = add / remove. Back clears selection first.</p>
+ </div>
+ <div class="abar"><span>Delete</span><span>Duplicate</span><span>Move</span><span>Done</span></div>
+</div></figure>
+
+<figure><figcaption><b>D-P7</b> Remind me on a to-do</figcaption>
+<div class="d" style="width:440px;min-height:260px">
+ <div class="ed" style="padding-top:30px">
+  <div>☐ Collect 10 papers <span class="chip">🔔 Fri 09:00</span></div>
+  <div style="margin-top:8px">☑ <s>Email supervisor</s> <span class="chip"><s>🔔 Thu 17:00</s></span></div>
+ </div>
+ <div class="toast">Reminder cancelled<b>Undo</b></div>
+</div></figure>
+</div>
+
+<!-- ================= graph + import ================= -->
+<h2 class="row" id="graph">v4.0 — Local graph + Markdown import</h2>
+<div class="boards">
+<figure><figcaption><b>D-P8</b> Local graph dialog (PR 21)</figcaption>
+<div class="d" style="width:700px;min-height:440px">
+ <div class="bar"><b style="color:var(--ink)">Links around 🧠 Chapter 2 plan</b><span class="sp"></span><span class="seg"><span>1</span><span class="on">2</span></span><span class="link">Open full graph</span><span>✕</span></div>
+ <svg width="700" height="380" viewBox="0 0 700 380">
+  <g stroke="#B6B1D9" stroke-width="1.5"><line x1="350" y1="190" x2="200" y2="110"/><line x1="350" y1="190" x2="510" y2="120"/><line x1="350" y1="190" x2="380" y2="310"/><line x1="200" y1="110" x2="90" y2="70"/><line x1="200" y1="110" x2="120" y2="200"/><line x1="510" y1="120" x2="620" y2="80"/></g>
+  <circle cx="350" cy="190" r="18" fill="#00003D"/><text x="374" y="194">🧠 Chapter 2 plan</text>
+  <circle cx="200" cy="110" r="11" fill="#3D3D6B"/><text x="160" y="94">📚 FYP</text>
+  <circle cx="510" cy="120" r="11" fill="#3D3D6B"/><text x="525" y="124">🌐 Network map</text>
+  <circle cx="380" cy="310" r="11" fill="#3D3D6B"/><text x="396" y="314">📝 Old notes</text>
+  <g opacity=".5"><circle cx="90" cy="70" r="7" fill="#6B6B8F"/><text x="60" y="56">🎓 Uni</text><circle cx="120" cy="200" r="7" fill="#6B6B8F"/><text x="70" y="222">Chapter 3</text><circle cx="620" cy="80" r="7" fill="#6B6B8F"/><text x="590" y="66">🏠 Homelab</text></g>
+ </svg>
+</div></figure>
+
+<figure><figcaption><b>D-P9</b> Import Markdown · preview (PR 27)</figcaption>
+<div class="d" style="width:620px;min-height:440px">
+ <div class="scrim"></div>
+ <div class="dlg">
+  <h3>Import Markdown</h3>
+  <div style="font-size:18px;font-weight:700">Will create 6 pages</div>
+  <div style="font-size:13px;line-height:1.7;margin:8px 0;padding:8px 12px;background:var(--ground);border-radius:8px">
+   📄 Study plan (body text)<br><span style="padding-left:18px">📄 Week 1 — Basics</span><br><span style="padding-left:18px">📄 Week 2 — Practice</span><br><span style="padding-left:36px">📄 Mock exam</span><br><span style="padding-left:18px">📄 Resources</span><br><span style="padding-left:18px">📄 Review</span>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">Put under <span class="btn">🎓 Uni ▾</span></div>
+  <p class="note">3 links will connect to existing pages · 2 stay as text</p>
+  <div class="acts"><span class="btn">Cancel</span><span class="btn p">Import 6 pages</span></div>
+ </div>
+</div></figure>
+</div>
+
+<p class="rowp" style="margin:28px 32px 40px">States every new screen needs (loading, empty, error, offline, read-only share, dark): DESIGN.md §3.</p>
+</body>
+</html>
