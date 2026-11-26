@@ -246,16 +246,22 @@ test('C11 a foreign id is 404 from the item view, the PATCH and the skip route',
 	await signIn(page);
 	const id = await mkItem(page, { title: 'C11 mine', date: '2032-05-03', rrule: 'FREQ=WEEKLY;COUNT=4' });
 	try {
-		// the owner opens sign-up for the second account
+		// invite a second account (blind C11's flow): open sign-up has a per-IP cap that the other specs
+		// in a full run can use up, so the stranger signs up with a code instead
 		await page.goto('/settings/users');
-		await page.locator('input[name="open"][value="1"]').check();
+		await page.locator('input[name="open"][value="0"]').check();
 		await page.getByRole('button', { name: 'Save' }).click();
 		await expect(page.getByText('Saved.')).toBeVisible();
+		await page.getByRole('button', { name: 'Make invite code' }).click();
+		await expect(page.locator('[role="status"] code').first()).toBeVisible();
+		const code = (await page.locator('[role="status"] code').first().innerText()).trim();
+		expect(code).toMatch(/^INV-/);
 
 		// Playwright closes a context it created at test end: closing it here can hang after a navigation
 		const ctx = await browser.newContext();
 		const other = await ctx.newPage();
 		await other.goto('/signup');
+		await other.fill('#code', code);
 		await other.fill('#nu', `stranger${Date.now().toString(36)}`);
 		await other.fill('#dn', 'Stranger');
 		await other.fill('#np', `${PW} 2`);
