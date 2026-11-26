@@ -1700,18 +1700,27 @@ test('owner test pass 2026-11-16: chips, popups, Keep, Pages undo + dark, pins, 
 	await ctx.close();
 });
 
-// #277: on Home, a tick and a quick add made offline wait in the queue instead of being dropped
+// #277: on Home, a tick and a quick add made offline wait in the queue instead of being dropped.
+// The chip goes on a quiet fixed day: today's month cell is crowded by earlier tests and FullCalendar
+// hides anything past dayMaxEvents (4) behind "+N more", and the browser clock must not pick the day.
 test('Home offline: tick and quick add are queued as Waiting to sync', async ({ browser }) => {
 	const ctx = await browser.newContext({ storageState: await page.context().storageState(), serviceWorkers: 'block' }); // prettier-ignore
 	const h = await ctx.newPage();
 	const T = 'Offline home tick';
+	const day = '2032-09-10'; // no other spec uses this day
+	// create it through the app, on the typed date (no browser clock, no server-day guess)
 	await h.goto('/');
-	await h.evaluate(async (title) => {
-		const d = new Date();
-		const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-		await fetch('/api/items', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title, date, time: '09:00' }) }); // prettier-ignore
-	}, T);
-	await h.goto('/', { waitUntil: 'networkidle' });
+	await h.locator('button.opener').click();
+	const qa = h.getByRole('dialog', { name: 'Quick add' });
+	await expect(qa).toBeVisible();
+	await h.keyboard.type(`${T} ${day} 09:00 /calendar `);
+	await h.keyboard.press('Enter');
+	await expect(qa.locator('.log')).toContainText(`Added ${T} to calendar`);
+	await h.keyboard.press('Escape');
+	await h.keyboard.press('Escape');
+	await expect(qa).toHaveCount(0);
+	await h.goto(`/?m=${day.slice(0, 7)}&d=${day}`, { waitUntil: 'networkidle' });
+	await expect(h.locator('.lt-chip', { hasText: T })).toBeVisible(); // the day cell holds one event
 	await ctx.setOffline(true);
 	await h.locator('.lt-chip', { hasText: T }).locator('.lt-sq').click();
 	await expect(h.getByText(/Waiting to sync/).first()).toBeVisible();
