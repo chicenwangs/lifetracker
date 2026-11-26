@@ -98,7 +98,7 @@ $e2eEnv = @{ E2E_PORT = '4301'; TZ = 'Asia/Kuala_Lumpur' }
 
 # 1. exact commit, clean tree
 $t0 = Get-Date
-$out = (git -C $gate checkout -q --detach $Sha 2>&1 | Out-String)
+$out = (git -C $gate checkout -q -f --detach $Sha 2>&1 | Out-String)
 if ($LASTEXITCODE -ne 0) { Add-Step 'checkout' 'fail' 0 (Get-Tail $out) ''; Finish }
 git -C $gate clean -fdxq -e node_modules 2>&1 | Out-Null
 Add-Step 'checkout' 'pass' ([int]((Get-Date) - $t0).TotalSeconds) "$sha7 in $gate" ''
@@ -118,7 +118,7 @@ foreach ($pkg in @('app', 'mobile')) {
 $x = Invoke-Cmd 'lint' $app 'npm run lint' 15
 Add-Step 'lint' $(if ($x.code -eq 0) { 'pass' } else { 'fail' }) $x.seconds $(if ($x.code -eq 0) { 'clean' } else { Get-Tail $x.text 6 }) $x.log
 $x = Invoke-Cmd 'check' $app 'npm run check' 15
-$m = [regex]::Match($x.text, 'svelte-check found (\d+) errors? and (\d+) warnings?')
+$m = [regex]::Match($x.text, '\d+ FILES \d+ ERRORS \d+ WARNINGS|svelte-check found \d+ errors? and \d+ warnings?')
 Add-Step 'check' $(if ($x.code -eq 0) { 'pass' } else { 'fail' }) $x.seconds $(if ($m.Success) { $m.Value } else { Get-Tail $x.text }) $x.log
 $x = Invoke-Cmd 'unit' $app 'npm run test:unit' 20
 $up = Num $x.text 'Tests\s+(?:\d+ failed \| )?(\d+) passed'; $uf = Num $x.text 'Tests\s+(\d+) failed'
@@ -151,7 +151,7 @@ $mobileChanged = $base -and (@(git -C $gate diff --name-only $base $Sha -- mobil
 if ($Mode -eq 'site' -or $mobileChanged) {
 	New-Item -ItemType Directory -Force 'C:\Users\Public\jtmp' | Out-Null
 	$aenv = @{ JAVA_HOME = 'C:\Program Files\Java\jdk-24'; ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"; JAVA_TOOL_OPTIONS = '-Djdk.net.unixdomain.tmpdir=C:\Users\Public\jtmp'; GRADLE_OPTS = '-Djdk.net.unixdomain.tmpdir=C:\Users\Public\jtmp' }
-	$x = Invoke-Cmd 'android' (Join-Path $gate 'mobile') 'npx cap sync android && cd android && gradlew.bat --no-daemon assembleDebug testDebugUnitTest' 40 $aenv
+	$x = Invoke-Cmd 'android' (Join-Path $gate 'mobile') "call npx cap sync android && cd android && call $gate\mobile\android\gradlew.bat --no-daemon assembleDebug testDebugUnitTest" 40 $aenv
 	Add-Step 'android' $(if ($x.code -eq 0) { 'pass' } else { 'fail' }) $x.seconds $(if ($x.code -eq 0) { 'assembleDebug + testDebugUnitTest OK (not installed)' } else { Get-Tail $x.text 5 }) $x.log
 }
 if ($Mode -ne 'site') { Finish }

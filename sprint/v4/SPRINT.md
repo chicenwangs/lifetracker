@@ -80,6 +80,8 @@ Branch `v4/NN-slug` from fresh `origin/main` (`git fetch`, `git switch -c v4/NN-
 8. **done when all are true on the SAME HEAD sha:** full (or site) gate PASS · reviewer PASS · skeptic PASS · tester's blind tests are in the gate run and pass.
 9. **PR + merge** (section 7). BOARD `merged`, PROGRESS entry.
 
+Never run two subagents that build or run tests at the same time: builder and tester share the build clone's `.svelte-kit`. Reviewer and skeptic only read, so they may run together while the gate runs.
+
 Limits: 4 fix rounds per card. Still blocked: BOARD `blocked`, write why in PROGRESS + a GitHub issue (`v4 blocked: card NN`, label `v4.0`), push the branch, move to the next card whose `Needs` are met. Retry blocked cards after every 3 merges.
 
 ## 5. Evidence rules (anti-hallucination)

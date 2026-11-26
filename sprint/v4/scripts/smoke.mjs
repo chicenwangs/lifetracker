@@ -61,7 +61,8 @@ async function main() {
 	const password = /password:\s*(\S+)/.exec(txt)?.[1];
 	const r = await fetch(base + '/login', {
 		method: 'POST', redirect: 'manual',
-		headers: { 'content-type': 'application/x-www-form-urlencoded', origin },
+		// accept text/html like a browser form post; with */* SvelteKit answers the action as JSON (200)
+		headers: { 'content-type': 'application/x-www-form-urlencoded', origin, accept: 'text/html' },
 		body: new URLSearchParams({ username, password }).toString(),
 	});
 	const cookie = (r.headers.getSetCookie?.() ?? []).map((c) => c.split(';')[0]).join('; ');
@@ -70,7 +71,13 @@ async function main() {
 
 	// 4. every main screen renders for that user, with no server error page
 	for (const p of ['/', '/today', '/week', '/month', '/keep', '/pages', '/settings', '/trash', '/more']) {
-		const s = await get(p, cookie);
+		let s = await get(p, cookie);
+		// follow same-site redirects (e.g. /settings -> /settings/account), at most 3
+		for (let hop = 0; hop < 3 && [301, 302, 303, 307, 308].includes(s.status); hop++) {
+			const next = s.headers.get('location') ?? '';
+			if (!next.startsWith('/') || next.startsWith('/login')) break;
+			s = await get(next, cookie);
+		}
 		const body = s.status === 200 ? await s.text() : '';
 		const bad = /Internal Error|500|ReferenceError|TypeError/.test(body.slice(0, 4000)) && !/<title>/.test(body);
 		check(`GET ${p} 200 as signed-in user`, s.status === 200 && body.length > 500 && !bad, `${s.status}, ${body.length} bytes`);
