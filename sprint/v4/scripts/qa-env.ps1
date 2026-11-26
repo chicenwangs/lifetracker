@@ -155,7 +155,7 @@ if ($Emulator) {
 	}
 	Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Force $dir | Out-Null
 	Copy-Item "$envDir\db\new\*" $dir -Exclude '*.bak' -Force
-	$keep += Start-QaServer 'emulator' 4404 $emuUrl "$dir\new.db" $dir 'emulator-no-setup' "qa-$sha7"
+	$keep += Start-QaServer 'emulator' 4404 $emuUrl "$dir\new.db" $dir ([guid]::NewGuid().ToString('N')) "qa-$sha7"
 	Save-Pids $keep
 	if (-not (Test-Up 4404 "qa-$sha7")) { 'server 4404 did not start (see its server.err)'; exit 1 }
 	Add-Content (Join-Path $envDir 'ENV.md') "- $emuUrl (emulator only; from the PC: http://127.0.0.1:4404): copy of the new seed. Login: $(Get-Login $dir '')."
