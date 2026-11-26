@@ -6,6 +6,7 @@
 import { handle } from './db';
 import { ApiFail } from './http';
 import { newId } from './crypto';
+import * as fts from './search';
 import { isoPlus, nowUtcIso } from '$lib/time';
 
 /** tables the journal may touch. Never sessions, users, grants, share codes. */
@@ -75,7 +76,11 @@ export function undo(userId: string, id?: string): { label: string } {
 		// parents before children on re-insert (a step needs its item), children first on delete
 		const order = (t: Table) => TABLES.indexOf(t);
 		for (const r of [...rows].sort((x, y) => order(x.t) - order(y.t) || Number(!!y.before?.parent_id) - Number(!!x.before?.parent_id)).reverse())
-			if (!r.before) db().prepare(`DELETE FROM ${r.t} WHERE id = ?`).run(r.id);
+			if (!r.before) {
+				db().prepare(`DELETE FROM ${r.t} WHERE id = ?`).run(r.id);
+				// a page deleted by undo must not stay in the search index (#442: undo of a created [[ page)
+				if (r.t === 'pages') fts.unindex('page', r.id);
+			}
 		for (const r of [...rows].sort((x, y) => (x.t === y.t ? Number(!!x.before?.parent_id) - Number(!!y.before?.parent_id) : order(x.t) - order(y.t)))) {
 			if (!r.before) continue;
 			const cols = Object.keys(r.before).filter((c) => c !== 'id');
