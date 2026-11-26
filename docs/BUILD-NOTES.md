@@ -6,6 +6,7 @@ Newest first. Latest release = v3.1.2 (2026-11-24; v3.1.1 + v3.1.0 2026-11-20, v
 ## v4.0.0 (in progress, 2026-11-26 →)
 
 - Phone Add sheet: rapid taps after "Save note" no longer reach the row underneath (#378, 250 ms tap shield, Undo toast exempt).
+- Phone status squares: rapid taps on a row's square no longer change another row (the list re-renders after the first tick); Home, Today and the item sheet tick once (#379, same shield, raised before the POST).
 
 ## v3.1.2 patch (2026-11-24, milestone 3.1.2, QA-loop bugs #272–#313, #324, #348, #362–#364, #375)
 
