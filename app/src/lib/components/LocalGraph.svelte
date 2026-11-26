@@ -16,16 +16,18 @@
 	let truncated = $state(false);
 	// plain variables: sigma must not be reactive, and the explicit buttons below own the redraws
 	let sigma: SigmaT | null = null;
+	let gen = 0; // only the newest draw may assign sigma / counts (fast 1 then 2 must not race)
 
 	async function draw() {
 		if (!el) return;
+		const my = ++gen;
 		loading = true;
 		try {
 			const d = await get<GraphDTO>(`/api/graph?around=${encodeURIComponent(around.id)}&depth=${depth}`);
 			// the dialog animates in: sigma measures the container, so wait until it has a size
 			for (let i = 0; i < 60 && (!el || el.clientWidth < 20); i++)
 				await new Promise((r) => requestAnimationFrame(r));
-			if (!el) return;
+			if (!el || my !== gen) return;
 			sigma?.kill();
 			sigma = null;
 			const [{ default: Graph }, { default: Sigma, DEFAULT_STYLES }] = await Promise.all([
@@ -54,7 +56,15 @@
 					y: Math.sin(i) * Math.sqrt(i + 1),
 					size: h === 0 ? 18 : h === 1 ? 10 : 6,
 					label: `${n.icon ? `${n.icon} ` : ''}${n.title || 'Untitled'}${n.archived ? ' · archived' : ''}`,
-					color: n.archived ? quiet : h === 0 ? ink : h === 1 ? '#3d5a80' : quiet,
+					color: n.archived
+						? quiet
+						: n.kind === 'record'
+							? '#3d5a80'
+							: h === 0
+								? ink
+								: h === 1
+									? '#3d5a80'
+									: quiet,
 				});
 			});
 			d.edges.forEach((e, i) =>
@@ -77,12 +87,13 @@
 				event.preventSigmaDefault();
 				open(node);
 			});
+			if (my !== gen) return;
 			count = d.nodes.length;
 			truncated = d.truncated;
 		} catch (e) {
-			showError(e);
+			if (my === gen) showError(e);
 		} finally {
-			loading = false;
+			if (my === gen) loading = false;
 		}
 	}
 	async function setDepth(d: 1 | 2) {
