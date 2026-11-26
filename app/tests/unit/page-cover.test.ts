@@ -4,6 +4,7 @@ import { freshDb } from './helpers';
 import { handle } from '../../src/lib/server/db';
 import * as usersRepo from '../../src/lib/server/repo/users';
 import * as pages from '../../src/lib/server/repo/pages';
+import * as shares from '../../src/lib/server/repo/shares';
 import * as attachments from '../../src/lib/server/attachments';
 import { undo, undoable } from '../../src/lib/server/undo';
 import { PATCH as pagePatch } from '../../src/routes/api/pages/[id]/+server';
@@ -106,6 +107,23 @@ describe('page cover', () => {
 		} as never);
 		expect(pages.get(u1, p.id).coverAttachmentId).toBe(null);
 		expect(refs(p.id)).toBe(0);
+	});
+	it('a shared editor cannot set or remove the cover through the PATCH', async () => {
+		const p = pages.create(u1, { parentId: null, title: 'Cover page' });
+		shares.put('page', u1, p.id, { username: 'two', permission: 'edit' });
+		const as = (userId: string, b: unknown) =>
+			pagePatch({
+				locals: { user: usersRepo.safe(usersRepo.byId(userId)!) },
+				params: { id: p.id },
+				request: new Request(`http://localhost/api/pages/${p.id}`, {
+					method: 'PATCH',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify(b),
+				}),
+			} as never);
+		expect((await as(u2, { coverAttachmentId: A1 })).status).toBe(403);
+		expect((await as(u1, { coverAttachmentId: A1 })).status).toBe(200);
+		expect(refs(p.id)).toBe(1);
 	});
 	it('undoing a created page drops its cover ref', () => {
 		const r = undoable(u1, 'New page', [], () => {

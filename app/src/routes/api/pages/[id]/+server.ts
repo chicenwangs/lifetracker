@@ -17,14 +17,20 @@ export const PATCH = api(async (e) => {
 	const id = e.params.id ?? '';
 	const owner = need('page', u.id, id, 'edit');
 	const p = await body(e, pages.patchSchema);
-	// a cover-only PATCH is one undo entry (doc saves use the editor's own history); v4.0 PR 31
-	const page =
-		p.coverAttachmentId !== undefined && p.doc === undefined
-			? undoable(u.id, p.coverAttachmentId ? 'Page cover' : 'Cover removed', [{ t: 'pages', id }], () => ({
-					result: pages.update(owner, id, p, u.id),
-				})).result
-			: pages.update(owner, id, p, u.id);
-	if (p.title !== undefined) syncTitleFromPage(page.id, p.title); // record page: the title value follows
-	return json({ page });
+	// the cover is an owner-level field (v4.0 PR 31); the UI hides Change/Remove for shared editors
+	if (p.coverAttachmentId !== undefined) need('page', u.id, id, 'owner');
+	// one small metadata change = one undo entry: cover (PR 31) or icon (PR 16)
+	const coverField = p.coverAttachmentId !== undefined;
+	const tiny = p.doc === undefined && p.title === undefined && (p.icon !== undefined || coverField);
+	const r = tiny
+		? undoable(
+				u.id,
+				coverField ? (p.coverAttachmentId ? 'Page cover' : 'Cover removed') : 'Page icon',
+				[{ t: 'pages', id }],
+				() => ({ result: pages.update(owner, id, p, u.id) }),
+			)
+		: { result: pages.update(owner, id, p, u.id), undo: undefined };
+	if (p.title !== undefined) syncTitleFromPage(r.result.id, p.title); // record page: the title value follows
+	return json({ page: r.result, undo: r.undo });
 });
 export const DELETE = api((e) => json(pages.trash(me(e).id, e.params.id ?? '')));
