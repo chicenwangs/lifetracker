@@ -83,14 +83,16 @@ test('hold + drag a card onto another = it moves before it', async () => {
 	await expect.poll(async () => (await order())[0]).toBe(last);
 });
 
-test('+ in Trash switches to Notes so the saved note shows (#400)', async () => {
-	await page.goto('/keep?scope=trash');
-	await expect(page.getByRole('heading', { name: 'Trash' })).toBeVisible();
-	await bottomBar(page).locator('button.add').click();
-	await expect(page).not.toHaveURL(/scope=trash/);
-	const title = `From trash ${P}`;
-	await page.locator('div.note').getByPlaceholder('Title').fill(title);
-	await expect(page.locator('.note .state')).toContainText('Saved');
-	await page.locator('div.note').getByRole('button', { name: 'Back', exact: true }).click();
-	await expect(card(title)).toBeVisible();
+test('+ in Trash, Archive or Shared with me switches to Notes so the saved note shows (#400)', async () => {
+	for (const scope of ['trash', 'archive', 'shared']) {
+		await page.goto(`/keep?scope=${scope}`);
+		await bottomBar(page).locator('button.add').click();
+		await expect(page).not.toHaveURL(new RegExp(`scope=${scope}`));
+		const title = `From ${scope} ${P}`;
+		await page.locator('div.note').getByPlaceholder('Title').fill(title);
+		await expect(page.locator('.note .state')).toContainText('Saved');
+		await page.locator('div.note').getByRole('button', { name: 'Back', exact: true }).click();
+		await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible();
+		await expect(card(title)).toBeVisible();
+	}
 });

@@ -107,8 +107,7 @@
 		if (p.startsWith('/keep')) {
 			const u = new URL(page.url);
 			// #400: a note saved while the list shows Trash/Archive is invisible - switch to Notes first
-			if (u.searchParams.get('scope') === 'trash' || u.searchParams.get('scope') === 'archive')
-				u.searchParams.delete('scope');
+			if (u.searchParams.has('scope')) u.searchParams.delete('scope');
 			u.searchParams.set('new', '');
 			return goto(u, { noScroll: true, keepFocus: true });
 		}
