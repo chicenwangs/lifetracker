@@ -192,10 +192,7 @@ describe('C4 equals getCalendar with shared off', () => {
 		const g = getCalendar(meNow(), FROM, TO, { shared: false });
 
 		// not vacuous: the expanded occurrences are there, keyed id@date
-		expect(a.items.map((i) => i.id)).toEqual([
-			`${repeat.id}@2026-12-01`,
-			`${repeat.id}@2026-12-03`,
-		]);
+		expect(a.items.map((i) => i.id)).toEqual([`${repeat.id}@2026-12-01`, `${repeat.id}@2026-12-03`]);
 		expect(a.items.every((i) => i.seriesId === repeat.id && i.rrule === repeat.rrule)).toBe(true);
 		expect(a).toEqual(g);
 	});
@@ -258,11 +255,7 @@ describe('C6 range validation', () => {
 			expect(mine?.status).toBe(400);
 			expect(same?.status).toBe(400);
 			// same 400 as getCalendar: code and message match
-			expect([mine?.status, mine?.code, mine?.message]).toEqual([
-				same?.status,
-				same?.code,
-				same?.message,
-			]);
+			expect([mine?.status, mine?.code, mine?.message]).toEqual([same?.status, same?.code, same?.message]);
 			expect(mine?.message).toBe(message);
 		}
 
