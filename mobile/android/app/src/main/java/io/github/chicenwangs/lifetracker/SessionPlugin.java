@@ -15,7 +15,7 @@ import org.json.JSONArray;
 @CapacitorPlugin(name = "Session")
 public class SessionPlugin extends Plugin {
     static void wipe(Context c) {
-        Reminders.schedule(c, new JSONArray()); // cancels every alarm set
+        Reminders.schedule(c, new JSONArray(), null); // cancels every alarm set (including the digest)
         NotificationManagerCompat.from(c).cancelAll();
         c.getSharedPreferences(Native.PREFS, 0).edit().remove("sync").remove("remQueue").putBoolean("signedOut", true).apply();
         Widgets.updateAll(c);

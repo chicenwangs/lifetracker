@@ -43,6 +43,8 @@ const schema = z
 		notifyPlanner: z.boolean(),
 		notifyKeep: z.boolean(),
 		notifyPages: z.boolean(),
+		/** card 12: daily digest time, null = off (the client sends 07:30 on the first On) */
+		digestTime: zTime.nullable(),
 	})
 	.partial()
 	.strict();

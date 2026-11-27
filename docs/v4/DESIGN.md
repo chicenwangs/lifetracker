@@ -42,7 +42,7 @@ If this doc and BREAKDOWN disagree on behaviour: BREAKDOWN wins, then fix this d
 ### 1.4 Daily agenda push (PR 12) · board D-N1 / M-N1
 - Settings › Notifications, new row: `Daily agenda` · segmented `Off | On` · time field (shows when On, default 07:30).
 - Helper: "One notification a day with today's items and blocks. Nothing on → no notification."
-- Preview chip under it, live: "4 items · 2 blocks · first 09:00".
+- Preview chip under it, rendered once by the server load for today — not live (D-V4-30): "4 items · 2 blocks · first 09:00"; a day with nothing on says "Nothing on today.".
 
 ### 1.5 Voice in Keep quick note (PR 13, app only) · board M-V1
 - Mic button inside the composer, right of the text field, 48 dp. Idle = outline mic. Listening = filled mic + pulsing ring + text "Listening…" as placeholder.
