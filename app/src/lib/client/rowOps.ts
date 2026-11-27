@@ -84,12 +84,17 @@ export async function cycleRow(
 	const date = kind === 'items' ? seenDate : null;
 	raiseShield(); // touch / coarse only: desktop ticks stay unshielded
 	try {
-		const r = await post<{ item?: { id: string }; undo?: UndoRef }>(
+		const r = await post<{ item?: { id: string }; undo?: UndoRef; stale?: boolean }>(
 			`${p}/cycle`,
 			date ? { seenDate: date } : undefined,
 		);
 		onResult?.(r);
 		await refresh();
+		// card 09: a stale from-completion tick changed nothing — say so, never a false "Done"
+		if (r.stale) {
+			showToast(`"${name}" changed elsewhere — refreshed.`);
+			return 'ok';
+		}
 		if (next === 'done') buzz('success');
 		const u = r.undo;
 		showToast(`${TICK_TEXT[next]}: "${name}"`, {

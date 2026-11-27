@@ -24,7 +24,7 @@ import { undoable } from './undo';
 export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record';
 const db = () => handle().sqlite;
 export const MAX_OPEN = 500;
-type Row = { id: string; owner_id: string; source_type: Source; source_id: string; rule_kind: 'relative' | 'absolute'; rel_value: number | null; rel_unit: Unit | null; at_time: string | null; due_at: string | null; status: string; attempts: number; sent_at: string | null }; // prettier-ignore
+type Row = { id: string; owner_id: string; source_type: Source; source_id: string; rule_kind: 'relative' | 'absolute'; rel_value: number | null; rel_unit: Unit | null; at_time: string | null; due_at: string | null; status: string; attempts: number; sent_at: string | null; created_at: string }; // prettier-ignore
 
 export interface SourceInfo {
 	title: string;
@@ -260,12 +260,13 @@ export function removeIds(ownerId: string, ids: string[]): void {
 	for (const id of ids) st.run(id, ownerId);
 }
 
-/** Card 09: the series' open exact (or snoozed) reminders — they belong to the occurrence being finished.
- *  A relative rule is a standing rule and moves with the date instead (C8). */
-export function exactOpenIds(ownerId: string, sourceId: string, exceptId?: string): string[] {
+/** Card 09: the series' exact (or snoozed) reminders — scheduled, processing or already fired. A from-completion
+ *  completion cancels all of them: they belong to the occurrence being finished. A relative rule is a standing
+ *  rule and moves with the date instead (C8). */
+export function exactReminderIds(ownerId: string, sourceId: string, exceptId?: string): string[] {
 	const rows = db()
 		.prepare(
-			`SELECT id FROM reminders WHERE owner_id = ? AND source_type = 'planner_item' AND source_id = ? AND rule_kind = 'absolute' AND status IN ('scheduled','processing')`,
+			`SELECT id FROM reminders WHERE owner_id = ? AND source_type = 'planner_item' AND source_id = ? AND rule_kind = 'absolute' AND status IN ('scheduled','processing','sent','missed')`,
 		)
 		.all(ownerId, sourceId) as { id: string }[];
 	return rows.map((r) => r.id).filter((id) => id !== exceptId);
@@ -427,7 +428,12 @@ export function act(
 	// #185: a repeating item's chain goes on to the next date before this row is rewritten
 	advanceRepeating(id, ownerId, now);
 	if (action === 'done') {
-		db().prepare(`UPDATE reminders SET status = 'sent', seen_at = COALESCE(seen_at, ?), updated_at = ? WHERE id = ?`).run(t, t, id); // prettier-ignore
+		const markSent = () =>
+			db()
+				.prepare(
+					`UPDATE reminders SET status = 'sent', seen_at = COALESCE(seen_at, ?), updated_at = ? WHERE id = ?`,
+				)
+				.run(t, t, id);
 		if (r.source_type === 'planner_item') {
 			// through the repo (status stamps); a repeating item ticks only the occurrence this reminder was for (#72)
 			const info = sourceInfo(ownerId, 'planner_item', r.source_id);
@@ -442,7 +448,12 @@ export function act(
 					r.rule_kind === 'relative' && r.rel_value && r.rel_unit && r.due_at
 						? isoPlus(r.due_at, offsetMs(r.rel_value, r.rel_unit))
 						: null;
-				seenDate = ref ? utcToLocal(ref, rep.tz).date : rep.date;
+				if (ref) seenDate = utcToLocal(ref, rep.tz).date;
+				// a fired exact reminder keeps its own occurrence instant: the day it was attached to, not the
+				// series' current date, so a completion that already moved the series cannot pass this check
+				else if (r.status === 'sent' || r.status === 'missed')
+					seenDate = utcToLocal(r.created_at, rep.tz).date;
+				else seenDate = rep.date;
 			} else if (rep && r.due_at) {
 				const ref = r.rule_kind === 'relative' && r.rel_value && r.rel_unit ? isoPlus(r.due_at, offsetMs(r.rel_value, r.rel_unit)) : r.due_at; // prettier-ignore
 				const from = utcToLocal(ref, rep.tz).date;
@@ -454,21 +465,24 @@ export function act(
 			let completed = false;
 			try {
 				if (rep?.fromCompletion && !stale) {
-					// card 09: the finished occurrence's other exact reminders die with it, in the same undo entry
-					const siblings = exactOpenIds(ownerId, r.source_id, id);
+					// card 09: the finished occurrence's exact reminders die with it — every status, the acting
+					// one included — all in this action's undo entry
+					const exact = exactReminderIds(ownerId, r.source_id);
 					const res = undoable(
 						ownerId,
 						`Status "${info?.title ?? 'item'}"`,
 						[
 							{ t: 'items', id: target },
-							...siblings.map((sid) => ({ t: 'reminders' as const, id: sid })),
+							{ t: 'reminders', id },
+							...exact.map((rid) => ({ t: 'reminders' as const, id: rid })),
 						],
 						() => {
+							markSent();
 							const result = itemsRepo.patch(ownerId, target, { status: 'done', seenDate });
 							if (result.doneCopyId) {
-								// standing relative rules move with the new date; exact siblings die with the occurrence
+								// standing relative rules move with the new date; exact reminders die with the occurrence
 								recalcOwner(ownerId, now);
-								cancelIds(ownerId, siblings, now);
+								cancelIds(ownerId, exact, now);
 							}
 							return {
 								result,
@@ -477,14 +491,20 @@ export function act(
 						},
 					);
 					completed = !!res.result.doneCopyId;
-				} else itemsRepo.patch(ownerId, target, { status: 'done', seenDate });
+				} else {
+					markSent();
+					itemsRepo.patch(ownerId, target, { status: 'done', seenDate });
+				}
 			} catch {
 				/* item gone meanwhile: the reminder is still marked handled */
 			}
 			// card 09 C8: the moved series takes its open reminders along, a fired one is recreated
 			if (completed) afterCompletion(ownerId, r.source_id, now);
-		} else if (r.source_type === 'planner_block')
-			db().prepare(`UPDATE blocks SET status = 'done', updated_at = ? WHERE id = ? AND calendar_id IN (SELECT id FROM calendars WHERE owner_id = ?)`).run(t, r.source_id, ownerId); // prettier-ignore
+		} else {
+			markSent();
+			if (r.source_type === 'planner_block')
+				db().prepare(`UPDATE blocks SET status = 'done', updated_at = ? WHERE id = ? AND calendar_id IN (SELECT id FROM calendars WHERE owner_id = ?)`).run(t, r.source_id, ownerId); // prettier-ignore
+		}
 		return null;
 	}
 	const tz = (db().prepare(`SELECT timezone FROM users WHERE id = ?`).get(ownerId) as { timezone: string } | undefined)?.timezone ?? 'Asia/Kuala_Lumpur'; // prettier-ignore

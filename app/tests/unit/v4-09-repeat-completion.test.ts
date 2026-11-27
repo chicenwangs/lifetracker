@@ -462,12 +462,13 @@ describe('MUST 1 the reminder Done action on a from-completion series', () => {
 			.sqlite.prepare('SELECT id, rows FROM undo_actions ORDER BY created_at DESC, rowid DESC LIMIT 1')
 			.get() as { id: string; rows: string };
 		const journal = JSON.parse(last.rows) as { id: string; before: unknown }[];
-		expect(journal).toHaveLength(2); // the series + the created copy
+		expect(journal).toHaveLength(3); // the series, the created copy and the acting reminder (C9)
 		expect(journal.filter((x) => x.before === null)).toHaveLength(1);
 
 		undo(me, last.id);
 		expect(items.mustOwn(me, i.id).date).toBe(t);
 		expect(copies('Must1 undo')).toBe(0);
+		expect(reminderStatus(r.id)).toBe('scheduled'); // the acting row is restored with the completion
 	});
 });
 
@@ -522,7 +523,7 @@ describe('MUST 3 the finished occurrence’s other reminders', () => {
 
 		expect(items.mustOwn(me, i.id)).toMatchObject({ date: addDays(t, 1), status: 'todo' });
 		expect(doneCopies('Sib exact')).toBe(1);
-		expect(reminderStatus(a.id)).toBe('sent');
+		expect(reminderStatus(a.id)).toBe('cancelled'); // the acting reminder dies with the occurrence too
 		expect(reminderStatus(b.id)).toBe('cancelled'); // it belonged to the finished occurrence
 
 		// Done on the cancelled sibling: 404, no second copy, the series does not move again
@@ -626,6 +627,65 @@ describe('MUST 3 the finished occurrence’s other reminders', () => {
 		// the cancelled exact reminder can no longer complete the series
 		expect((await actRoute(exact.id)).status).toBe(404);
 		expect(doneCopies('Route patch exact')).toBe(1);
+	});
+
+	it('two fired exact reminders: Done on one files one copy and cancels both; Done on the other is a 404', async () => {
+		const t = today();
+		const i = mkComplete({ title: 'Fired two', date: t, time: '09:00', rrule: 'FREQ=DAILY' });
+		const a = rem.add(me, 'planner_item', i.id, { at: localToUtc(addDays(t, 2), '09:00', TZ) });
+		const b = rem.add(me, 'planner_item', i.id, { at: localToUtc(addDays(t, 3), '09:00', TZ) });
+		handle().sqlite.prepare("UPDATE reminders SET status = 'sent' WHERE id IN (?, ?)").run(a.id, b.id); // both already fired
+
+		rem.act(me, a.id, 'done');
+		expect(doneCopies('Fired two')).toBe(1);
+		expect(reminderStatus(a.id)).toBe('cancelled'); // the acting reminder dies with the occurrence too
+		expect(reminderStatus(b.id)).toBe('cancelled'); // fired siblings are cancelled regardless of status
+		const moved = items.mustOwn(me, i.id).date;
+		expect(moved).toBe(addDays(t, 1));
+
+		// Done on the fired sibling: 404 at the repo and at the route, no second copy, no extra move
+		expect(() => rem.act(me, b.id, 'done')).toThrow();
+		expect((await actRoute(b.id)).status).toBe(404);
+		expect(items.mustOwn(me, i.id).date).toBe(moved);
+		expect(doneCopies('Fired two')).toBe(1);
+	});
+
+	it('the same fired exact reminder Done twice: the second is a 404 and files no second copy', async () => {
+		const t = today();
+		const i = mkComplete({ title: 'Fired same', date: t, time: '09:00', rrule: 'FREQ=DAILY' });
+		const r = rem.add(me, 'planner_item', i.id, { at: localToUtc(addDays(t, 2), '09:00', TZ) });
+		handle().sqlite.prepare("UPDATE reminders SET status = 'sent' WHERE id = ?").run(r.id);
+
+		rem.act(me, r.id, 'done');
+		expect(doneCopies('Fired same')).toBe(1);
+		expect(reminderStatus(r.id)).toBe('cancelled');
+		const moved = items.mustOwn(me, i.id).date;
+		expect(moved).toBe(addDays(t, 1));
+
+		expect(() => rem.act(me, r.id, 'done')).toThrow();
+		expect((await actRoute(r.id)).status).toBe(404);
+		expect(items.mustOwn(me, i.id).date).toBe(moved);
+		expect(doneCopies('Fired same')).toBe(1);
+	});
+
+	it('Undo restores the completion: both fired reminder rows and the series', () => {
+		const t = today();
+		const i = mkComplete({ title: 'Fired undo', date: t, time: '09:00', rrule: 'FREQ=DAILY' });
+		const a = rem.add(me, 'planner_item', i.id, { at: localToUtc(addDays(t, 2), '09:00', TZ) });
+		const b = rem.add(me, 'planner_item', i.id, { at: localToUtc(addDays(t, 3), '09:00', TZ) });
+		handle().sqlite.prepare("UPDATE reminders SET status = 'sent' WHERE id IN (?, ?)").run(a.id, b.id);
+		rem.act(me, a.id, 'done');
+		expect(doneCopies('Fired undo')).toBe(1);
+
+		const last = handle()
+			.sqlite.prepare('SELECT id FROM undo_actions ORDER BY created_at DESC, rowid DESC LIMIT 1')
+			.get() as { id: string };
+		undo(me, last.id);
+
+		expect(items.mustOwn(me, i.id).date).toBe(t);
+		expect(doneCopies('Fired undo')).toBe(0);
+		expect(reminderStatus(a.id)).toBe('sent'); // the acting row is back to its pre-action state
+		expect(reminderStatus(b.id)).toBe('sent'); // the cancelled sibling is restored too
 	});
 });
 

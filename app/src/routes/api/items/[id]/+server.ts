@@ -2,7 +2,13 @@ import { json } from '@sveltejs/kit';
 import { api, body, me, notFound } from '$lib/server/http';
 import * as items from '$lib/server/repo/items';
 import { undoable } from '$lib/server/undo';
-import { afterCompletion, cancelIds, exactOpenIds, recalcOwner, splitSeries } from '$lib/server/reminders';
+import {
+	afterCompletion,
+	cancelIds,
+	exactReminderIds,
+	recalcOwner,
+	splitSeries,
+} from '$lib/server/reminders';
 import { splitOccId } from '$lib/rrule';
 
 export const GET = api((e) => {
@@ -32,11 +38,11 @@ export const PATCH = api(async (e) => {
 	const cur = items.mustOwn(u.id, id);
 	// card 09 MUST 2: a replayed completion changes nothing — answer with the refreshed row, no journal entry
 	if (items.isStaleCompletion(cur, p.status, p.seenDate))
-		return json({ item: items.withCounts([items.mustOwn(u.id, id)])[0] });
+		return json({ item: items.withCounts([items.mustOwn(u.id, id)])[0], stale: true });
 	const completing = !!cur.rrule && cur.date !== null && cur.repeatFromCompletion && p.status === 'done';
 	// the finished occurrence's exact reminders go with it, in this action's undo entry. A request without
 	// `seenDate` is an older/API caller (the optional residual): it completes but keeps the old reminder set.
-	const siblings = completing && p.seenDate !== undefined ? exactOpenIds(u.id, cur.id) : [];
+	const siblings = completing && p.seenDate !== undefined ? exactReminderIds(u.id, cur.id) : [];
 	const r = undoable(
 		u.id,
 		`${what(p)} "${cur.title}"`,

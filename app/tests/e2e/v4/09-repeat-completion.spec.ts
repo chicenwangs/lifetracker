@@ -215,3 +215,30 @@ test('C2/C12 editing a from-completion series never asks this/following/all; a f
 		await drop(page, id);
 	}
 });
+
+test('C9 a stale completion shows a refresh message, not a false Done', async ({ page }) => {
+	await signIn(page);
+	const title = `Stale tick ${Date.now().toString(36)}`;
+	const today = await day(page, 0);
+	const id = await mkItem(page, { title, date: today, rrule: 'FREQ=DAILY;INTERVAL=3' });
+	await api(page, 'PATCH', `/api/items/${id}`, { repeatFromCompletion: true });
+	try {
+		await page.goto(`/?item=${encodeURIComponent(id)}`);
+		const sheet = page.getByRole('dialog', { name: 'Item' });
+		await expect(sheet).toBeVisible();
+		// another device already completed the series: the server no-ops and flags the reply
+		await page.route(`**/api/items/${id}/cycle`, (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({ item: { id, date: today, status: 'todo' }, stale: true }),
+			}),
+		);
+		await sheet.locator('button.sq').first().click();
+		await expect(page.locator('.toast')).toContainText('changed elsewhere — refreshed.');
+		await expect(page.locator('.toast')).not.toContainText('Done');
+	} finally {
+		await page.unroute(`**/api/items/${id}/cycle`);
+		await drop(page, id);
+	}
+});

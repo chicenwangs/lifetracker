@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { api, bad, me } from '$lib/server/http';
 import * as items from '$lib/server/repo/items';
 import { undoable } from '$lib/server/undo';
-import { afterCompletion, cancelIds, exactOpenIds, recalcOwner } from '$lib/server/reminders';
+import { afterCompletion, cancelIds, exactReminderIds, recalcOwner } from '$lib/server/reminders';
 import { zDate } from '$lib/server/validate';
 import { nextStatus } from '$lib/types';
 
@@ -22,11 +22,11 @@ export const POST = api(async (e) => {
 	const next = nextStatus(cur.status);
 	// card 09 MUST 2: a replayed tick changes nothing — answer with the refreshed row, no journal entry
 	if (items.isStaleCompletion(cur, next, seenDate))
-		return json({ item: items.withCounts([items.mustOwn(u.id, id)])[0] });
+		return json({ item: items.withCounts([items.mustOwn(u.id, id)])[0], stale: true });
 	const completing = !!cur.rrule && cur.date !== null && cur.repeatFromCompletion && next === 'done';
 	// the finished occurrence's exact reminders go with it, in this action's undo entry. A tick without
 	// `seenDate` is an older/API caller (the optional residual): it completes but keeps the old reminder set.
-	const siblings = completing && seenDate !== undefined ? exactOpenIds(u.id, cur.id) : [];
+	const siblings = completing && seenDate !== undefined ? exactReminderIds(u.id, cur.id) : [];
 	const r = undoable(
 		u.id,
 		`Status "${cur.title}"`,
