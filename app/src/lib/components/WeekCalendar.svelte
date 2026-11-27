@@ -552,10 +552,11 @@
 	.wk :global(.fc-timegrid-slot-minor) {
 		border-top-style: dotted;
 	}
+	/* no !important on the border: print restores one side from the event's inline border-color */
 	.wk :global(.lt-chip),
 	.wk :global(.lt-blk) {
 		border-radius: 6px !important;
-		border: 0 !important;
+		border: 0;
 		padding: 2px 4px;
 		cursor: grab;
 	}
@@ -673,5 +674,34 @@
 	}
 	.wk :global(.is-done .lt-title) {
 		text-decoration: line-through;
+	}
+
+	/* card 06 (D-V4-07): print = black on white; the type colour survives only as a 3 px left border.
+	   That colour is the event's inline border-color, so only the other three sides are overridden. */
+	@media print {
+		.wk :global(.fc-event) {
+			background-color: #fff !important;
+			border-width: 0 0 0 3px !important;
+			border-style: solid !important;
+			border-top-color: transparent !important;
+			border-right-color: transparent !important;
+			border-bottom-color: transparent !important;
+			border-radius: 0 !important;
+			box-shadow: none !important;
+		}
+		.wk :global(.fc-event-main) {
+			color: #000 !important;
+		}
+		.wk :global(.lt-sq) {
+			border-color: #000 !important;
+			color: #000 !important;
+		}
+		.wk :global(.lt-sq.on) {
+			background: #000 !important;
+			color: #fff !important;
+		}
+		.wk :global(.lt-x) {
+			display: none !important;
+		}
 	}
 </style>
