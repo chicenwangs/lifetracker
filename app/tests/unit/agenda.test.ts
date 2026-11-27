@@ -1,4 +1,4 @@
-// Card 05 (D-V4-06): agenda() = the own-calendar range query behind the Android widgets, ICS export and digest.
+// Card 05 (D-V4-06): agenda() = the own-calendar range query behind the Android week widgets, ICS export and digest.
 import { beforeEach, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import { handle } from '../../src/lib/server/db';
@@ -61,11 +61,13 @@ it("C2 hidden types are dropped (untyped = 'None'); a private item keeps both fl
 
 it('C4 an overnight block crossing the range edge equals getCalendar own side', () => {
 	block({ label: 'Night shift', startAt: '2026-11-12T14:00:00Z', endAt: '2026-11-12T18:00:00Z' });
+	// 21:00–22:00 KL on the day before `from`: wholly outside the unpadded range, so only the left pad sees it
+	block({ label: 'Late errand', startAt: '2026-11-12T13:00:00Z', endAt: '2026-11-12T14:00:00Z' });
 
 	const a = agenda(me, D, '2026-11-14');
 
 	expect(a).toEqual(getCalendar(me, D, '2026-11-14', { shared: false }));
-	expect(a.blocks.map((b) => b.label)).toEqual(['Night shift']);
+	expect(a.blocks.map((b) => b.label)).toEqual(['Late errand', 'Night shift']);
 });
 
 it('C4 a repeating occurrence id (id@date) equals getCalendar own side', () => {

@@ -1,5 +1,5 @@
-// "What is on for this range" for the caller's own calendar: the query behind every output that leaves the UI
-// (Android widgets now, ICS export and the digest later — PLAN §3B, D-V4-06). Read-only.
+// The own-calendar range query behind the Android week widgets (ICS export and digest later — PLAN §3B,
+// D-V4-06). Read-only.
 import * as calendarsRepo from './repo/calendars';
 import * as itemsRepo from './repo/items';
 import * as blocksRepo from './repo/blocks';
