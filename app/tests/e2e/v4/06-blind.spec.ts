@@ -1,6 +1,6 @@
 // Blind tests for card 06 "print week", from its Done-when lines only (desktop project): C1–C8.
 // The builder's tests were not opened. Card: sprint/v4/cards/06-print-week.md.
-import { expect, test, type Page, type Request } from '@playwright/test';
+import { expect, test, type Browser, type Page, type Request } from '@playwright/test';
 import Database from 'better-sqlite3';
 import { join } from 'node:path';
 
@@ -106,6 +106,46 @@ async function ensureDark() {
 	await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 }
 
+/** a partner calendar shared with me, so the week's Overlap switch really renders (C3) */
+async function createShare(browser: Browser) {
+	await page.goto('/settings/users');
+	await page.locator('input[name="open"][value="0"]').check();
+	await page.getByRole('button', { name: 'Save' }).click();
+	await expect(page.getByText('Saved.')).toBeVisible();
+	await page.getByRole('button', { name: 'Make invite code' }).click();
+	await expect(page.locator('[role="status"] code').first()).toBeVisible();
+	const invite = (await page.locator('[role="status"] code').first().innerText()).trim();
+	expect(invite).toMatch(/^INV-/);
+
+	const ctx = await browser.newContext();
+	try {
+		const partner = await ctx.newPage();
+		await partner.goto('/signup');
+		await partner.fill('#code', invite);
+		await partner.fill('#nu', 'blind06partner');
+		await partner.fill('#dn', 'Blind06 Partner');
+		await partner.fill('#np', 'blind partner phrase');
+		await partner.fill('#cp', 'blind partner phrase');
+		await partner.getByRole('button', { name: 'Create account' }).click();
+		await partner.waitForURL((u) => u.pathname === '/');
+		const skip = partner.getByRole('button', { name: 'Skip tour' });
+		await skip.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+		if (await skip.isVisible().catch(() => false)) await skip.click();
+
+		// swap share codes: she makes one, I add her calendar
+		await partner.goto('/settings/sharing');
+		await partner.getByRole('button', { name: 'Make a code' }).click();
+		const code = (await partner.getByLabel('Your share code').textContent())!.trim();
+		expect(code).toMatch(/^LT-/);
+		await page.goto('/settings/sharing');
+		await page.getByLabel('Code from the other person').fill(code);
+		await page.getByRole('button', { name: 'Add calendar' }).click();
+		await expect(page.getByText(/You can now see Blind06 Partner's calendar/)).toBeVisible();
+	} finally {
+		await ctx.close();
+	}
+}
+
 /** the print overrides on one event: white bg, #000 text, only a 3 px type-coloured left border */
 async function eventPaint(selector: string, text: string) {
 	const ev = page.locator(selector, { hasText: text });
@@ -200,9 +240,21 @@ test('C2 no ⋯ or Print week entry at phone width, and the on-screen week is un
 	await expect(phone.getByRole('group', { name: /The week/ })).toBeVisible();
 });
 
-test('C3 print hides the header, bottom bar, toolbar, TypeBar, rail and hints; the date-range title stays', async () => {
+test('C3 print hides the header, bottom bar, toolbar, Overlap toggle, TypeBar, rail and hints; the date-range title stays', async ({
+	browser,
+}) => {
 	const today = await klToday();
 	await page.goto(weekPath(today));
+
+	// OverlapToggle only renders when a calendar is shared with me (flow.spec may leave one)
+	const ov = page.locator('main.wrap .bar .ov');
+	if ((await ov.count()) === 0) {
+		await createShare(browser);
+		await page.goto(weekPath(today));
+	}
+	await expect(ov).toBeVisible();
+	await expect(ov).toHaveAttribute('role', 'switch');
+
 	const title = (await page.locator('main.wrap h1').innerText()).trim();
 	expect(title.length).toBeGreaterThan(0);
 
@@ -212,7 +264,7 @@ test('C3 print hides the header, bottom bar, toolbar, TypeBar, rail and hints; t
 	await expect(page.locator('main.wrap .bar [aria-label="Previous week"]')).toBeHidden();
 	await expect(page.locator('main.wrap .bar [aria-label="Next week"]')).toBeHidden();
 	await expect(page.locator('main.wrap .bar button', { hasText: 'Today' })).toBeHidden();
-	await expect(page.locator('main.wrap .bar .ov')).toBeHidden();
+	await expect(ov).toBeHidden();
 	await expect(page.locator('main.wrap .bar .view')).toBeHidden();
 	await expect(page.locator('main.wrap .types')).toBeHidden();
 	await expect(page.locator('main.wrap aside.side')).toBeHidden();
