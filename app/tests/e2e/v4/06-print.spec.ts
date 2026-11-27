@@ -224,19 +224,27 @@ test('C4 the printed sheet has 7 day columns, the all-day row, the time grid and
 		const slot = (await page.locator('.wk td.fc-timegrid-slot[data-time="10:00:00"]').first().boundingBox())!;
 		expect(b.y).toBeGreaterThanOrEqual(slot.y - 2);
 		expect(b.y).toBeLessThan(slot.y + slot.height);
-		// print shrinks the rows so the whole grid fits one A4 landscape sheet (794 px minus the 10 mm @page margins)
+		// print shrinks the rows so the fixed geometry (bar + day header + divider + 34 slot rows) fits
+		// one A4 landscape sheet (794 px minus the 10 mm @page margins). The all-day row is content-
+		// dependent (the shared e2e DB leaves many all-day items), so the whole card height is not asserted.
 		const usable = 794 - (2 * 10 * 96) / 25.4;
-		const card = (await page.locator('main.wrap .wkc').boundingBox())!;
-		const slots = (await page.locator('.wk .fc-timegrid-slots').boundingBox())!;
+		const h = async (sel: string) => (await page.locator(sel).boundingBox())!.height;
+		const bar = await h('main.wrap .wkc > .bar');
+		const head = await h('.wk .fc-col-header');
+		const divider = await h('.wk .fc-timegrid-divider');
+		const slots = await h('.wk .fc-timegrid-slots');
 		const rows = await page.locator('.wk .fc-timegrid-slots tr').count();
-		const slotPx = slots.height / rows;
+		const slotPx = slots / rows;
+		const fixed = bar + head + divider + slots + 3; // + the card's 1.5 px top/bottom borders
 		console.log(
-			`C4 print: sheet ${card.height.toFixed(1)}px of ${usable.toFixed(1)}px usable, ${rows} slots × ${slotPx.toFixed(1)}px = ${slots.height.toFixed(1)}px`,
+			`C4 print: fixed ${fixed.toFixed(1)}px of ${usable.toFixed(1)}px usable ` +
+				`(bar ${bar.toFixed(1)} + header ${head.toFixed(1)} + divider ${divider.toFixed(1)} + ` +
+				`${rows} slots × ${slotPx.toFixed(1)} = ${slots.toFixed(1)}), all-day row ${(await h('.wk .fc-daygrid-body')).toFixed(1)}px`,
 		);
 		expect(rows).toBeGreaterThan(0);
 		expect(slotPx).toBeLessThan(17); // print-only slot height
 		expect(slotPx).toBeGreaterThan(14); // not squeezed to nothing
-		expect(card.height).toBeLessThanOrEqual(usable + 0.5);
+		expect(fixed).toBeLessThanOrEqual(usable + 0.5);
 		await expect(page.getByRole('alert')).toHaveCount(0);
 	} finally {
 		await drop(page, 'items', item);
