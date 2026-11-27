@@ -92,11 +92,12 @@ test('C1 a file over 1 MB is refused inline before upload, and the server re-che
 	await expect(page.locator('.alert')).toHaveText('The file is over 1 MB.');
 	await expect(page.locator('.toast')).toHaveCount(0); // never a toast
 
-	// bypass the client: the action re-checks the same 1 000 000 bytes
+	// bypass the client: the action re-checks the same 1 000 000 bytes (the bare page URL is the default action)
 	const res = await page.evaluate(async () => {
 		const fd = new FormData();
+		fd.set('ics', 'preview');
 		fd.set('file', new File([new Uint8Array(1_000_001)], 'big.ics', { type: 'text/calendar' }));
-		const r = await fetch('/settings/import?/preview', {
+		const r = await fetch('/settings/import', {
 			method: 'POST',
 			body: fd,
 			headers: { 'x-sveltekit-action': 'true' },
@@ -183,6 +184,7 @@ test('C2/C3/C4/C5/C7 preview counts and reasons, default type, import to Today a
 		await page.getByRole('button', { name: 'Import 4' }).click();
 		await expect(page.locator('.toast')).toContainText('Imported 4 events');
 		await expect(page.locator('.big')).toHaveCount(0); // the panel closes after the import
+		await expect(page.getByLabel('Calendar file (.ics)')).toHaveJSProperty('value', ''); // the same file can be picked again
 
 		// C4/C7: local dates and times, the chosen type, the rule and the EXDATE
 		const rows = await calItems(page, today, day(10));

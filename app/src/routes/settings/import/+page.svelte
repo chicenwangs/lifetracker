@@ -1,6 +1,8 @@
 <!-- Settings › Import: Notion seed import (admin) + card 11 ICS file import (D-V4-12 / D-V4-29 / D-V4-37).
      The .ics preview is an inline panel, not Dialog.svelte: the browser keeps the chosen File and posts it
-     again with the chosen type on Import (no server-side temp copy). Errors are inline .alerts, never toasts. -->
+     again with the chosen type on Import (no server-side temp copy). Errors are inline .alerts, never toasts.
+     Both imports share the default action behind an `ics` field, so an old cached page (no field) still
+     reaches the Notion import. -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { onMount } from 'svelte';
@@ -33,7 +35,9 @@
 	// C1: the client refuses before upload; the server re-checks the same limit
 	const MAX_BYTES = 1_000_000;
 
+	let previewForm = $state<HTMLFormElement>();
 	let fileInput = $state<HTMLInputElement>();
+	let chosen = $state<File | null>(null);
 	let type = $state('');
 	let preview = $state<Preview | null>(null);
 	let icsError = $state('');
@@ -54,21 +58,23 @@
 	});
 
 	function picked(e: Event) {
-		const file = (e.currentTarget as HTMLInputElement).files?.[0];
+		const file = (e.currentTarget as HTMLInputElement).files?.[0] ?? null;
 		preview = null;
 		icsError = '';
+		chosen = file;
 		if (!file) return;
 		if (file.size > MAX_BYTES) {
 			icsError = 'The file is over 1 MB.';
 			return;
 		}
 		loading = true;
-		(e.currentTarget as HTMLInputElement).form?.requestSubmit(); // ?/preview; the File stays in the input
+		previewForm?.requestSubmit(); // the File stays in the input; ?ics=preview
 	}
 
 	function chooseAnother() {
 		icsError = '';
 		preview = null;
+		chosen = null;
 		if (!fileInput) return;
 		fileInput.value = '';
 		fileInput.click();
@@ -77,13 +83,20 @@
 	function cancel() {
 		icsError = '';
 		preview = null;
+		chosen = null;
 		if (fileInput) fileInput.value = '';
 	}
 
-	const submit: SubmitFunction = ({ submitter }) => {
-		const importing = submitter?.getAttribute('formaction') === '?/import';
-		if (importing) busy = true;
-		else loading = true;
+	const submit: SubmitFunction = ({ formData }) => {
+		const importing = String(formData.get('ics') ?? '') === 'import';
+		if (importing) {
+			if (!chosen) {
+				icsError = 'Choose a calendar file first.';
+				return;
+			}
+			formData.set('file', chosen); // the browser posts the same File again (D-V4-12)
+			busy = true;
+		} else loading = true;
 		return async ({ result, update }) => {
 			busy = false;
 			loading = false;
@@ -103,7 +116,10 @@
 					const done = d.icsDone;
 					preview = null;
 					icsError = '';
-					showToast(`Imported ${done.events} events · Undo`, {
+					// SHOULD 1: a cleared input lets the same file be picked again for a re-import by UID
+					chosen = null;
+					if (fileInput) fileInput.value = '';
+					showToast(`Imported ${done.events} events`, {
 						undo: async () => void (await undoLast(done.undo.id)),
 					});
 				} else if (d.ics) preview = d.ics;
@@ -123,7 +139,8 @@
 			own calendar. Importing the same file again updates the rows it made instead of adding them twice.
 		</p>
 		{#if !online}<p class="hint">You're offline</p>{/if}
-		<form method="post" action="?/preview" enctype="multipart/form-data" use:enhance={submit}>
+		<form method="post" enctype="multipart/form-data" use:enhance={submit} bind:this={previewForm}>
+			<input type="hidden" name="ics" value="preview" />
 			<label class="field">
 				<span class="label">Calendar file (.ics)</span>
 				<input
@@ -136,25 +153,26 @@
 					disabled={!online || busy || loading}
 				/>
 			</label>
+		</form>
 
-			<div class="preview">
-				{#if loading}
-					<p class="muted" role="status">Reading file…</p>
+		<div class="preview">
+			{#if loading}
+				<p class="muted" role="status">Reading file…</p>
+			{/if}
+			{#if icsError}
+				<p class="alert" role="alert">{icsError}</p>
+				<button class="btn" type="button" onclick={chooseAnother} disabled={busy}>Choose another file</button>
+			{:else if preview}
+				<p class="big">
+					{preview.events}
+					{preview.events === 1 ? 'event' : 'events'} · {preview.repeating} repeating ·
+					{preview.skipped.length} skipped
+				</p>
+				{#if preview.events === 0}
+					<p class="muted">No events in this file.</p>
 				{/if}
-				{#if icsError}
-					<p class="alert" role="alert">{icsError}</p>
-					<button class="btn" type="button" onclick={chooseAnother} disabled={busy}
-						>Choose another file</button
-					>
-				{:else if preview}
-					<p class="big">
-						{preview.events}
-						{preview.events === 1 ? 'event' : 'events'} · {preview.repeating} repeating ·
-						{preview.skipped.length} skipped
-					</p>
-					{#if preview.events === 0}
-						<p class="muted">No events in this file.</p>
-					{/if}
+				<form method="post" enctype="multipart/form-data" use:enhance={submit}>
+					<input type="hidden" name="ics" value="import" />
 					<label class="field">
 						<span class="label">Put them in type</span>
 						<select class="input" name="type" bind:value={type} disabled={!online || busy}>
@@ -184,16 +202,13 @@
 					{/if}
 					<div class="row">
 						<button class="btn" type="button" onclick={cancel} disabled={busy}>Cancel</button>
-						<button
-							class="btn primary"
-							type="submit"
-							formaction="?/import"
-							disabled={!online || busy || preview.events === 0}>Import {preview.events}</button
+						<button class="btn primary" type="submit" disabled={!online || busy || preview.events === 0}
+							>Import {preview.events}</button
 						>
 					</div>
-				{/if}
-			</div>
-		</form>
+				</form>
+			{/if}
+		</div>
 	</section>
 
 	<section class="card panel">
@@ -224,7 +239,6 @@
 			{/if}
 			<form
 				method="post"
-				action="?/notion"
 				use:enhance={() => {
 					busy = true;
 					return async ({ update }) => {

@@ -29,9 +29,12 @@ const mk = (u: string, role: 'admin' | 'member') => {
 	return usersRepo.safe(r);
 };
 
-const rowOf = (uid: string) =>
-	h.sqlite.prepare('SELECT * FROM items WHERE ics_uid = ? AND deleted_at IS NULL').get(uid) as
-		Record<string, unknown> | undefined;
+const rowOf = (uid: string, cal?: string) =>
+	h.sqlite
+		.prepare(
+			`SELECT * FROM items WHERE ics_uid = ? AND deleted_at IS NULL${cal ? ' AND calendar_id = ?' : ''}`,
+		)
+		.get(...(cal ? [uid, cal] : [uid])) as Record<string, unknown> | undefined;
 const count = (sql: string, ...args: unknown[]) => (h.sqlite.prepare(sql).get(...args) as { n: number }).n;
 const undoCount = () => count('SELECT count(*) AS n FROM undo_actions');
 
@@ -55,12 +58,13 @@ beforeEach(() => {
 // ---- C1 ---------------------------------------------------------------------------------------------------
 it('C1 size limit: 1 000 000 bytes is the cap, the preview action refuses a 1 000 001-byte file part with the inline message and writes nothing', async () => {
 	expect(MAX_BYTES).toBe(1_000_000);
-	const preview = actions.preview as unknown as (e: unknown) => Promise<unknown>;
+	const preview = actions.default as unknown as (e: unknown) => Promise<unknown>;
 	const event = (e: unknown) => preview({ locals: { user: me }, request: e });
 	const req = (size: number) => {
 		const fd = new FormData();
+		fd.set('ics', 'preview');
 		fd.set('file', new File([new Uint8Array(size)], 'blind.ics', { type: 'text/calendar' }));
-		return new Request('http://localhost:5173/settings/import?/preview', {
+		return new Request('http://localhost:5173/settings/import', {
 			method: 'POST',
 			body: fd,
 		});
@@ -231,7 +235,8 @@ it('C4 DTSTART becomes the user local date/time (UTC + IANA via TZDate, floating
 
 // ---- C5 ---------------------------------------------------------------------------------------------------
 it('C5 RRULE is imported only when parseRRule accepts it; a UTC UNTIL is converted to the user local date; other parts skip the event with a plain-words reason', () => {
-	const rule = (n: string, r: string) => ev(`UID:rule-${n}`, `SUMMARY:${n}`, start('2026-03-02', '09:00'), `RRULE:${r}`); // prettier-ignore
+	// SHOULD 3 (v4-11 fix): a rule ending before DTSTART is skipped, so start before both UNTILs below
+	const rule = (n: string, r: string) => ev(`UID:rule-${n}`, `SUMMARY:${n}`, start('2026-02-25', '09:00'), `RRULE:${r}`); // prettier-ignore
 	const p = parse(
 		wrap(
 			rule('ok1', 'FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE;COUNT=10'),
@@ -493,7 +498,7 @@ it('C13 the page is admin-only (404 for a member) and the import writes only the
 	} catch (e) {
 		expect(isHttpError(e, 404)).toBe(true);
 	}
-	const preview = actions.preview as unknown as (e: unknown) => Promise<unknown>;
+	const preview = actions.default as unknown as (e: unknown) => Promise<unknown>;
 	await expect(
 		preview({
 			locals: { user: partner },
@@ -537,8 +542,8 @@ it('C13 the page is admin-only (404 for a member) and the import writes only the
 
 	const done = importIcs(me, p, null);
 	expect(done.imported).toBe(2);
-	expect(rowOf('c13-shared')).toMatchObject({ calendar_id: myCal, title: 'Blind C13 mine' });
-	expect(rowOf('c13-second')?.calendar_id).toBe(myCal);
+	expect(rowOf('c13-shared', myCal)).toMatchObject({ calendar_id: myCal, title: 'Blind C13 mine' });
+	expect(rowOf('c13-second', myCal)?.calendar_id).toBe(myCal);
 	const their = h.sqlite
 		.prepare('SELECT calendar_id, title FROM items WHERE calendar_id = ?')
 		.all(partnerCal) as { calendar_id: string; title: string }[];

@@ -147,7 +147,7 @@ test('C12 phone states: an empty file says "No events in this file." with Import
 	await page.reload();
 	await page.waitForLoadState('networkidle');
 	await page.evaluate(() =>
-		(document.querySelector('form[action="?/preview"]') as HTMLFormElement).requestSubmit(),
+		(document.querySelector('input[name="ics"][value="preview"]') as HTMLInputElement).form?.requestSubmit(),
 	);
 	const alert = page.locator('.preview .alert');
 	await expect(alert).toHaveText('Choose a calendar file first.');

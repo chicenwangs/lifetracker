@@ -142,7 +142,7 @@ test('C1 a file over 1 000 000 bytes is refused inline before upload, and the se
 	await page.waitForLoadState('networkidle');
 	const posted: string[] = [];
 	const watch = (r: Request) => {
-		if (r.url().includes('?/preview')) posted.push(r.url());
+		if (r.method() === 'POST' && new URL(r.url()).pathname === '/settings/import') posted.push(r.url());
 	};
 	page.on('request', watch);
 	try {
@@ -158,8 +158,9 @@ test('C1 a file over 1 000 000 bytes is refused inline before upload, and the se
 	// a bypass of the client: the server re-checks the posted file part against the same 1 000 000 bytes
 	const small = await page.evaluate(async () => {
 		const fd = new FormData();
+		fd.set('ics', 'preview');
 		fd.set('file', new File([new Uint8Array(1_000_001)], 'big.ics', { type: 'text/calendar' }));
-		const r = await fetch('/settings/import?/preview', {
+		const r = await fetch('/settings/import', {
 			method: 'POST',
 			headers: { accept: 'application/json', 'x-sveltekit-action': 'true' },
 			body: fd,
@@ -178,7 +179,7 @@ test('C1 a file over 1 000 000 bytes is refused inline before upload, and the se
 		try {
 			const fd = new FormData();
 			fd.set('file', new File([new Uint8Array(1_200_000)], 'huge.ics', { type: 'text/calendar' }));
-			const r = await fetch('/settings/import?/preview', {
+			const r = await fetch('/settings/import', {
 				method: 'POST',
 				headers: { accept: 'application/json', 'x-sveltekit-action': 'true' },
 				body: fd,
@@ -238,7 +239,12 @@ test('C2 a valid file previews "N events · M repeating · K skipped" with skipp
 	expect(reasons.join('\n')).toContain('no ID');
 
 	// Import N is the same N, and the same file now reports what a re-import would update
-	await Promise.all([page.waitForResponse((r) => r.url().includes('?/import')), importBtn(3).click()]);
+	await Promise.all([
+		page.waitForResponse(
+			(r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/settings/import',
+		),
+		importBtn(3).click(),
+	]);
 	await expect(page.locator('.toast')).toContainText('Imported 3 events');
 	await input().setInputFiles(file(text));
 	await expect(big()).toHaveText('3 events · 1 repeating · 2 skipped');
@@ -262,7 +268,7 @@ test('C7 Import creates ordinary todo items in my default calendar with the chos
 	await input().setInputFiles(file(text));
 	await expect(big()).toHaveText('2 events · 0 repeating · 0 skipped');
 	await selectedType().selectOption('Event');
-	await Promise.all([page.waitForResponse((r) => r.url().includes('?/import')), importBtn(2).click()]); // prettier-ignore
+	await Promise.all([page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/settings/import'), importBtn(2).click()]); // prettier-ignore
 	await expect(page.locator('.toast')).toContainText('Imported 2 events');
 
 	const mine = rowByUid(timed)!;
@@ -335,7 +341,7 @@ test('C9 re-import updates title/time/rule/exdates by UID but never the date, in
 	const first = wrap(ev(`UID:${keep}`, 'SUMMARY:Blind11 C9 orig', at(today, '09:00'), 'RRULE:FREQ=WEEKLY;BYDAY=MO')); // prettier-ignore
 	await input().setInputFiles(file(first));
 	await expect(importBtn(1)).toBeEnabled();
-	await Promise.all([page.waitForResponse((r) => r.url().includes('?/import')), importBtn(1).click()]); // prettier-ignore
+	await Promise.all([page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/settings/import'), importBtn(1).click()]); // prettier-ignore
 	await expect(page.locator('.toast')).toContainText('Imported 1 event');
 	const before = rowByUid(keep)!;
 
@@ -352,7 +358,7 @@ test('C9 re-import updates title/time/rule/exdates by UID but never the date, in
 	await input().setInputFiles(file(second, 'again.ics'));
 	await expect(big()).toHaveText('2 events · 1 repeating · 0 skipped');
 	await expect(page.getByText('Already imported: 1 will be updated')).toBeVisible();
-	await Promise.all([page.waitForResponse((r) => r.url().includes('?/import')), importBtn(2).click()]); // prettier-ignore
+	await Promise.all([page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/settings/import'), importBtn(2).click()]); // prettier-ignore
 	await expect(page.locator('.toast')).toContainText('Imported 2 events');
 
 	const updated = rowByUid(keep)!;
@@ -369,7 +375,7 @@ test('C9 re-import updates title/time/rule/exdates by UID but never the date, in
 	const third = wrap(ev(`UID:${uid('third')}`, 'SUMMARY:Blind11 C9 third', at(today, '11:00')));
 	await input().setInputFiles(file(third, 'third.ics'));
 	await expect(page.getByText(/Already imported/)).toHaveCount(0);
-	await Promise.all([page.waitForResponse((r) => r.url().includes('?/import')), importBtn(1).click()]); // prettier-ignore
+	await Promise.all([page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/settings/import'), importBtn(1).click()]); // prettier-ignore
 	expect(rowByUid(keep)).toMatchObject({ title: 'Blind11 C9 new', time: '10:30' });
 
 	// a trashed row with that UID is left alone and does not match: a re-import inserts a fresh row
@@ -377,7 +383,7 @@ test('C9 re-import updates title/time/rule/exdates by UID but never the date, in
 	await input().setInputFiles(file(wrap(ev(`UID:${keep}`, 'SUMMARY:Blind11 C9 back', at(today, '12:00'))), 'back.ics')); // prettier-ignore
 	await expect(big()).toHaveText('1 event · 0 repeating · 0 skipped');
 	await expect(page.getByText(/Already imported/)).toHaveCount(0);
-	await Promise.all([page.waitForResponse((r) => r.url().includes('?/import')), importBtn(1).click()]); // prettier-ignore
+	await Promise.all([page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/settings/import'), importBtn(1).click()]); // prettier-ignore
 	await expect(page.locator('.toast')).toContainText('Imported 1 event');
 	const fresh = rowByUid(keep)!;
 	expect(fresh.id).not.toBe(before.id);
@@ -395,7 +401,7 @@ test('C10 the import is one undo entry and the toast Undo removes every inserted
 	const today = await klToday();
 	const keep = uid('undo-keep');
 	await input().setInputFiles(file(wrap(ev(`UID:${keep}`, 'SUMMARY:Blind11 C10 orig', at(today, '09:00')))));
-	await Promise.all([page.waitForResponse((r) => r.url().includes('?/import')), importBtn(1).click()]); // prettier-ignore
+	await Promise.all([page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/settings/import'), importBtn(1).click()]); // prettier-ignore
 	await expect(page.locator('.toast')).toContainText('Imported 1 event');
 
 	const journal = journalCount();
@@ -405,9 +411,9 @@ test('C10 the import is one undo entry and the toast Undo removes every inserted
 		ev(`UID:${uid('undo-new2')}`, 'SUMMARY:Blind11 C10 new 2', at(today, '09:00')),
 	);
 	await input().setInputFiles(file(next, 'next.ics'));
-	await Promise.all([page.waitForResponse((r) => r.url().includes('?/import')), importBtn(3).click()]); // prettier-ignore
+	await Promise.all([page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/settings/import'), importBtn(3).click()]); // prettier-ignore
 	const toast = page.locator('.toast');
-	await expect(toast).toContainText('Imported 3 events · Undo');
+	await expect(toast).toContainText('Imported 3 events');
 	expect(journalCount()).toBe(journal + 1); // one entry for the whole import
 	expect(
 		dbQ<{ label: string }>('SELECT label FROM undo_actions ORDER BY created_at DESC, rowid DESC LIMIT 1')
@@ -449,7 +455,7 @@ test('C11 the preview is an inline panel in the Import page (not a dialog); Impo
 	// no server-side temp copy, so the multipart body must carry the file and the type
 	let posted = '';
 	let contentType = '';
-	const importUrl = (url: URL) => url.pathname === '/settings/import' && url.search.includes('/import');
+	const importUrl = (url: URL) => url.pathname === '/settings/import';
 	await page.route(importUrl, async (route) => {
 		if (route.request().method() === 'POST') {
 			posted = (await route.request().postDataBuffer())?.toString('utf8') ?? '';
@@ -459,7 +465,9 @@ test('C11 the preview is an inline panel in the Import page (not a dialog); Impo
 	});
 	try {
 		await Promise.all([
-			page.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('?/import')),
+			page.waitForResponse(
+				(r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/settings/import',
+			),
 			importBtn(1).click(),
 		]);
 	} finally {
@@ -483,7 +491,7 @@ test('C11 the preview is an inline panel in the Import page (not a dialog); Impo
 test('C12 states: "Reading file…" while the preview loads, "No events in this file." with Import disabled, an inline error with Choose another file, and the offline message with the input disabled', async () => {
 	await page.goto('/settings/import');
 	await page.waitForLoadState('networkidle');
-	const previewUrl = (url: URL) => url.pathname === '/settings/import' && url.search.includes('/preview');
+	const previewUrl = (url: URL) => url.pathname === '/settings/import'; // the default action carries ?ics=preview in the body
 	const valid = wrap(ev(`UID:${uid('c12')}`, 'SUMMARY:Blind11 C12', at('2026-03-02', '09:00'))); // prettier-ignore
 
 	// loading: the inline "Reading file…" sits in the preview area while the action is in flight
@@ -510,7 +518,7 @@ test('C12 states: "Reading file…" while the preview loads, "No events in this 
 	await page.waitForLoadState('networkidle');
 	await expect(input()).toBeEnabled();
 	await page.evaluate(() =>
-		(document.querySelector('form[action="?/preview"]') as HTMLFormElement).requestSubmit(),
+		(document.querySelector('input[name="ics"][value="preview"]') as HTMLInputElement).form?.requestSubmit(),
 	);
 	await expect(page.locator('.preview .alert')).toHaveText('Choose a calendar file first.');
 	await expect(page.getByRole('button', { name: 'Choose another file' })).toBeVisible();

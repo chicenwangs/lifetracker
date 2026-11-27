@@ -40,6 +40,12 @@ interface Prop {
 
 const MAX_TITLE = 300;
 
+/** cut by code points, not UTF-16 units (an emoji must never be split in half) */
+function cut(s: string, n: number): string {
+	const chars = [...s];
+	return chars.length > n ? chars.slice(0, n).join('') : s;
+}
+
 /** first colon outside a quoted parameter value; -1 = not a content line */
 function colonAt(line: string): number {
 	let quoted = false;
@@ -184,10 +190,14 @@ function ruleOf(raw: string, tz: string): { rrule: string | null; reason?: strin
 		const t = /^(\d{8})T(\d{2})(\d{2})(\d{2})Z$/.exec(v);
 		if (k === 'UNTIL' && t) {
 			const d8 = t[1] ?? '';
-			const iso = toIsoZ(
-				Date.parse(`${d8.slice(0, 4)}-${d8.slice(4, 6)}-${d8.slice(6, 8)}T${t[2]}:${t[3]}:${t[4]}Z`),
-			);
-			prepared.push(`UNTIL=${utcToLocal(iso, tz).date.replace(/-/g, '')}`);
+			const date = `${d8.slice(0, 4)}-${d8.slice(4, 6)}-${d8.slice(6, 8)}`;
+			const [hh, mi, ss] = [Number(t[2]), Number(t[3]), Number(t[4])];
+			// MUST 2: a bad calendar date (Feb 30, month 13) must not be normalised or throw
+			if (!isDate(date) || hh > 23 || mi > 59 || ss > 59)
+				return { rrule: null, reason: 'repeat end not understood' };
+			const ms = Date.parse(`${date}T${t[2]}:${t[3]}:${t[4]}Z`);
+			if (Number.isNaN(ms)) return { rrule: null, reason: 'repeat end not understood' };
+			prepared.push(`UNTIL=${utcToLocal(toIsoZ(ms), tz).date.replace(/-/g, '')}`);
 			continue;
 		}
 		prepared.push(`${k}=${v}`);
@@ -209,7 +219,7 @@ function exdatesOf(props: Prop[], tz: string): string[] {
 function addEvent(props: Prop[], tz: string, seen: Set<string>, out: IcsParse): void {
 	const get = (name: string) => props.find((p) => p.name === name);
 	const rawTitle = unescape(get('SUMMARY')?.value ?? '').trim() || 'Untitled';
-	const title0 = rawTitle.slice(0, MAX_TITLE);
+	const title0 = cut(rawTitle, MAX_TITLE);
 	const uidRaw = (get('UID')?.value ?? '').trim();
 	if (!uidRaw) return void out.skipped.push({ title: title0, reason: 'no ID' }); // D-V4-37
 	const uid = unescape(uidRaw);
@@ -228,6 +238,10 @@ function addEvent(props: Prop[], tz: string, seen: Set<string>, out: IcsParse): 
 		const r = ruleOf(ruleProp.value, tz);
 		if (!r.rrule)
 			return void out.skipped.push({ title: title0, reason: r.reason ?? 'repeat rule not supported' });
+		// SHOULD 3: a rule that ends before its start has no occurrence: never import an invisible series
+		const until = parseRRule(r.rrule)?.until;
+		if (until && until < start.date)
+			return void out.skipped.push({ title: title0, reason: 'repeat ends before it starts' });
 		rrule = r.rrule;
 	}
 
@@ -245,8 +259,8 @@ function addEvent(props: Prop[], tz: string, seen: Set<string>, out: IcsParse): 
 	}
 
 	let title = rawTitle;
-	if (title.length > MAX_TITLE) {
-		title = title.slice(0, MAX_TITLE);
+	if ([...rawTitle].length > MAX_TITLE) {
+		title = cut(rawTitle, MAX_TITLE);
 		out.shortened++;
 	}
 	out.events.push({

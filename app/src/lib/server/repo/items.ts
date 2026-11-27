@@ -673,6 +673,16 @@ export function restore(meId: string, batch: string): number {
 	if (!cals.length) return 0;
 	let n = 0;
 	handle().sqlite.transaction(() => {
+		// card 11: a re-import may own this UID with a live twin; the restored row becomes an ordinary item
+		handle()
+			.sqlite.prepare(
+				`UPDATE items SET ics_uid = NULL
+				 WHERE deleted_batch = ? AND calendar_id IN (${cals.map(() => '?').join(',')})
+				   AND ics_uid IS NOT NULL
+				   AND EXISTS (SELECT 1 FROM items x WHERE x.calendar_id = items.calendar_id
+				               AND x.ics_uid = items.ics_uid AND x.deleted_at IS NULL)`,
+			)
+			.run(batch, ...cals);
 		n = db()
 			.update(items)
 			.set({ deletedAt: null, deletedBatch: null })

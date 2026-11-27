@@ -37,7 +37,7 @@ If this doc and BREAKDOWN disagree on behaviour: BREAKDOWN wins, then fix this d
   - "Skipped (3)" disclosure: one row each, reason in plain words ("repeats by week number — not supported").
   - "Already imported: 20 will be updated" when UIDs match.
   - Buttons: `Cancel` · `Import 38` (primary).
-- Done → toast "Imported 38 events · Undo". Errors inline in the dialog (red `.alert`), never a toast.
+- Done → toast "Imported 38 events" (its button says `Undo`). Errors inline in the preview panel (red `.alert`), never a toast.
 
 ### 1.4 Daily agenda push (PR 12) · board D-N1 / M-N1
 - Settings › Notifications, new row: `Daily agenda` · segmented `Off | On` · time field (shows when On, default 07:30).

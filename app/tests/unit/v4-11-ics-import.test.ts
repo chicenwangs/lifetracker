@@ -9,7 +9,7 @@ import * as usersRepo from '../../src/lib/server/repo/users';
 import * as itemsRepo from '../../src/lib/server/repo/items';
 import * as itemTypesRepo from '../../src/lib/server/repo/itemtypes';
 import { parseIcs, previewFor, importIcs, MAX_BYTES, MAX_EVENTS } from '../../src/lib/server/ics-import';
-import { undo } from '../../src/lib/server/undo';
+import { undo, undoable } from '../../src/lib/server/undo';
 import { actions, load } from '../../src/routes/settings/import/+page.server';
 
 const TZ = 'Asia/Kuala_Lumpur';
@@ -207,16 +207,20 @@ it('C3 first UID wins, a later duplicate and a VEVENT without a UID are skipped 
 	]);
 });
 
-it('C3 empty and long titles: Untitled, 300 kept, over 300 cut and counted', () => {
+it('C3/SHOULD 5 empty and long titles: Untitled, 300 kept, over 300 cut by code points and counted', () => {
 	const long = 'x'.repeat(301);
+	const emoji = 'a'.repeat(299) + '😀'; // 300 code points, 301 UTF-16 units: never split it
 	const file = ics([
 		...event(['UID:t-empty', 'SUMMARY:', 'DTSTART:20260301']),
 		...event(['UID:t-long', `SUMMARY:${long}`, 'DTSTART:20260301']),
+		...event(['UID:t-emoji', `SUMMARY:${emoji}`, 'DTSTART:20260301']),
 	]);
 	const p = parseIcs(file, TZ);
 	expect(p.events[0]?.title).toBe('Untitled');
 	expect(p.events[1]?.title).toHaveLength(300);
-	expect(p.shortened).toBe(1);
+	expect(p.events[2]?.title).toBe(emoji);
+	expect([...(p.events[2]?.title ?? '')].length).toBe(300);
+	expect(p.shortened).toBe(1); // only the 301-code-point title
 });
 
 it('C5 skips BYSETPOS, HOURLY and BYWEEKNO rules with plain-words reasons', () => {
@@ -258,12 +262,76 @@ it('C5 also refuses out-of-range INTERVAL and COUNT instead of importing a parti
 	]);
 });
 
+it('C5/MUST 2 an invalid UTC UNTIL is skipped with a reason, never normalised and never thrown', () => {
+	const file = ics([
+		...event([
+			'UID:r-bad-month',
+			'SUMMARY:Month 13',
+			'DTSTART:20260101T090000',
+			'RRULE:FREQ=DAILY;UNTIL=20261332T000000Z',
+		]),
+		...event([
+			'UID:r-bad-day',
+			'SUMMARY:Feb 30',
+			'DTSTART:20260101T090000',
+			'RRULE:FREQ=DAILY;UNTIL=20260230T000000Z',
+		]),
+		...event(['UID:r-bad-time', 'SUMMARY:Hour 25', 'DTSTART:20260101T090000', 'RRULE:FREQ=DAILY;UNTIL=20260101T250000Z']), // prettier-ignore
+	]);
+	const p = parseIcs(file, TZ);
+	expect(p.events).toHaveLength(0);
+	expect(p.skipped).toEqual([
+		{ title: 'Month 13', reason: 'repeat end not understood' },
+		{ title: 'Feb 30', reason: 'repeat end not understood' },
+		{ title: 'Hour 25', reason: 'repeat end not understood' },
+	]);
+});
+
+it('C5/MUST 2 the preview action renders an invalid UNTIL as a skip, not a 500', async () => {
+	const fd = new FormData();
+	fd.set('ics', 'preview');
+	fd.set(
+		'file',
+		new File(
+			[
+				ics([
+					...event([
+						'UID:act-bad',
+						'SUMMARY:Bad end',
+						'DTSTART:20260101T090000',
+						'RRULE:FREQ=DAILY;UNTIL=20260230T000000Z',
+					]),
+				]),
+			],
+			'bad.ics',
+			{ type: 'text/calendar' },
+		),
+	);
+	const request = new Request('http://localhost/settings/import', { method: 'POST', body: fd });
+	const call = actions.default as unknown as (e: unknown) => Promise<unknown>;
+	const r = (await call({ locals: { user }, request })) as {
+		ics: { events: number; skipped: { reason: string }[] };
+	};
+	expect(r.ics.events).toBe(0);
+	expect(r.ics.skipped[0]?.reason).toBe('repeat end not understood');
+});
+
+it('C5/SHOULD 3 a rule ending before its start is skipped, not imported invisible', () => {
+	const file = ics([
+		...event(['UID:r-before', 'SUMMARY:Ended', 'DTSTART:20260601T090000', 'RRULE:FREQ=DAILY;UNTIL=20260501']),
+	]);
+	const p = parseIcs(file, TZ);
+	expect(p.events).toHaveLength(0);
+	expect(p.skipped).toEqual([{ title: 'Ended', reason: 'repeat ends before it starts' }]);
+});
+
 it('C1 the preview action refuses a file over 1 000 000 bytes with the inline message', async () => {
 	const big = new File([new Uint8Array(MAX_BYTES + 1)], 'big.ics', { type: 'text/calendar' });
 	const fd = new FormData();
+	fd.set('ics', 'preview');
 	fd.set('file', big);
-	const request = new Request('http://localhost/settings/import?/preview', { method: 'POST', body: fd });
-	const call = actions.preview as unknown as (e: unknown) => Promise<unknown>;
+	const request = new Request('http://localhost/settings/import', { method: 'POST', body: fd });
+	const call = actions.default as unknown as (e: unknown) => Promise<unknown>;
 	const r = (await call({ locals: { user }, request })) as { status: number; data: { icsError: string } };
 	expect(r.status).toBe(400);
 	expect(r.data.icsError).toBe('The file is over 1 MB.');
@@ -274,9 +342,10 @@ it('C8 refuses more than 2 000 VEVENTs with the count, before writing anything',
 	for (let i = 0; i < MAX_EVENTS + 1; i++)
 		many.push(...event([`UID:many-${i}`, `SUMMARY:Event ${i}`, 'DTSTART:20260101T090000']));
 	const fd = new FormData();
+	fd.set('ics', 'import');
 	fd.set('file', new File([ics(many)], 'many.ics', { type: 'text/calendar' }));
-	const request = new Request('http://localhost/settings/import?/import', { method: 'POST', body: fd });
-	const call = actions.import as unknown as (e: unknown) => Promise<unknown>;
+	const request = new Request('http://localhost/settings/import', { method: 'POST', body: fd });
+	const call = actions.default as unknown as (e: unknown) => Promise<unknown>;
 	const r = (await call({ locals: { user }, request })) as { status: number; data: { icsError: string } };
 	expect(r.status).toBe(400);
 	expect(r.data.icsError).toContain(String(MAX_EVENTS + 1));
@@ -392,6 +461,43 @@ it('C10 the whole import is one undo entry: inserts removed, updated rows restor
 	expect(after[0]).toMatchObject({ ics_uid: 'u-1', title: 'Before', time: '09:00' });
 });
 
+it('MUST 1 restoring a trashed imported row whose UID has a live twin clears its UID, no crash', () => {
+	const first = ics([...event(['UID:twin-restore', 'SUMMARY:Old twin', 'DTSTART:20260401T090000'])]);
+	importIcs(user, parseIcs(first, TZ), null);
+	const old = rows()[0]!;
+	const { batch } = itemsRepo.softDelete(user.id, String(old.id));
+	const second = ics([...event(['UID:twin-restore', 'SUMMARY:Live twin', 'DTSTART:20260402T090000'])]);
+	importIcs(user, parseIcs(second, TZ), null); // a fresh live row with the same UID
+
+	expect(itemsRepo.restore(user.id, batch)).toBeGreaterThan(0); // used to hit the UNIQUE index
+	const live = rows().filter((r) => r.deleted_at === null);
+	expect(live).toHaveLength(2);
+	expect(live.find((r) => r.title === 'Live twin')).toMatchObject({ ics_uid: 'twin-restore' });
+	expect(live.find((r) => r.title === 'Old twin')).toMatchObject({ ics_uid: null }); // ordinary item now
+});
+
+it('MUST 1 undoing the delete of an imported row whose UID now has a live twin clears its UID, no crash', () => {
+	const first = ics([...event(['UID:twin-undo', 'SUMMARY:Deleted twin', 'DTSTART:20260401T090000'])]);
+	importIcs(user, parseIcs(first, TZ), null);
+	const old = rows()[0]!;
+	const del = undoable(
+		user.id,
+		'Delete "Deleted twin"',
+		itemsRepo.deleteSet(user.id, String(old.id)),
+		() => ({
+			result: itemsRepo.softDelete(user.id, String(old.id)),
+		}),
+	);
+	const second = ics([...event(['UID:twin-undo', 'SUMMARY:Live twin', 'DTSTART:20260402T090000'])]);
+	importIcs(user, parseIcs(second, TZ), null);
+
+	expect(undo(user.id, del.undo.id).label).toContain('Delete'); // used to hit the UNIQUE index
+	const live = rows().filter((r) => r.deleted_at === null);
+	expect(live).toHaveLength(2);
+	expect(live.find((r) => r.title === 'Live twin')).toMatchObject({ ics_uid: 'twin-undo' });
+	expect(live.find((r) => r.title === 'Deleted twin')).toMatchObject({ ics_uid: null });
+});
+
 it('C2 the Import page default type is the first with Month calendar off, else None', async () => {
 	const types = itemTypesRepo.list(user.id);
 	const third = types[2]!;
@@ -404,9 +510,10 @@ it('C2 the Import page default type is the first with Month calendar off, else N
 
 it('C1/C7 the import action re-checks the size, and a small file writes one row', async () => {
 	const big = new FormData();
+	big.set('ics', 'import');
 	big.set('file', new File([new Uint8Array(MAX_BYTES + 1)], 'big.ics', { type: 'text/calendar' }));
-	const bigReq = new Request('http://localhost/settings/import?/import', { method: 'POST', body: big });
-	const callImport = actions.import as unknown as (e: unknown) => Promise<unknown>;
+	const bigReq = new Request('http://localhost/settings/import', { method: 'POST', body: big });
+	const callImport = actions.default as unknown as (e: unknown) => Promise<unknown>;
 	const refused = (await callImport({ locals: { user }, request: bigReq })) as {
 		status: number;
 		data: { icsError: string };
@@ -417,9 +524,25 @@ it('C1/C7 the import action re-checks the size, and a small file writes one row'
 
 	const ok = ics([...event(['UID:size-1', 'SUMMARY:Fine', 'DTSTART:20260101'])]);
 	const fd = new FormData();
+	fd.set('ics', 'import');
 	fd.set('file', new File([ok], 'fine.ics', { type: 'text/calendar' }));
 	fd.set('type', '');
-	const request = new Request('http://localhost/settings/import?/import', { method: 'POST', body: fd });
+	const request = new Request('http://localhost/settings/import', { method: 'POST', body: fd });
 	const r = (await callImport({ locals: { user }, request })) as { icsDone: { imported: number } };
 	expect(r.icsDone.imported).toBe(1);
+});
+
+it('SHOULD 2 a POST to the bare page URL still reaches the Notion import, not the ICS one', async () => {
+	const fd = new FormData();
+	fd.set('owner', user.username);
+	const request = new Request('http://localhost/settings/import', { method: 'POST', body: fd });
+	const call = actions.default as unknown as (e: unknown) => Promise<unknown>;
+	const r = (await call({ locals: { user }, request })) as {
+		status: number;
+		data: { message?: string; icsError?: string };
+	};
+	// no seed in the unit env: the Notion handler refuses with its own `message`, never `icsError`/405
+	expect(r.status).toBe(400);
+	expect(typeof r.data.message).toBe('string');
+	expect(r.data.icsError).toBeUndefined();
 });
