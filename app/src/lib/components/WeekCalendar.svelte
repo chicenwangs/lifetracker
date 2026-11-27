@@ -703,6 +703,19 @@
 		.wk :global(.fc-event-main) {
 			color: #000 !important;
 		}
+		/* the default 07:00–24:00 grid (34 half-hour slots) must fit one A4 landscape sheet */
+		.wk :global(.fc-timegrid-slot) {
+			height: 14px !important;
+		}
+		/* FC's nbsp placeholder would hold every empty row above 15 px */
+		.wk :global(.fc-timegrid-slot:empty)::before {
+			content: none;
+		}
+		.wk :global(.fc-timegrid-slot-label-cushion),
+		.wk :global(.fc-timegrid-axis-cushion) {
+			font-size: 9px;
+			line-height: 1.1;
+		}
 		.wk :global(.lt-sq) {
 			border-color: #000 !important;
 			color: #000 !important;

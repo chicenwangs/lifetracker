@@ -737,11 +737,17 @@ main .card:nth-child(n + 4) {
 	body {
 		padding: 0 !important;
 	}
-	/* the shell never prints: header, phone tab bar, toasts */
+	/* the shell never prints: header, phone tab bar, toasts, the offline ribbon and any open overlay */
 	.hdr,
 	.mbar,
 	.toast,
-	.centre {
+	.centre,
+	.offline,
+	.scrim,
+	.dlg,
+	.tcard,
+	.dim,
+	.pal {
 		display: none !important;
 	}
 }

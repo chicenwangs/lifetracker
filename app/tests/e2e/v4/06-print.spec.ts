@@ -1,7 +1,7 @@
 // Card 06 C1–C8: print week. The desktop ⋯ calls window.print(), phone has no entry, and print media
 // hides the shell, keeps the week title, forces 7 columns on one A4 landscape sheet (black on white,
 // the type colour only as a 3 px left border) at 1123×794 in light and dark.
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 
 const PW = 'good pass phrase';
 // flow.spec.ts ends by resetting jeremy's password; a lone run has the setup password
@@ -55,6 +55,48 @@ const plusDays = (page: Page, n: number) =>
 	}, n);
 /** owner-local wall clock -> UTC string (blocks are UTC, e2e timezone = Asia/Kuala_Lumpur) */
 const utc = (date: string, hm: string) => new Date(`${date}T${hm}:00+08:00`).toISOString().slice(0, 19) + 'Z';
+
+/** a second account shares its calendar with jeremy, so the week bar renders OverlapToggle (its button is
+    a child component: the print rule needs :global to hide it). flow.spec may already have left a share. */
+async function ensureSharedCalendar(page: Page, browser: Browser) {
+	await page.goto('/settings/sharing');
+	if (await page.locator('section', { hasText: 'Calendars I can see' }).locator('.person').count()) return;
+	await page.goto('/settings/users');
+	await page.locator('input[name="open"][value="0"]').check();
+	await page.getByRole('button', { name: 'Save' }).click();
+	await expect(page.getByText('Saved.')).toBeVisible();
+	await page.getByRole('button', { name: 'Make invite code' }).click();
+	const invite = (await page.locator('[role="status"] code').first().innerText()).trim();
+	const ctx = await browser.newContext();
+	const other = await ctx.newPage();
+	try {
+		await other.goto('/signup');
+		await other.fill('#code', invite);
+		await other.fill('#nu', `print${Date.now().toString(36)}`);
+		await other.fill('#dn', 'Print partner');
+		await other.fill('#np', `${PW} print`);
+		await other.fill('#cp', `${PW} print`);
+		await other.getByRole('button', { name: 'Create account' }).click();
+		await other.waitForURL((u) => u.pathname === '/');
+		// the welcome tour is aria-modal and would eat the click: mark it done, then the reload has none
+		await other.evaluate(async () => {
+			await fetch('/api/me/prefs', {
+				method: 'PATCH',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ tourState: 'done' }),
+			});
+		});
+		await other.goto('/settings/sharing');
+		await other.getByRole('button', { name: 'Make a code' }).click();
+		const code = (await other.getByLabel('Your share code').innerText()).trim();
+		await page.goto('/settings/sharing');
+		await page.getByLabel('Code from the other person').fill(code);
+		await page.getByRole('button', { name: 'Add calendar' }).click();
+		await expect(page.getByText(/You can now see Print partner's calendar/)).toBeVisible();
+	} finally {
+		await ctx.close();
+	}
+}
 
 /** print media at the A4 landscape size the card names (D-V4-18); viewport first, then the emulation */
 async function printSheet(page: Page) {
@@ -122,15 +164,22 @@ test('C2 at phone width no ⋯ / Print week entry shows and the phone week is un
 	await expect(page.getByText('Print week')).toHaveCount(0);
 });
 
-test('C3 print hides the shell and toolbar, rail and hints, and keeps the week title', async ({ page }) => {
+test('C3 print hides the shell and toolbar, rail and hints, and keeps the week title', async ({
+	page,
+	browser,
+}) => {
 	await signIn(page);
+	await ensureSharedCalendar(page, browser); // an OverlapToggle button (child component) must be there
+	// a week inside one month, so the title is the same-month form
+	await page.goto('/week?w=2035-03-05');
+	await expect(page.locator('main.wrap .bar .ov')).toBeVisible(); // on screen the shared switch shows
 	await printSheet(page);
-	await page.goto('/week');
 	await expect(page.locator('.wrap .bar h1')).toBeVisible();
-	await expect(page.locator('.wrap .bar h1')).toHaveText(/^\d{1,2} – \d{1,2} \w+ \d{4}$/);
+	await expect(page.locator('.wrap .bar h1')).toHaveText(/^\d{1,2} – \d{1,2} \w+ 2035$/);
 	expect(await visibleCount(page, 'header.hdr')).toBe(0);
 	expect(await visibleCount(page, 'nav.mbar')).toBe(0);
-	expect(await visibleCount(page, '.wrap .bar button')).toBe(0); // prev/next, Today, Overlap, ⋯
+	expect(await visibleCount(page, 'main.wrap .bar .ov')).toBe(0); // decision: hidden in print
+	expect(await visibleCount(page, 'main.wrap .bar button')).toBe(0); // prev/next, Today, Overlap, ⋯
 	expect(await visibleCount(page, '.view')).toBe(0); // Month | Week switch
 	expect(await visibleCount(page, '.types')).toBe(0); // TypeBar
 	expect(await visibleCount(page, 'aside.side')).toBe(0); // WeekMap + Not scheduled + stats
@@ -142,6 +191,7 @@ test('C4 the printed sheet has 7 day columns, the all-day row, the time grid and
 	page,
 }) => {
 	await signIn(page);
+	expect((await api(page, 'PATCH', '/api/me/prefs', { visibleHours: '7-24' })).s).toBe(200); // the default grid
 	const stamp = Date.now().toString(36);
 	const day = await plusDays(page, 0);
 	const title = `C4 item ${stamp}`;
@@ -170,6 +220,23 @@ test('C4 the printed sheet has 7 day columns, the all-day row, the time grid and
 		expect(b.y).toBeGreaterThanOrEqual(row.y + row.height - 1); // the block sits in the time grid
 		const wide = await page.evaluate(() => document.documentElement.scrollWidth);
 		expect(wide).toBeLessThanOrEqual(1123);
+		// the block is still on its 10:00 slot after the print slot height kicks in
+		const slot = (await page.locator('.wk td.fc-timegrid-slot[data-time="10:00:00"]').first().boundingBox())!;
+		expect(b.y).toBeGreaterThanOrEqual(slot.y - 2);
+		expect(b.y).toBeLessThan(slot.y + slot.height);
+		// print shrinks the rows so the whole grid fits one A4 landscape sheet (794 px minus the 10 mm @page margins)
+		const usable = 794 - (2 * 10 * 96) / 25.4;
+		const card = (await page.locator('main.wrap .wkc').boundingBox())!;
+		const slots = (await page.locator('.wk .fc-timegrid-slots').boundingBox())!;
+		const rows = await page.locator('.wk .fc-timegrid-slots tr').count();
+		const slotPx = slots.height / rows;
+		console.log(
+			`C4 print: sheet ${card.height.toFixed(1)}px of ${usable.toFixed(1)}px usable, ${rows} slots × ${slotPx.toFixed(1)}px = ${slots.height.toFixed(1)}px`,
+		);
+		expect(rows).toBeGreaterThan(0);
+		expect(slotPx).toBeLessThan(17); // print-only slot height
+		expect(slotPx).toBeGreaterThan(14); // not squeezed to nothing
+		expect(card.height).toBeLessThanOrEqual(usable + 0.5);
 		await expect(page.getByRole('alert')).toHaveCount(0);
 	} finally {
 		await drop(page, 'items', item);

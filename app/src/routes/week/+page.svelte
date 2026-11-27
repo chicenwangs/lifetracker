@@ -715,7 +715,8 @@
 			background: none;
 			padding: 0 0 8px;
 		}
-		.bar button,
+		/* :global: OverlapToggle's button lives in a child component */
+		.bar :global(button),
 		.menu-wrap,
 		.bar .sp,
 		.view,
