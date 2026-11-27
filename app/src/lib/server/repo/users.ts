@@ -34,6 +34,8 @@ export function safe(u: UserRow): App.SafeUser {
 		notifyPlanner: u.notifyPlanner,
 		notifyKeep: u.notifyKeep,
 		notifyPages: u.notifyPages,
+		/** card 12: local HH:MM of the daily digest, null = off */
+		digestTime: u.digestTime ?? null,
 	};
 }
 
@@ -125,7 +127,7 @@ export type Prefs = Partial<
 		UserRow,
 		| 'overlapOn' | 'displayName' | 'color' | 'theme' | 'themeMode' | 'themeLightStart' | 'themeDarkStart'
 		| 'planMode' | 'tourState' | 'timezone' | 'region' | 'qaTarget' | 'blockMin' | 'visibleHours' | 'hiddenTypes' | 'hintsSeen' | 'defaultReminder'
-		| 'notifyPlanner' | 'notifyKeep' | 'notifyPages'
+		| 'notifyPlanner' | 'notifyKeep' | 'notifyPages' | 'digestTime'
 	>
 >; // prettier-ignore
 export function setPrefs(id: string, prefs: Prefs): void {

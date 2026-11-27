@@ -165,6 +165,7 @@ Tests PAGE-001..022: create · child under parent · move under descendant rejec
 - Push permission: explain first, ask only on user click, deny = app fine. Settings shows permission + subscription state. "Scheduled" ≠ "permission granted" ≠ "delivered".
 - Notification: module, title, time context, opens item. Private details never to wrong account/device.
 - All-day/past-due/quiet hours/archived = D-13..D-16. Don't pick midnight/09:00 silently.
+- Daily agenda (v4 card 12, O-1 item 5): Settings › Notifications → `Daily agenda` Off / On + a time (default 07:30). One notification a day with that local day's own items and blocks: "4 items · 2 blocks · first 09:00" (first = the earliest timed item or block start; omitted when only all-day items are on; a zero count is left out). Nothing on, `notify_planner` off, or the time has not come yet = no notification; a day already sent to a live device is not sent again (the Android alarm covers app-only users). Web push title = the text, opens Today; the Settings preview is rendered once on the server, not live.
 
 Tests NOTIF-001..011: each of 5 offsets correct · two reminders coexist · reschedule recalcs all · remove one only · deny permission, app ok, no "enabled" claim · notification opens item · after revoke, content stays hidden.
 
@@ -191,6 +192,7 @@ Purpose: phone = **glance + capture**. Not for planning the week. Planning = PC.
 - PWA: manifest, icons, standalone; works un-installed too.
 - Offline: cached shell ≠ cached data. Offline badge. Server actions don't fake success. Keep per §5.
 - Push only where supported; else in-app + honest state.
+- **Daily agenda (v4 card 12):** the app reads `digest: { at, text } | null` from `/api/native` and sets one exact alarm for the next digest time on the existing reminders channel (no Done/Snooze/Tomorrow; tap opens Today), re-added on every 15-minute sync and after a reboot. Off, nothing on the day, or a date the web push already sent = no alarm.
 
 Tests MOB-001..010: phone opens on Today · now card correct at 3 times (in block / gap / after last) · + Add creates block from bottom sheet · Keep tap → new note, typing saves · status square cycles by tap · item sheet edits time without drag · More reaches Week/Month/Pages · no horizontal overflow at 360 px · installs standalone · offline visible, no fake success, push state accurate.
 

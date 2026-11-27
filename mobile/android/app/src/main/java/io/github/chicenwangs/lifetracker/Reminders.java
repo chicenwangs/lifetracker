@@ -31,9 +31,11 @@ import java.util.Set;
  */
 public class Reminders extends BroadcastReceiver {
     static final String CHANNEL = "reminders";
+    /** card 12: one fixed id for the daily agenda digest alarm (no Done / Snooze / Tomorrow) */
+    static final String DIGEST = "digest";
 
-    /** replace the alarm set with `list` (ones the server dropped are cancelled) */
-    static void schedule(Context c, JSONArray list) {
+    /** replace the alarm set with `list` (ones the server dropped are cancelled) + the digest alarm */
+    static void schedule(Context c, JSONArray list, JSONObject digest) {
         if (list == null) return;
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
         SharedPreferences p = c.getSharedPreferences(Native.PREFS, 0);
@@ -55,6 +57,19 @@ public class Reminders extends BroadcastReceiver {
             setAlarm(am, due, pi);
             now.add(id);
             old.remove(id);
+        }
+        // the digest is re-added on every sync: the cancel loop below drops any id missing from `now`, so an
+        // omitted digest would lose its alarm until the next sync that included it (card 12, D-V4-30)
+        if (digest != null) {
+            try {
+                long due = Instant.parse(digest.optString("at")).toEpochMilli();
+                if (due > t) {
+                    setAlarm(am, due, alarm(c, DIGEST, digest.optString("text"), "/today", "", ""));
+                    now.add(DIGEST);
+                    old.remove(DIGEST);
+                }
+            } catch (Exception ignored) {
+            }
         }
         for (String id : old) am.cancel(alarm(c, id, "", "/", "", ""));
         p.edit().putStringSet("alarms", now).apply();
@@ -104,6 +119,24 @@ public class Reminders extends BroadcastReceiver {
         String sourceType = i.getStringExtra("sourceType");
         String sourceId = i.getStringExtra("sourceId");
         String act = i.getStringExtra("act");
+        if (DIGEST.equals(id)) {
+            // card 12: the daily agenda, on the same reminders channel, with no actions
+            if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(c, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return;
+            channel(c);
+            NotificationCompat.Builder d = new NotificationCompat.Builder(c, CHANNEL)
+                    .setSmallIcon(R.drawable.ic_stat_reminder)
+                    .setColor(ContextCompat.getColor(c, R.color.lt_accent))
+                    .setContentTitle(title)
+                    .setContentText("Daily agenda")
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                    .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                    .setPublicVersion(new NotificationCompat.Builder(c, CHANNEL).setSmallIcon(R.drawable.ic_stat_reminder).setContentTitle("Daily agenda").build())
+                    .setAutoCancel(true)
+                    .setContentIntent(Native.open(c, route != null ? route : "/today", id.hashCode()));
+            NotificationManagerCompat.from(c).notify(id.hashCode(), d.build());
+            return;
+        }
         if (act != null) {
             NotificationManagerCompat.from(c).cancel(id.hashCode());
             handleAction(c.getApplicationContext(), id, title, route, sourceType, sourceId, act);

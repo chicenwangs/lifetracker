@@ -6,6 +6,9 @@ import * as items from '../../src/lib/server/repo/items';
 import * as blocks from '../../src/lib/server/repo/blocks';
 import * as keep from '../../src/lib/server/repo/keep';
 import * as rem from '../../src/lib/server/reminders';
+import * as meta from '../../src/lib/server/repo/meta';
+import { digestKey } from '../../src/lib/server/digest';
+import { zIsoZ } from '../../src/lib/server/validate';
 import { nativeSync } from '../../src/lib/server/native';
 
 const NOW = Date.parse('2026-11-13T02:00:00Z'); // 10:00 KL, Fri 13 Nov
@@ -91,4 +94,18 @@ it('Done on a repeating item reminder ticks that occurrence only (#112 + #72)', 
 	expect(day('2026-11-13').map((x) => [x.title, x.status, x.rrule ?? null])).toEqual([['Gym', 'done', null]]); // detached, done
 	expect(day('2026-11-14').map((x) => [x.title, x.status])).toEqual([['Gym', 'todo']]); // series keeps going
 	expect(items.mustOwn(user.id, gym.id).status).toBe('todo');
+});
+
+it('C7 digest: the next local 07:30 instant and the text for that date; off or nothing on = null', () => {
+	// card 12: /api/native feeds one exact alarm; the web push already marked a date -> no second notification
+	const on = { ...user, digestTime: '07:30' };
+	expect(nativeSync(on, NOW).digest).toBeNull(); // 10:00 KL: today's 07:30 passed, tomorrow is empty
+	items.create(user.id, items.itemCreateSchema.parse({ title: 'Tomorrow', date: '2026-11-14' }));
+	const d = nativeSync(on, NOW).digest;
+	expect(d).toEqual({ at: '2026-11-13T23:30:00Z', text: '1 item' }); // 07:30 KL
+	expect(zIsoZ.parse(d?.at as string)).toBe(d?.at);
+	expect(nativeSync({ ...on, digestTime: null }, NOW).digest).toBeNull();
+	expect(nativeSync({ ...on, notifyPlanner: false }, NOW).digest).toBeNull();
+	meta.set(digestKey(user.id, '2026-11-14'), 'x'); // the web push handled it (D-V4-13)
+	expect(nativeSync(on, NOW).digest).toBeNull();
 });
