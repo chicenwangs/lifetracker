@@ -232,12 +232,26 @@ test('C6 @page is A4 landscape and print forces the 7-column desktop grid at any
 	expect(size).toContain('landscape');
 	await expect(page.locator('.wk .fc-col-header-cell')).toHaveCount(7);
 
-	// D-V4-18: a phone-width print is never blank — hide .phone, show .wrap, still 7 columns
+	// D-V4-18: loaded at phone width on screen, then printed — hide .phone, show .wrap, still 7 columns.
+	// FullCalendar must re-measure: on screen the grid was 0 px wide inside display:none .wrap.
+	await page.emulateMedia({ media: 'screen' });
 	await page.setViewportSize({ width: 412, height: 915 });
-	await page.reload();
+	await page.goto('/week');
+	await expect(page.locator('main.phone')).toBeVisible();
+	await page.emulateMedia({ media: 'print' });
 	await expect(page.locator('main.wrap')).toBeVisible();
 	await expect(page.locator('main.phone')).toBeHidden();
 	await expect(page.locator('.wk .fc-col-header-cell')).toHaveCount(7);
+	const widths = () =>
+		page
+			.locator('.wk .fc-col-header-cell')
+			.evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
+	await expect.poll(async () => (await widths()).every((w) => w > 0)).toBe(true);
+	expect(await widths()).toHaveLength(7);
+	const scroll = await page.evaluate(() =>
+		Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+	);
+	expect(scroll).toBeLessThanOrEqual(1123);
 });
 
 test('C7 outside print the page is as today: no screen border, phone keeps its week, menu closes on an outside click', async ({

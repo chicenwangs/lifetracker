@@ -397,6 +397,17 @@
 		const ro = new ResizeObserver(remeasure);
 		ro.observe(el);
 		cleanup.push(() => ro.disconnect());
+		// card 06: at phone width .wrap is display:none, so FC measures 0-wide columns; print swaps the
+		// layout in without a window resize, so re-measure once the print media state is applied (D-V4-18)
+		const relayoutNow = () => cal?.updateSize();
+		const relayout = () => requestAnimationFrame(relayoutNow);
+		const printMedia = matchMedia('print');
+		printMedia.addEventListener('change', relayout);
+		addEventListener('beforeprint', relayoutNow);
+		cleanup.push(() => {
+			printMedia.removeEventListener('change', relayout);
+			removeEventListener('beforeprint', relayoutNow);
+		});
 		if (dragSource) {
 			drag = new Draggable(dragSource, {
 				itemSelector: '[data-lt-item]',
