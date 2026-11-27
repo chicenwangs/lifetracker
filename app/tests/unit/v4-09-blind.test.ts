@@ -18,6 +18,7 @@ import { nativeSync } from '../../src/lib/server/native';
 import { buildIcs } from '../../src/lib/server/ics';
 import { PATCH } from '../../src/routes/api/items/[id]/+server';
 import { POST as CYCLE } from '../../src/routes/api/items/[id]/cycle/+server';
+import { POST as REMINDER_ACT } from '../../src/routes/api/reminders/[id]/+server';
 import { POST as UNDO } from '../../src/routes/api/undo/+server';
 import { addDays, localToUtc, todayLocal } from '../../src/lib/time';
 import {
@@ -110,6 +111,23 @@ async function undoApi(id: string): Promise<void> {
 		}),
 	} as unknown as Parameters<typeof UNDO>[0]);
 	expect(res.status).toBe(200);
+}
+
+type ReminderReply = { ok?: boolean; reminder?: unknown; error?: { code: string; message: string } };
+/** call the real reminder action route (the notification / in-app Done) */
+async function reminderDone(id: string): Promise<{ status: number; json: ReminderReply }> {
+	const url = `http://localhost/api/reminders/${encodeURIComponent(id)}`;
+	const res = await REMINDER_ACT({
+		params: { id },
+		locals: { user: meUser() },
+		url: new URL(url),
+		request: new Request(url, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ action: 'done' }),
+		}),
+	} as unknown as Parameters<typeof REMINDER_ACT>[0]);
+	return { status: res.status, json: (await res.json()) as ReminderReply };
 }
 
 describe('C1 unsupported rules', () => {
@@ -447,6 +465,108 @@ describe('C8 reminders', () => {
 		rem.add(meId, 'planner_item', e.id, { at }, Date.now());
 		await patch(e.id, { status: 'done' });
 		expect(rem.list(meId, 'planner_item', e.id).map((r) => r.dueAt)).toEqual([at]);
+	});
+});
+
+describe('C5/C8/C9 fired relative reminder replay', () => {
+	it('C5/C8/C9 Done on two fired relative reminders files one copy, moves the series once, cancels both siblings in the undo entry and 404s the second Done; the same reminder Done twice behaves the same', async () => {
+		const fire = (id: string) =>
+			handle().sqlite.prepare("UPDATE reminders SET status = 'sent' WHERE id = ?").run(id);
+		const reminderStatus = (id: string) =>
+			(
+				handle().sqlite.prepare('SELECT status FROM reminders WHERE id = ?').get(id) as {
+					status: string;
+				}
+			).status;
+		const copyCount = (title: string) =>
+			(
+				handle()
+					.sqlite.prepare(
+						"SELECT count(*) AS n FROM items WHERE title = ? AND rrule IS NULL AND status = 'done' AND deleted_at IS NULL",
+					)
+					.get(title) as { n: number }
+			).n;
+
+		// two fired relative reminders on one from-completion series
+		const series = mk({
+			title: 'C8 replay',
+			date: addDays(today, 5),
+			time: '10:00',
+			rrule: 'FREQ=DAILY;INTERVAL=3',
+		});
+		items.patch(meId, series.id, { repeatFromCompletion: true });
+		const a = rem.add(meId, 'planner_item', series.id, { offset: '1d' }, Date.now());
+		const b = rem.add(meId, 'planner_item', series.id, { offset: '2h' }, Date.now());
+		fire(a.id);
+		fire(b.id);
+
+		// Done on the first fired reminder: one completion
+		const first = await reminderDone(a.id);
+		expect(first.status).toBe(200);
+		expect(row(series.id).date).toBe(addDays(today, 3)); // moved once, from today + interval
+		expect(row(series.id).status).toBe('todo');
+		expect(copyCount('C8 replay')).toBe(1);
+		expect([reminderStatus(a.id), reminderStatus(b.id)]).toEqual(['cancelled', 'cancelled']);
+		const open = rem
+			.list(meId, 'planner_item', series.id)
+			.filter((r) => r.status === 'scheduled')
+			.map((r) => r.dueAt)
+			.sort();
+		expect(open).toEqual(
+			[localToUtc(addDays(today, 2), '10:00', TZ), localToUtc(addDays(today, 3), '08:00', TZ)].sort(),
+		);
+
+		// Done on the fired sibling: a 404, no second copy and no second move
+		const second = await reminderDone(b.id);
+		expect(second.status).toBe(404);
+		expect(second.json.error?.code).toBe('not_found');
+		expect(row(series.id).date).toBe(addDays(today, 3));
+		expect(copyCount('C8 replay')).toBe(1);
+
+		// C9: the acting row and both fired siblings sit in the completion's undo entry
+		const journal = handle()
+			.sqlite.prepare('SELECT id, rows FROM undo_actions ORDER BY created_at DESC, rowid DESC LIMIT 1')
+			.get() as { id: string; rows: string };
+		const snaps = JSON.parse(journal.rows) as { t: string; id: string; before: unknown }[];
+		expect(snaps.some((s) => s.t === 'items' && s.id === series.id)).toBe(true);
+		expect(snaps.some((s) => s.t === 'reminders' && s.id === a.id)).toBe(true);
+		expect(snaps.some((s) => s.t === 'reminders' && s.id === b.id)).toBe(true);
+		const copyId = snaps.find((s) => s.t === 'items' && s.id !== series.id && s.before === null)?.id;
+		expect(copyId).toBeTruthy();
+		// one Undo restores the series and the fired reminders and deletes the copy
+		await undoApi(journal.id);
+		expect(row(series.id).date).toBe(addDays(today, 5));
+		expect(row(series.id).status).toBe('todo');
+		expect(copyCount('C8 replay')).toBe(0);
+		expect([reminderStatus(a.id), reminderStatus(b.id)]).toEqual(['sent', 'sent']);
+		const restored = rem
+			.list(meId, 'planner_item', series.id)
+			.filter((r) => r.status === 'scheduled')
+			.map((r) => r.dueAt)
+			.sort();
+		expect(restored).toEqual(
+			[localToUtc(addDays(today, 4), '10:00', TZ), localToUtc(addDays(today, 5), '08:00', TZ)].sort(),
+		);
+
+		// the same fired relative reminder Done twice: 200 then 404, one copy, one move
+		const twice = mk({
+			title: 'C8 replay twice',
+			date: addDays(today, 6),
+			time: '10:00',
+			rrule: 'FREQ=DAILY;INTERVAL=3',
+		});
+		items.patch(meId, twice.id, { repeatFromCompletion: true });
+		const c = rem.add(meId, 'planner_item', twice.id, { offset: '1d' }, Date.now());
+		fire(c.id);
+		expect((await reminderDone(c.id)).status).toBe(200);
+		expect(row(twice.id).date).toBe(addDays(today, 3));
+		expect(copyCount('C8 replay twice')).toBe(1);
+		expect(reminderStatus(c.id)).toBe('cancelled');
+		const again = await reminderDone(c.id);
+		expect(again.status).toBe(404);
+		expect(again.json.error?.code).toBe('not_found');
+		expect(row(twice.id).date).toBe(addDays(today, 3));
+		expect(copyCount('C8 replay twice')).toBe(1);
 	});
 });
 
