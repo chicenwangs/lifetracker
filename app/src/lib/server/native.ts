@@ -1,5 +1,6 @@
 // Android app sync (mobile/): one GET feeds every widget and the reminder alarms. The server does the work
 // (owner's timezone, hidden types, colours, order, countdowns) so the native side only draws strings.
+import { agenda } from './agenda';
 import { getCalendar } from './calendar';
 import * as itemTypes from './repo/itemtypes';
 import * as itemsRepo from './repo/items';
@@ -59,7 +60,7 @@ export function nativeSync(me: App.SafeUser, now = Date.now()) {
 			}));
 	};
 
-	const week = getCalendar(me, day, addDays(day, 7), { shared: false });
+	const week = agenda(me, day, addDays(day, 7));
 	const rows = rowsOn(week, day).slice(0, 40);
 
 	// next 7 days at a glance: timed rows + all-day items, 3 titles each

@@ -74,6 +74,15 @@ it('rows = today in the owner timezone, sorted, hidden types dropped; notes; upc
 	expect(nativeSync(user, NOW).reminders).toEqual([]); // kind turned off = no alarm
 });
 
+it('C3 a counts-down type hidden in hiddenTypes still appears in countdowns', () => {
+	items.create(user.id, items.itemCreateSchema.parse({ title: 'Final', date: '2026-11-15', type: 'Exam' }));
+
+	const s = nativeSync({ ...user, hiddenTypes: ['Exam'] }, NOW);
+
+	expect(s.countdowns.map((c) => [c.title, c.days])).toEqual([['Final', 2]]); // ahead still uses getCalendar
+	expect(s.days.find((d) => d.date === '2026-11-15')?.count).toBe(0); // the week widgets keep it hidden
+});
+
 it('Done on a repeating item reminder ticks that occurrence only (#112 + #72)', () => {
 	const gym = items.create(user.id, items.itemCreateSchema.parse({ title: 'Gym', date: '2026-11-13', time: '18:00', rrule: 'FREQ=DAILY' })); // prettier-ignore
 	const r = rem.add(user.id, 'planner_item', gym.id, { offset: '2h' }, NOW); // 16:00 KL today
