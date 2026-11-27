@@ -315,6 +315,8 @@ export const itemPatchSchema = z
 		rrule: zRRule.nullable(),
 		/** card 09 C2: the next date counts from completion (only for a qualifying daily/monthly rule) */
 		repeatFromCompletion: z.boolean(),
+		/** card 09 MUST 2: the series date the client saw, so a replayed completion no-ops */
+		seenDate: zDate,
 		/** repeating edit scope (#72): 'this' detaches one date, 'following' splits the series, 'all' updates the series */
 		scope: z.enum(['this', 'following', 'all']),
 		/** #105 offline edit timestamp (UTC Z): if server's updatedAt >= editedAt, server wins */
@@ -371,8 +373,9 @@ function detachOccurrence(meId: string, cur: ItemRow, occDate: string, p: ItemPa
 				rrule: null,
 			}),
 		);
-		// O-11 (card 09 C15): finishing one occurrence leaves the series at todo; the copy keeps done
-		if (made.status === 'done')
+		// O-11 (card 09 C15): finishing one occurrence leaves the series at todo; the copy keeps done.
+		// Only an incoming `status: done` finishes — a title/time edit of an already-done occurrence does not.
+		if (p.status === 'done')
 			db()
 				.update(items)
 				.set({ status: 'todo', startedAt: null, completedAt: null, updatedAt: now, updatedBy: meId })
@@ -437,15 +440,19 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	// #158/#163: that date was already detached into its own row; editing it again would make a second copy
 	if (occDate && !cur.repeatFromCompletion && parseExdates(cur.exdates).includes(occDate)) notFound();
 	if (occDate && cur.rrule && !isOccurrence(cur, occDate)) notFound(); // #296: a made-up @date is not an occurrence
-	const { scope, editedAt, ...fields } = p;
+	const { scope, editedAt, seenDate, ...fields } = p;
 	// #105 offline edit made before the server copy last changed: the server wins
 	if (editedAt && cur.updatedAt > editedAt) return cur;
 	if (fields.type !== undefined) itemTypesRepo.mustHave(meId, fields.type);
 
 	// Card 09 C5/C6 (D-V4-10, D-V4-27): a from-completion series has one occurrence and no edit scope.
 	// A tick to done files the done copy and moves the series; any other edit changes the whole row.
-	if (cur.rrule && cur.date && cur.repeatFromCompletion && fields.status === 'done')
+	// A replay (offline retry, two devices) carries the date it saw: it only completes the row still on
+	// that date, so a second copy is never filed and the series never moves twice.
+	if (cur.rrule && cur.date && cur.repeatFromCompletion && fields.status === 'done') {
+		if (seenDate !== undefined && seenDate !== cur.date) return cur;
 		return completeFromCompletion(meId, cur, nowUtcIso());
+	}
 
 	// Repeating occurrence handling (#72):
 	// - Ticking status (only `status` changed, no `scope`) detaches that single occurrence date.
@@ -575,10 +582,12 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	return mustOwn(meId, id);
 }
 
-/** FR-H3/H4: todo -> doing -> done -> todo. On a repeating item (#72), detaches that occurrence date. */
-export function cycle(meId: string, rawId: string): ItemRow {
+/** FR-H3/H4: todo -> doing -> done -> todo. On a repeating item (#72), detaches that occurrence date.
+ *  `seenDate` (card 09 MUST 2): the series date the tick saw; a from-completion replay on a moved row no-ops. */
+export function cycle(meId: string, rawId: string, seenDate?: string): ItemRow {
 	const cur = mustOwn(meId, rawId);
-	return patch(meId, rawId, { status: nextStatus(cur.status) });
+	const status = nextStatus(cur.status);
+	return patch(meId, rawId, seenDate ? { status, seenDate } : { status });
 }
 
 /** Card 03 C8: Skip one occurrence = exactly one EXDATE (no new row, the series is otherwise unchanged). */

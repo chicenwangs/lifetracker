@@ -327,9 +327,13 @@ test('C5/C6 desktop: ticking "Water plants every 3 days" files a done copy today
 	expect(moved).toHaveLength(1);
 	expect(moved[0]?.id, 'the series row, not an occurrence').toBe(item.id);
 
-	// "shows +3 from today" in the Week view (an item is an all-day row event in FullCalendar)
+	// "shows +3 from today" in the Week view (an item is an all-day row event in FullCalendar).
+	// Count only the series: on Mon–Thu the done copy sits in the same Mon–Sun week, so a title-only count
+	// was 2 and the test passed only on Fri–Sun.
 	await page.goto(`/week?w=${mondayOf(addDays(today, 3))}`);
-	await expect(page.locator('.lt-title', { hasText: title })).toHaveCount(1);
+	const seriesEvents = page.locator('.wk .fc-event:not(.is-done)', { hasText: title });
+	await expect(seriesEvents).toHaveCount(1);
+	await expect(seriesEvents.locator('.lt-title')).toContainText(title);
 });
 
 test('C9 desktop: one Undo after the completion restores the series date and status and removes the done copy', async () => {

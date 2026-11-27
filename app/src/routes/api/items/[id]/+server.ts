@@ -1,12 +1,18 @@
 import { json } from '@sveltejs/kit';
-import { api, body, me } from '$lib/server/http';
+import { api, body, me, notFound } from '$lib/server/http';
 import * as items from '$lib/server/repo/items';
 import { undoable } from '$lib/server/undo';
 import { afterCompletion, recalcOwner, splitSeries } from '$lib/server/reminders';
+import { splitOccId } from '$lib/rrule';
 
 export const GET = api((e) => {
 	const u = me(e);
-	return json({ item: items.withCounts([items.mustOwn(u.id, e.params.id ?? '')])[0] });
+	const raw = e.params.id ?? '';
+	const { id, occDate } = splitOccId(raw);
+	const cur = items.mustOwn(u.id, id);
+	// card 09 C4: id@date is only valid for a date the row really has (a from-completion series: its date)
+	if (occDate && cur.rrule && !items.isOccurrence(cur, occDate)) notFound();
+	return json({ item: items.withCounts([cur])[0] });
 });
 
 /** short undo label for what a patch changed */

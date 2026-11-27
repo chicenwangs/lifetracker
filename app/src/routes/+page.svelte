@@ -66,7 +66,7 @@
 		if (cur) statusOver[id] = nextStatus(cur.status);
 		if (!cur) return;
 		// shared tick path: offline it queues the change and says "Waiting to sync" (#277)
-		if ((await cycleRow('items', id, cur.status, cur.title, refresh)) === 'failed')
+		if ((await cycleRow('items', id, cur.status, cur.title, refresh, undefined, cur.date)) === 'failed')
 			statusOver = without(statusOver, id);
 	}
 

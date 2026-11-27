@@ -71,6 +71,13 @@ test('C11 the radios are 48 dp rows; the sheet stays open; Back closes it first'
 		await page.goBack();
 		await expect(sheet).toBeHidden();
 		await expect(page).toHaveURL(new RegExp(`/today\\?d=${DAY}`));
+
+		// the sheet's own Close still works: the entry is used up, no dead Back step
+		await page.locator('.ent .t', { hasText: title }).click();
+		await expect(sheet).toBeVisible();
+		await sheet.getByRole('button', { name: 'Close' }).click();
+		await expect(sheet).toBeHidden();
+		await expect(page).toHaveURL(new RegExp(`/today\\?d=${DAY}`));
 	} finally {
 		await drop(page, id);
 	}

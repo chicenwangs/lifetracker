@@ -1,7 +1,7 @@
 // Card 09 (O-9, O-11, D-V4-10, D-V4-27): repeat from completion — next-date arithmetic (early, late,
 // month end), the unsupported matrix, one-row display (own + shared calendar), the done copy with its
 // full field list, one undo entry over series + copy, reminders (open, fired, exact-time) and O-11.
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { freshDb } from './helpers';
 import { handle } from '../../src/lib/server/db';
 import * as usersRepo from '../../src/lib/server/repo/users';
@@ -13,6 +13,7 @@ import { getCalendar } from '../../src/lib/server/calendar';
 import { agenda } from '../../src/lib/server/agenda';
 import { buildIcs } from '../../src/lib/server/ics';
 import { itemView } from '../../src/lib/server/itemview';
+import { GET } from '../../src/routes/api/items/[id]/+server';
 import { describeFromCompletion, nextFromCompletion, qualifiesFromCompletion } from '../../src/lib/rrule';
 import { addDays, addMonths, isoPlus, localToUtc, nowUtcIso, todayLocal } from '../../src/lib/time';
 
@@ -41,6 +42,16 @@ const mkComplete = (over: Record<string, unknown> = {}) => {
 	return items.patch(me, i.id, { repeatFromCompletion: true });
 };
 const myCal = () => items.myCalendarIds(me)[0] as string;
+/** call the row GET route as the signed-in user (card 09 SHOULD 4) */
+const getRow = async (raw: string): Promise<number> => {
+	const url = `http://localhost/api/items/${encodeURIComponent(raw)}`;
+	const res = await GET({
+		params: { id: raw },
+		locals: { user },
+		url: new URL(url),
+	} as unknown as Parameters<typeof GET>[0]);
+	return res.status;
+};
 
 describe('C6 next date: counts from the completion day', () => {
 	it('daily: on the due day, early, late, interval 1 and N', () => {
@@ -102,7 +113,7 @@ describe('C1 the rule must qualify (O-9)', () => {
 });
 
 describe('C4 one row everywhere (D-V4-10)', () => {
-	it('inRange shows the stored date only; every other @date is a 404', () => {
+	it('inRange shows the stored date only; every other @date is a 404', async () => {
 		const i = mkComplete({ date: '2028-06-05', rrule: 'FREQ=DAILY;INTERVAL=3' });
 		const cal = myCal();
 		const rows = items.inRange(cal, '2028-06-01', '2028-07-01');
@@ -113,6 +124,9 @@ describe('C4 one row everywhere (D-V4-10)', () => {
 		expect(itemView(user, `${i.id}@2028-06-05`).item.date).toBe('2028-06-05'); // the one valid date
 		expect(() => itemView(user, `${i.id}@2028-06-08`)).toThrow();
 		expect(() => items.cycle(me, `${i.id}@2028-06-08`)).toThrow();
+		// SHOULD 4: the row API rejects a made-up @date too, not only the item view
+		expect(await getRow(`${i.id}@2028-06-05`)).toBe(200);
+		expect(await getRow(`${i.id}@2028-06-08`)).toBe(404);
 
 		const dto = getCalendar(user, '2028-06-01', '2028-06-30').items.filter((x) => x.id === i.id);
 		expect(dto).toHaveLength(1);
@@ -313,6 +327,135 @@ describe('C15 O-11 on normal repeats', () => {
 		const made = items.patch(me, `${i.id}@2028-06-05`, { status: 'done' });
 		expect(made.status).toBe('done');
 		expect(items.mustOwn(me, i.id)).toMatchObject({ status: 'todo', completedAt: null });
+	});
+
+	it('editing an already-done occurrence does not reset the series: only finishing does (SHOULD 5)', () => {
+		const i = mk({ title: 'C15 edit', date: '2028-06-05', rrule: 'FREQ=DAILY;COUNT=3', status: 'done' });
+		const made = items.patch(me, `${i.id}@2028-06-05`, { title: 'C15 edit renamed', scope: 'this' });
+		expect(made.status).toBe('done');
+		expect(items.mustOwn(me, i.id)).toMatchObject({ status: 'done' }); // not a finish: no reset
+	});
+});
+
+describe('MUST 1 the reminder Done action on a from-completion series', () => {
+	// fixed clock: KL 2028-06-05 10:00, so "today" is deterministic for the derived dates
+	beforeEach(() => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2028-06-05T02:00:00Z'));
+	});
+	afterEach(() => vi.useRealTimers());
+
+	const copies = (title: string) =>
+		(
+			handle()
+				.sqlite.prepare(
+					`SELECT count(*) AS n FROM items WHERE title = ? AND rrule IS NULL AND status = 'done'`,
+				)
+				.get(title) as { n: number }
+		).n;
+
+	it('completes when an exact/snoozed reminder points after the series date', () => {
+		const t = today();
+		const i = mkComplete({ title: 'Must1 exact', date: t, time: '09:00', rrule: 'FREQ=DAILY' });
+		// an exact instant after the series date (a snoozed reminder becomes an exact one too)
+		const at = localToUtc(addDays(t, 2), '09:00', TZ);
+		const r = rem.add(me, 'planner_item', i.id, { at }, Date.now());
+		rem.act(me, r.id, 'done', Date.now());
+
+		expect(items.mustOwn(me, i.id)).toMatchObject({ date: addDays(t, 1), status: 'todo' });
+		expect(copies('Must1 exact')).toBe(1);
+	});
+
+	it('completes with a dormant EXDATE on the stored date', () => {
+		const t = today();
+		const i = mkComplete({ title: 'Must1 exdate', date: addDays(t, 5), time: '09:00', rrule: 'FREQ=DAILY' });
+		const r = rem.add(me, 'planner_item', i.id, { offset: '1d' }, Date.now());
+		items.patch(me, i.id, { date: t }); // due now; the reminder is still for the old date
+		handle()
+			.sqlite.prepare('UPDATE reminders SET due_at = ? WHERE id = ?')
+			.run(localToUtc(addDays(t, -1), '09:00', TZ), r.id); // due+1d lands on the stored date
+		handle()
+			.sqlite.prepare('UPDATE items SET exdates = ? WHERE id = ?')
+			.run(JSON.stringify([t]), i.id); // a dormant old EXDATE on that date
+		rem.act(me, r.id, 'done', Date.now());
+
+		expect(items.mustOwn(me, i.id)).toMatchObject({ date: addDays(t, 1), status: 'todo' });
+		expect(copies('Must1 exdate')).toBe(1);
+	});
+
+	it('journals the completion: Undo restores the series and deletes the copy (SHOULD 1)', () => {
+		const t = today();
+		const i = mkComplete({
+			title: 'Must1 undo',
+			date: addDays(t, 5),
+			time: '09:00',
+			rrule: 'FREQ=DAILY;INTERVAL=3',
+		});
+		const r = rem.add(me, 'planner_item', i.id, { offset: '1d' }, Date.now());
+		items.patch(me, i.id, { date: t }); // due now; the reminder still points at the old date
+		handle()
+			.sqlite.prepare('UPDATE reminders SET due_at = ? WHERE id = ?')
+			.run(localToUtc(addDays(t, -1), '09:00', TZ), r.id); // due+1d lands on the stored date
+		const before = (handle().sqlite.prepare('SELECT count(*) AS n FROM undo_actions').get() as { n: number })
+			.n;
+		rem.act(me, r.id, 'done', Date.now());
+
+		expect(items.mustOwn(me, i.id).date).toBe(addDays(t, 3));
+		expect(copies('Must1 undo')).toBe(1);
+		expect((handle().sqlite.prepare('SELECT count(*) AS n FROM undo_actions').get() as { n: number }).n).toBe(
+			before + 1,
+		);
+		const last = handle()
+			.sqlite.prepare('SELECT id, rows FROM undo_actions ORDER BY created_at DESC, rowid DESC LIMIT 1')
+			.get() as { id: string; rows: string };
+		const journal = JSON.parse(last.rows) as { id: string; before: unknown }[];
+		expect(journal).toHaveLength(2); // the series + the created copy
+		expect(journal.filter((x) => x.before === null)).toHaveLength(1);
+
+		undo(me, last.id);
+		expect(items.mustOwn(me, i.id).date).toBe(t);
+		expect(copies('Must1 undo')).toBe(0);
+	});
+});
+
+describe('MUST 2 a replayed completion', () => {
+	const copies = (title: string) =>
+		(
+			handle()
+				.sqlite.prepare(
+					`SELECT count(*) AS n FROM items WHERE title = ? AND rrule IS NULL AND status = 'done'`,
+				)
+				.get(title) as { n: number }
+		).n;
+
+	it('the same done PATCH with the seen date files no second copy and does not move the series again', () => {
+		const t = today();
+		const i = mkComplete({ title: 'Must2 patch', date: t, rrule: 'FREQ=DAILY;INTERVAL=3' });
+		const first = items.patch(me, i.id, { status: 'done', seenDate: t });
+		expect(first.doneCopyId).toBeTruthy();
+		const moved = first.date;
+		expect(copies('Must2 patch')).toBe(1);
+
+		const replay = items.patch(me, i.id, { status: 'done', seenDate: t });
+		expect(replay.doneCopyId).toBeUndefined();
+		expect(replay.date).toBe(moved);
+		expect(items.mustOwn(me, i.id).date).toBe(moved);
+		expect(copies('Must2 patch')).toBe(1);
+	});
+
+	it('/cycle carries the seen date: a tick for a moved row no longer completes, the right one does', () => {
+		const t = today();
+		const i = mkComplete({ title: 'Must2 cycle', date: t, rrule: 'FREQ=DAILY' });
+		items.patch(me, i.id, { status: 'doing' });
+
+		const stale = items.cycle(me, i.id, addDays(t, 9)); // another device that saw the old date
+		expect(stale.doneCopyId).toBeUndefined();
+		expect(items.mustOwn(me, i.id).status).toBe('doing');
+		expect(copies('Must2 cycle')).toBe(0);
+
+		const done = items.cycle(me, i.id, t);
+		expect(done.doneCopyId).toBeTruthy();
+		expect(copies('Must2 cycle')).toBe(1);
 	});
 });
 

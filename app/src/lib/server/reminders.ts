@@ -19,6 +19,7 @@ import {
 } from '$lib/time';
 import type { ReminderDTO } from '$lib/types';
 import * as itemsRepo from './repo/items';
+import { undoable } from './undo';
 
 export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record';
 const db = () => handle().sqlite;
@@ -407,21 +408,44 @@ export function act(
 		db().prepare(`UPDATE reminders SET status = 'sent', seen_at = COALESCE(seen_at, ?), updated_at = ? WHERE id = ?`).run(t, t, id); // prettier-ignore
 		if (r.source_type === 'planner_item') {
 			// through the repo (status stamps); a repeating item ticks only the occurrence this reminder was for (#72)
-			const rep = sourceInfo(ownerId, 'planner_item', r.source_id)?.repeat;
+			const info = sourceInfo(ownerId, 'planner_item', r.source_id);
+			const rep = info?.repeat;
 			let target = r.source_id;
-			if (rep && r.due_at) {
+			/** card 09 MUST 1: the date the reminder was for, so a from-completion replay no-ops */
+			let seenDate: string | undefined;
+			if (rep?.fromCompletion) {
+				// a from-completion series has one date and no occurrences: never build id@date (a snoozed or
+				// exact reminder can point after it, and an old EXDATE on that date must stay dormant)
+				const ref =
+					r.rule_kind === 'relative' && r.rel_value && r.rel_unit && r.due_at
+						? isoPlus(r.due_at, offsetMs(r.rel_value, r.rel_unit))
+						: null;
+				seenDate = ref ? utcToLocal(ref, rep.tz).date : rep.date;
+			} else if (rep && r.due_at) {
 				const ref = r.rule_kind === 'relative' && r.rel_value && r.rel_unit ? isoPlus(r.due_at, offsetMs(r.rel_value, r.rel_unit)) : r.due_at; // prettier-ignore
 				const from = utcToLocal(ref, rep.tz).date;
 				const occ = expandRRule(rep.date, rep.rrule, rep.exdates, from, addDays(from, 400))[0];
 				if (occ) target = `${r.source_id}@${occ}`;
 			}
 			try {
-				itemsRepo.patch(ownerId, target, { status: 'done' });
-				// card 09 (C8): a from-completion series moved; open reminders follow, a fired one is recreated
 				if (rep?.fromCompletion) {
+					// card 09 SHOULD 1: the completion is an undoable action like every other
+					undoable(
+						ownerId,
+						`Status "${info?.title ?? 'item'}"`,
+						[{ t: 'items', id: target }],
+						() => {
+							const result = itemsRepo.patch(ownerId, target, { status: 'done', seenDate });
+							return {
+								result,
+								created: result.doneCopyId ? [{ t: 'items' as const, id: result.doneCopyId }] : [],
+							};
+						},
+					);
+					// card 09 C8: the moved series takes its open reminders along, a fired one is recreated
 					recalcOwner(ownerId, now);
 					afterCompletion(ownerId, r.source_id, now);
-				}
+				} else itemsRepo.patch(ownerId, target, { status: 'done' });
 			} catch {
 				/* item gone meanwhile: the reminder is still marked handled */
 			}

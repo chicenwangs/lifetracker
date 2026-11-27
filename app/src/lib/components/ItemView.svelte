@@ -156,6 +156,7 @@
 			const r = await get<View>(`/api/items/${encodeURIComponent(viewId)}/view`);
 			if (n !== loadSeq) return;
 			v = r;
+			fromCompletion = !!r.item.repeatFromCompletion;
 			failed = false;
 		} catch (e) {
 			if (n !== loadSeq) return;
@@ -269,8 +270,8 @@
 			await load();
 		}
 	}
-	async function cycle(itemId: string, cur: Status, name: string) {
-		const r = await cycleRow('items', itemId, cur, name, changed, (got) => follow(itemId, got));
+	async function cycle(itemId: string, cur: Status, name: string, seenDate?: string | null) {
+		const r = await cycleRow('items', itemId, cur, name, changed, (got) => follow(itemId, got), seenDate);
 		if (r === 'queued' && it && it.id === itemId) it.status = nextStatus(cur); // shown now, sent on reconnect
 	}
 	async function cycleBlock(blockId: string) {
@@ -291,8 +292,10 @@
 	let cEndKind = $state<'never' | 'until' | 'count'>('never');
 	let cUntil = $state('');
 	let cCount = $state(5);
-	/** card 09 C2: writable derived — a failed save puts the radio back to the stored flag */
-	let fromCompletion = $derived(!!it?.repeatFromCompletion);
+	/** card 09 C2: the radio group's own value, synced from the saved row on every load, so a failed save
+	 *  puts it back (a bound `checked` alone would keep the tap when the stored value does not move) */
+	// svelte-ignore state_referenced_locally
+	let fromCompletion = $state(!!initial?.item.repeatFromCompletion);
 
 	function openCustomRepeat() {
 		if (!it?.date) return;
@@ -489,7 +492,8 @@
 	async function del() {
 		if (!it) return;
 		const parent = it.parentId;
-		const ok = await removeItem(it.id, it.title, () => onchanged?.(), !!it.rrule);
+		// card 09 SHOULD 2: a from-completion series is one row — delete it whole, no this/following/all
+		const ok = await removeItem(it.id, it.title, () => onchanged?.(), !!it.rrule && !it.repeatFromCompletion);
 		if (ok) ondeleted?.(parent);
 	}
 
@@ -618,7 +622,7 @@
 						status={it.status}
 						size={22}
 						ink={c.edge}
-						oncycle={() => cycle(it.id, it.status, it.title)}
+						oncycle={() => cycle(it.id, it.status, it.title, it.date)}
 					/>
 					<span>{(it.type ?? 'None').toUpperCase()} · {STATUS_WORD[it.status].toUpperCase()}</span>
 					{#if cd}
@@ -940,7 +944,7 @@
 								<StatusSquare
 									status={s.status}
 									ink={sc.edge}
-									oncycle={() => cycle(s.id, s.status, s.title)}
+									oncycle={() => cycle(s.id, s.status, s.title, s.date)}
 								/>
 								<a href="/item/{s.id}" class:done={s.status === 'done'}>{s.title}</a>
 								<span class="muted">{s.date ? prettyDate(s.date) : ''}</span>
