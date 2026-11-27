@@ -1,6 +1,7 @@
 // Blind tests for card 09, from its Done-when lines only: C1 (unsupported matrix + flag clear), C3 (summary copy),
 // C4 (one row everywhere incl. shared + @date 404), C5 (done-copy field list), C6 (next date, span shift, clamp),
-// C7 (slipped), C8 (reminders), C9 (one undo, reminder back), C10 (ICS), C15 (O-11 normal repeats).
+// C7 (slipped), C8 (reminders), C9 (one undo, reminder back), C10 (ICS), C13 (sharing), C15 (O-11 normal repeats).
+// C14 (docs) is UNTESTABLE here: docs/BUILD-NOTES.md, docs/v2/FEATURES.md and docs/v4/DESIGN.md wording is not behaviour.
 // No builder test was opened.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { freshDb } from './helpers';
@@ -61,12 +62,16 @@ type Payload = {
 	error?: { code: string; message: string };
 };
 
-/** call the real PATCH route with the signed-in user, as the item sheet does */
-async function patchApi(id: string, body: unknown): Promise<{ status: number; json: Payload }> {
+/** call the real PATCH route as the given signed-in user, as the item sheet does */
+async function patchApi(
+	id: string,
+	body: unknown,
+	user: App.SafeUser = meUser(),
+): Promise<{ status: number; json: Payload }> {
 	const url = `http://localhost/api/items/${encodeURIComponent(id)}`;
 	const res = await PATCH({
 		params: { id },
-		locals: { user: meUser() },
+		locals: { user },
 		url: new URL(url),
 		request: new Request(url, {
 			method: 'PATCH',
@@ -518,6 +523,50 @@ describe('C10 ICS', () => {
 		expect(mine[0]?.some((l) => l.startsWith('EXDATE'))).toBe(false);
 		// a date outside the feed window is not exported at all
 		expect(events.some((e) => e.includes(`UID:${far.id}@lifetracker`))).toBe(false);
+	});
+});
+
+describe('C13 sharing', () => {
+	it("C13 a partner cannot PATCH the owner's series (404, flag unchanged) and sees the from-completion row once, read-only, with no future ghosts", async () => {
+		const partner = mkUser('partner13');
+		const partnerUser = usersRepo.safe(usersRepo.byId(partner)!);
+		const series = mk({ title: 'C13 shared', date: today, time: '09:00', rrule: 'FREQ=DAILY' });
+		items.patch(meId, series.id, { repeatFromCompletion: true });
+
+		// owner shares the calendar, partner redeems the code and turns overlap on
+		const code = sharekeys.create(meId, { types: ['None'], hiddenAs: 'none', expiry: '24h' }).code;
+		expect(sharekeys.redeem(partner, code).ok).toBe(true);
+		const grant = grants.received(partner)[0]!;
+		expect(grants.setInOverlap(partner, grant.id, true)).toBe(true);
+
+		// the partner's copy: one read-only row at the stored date, no future occurrences, no flag surface
+		const before = getCalendar(partnerUser, today, addDays(today, 10)).items.filter(
+			(i) => i.title === 'C13 shared',
+		);
+		expect(before).toHaveLength(1);
+		expect(before[0]).toMatchObject({ date: today, editable: false, theirs: true });
+		expect('repeatFromCompletion' in before[0]!).toBe(false);
+		expect(getCalendar(partnerUser, addDays(today, 1), addDays(today, 10)).items).toHaveLength(0);
+
+		// only the owner may set the flag: the partner's PATCH is a 404 and changes nothing
+		const denied = await patchApi(
+			series.id,
+			{ repeatFromCompletion: false, title: 'Partner edit' },
+			partnerUser,
+		);
+		expect(denied.status).toBe(404);
+		expect(denied.json.error?.code).toBe('not_found');
+		expect(row(series.id).repeatFromCompletion).toBe(true);
+		expect(row(series.id).title).toBe('C13 shared');
+
+		// the partner's copy is not modified by the attempt and still has no ghosts
+		const after = getCalendar(partnerUser, today, addDays(today, 10)).items.filter(
+			(i) => i.title === 'C13 shared',
+		);
+		expect(after).toHaveLength(1);
+		expect(after[0]).toMatchObject({ id: before[0]!.id, date: today, editable: false, theirs: true });
+		expect('repeatFromCompletion' in after[0]!).toBe(false);
+		expect(getCalendar(partnerUser, addDays(today, 1), addDays(today, 10)).items).toHaveLength(0);
 	});
 });
 
