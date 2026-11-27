@@ -188,6 +188,41 @@ it('C5 a failed send is logged and retried, and no live subscription leaves the 
 	expect(digestDue(me, now)).toBe(D);
 });
 
+it('C3 a multi-day repeat that overlaps one day with several occurrences counts its series once', () => {
+	// FREQ=DAILY with a 1-day span: on the 13th the 12th's occurrence and the 13th's both overlap
+	const series = item({
+		title: 'Run',
+		date: '2026-11-12',
+		time: '09:00',
+		endDate: '2026-11-13',
+		rrule: 'FREQ=DAILY;COUNT=5',
+	});
+	// a second series on the same day is still its own row
+	item({ title: 'Swim', date: '2026-11-13', time: '17:00', rrule: 'FREQ=DAILY;COUNT=2' });
+
+	expect(digestCounts(me, '2026-11-13')).toEqual({ items: 2, blocks: 0, first: 540 });
+	expect(digestText(me, '2026-11-13')).toBe('2 items · first 09:00');
+	// one row on its later days too, and the timed start on that date still sets "first"
+	expect(digestCounts(me, '2026-11-14')).toEqual({ items: 2, blocks: 0, first: 540 });
+	expect(series.endDate).toBe('2026-11-13');
+});
+
+it('C5 an owner west of UTC keeps a yesterday key the UTC cutoff would drop', () => {
+	usersRepo.setPrefs(me.id, { timezone: 'America/Los_Angeles' });
+	refresh();
+	// sent at 23:00 on the 8th in LA (= 07:00Z on the 9th); now is 16:00 on the 9th there: 17 h old
+	const now = Date.parse('2026-12-10T00:00:00Z');
+	meta.set(digestKey(me.id, '2026-11-30'), 'old');
+	meta.set(digestKey(me.id, '2026-12-08'), 'yesterday');
+	meta.set(digestKey(me.id, '2026-12-09'), 'today');
+
+	purgeDigest(now);
+
+	expect(meta.get(digestKey(me.id, '2026-11-30'))).toBeUndefined();
+	expect(meta.get(digestKey(me.id, '2026-12-08'))).toBe('yesterday');
+	expect(meta.get(digestKey(me.id, '2026-12-09'))).toBe('today');
+});
+
 it('C5 the tick purges digest keys older than a day and keeps today’s', () => {
 	meta.set(digestKey('usr_old', '2026-11-01'), 'x');
 	meta.set(digestKey('usr_old', '2026-11-12'), 'x');

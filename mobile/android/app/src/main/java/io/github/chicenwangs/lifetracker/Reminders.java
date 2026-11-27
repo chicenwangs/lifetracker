@@ -61,13 +61,13 @@ public class Reminders extends BroadcastReceiver {
         // the digest is re-added on every sync: the cancel loop below drops any id missing from `now`, so an
         // omitted digest would lose its alarm until the next sync that included it (card 12, D-V4-30)
         if (digest != null) {
+            // keep the id in the set even if `at` already passed (slow round trip / phone clock ahead):
+            // dropping it would cancel the alarm instead of letting the next sync move it
+            now.add(DIGEST);
+            old.remove(DIGEST);
             try {
                 long due = Instant.parse(digest.optString("at")).toEpochMilli();
-                if (due > t) {
-                    setAlarm(am, due, alarm(c, DIGEST, digest.optString("text"), "/today", "", ""));
-                    now.add(DIGEST);
-                    old.remove(DIGEST);
-                }
+                if (due > t) setAlarm(am, due, alarm(c, DIGEST, digest.optString("text"), "/today", "", ""));
             } catch (Exception ignored) {
             }
         }

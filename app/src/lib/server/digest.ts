@@ -3,6 +3,7 @@
 // and the Android alarm; the mark lives in app_meta (one key per user + local date), never a table.
 import { agenda } from './agenda';
 import * as meta from './repo/meta';
+import * as usersRepo from './repo/users';
 import { addDays, hhmm, localToUtc, minutesOf, nowLocalMinutes, todayLocal, utcToLocal } from '$lib/time';
 
 /** the client sends this on the first switch to On (D-V4-30: no server-side default write) */
@@ -18,10 +19,14 @@ export interface DigestCounts {
 
 export function digestCounts(me: App.SafeUser, date: string): DigestCounts {
 	const day = agenda(me, date, addDays(date, 1));
+	const rows = day.items.filter((i) => !i.parentId && i.status !== 'done');
+	// a multi-day repeat whose span is longer than its interval overlaps one day with several occurrences:
+	// count its series once (C3, D-V4-37), like the one row the planner draws for it
 	const seen = new Set<string>();
-	const items = day.items.filter((i) => {
-		if (i.parentId || i.status === 'done' || seen.has(i.id)) return false;
-		seen.add(i.id);
+	const items = rows.filter((i) => {
+		const key = i.seriesId ?? i.id;
+		if (seen.has(key)) return false;
+		seen.add(key);
 		return true;
 	});
 	const blocks = day.blocks.filter((b) => utcToLocal(b.startAt, me.timezone).date === date);
@@ -29,7 +34,7 @@ export function digestCounts(me: App.SafeUser, date: string): DigestCounts {
 	const earlier = (m: number) => {
 		if (first === null || m < first) first = m;
 	};
-	for (const i of items) if (i.date === date && i.time) earlier(minutesOf(i.time));
+	for (const i of rows) if (i.date === date && i.time) earlier(minutesOf(i.time));
 	for (const b of blocks) earlier(utcToLocal(b.startAt, me.timezone).minutes);
 	return { items: items.length, blocks: blocks.length, first };
 }
@@ -74,11 +79,15 @@ export function digestNext(me: App.SafeUser, now: number = Date.now()): { at: st
 	return text ? { at, text } : null;
 }
 
-/** drop marks older than a day (D-V4-30): the key set would otherwise grow forever */
+/** drop marks older than a day (D-V4-30): the key set would otherwise grow forever. The cutoff follows each
+ *  owner's local date, so a key west of UTC is not dropped while it is less than a day old. */
 export function purgeDigest(now: number = Date.now()): void {
-	const cutoff = addDays(new Date(now).toISOString().slice(0, 10), -1);
+	const utcCutoff = addDays(new Date(now).toISOString().slice(0, 10), -1);
 	for (const key of meta.keys(DIGEST_KEY)) {
-		const date = key.slice(key.length - 10);
-		if (date < cutoff) meta.del(key);
+		const rest = key.slice(DIGEST_KEY.length);
+		const at = rest.lastIndexOf(':');
+		const owner = at > 0 ? usersRepo.byId(rest.slice(0, at)) : undefined;
+		const cutoff = owner ? addDays(todayLocal(owner.timezone, now), -1) : utcCutoff;
+		if (rest.slice(at + 1) < cutoff) meta.del(key);
 	}
 }
