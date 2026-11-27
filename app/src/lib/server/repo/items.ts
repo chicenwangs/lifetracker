@@ -313,9 +313,10 @@ export const itemPatchSchema = z
 		notes: z.string().max(20_000).nullable(),
 		private: z.boolean(),
 		rrule: zRRule.nullable(),
-		/** card 09 C2: the next date counts from completion (only for a qualifying daily/monthly rule) */
+		/** card 09 C1: the next date counts from completion (only for a qualifying daily/monthly rule) */
 		repeatFromCompletion: z.boolean(),
-		/** card 09 MUST 2: the series date the client saw, so a replayed completion no-ops */
+		/** card 09 MUST 2: the series date the client saw, so a replayed completion no-ops.
+		 *  Optional: an API caller that omits it still completes (older clients); every UI path sends it. */
 		seenDate: zDate,
 		/** repeating edit scope (#72): 'this' detaches one date, 'following' splits the series, 'all' updates the series */
 		scope: z.enum(['this', 'following', 'all']),
@@ -340,6 +341,22 @@ export function isOccurrence(cur: ItemRow, occDate: string): boolean {
 	if (cur.repeatFromCompletion) return occDate === cur.date;
 	const span = cur.endDate ? diffDays(cur.date, cur.endDate) : 0;
 	return expandRRule(cur.date, cur.rrule, [], occDate, addDays(occDate, 1), span).includes(occDate);
+}
+
+/** card 09 MUST 2: a from-completion done tick whose seen date is no longer the series' date = an old replay */
+export function isStaleCompletion(
+	cur: ItemRow,
+	status: Status | undefined,
+	seenDate: string | undefined,
+): boolean {
+	return (
+		!!cur.rrule &&
+		!!cur.date &&
+		cur.repeatFromCompletion &&
+		status === 'done' &&
+		seenDate !== undefined &&
+		seenDate !== cur.date
+	);
 }
 
 function addExdate(meId: string, cur: ItemRow, occDate: string, now: string): void {
@@ -450,7 +467,7 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	// A replay (offline retry, two devices) carries the date it saw: it only completes the row still on
 	// that date, so a second copy is never filed and the series never moves twice.
 	if (cur.rrule && cur.date && cur.repeatFromCompletion && fields.status === 'done') {
-		if (seenDate !== undefined && seenDate !== cur.date) return cur;
+		if (isStaleCompletion(cur, fields.status, seenDate)) return mustOwn(meId, id); // refreshed row, no change
 		return completeFromCompletion(meId, cur, nowUtcIso());
 	}
 

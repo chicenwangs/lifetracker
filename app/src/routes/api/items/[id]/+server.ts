@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { api, body, me, notFound } from '$lib/server/http';
 import * as items from '$lib/server/repo/items';
 import { undoable } from '$lib/server/undo';
-import { afterCompletion, recalcOwner, splitSeries } from '$lib/server/reminders';
+import { afterCompletion, cancelIds, exactOpenIds, recalcOwner, splitSeries } from '$lib/server/reminders';
 import { splitOccId } from '$lib/rrule';
 
 export const GET = api((e) => {
@@ -30,15 +30,32 @@ export const PATCH = api(async (e) => {
 	const id = e.params.id ?? '';
 	const p = await body(e, items.itemPatchSchema);
 	const cur = items.mustOwn(u.id, id);
-	const r = undoable(u.id, `${what(p)} "${cur.title}"`, [{ t: 'items', id: cur.id }], () => {
-		const result = items.patch(u.id, id, p);
-		// card 09 C9: a completion creates the done copy — journal it with the series in the same entry
-		const made = result.id !== cur.id ? [result.id] : [];
-		if (result.doneCopyId) made.push(result.doneCopyId);
-		return { result, created: made.map((i) => ({ t: 'items' as const, id: i })) };
-	});
+	// card 09 MUST 2: a replayed completion changes nothing — answer with the refreshed row, no journal entry
+	if (items.isStaleCompletion(cur, p.status, p.seenDate))
+		return json({ item: items.withCounts([items.mustOwn(u.id, id)])[0] });
+	const completing = !!cur.rrule && cur.date !== null && cur.repeatFromCompletion && p.status === 'done';
+	// the finished occurrence's exact reminders go with it, in this action's undo entry. A request without
+	// `seenDate` is an older/API caller (the optional residual): it completes but keeps the old reminder set.
+	const siblings = completing && p.seenDate !== undefined ? exactOpenIds(u.id, cur.id) : [];
+	const r = undoable(
+		u.id,
+		`${what(p)} "${cur.title}"`,
+		[{ t: 'items', id: cur.id }, ...siblings.map((sid) => ({ t: 'reminders' as const, id: sid }))],
+		() => {
+			const result = items.patch(u.id, id, p);
+			// card 09 C9: a completion creates the done copy — journal it with the series in the same entry
+			const made = result.id !== cur.id ? [result.id] : [];
+			if (result.doneCopyId) made.push(result.doneCopyId);
+			if (result.doneCopyId) {
+				// standing relative rules move with the new date; the completed occurrence's exact ones are done
+				recalcOwner(u.id);
+				cancelIds(u.id, siblings);
+			}
+			return { result, created: made.map((i) => ({ t: 'items' as const, id: i })) };
+		},
+	);
 	if (p.scope === 'following' && r.result.id !== cur.id) splitSeries(u.id, cur.id, r.result.id); // #296
-	recalcOwner(u.id);
+	if (!r.result.doneCopyId) recalcOwner(u.id);
 	if (r.result.doneCopyId) afterCompletion(u.id, cur.id); // C8: recreate a reminder that already fired
 	return json({ item: items.withCounts([r.result])[0], undo: r.undo });
 });

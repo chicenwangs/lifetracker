@@ -13,7 +13,9 @@ import { getCalendar } from '../../src/lib/server/calendar';
 import { agenda } from '../../src/lib/server/agenda';
 import { buildIcs } from '../../src/lib/server/ics';
 import { itemView } from '../../src/lib/server/itemview';
-import { GET } from '../../src/routes/api/items/[id]/+server';
+import { GET, PATCH } from '../../src/routes/api/items/[id]/+server';
+import { POST as CYCLE } from '../../src/routes/api/items/[id]/cycle/+server';
+import { POST as ACT } from '../../src/routes/api/reminders/[id]/+server';
 import { describeFromCompletion, nextFromCompletion, qualifiesFromCompletion } from '../../src/lib/rrule';
 import { addDays, addMonths, isoPlus, localToUtc, nowUtcIso, todayLocal } from '../../src/lib/time';
 
@@ -52,6 +54,57 @@ const getRow = async (raw: string): Promise<number> => {
 	} as unknown as Parameters<typeof GET>[0]);
 	return res.status;
 };
+
+type RouteItem = { item?: { status: string; date: string }; error?: { code: string } };
+const routeCall = (url: string, method: string, b?: unknown) =>
+	new Request(url, {
+		method,
+		...(b === undefined ? {} : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(b) }),
+	});
+/** the real PATCH route (card 09 MUST 2: the seenDate guard and the empty-journal skip) */
+const patchRoute = async (raw: string, b: unknown) => {
+	const url = `http://localhost/api/items/${encodeURIComponent(raw)}`;
+	const res = await PATCH({
+		params: { id: raw },
+		locals: { user },
+		url: new URL(url),
+		request: routeCall(url, 'PATCH', b),
+	} as unknown as Parameters<typeof PATCH>[0]);
+	return { status: res.status, json: (await res.json()) as RouteItem };
+};
+/** the real /cycle route */
+const cycleRoute = async (raw: string, b?: unknown) => {
+	const url = `http://localhost/api/items/${encodeURIComponent(raw)}/cycle`;
+	const res = await CYCLE({
+		params: { id: raw },
+		locals: { user },
+		url: new URL(url),
+		request: routeCall(url, 'POST', b),
+	} as unknown as Parameters<typeof CYCLE>[0]);
+	return { status: res.status, json: (await res.json()) as RouteItem };
+};
+/** the real reminder act route (Done) */
+const actRoute = async (reminderId: string) => {
+	const url = `http://localhost/api/reminders/${reminderId}`;
+	const res = await ACT({
+		params: { id: reminderId },
+		locals: { user },
+		url: new URL(url),
+		request: routeCall(url, 'POST', { action: 'done' }),
+	} as unknown as Parameters<typeof ACT>[0]);
+	return { status: res.status, json: (await res.json()) as unknown };
+};
+const undoCount = () =>
+	(handle().sqlite.prepare('SELECT count(*) AS n FROM undo_actions').get() as { n: number }).n;
+/** done copies of one title (the history rows a completion files) */
+const doneCopies = (title: string) =>
+	(
+		handle()
+			.sqlite.prepare(`SELECT count(*) AS n FROM items WHERE title = ? AND rrule IS NULL AND status = 'done'`)
+			.get(title) as { n: number }
+	).n;
+const reminderStatus = (id: string) =>
+	(handle().sqlite.prepare('SELECT status FROM reminders WHERE id = ?').get(id) as { status: string }).status;
 
 describe('C6 next date: counts from the completion day', () => {
 	it('daily: on the due day, early, late, interval 1 and N', () => {
@@ -456,6 +509,123 @@ describe('MUST 2 a replayed completion', () => {
 		const done = items.cycle(me, i.id, t);
 		expect(done.doneCopyId).toBeTruthy();
 		expect(copies('Must2 cycle')).toBe(1);
+	});
+});
+
+describe('MUST 3 the finished occurrence’s other reminders', () => {
+	it('two exact reminders: Done on one files one copy and cancels the sibling; Done on the sibling later changes nothing', () => {
+		const t = today();
+		const i = mkComplete({ title: 'Sib exact', date: t, time: '09:00', rrule: 'FREQ=DAILY' });
+		const a = rem.add(me, 'planner_item', i.id, { at: localToUtc(addDays(t, 1), '09:00', TZ) });
+		const b = rem.add(me, 'planner_item', i.id, { at: localToUtc(addDays(t, 2), '10:00', TZ) });
+		rem.act(me, a.id, 'done');
+
+		expect(items.mustOwn(me, i.id)).toMatchObject({ date: addDays(t, 1), status: 'todo' });
+		expect(doneCopies('Sib exact')).toBe(1);
+		expect(reminderStatus(a.id)).toBe('sent');
+		expect(reminderStatus(b.id)).toBe('cancelled'); // it belonged to the finished occurrence
+
+		// Done on the cancelled sibling: 404, no second copy, the series does not move again
+		expect(() => rem.act(me, b.id, 'done')).toThrow();
+		expect(items.mustOwn(me, i.id).date).toBe(addDays(t, 1));
+		expect(doneCopies('Sib exact')).toBe(1);
+
+		// the sibling comes back with the completion's Undo (same undo entry)
+		const last = handle()
+			.sqlite.prepare('SELECT id, rows FROM undo_actions ORDER BY created_at DESC, rowid DESC LIMIT 1')
+			.get() as { id: string; rows: string };
+		const journal = JSON.parse(last.rows) as { t: string; id: string; before: unknown }[];
+		expect(journal.some((x) => x.t === 'reminders' && x.id === b.id && x.before)).toBe(true);
+		undo(me, last.id);
+		expect(reminderStatus(b.id)).toBe('scheduled');
+		expect(items.mustOwn(me, i.id).date).toBe(t);
+	});
+
+	it('PATCH route: a stale seen date answers with the refreshed row and writes no journal entry', async () => {
+		const t = today();
+		const i = mkComplete({ title: 'Route patch', date: t, rrule: 'FREQ=DAILY;INTERVAL=3' });
+		const first = await patchRoute(i.id, { status: 'done', seenDate: t });
+		expect(first.status).toBe(200);
+		expect(first.json.item).toMatchObject({ date: addDays(t, 3), status: 'todo' });
+		expect(doneCopies('Route patch')).toBe(1);
+
+		const before = undoCount();
+		const replay = await patchRoute(i.id, { status: 'done', seenDate: t });
+		expect(replay.status).toBe(200);
+		// refreshed row, not a false Done and not the pre-completion copy
+		expect(replay.json.item).toMatchObject({ date: addDays(t, 3), status: 'todo' });
+		expect(undoCount()).toBe(before); // no empty journal entry
+		expect(doneCopies('Route patch')).toBe(1);
+	});
+
+	it('cycle route: a stale seen date is a no-op with no journal entry; the matching date completes', async () => {
+		const t = today();
+		const i = mkComplete({ title: 'Route cycle', date: t, rrule: 'FREQ=DAILY' });
+		items.patch(me, i.id, { status: 'doing' });
+		const before = undoCount();
+		const stale = await cycleRoute(i.id, { seenDate: addDays(t, 9) });
+		expect(stale.status).toBe(200);
+		expect(stale.json.item).toMatchObject({ status: 'doing', date: t }); // refreshed
+		expect(undoCount()).toBe(before); // no empty journal entry
+		expect(doneCopies('Route cycle')).toBe(0);
+
+		const done = await cycleRoute(i.id, { seenDate: t });
+		expect(done.json.item).toMatchObject({ status: 'todo', date: addDays(t, 1) });
+		expect(doneCopies('Route cycle')).toBe(1);
+	});
+
+	it('the reminder route refuses Done on the cancelled sibling and files no second copy', async () => {
+		const t = today();
+		const i = mkComplete({ title: 'Route reminder', date: t, time: '09:00', rrule: 'FREQ=DAILY' });
+		const a = rem.add(me, 'planner_item', i.id, { at: localToUtc(addDays(t, 1), '09:00', TZ) });
+		const b = rem.add(me, 'planner_item', i.id, { at: localToUtc(addDays(t, 2), '10:00', TZ) });
+		const done = await actRoute(a.id);
+		expect(done.status).toBe(200);
+		expect(doneCopies('Route reminder')).toBe(1);
+		expect(reminderStatus(b.id)).toBe('cancelled');
+
+		const again = await actRoute(b.id);
+		expect(again.status).toBe(404);
+		expect(items.mustOwn(me, i.id).date).toBe(addDays(t, 1));
+		expect(doneCopies('Route reminder')).toBe(1);
+	});
+
+	it('the reminder route marks a stale reminder handled without a second completion or journal entry', async () => {
+		const t = today();
+		const i = mkComplete({ title: 'Route stale', date: addDays(t, 3), time: '09:00', rrule: 'FREQ=DAILY' });
+		const r = rem.add(me, 'planner_item', i.id, { offset: '1d' }); // due t+2
+		items.patch(me, i.id, { date: t }); // the series moved; the reminder still names the old date
+		const before = undoCount();
+		const res = await actRoute(r.id);
+		expect(res.status).toBe(200);
+		expect(items.mustOwn(me, i.id).date).toBe(t); // no completion
+		expect(undoCount()).toBe(before); // no journal entry
+		expect(doneCopies('Route stale')).toBe(0);
+	});
+
+	it('a tick completion with the seen date cancels an open exact reminder; a relative one moves (C8)', async () => {
+		const t = today();
+		const i = mkComplete({
+			title: 'Route patch exact',
+			date: addDays(t, 3),
+			time: '09:00',
+			rrule: 'FREQ=DAILY',
+		});
+		const exact = rem.add(me, 'planner_item', i.id, { at: localToUtc(addDays(t, 5), '10:00', TZ) });
+		const rel = rem.add(me, 'planner_item', i.id, { offset: '2h' }); // due t+3 07:00, still ahead
+		await patchRoute(i.id, { status: 'done', seenDate: addDays(t, 3) });
+
+		expect(items.mustOwn(me, i.id).date).toBe(addDays(t, 1)); // daily: finished early, +1 from today
+		expect(reminderStatus(exact.id)).toBe('cancelled');
+		expect(reminderStatus(rel.id)).toBe('scheduled');
+		expect(rem.list(me, 'planner_item', i.id).find((x) => x.id === rel.id)?.dueAt).toBe(
+			isoPlus(localToUtc(addDays(t, 1), '09:00', TZ), -2 * 3_600_000),
+		);
+		expect(doneCopies('Route patch exact')).toBe(1);
+
+		// the cancelled exact reminder can no longer complete the series
+		expect((await actRoute(exact.id)).status).toBe(404);
+		expect(doneCopies('Route patch exact')).toBe(1);
 	});
 });
 
