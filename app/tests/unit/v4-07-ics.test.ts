@@ -158,6 +158,24 @@ it('C8 one VEVENT per series, DTSTART = seriesDate, RRULE subset, UNTIL and EXDA
 	expect(lines).toContain('EXDATE;VALUE=DATE:20261116');
 });
 
+it('C8 a timed UNTIL is the UTC instant of its last local date (DST zone, not a fixed offset)', () => {
+	const london: ItemDTO[] = [
+		row({
+			id: 'itm_l@2026-06-01',
+			title: 'London',
+			date: '2026-06-01',
+			time: '09:00',
+			seriesId: 'itm_l',
+			seriesDate: '2026-06-01',
+			rrule: 'FREQ=MONTHLY;BYMONTHDAY=1;UNTIL=2026-12-01',
+		}),
+	];
+	const lines = unfolded(feed(london, { timezone: 'Europe/London' }));
+
+	expect(lines).toContain('DTSTART:20260601T080000Z'); // 1 June: BST, UTC+1
+	expect(lines).toContain('RRULE:FREQ=MONTHLY;BYMONTHDAY=1;UNTIL=20261201T090000Z'); // 1 Dec: GMT, UTC+0
+});
+
 // ---------- the route ----------
 const call = (file: string, ip = '203.0.113.7') =>
 	GET({ params: { file }, getClientAddress: () => ip } as unknown as Parameters<typeof GET>[0]);
@@ -229,6 +247,21 @@ it('C5 a hit is 200 text/calendar with the private 5-minute cache, and never a 5
 	expect((await call(`${token}.ics`)).status).toBe(404); // caught, never a 500
 });
 
+it('C5 a disabled account has no feed: disable clears the token and the route still 404s a legacy hash', async () => {
+	const token = giveFeed(me.id);
+	expect((await call(`${token}.ics`)).status).toBe(200);
+
+	usersRepo.disable(me.id);
+	expect(usersRepo.icsTokenHash(me.id)).toBeNull(); // belt: disable drops the feed with the session
+	expect((await call(`${token}.ics`)).status).toBe(404);
+
+	// braces: even a row that somehow kept its hash is refused while the account has no password
+	handle().sqlite.prepare('UPDATE users SET ics_token_hash = ? WHERE id = ?').run(sha256hex(token), me.id);
+	const r = await call(`${token}.ics`);
+	expect(r.status).toBe(404);
+	expect(await r.text()).toBe('{}');
+});
+
 it('C6 own default-calendar items only in [today-30, today+365): no partner rows, no blocks, hidden types out', async () => {
 	const token = giveFeed(me.id);
 	const today = todayLocal(TZ);
@@ -274,17 +307,26 @@ it('C9 DESCRIPTION reads notes once for every exported series; the earliest bloc
 	const b = item({ title: 'Beta', date: today, time: '11:00', notes: 'beta notes' });
 	block({ itemId: a.id, startAt: '2026-11-13T01:00:00Z', endAt: '2026-11-13T02:30:00Z' });
 	block({ itemId: a.id, startAt: '2026-11-13T05:00:00Z', endAt: '2026-11-13T05:15:00Z' });
+	block({ itemId: b.id, startAt: '2026-11-13T03:00:00Z', endAt: '2026-11-13T03:30:00Z' });
 	const spy = vi.spyOn(itemsRepo, 'notesFor');
+	const batched = vi.spyOn(blocksRepo, 'earliestLength');
+	const perItem = vi.spyOn(blocksRepo, 'forItem');
 
 	const body = await (await call(`${token}.ics`)).text();
 	expect(spy).toHaveBeenCalledTimes(1); // one batched call (D-V4-37)
 	expect(spy.mock.calls[0]?.[0].sort()).toEqual([a.id, b.id].sort());
+	expect(batched).toHaveBeenCalledTimes(1); // one block query for every series, never one per item
+	expect(perItem).not.toHaveBeenCalled();
 	expect(body).toContain('DESCRIPTION:alpha notes');
 	// 09:00 KL + the earliest block's 90 min
 	const at = body.indexOf(`UID:${a.id}@lifetracker`);
 	expect(body.slice(at, at + 300)).toContain('DTSTART:');
 	expect(body.slice(at, at + 300)).toMatch(/DTSTART:\d{8}T010000Z/);
 	expect(body.slice(at, at + 300)).toMatch(/DTEND:\d{8}T023000Z/);
+	// each series keeps its own earliest block: 11:00 KL + 30 min
+	const bt = body.indexOf(`UID:${b.id}@lifetracker`);
+	expect(body.slice(bt, bt + 300)).toMatch(/DTSTART:\d{8}T030000Z/);
+	expect(body.slice(bt, bt + 300)).toMatch(/DTEND:\d{8}T033000Z/);
 });
 
 it('C11 every request counts per client IP: over 120 in the window is a 429 with no feed body', async () => {

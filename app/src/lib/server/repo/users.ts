@@ -109,7 +109,8 @@ export function byIcsTokenHash(hash: string): UserRow | undefined {
 
 /** disabled = no password hash: login fails and loadSession drops any session (auth.ts). Undo = scripts/reset-password.mjs */
 export function disable(id: string): void {
-	db().update(users).set({ passwordHash: null }).where(eq(users.id, id)).run();
+	// belt and braces: a disabled account's calendar feed dies with the session, even if a row still holds one
+	db().update(users).set({ passwordHash: null, icsTokenHash: null }).where(eq(users.id, id)).run();
 }
 export const disabledIds = (): string[] =>
 	db()

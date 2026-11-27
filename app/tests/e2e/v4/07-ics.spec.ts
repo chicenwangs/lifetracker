@@ -262,3 +262,35 @@ test('C14 a failed Create shows the server message inline with Retry, never a to
 	await page.getByRole('button', { name: 'Turn off' }).click();
 	await expect(page.getByText(EMPTY, { exact: true })).toBeVisible();
 });
+
+test('C4 the service worker never answers /cal/ from its cache, so a rotated or off feed cannot linger', async ({
+	page,
+	context,
+}) => {
+	await signIn(page);
+	await page.goto('/today'); // a normal page: the app registers the SW and it claims the client
+	await page.evaluate(async () => {
+		await navigator.serviceWorker?.ready;
+	});
+	await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker?.controller)).toBe(true);
+	const probe = await page.evaluate(() => `${location.origin}/cal/sw-probe.ics?probe=1`);
+	// seed the entry the old worker would have written for that navigation
+	await page.evaluate(async (url) => {
+		const c = await caches.open('lt-data-v1');
+		await c.put(
+			url,
+			new Response('<p>CACHED FEED</p>', {
+				headers: { 'content-type': 'text/html', date: new Date().toUTCString() },
+			}),
+		);
+	}, probe);
+
+	try {
+		await context.setOffline(true);
+		let served = true;
+		await page.goto(probe).catch(() => (served = false));
+		expect(served).toBe(false); // bypassed: the stale copy is not served, the offline failure stands
+	} finally {
+		await context.setOffline(false);
+	}
+});

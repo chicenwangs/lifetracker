@@ -31,6 +31,9 @@ self.addEventListener('fetch', (e) => {
 	const r = e.request;
 	const u = new URL(r.url);
 	if (r.method !== 'GET' || u.origin !== self.location.origin) return;
+	// the calendar feed is public machine data, never cached here: after Rotate / Turn off an old URL must
+	// stop working at once, and an offline copy would keep serving it (card 07 C4)
+	if (u.pathname.startsWith('/cal/')) return;
 	if (
 		u.pathname.startsWith('/_app/immutable/') ||
 		u.pathname === '/manifest.webmanifest' ||

@@ -9,7 +9,7 @@ import { agenda } from '$lib/server/agenda';
 import { buildIcs } from '$lib/server/ics';
 import { sha256hex } from '$lib/server/crypto';
 import * as rl from '$lib/server/ratelimit';
-import { addDays, durationMin, todayLocal } from '$lib/time';
+import { addDays, todayLocal } from '$lib/time';
 
 const MAX_REQ = 120; // per 15-minute window, per client IP (D-V4-08)
 
@@ -25,20 +25,18 @@ export const GET: RequestHandler = async ({ params, getClientAddress }) => {
 		const file = params.file ?? '';
 		if (!file.endsWith('.ics')) return bare(404);
 		const row = usersRepo.byIcsTokenHash(sha256hex(file.slice(0, -4)));
-		if (!row) return bare(404);
+		if (!row || !row.passwordHash) return bare(404); // a disabled account has no feed
 		const me = usersRepo.safe(row);
 		const today = todayLocal(me.timezone);
 		// [from, to): today-30 .. today+365 (card 05's maxDays default stays 62)
 		const items = agenda(me, addDays(today, -30), addDays(today, 366), { maxDays: 400 }).items;
 		const series = [...new Set(items.map((i) => i.seriesId ?? i.id))];
+		const blockMin = blocksRepo.earliestLength(series); // one query for every series
 		const body = buildIcs({
 			timezone: me.timezone,
 			rows: items,
 			notes: itemsRepo.notesFor(series), // one query for every series (D-V4-37)
-			blockMin: (id) => {
-				const b = blocksRepo.forItem(me.id, id)[0]; // ordered by start: the earliest linked block
-				return b ? durationMin(b.startAt, b.endAt) : undefined;
-			},
+			blockMin: (id) => blockMin.get(id),
 		});
 		return new Response(body, {
 			status: 200,
