@@ -176,6 +176,11 @@
 			transform: none;
 			bottom: calc(76px + env(safe-area-inset-bottom));
 		}
+		/* O-10 / D-V4-17: an open BottomSheet publishes its top edge; the toast sits 8 px above it so it
+		   never covers the sheet's button row */
+		:global(html[data-sheet]) .wrap {
+			bottom: calc(100dvh - var(--sheet-top, 50dvh) + 8px);
+		}
 		.toast {
 			max-width: none;
 			min-height: 48px;

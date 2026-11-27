@@ -4,6 +4,7 @@
 <script lang="ts">
 	import GestureHint from '$lib/components/GestureHint.svelte';
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
+	import SlippedList from '$lib/components/SlippedList.svelte';
 	import { askDate, askText } from '$lib/client/dialog.svelte';
 	import { cycleRow, deleteRow, moveRow, toggleDone } from '$lib/client/rowOps';
 	import {
@@ -230,6 +231,7 @@
 <svelte:head><title>Today · Life Tracker</title></svelte:head>
 
 <main class="today">
+	<SlippedList items={data.slipped.items} total={data.slipped.total} refresh={invalidateAll} />
 	<header class="day">
 		<!-- date line over the title; tap it for any day (#94) -->
 		<h1>

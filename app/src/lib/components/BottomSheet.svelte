@@ -53,7 +53,20 @@
 		if (!panel?.contains(document.activeElement)) panel?.focus();
 		const prev = document.body.style.overflow;
 		document.body.style.overflow = 'hidden';
+		// O-10 / D-V4-17: the global toast lifts to 8 px above this sheet's top edge (UndoToast reads it)
+		const root = document.documentElement;
+		const sync = () => {
+			if (!panel) return;
+			root.dataset.sheet = '';
+			root.style.setProperty('--sheet-top', `${panel.getBoundingClientRect().top}px`);
+		};
+		sync();
+		const ro = panel ? new ResizeObserver(sync) : null;
+		if (panel) ro?.observe(panel);
 		return () => {
+			ro?.disconnect();
+			delete root.dataset.sheet;
+			root.style.removeProperty('--sheet-top');
 			document.body.style.overflow = prev;
 			if (opener instanceof HTMLElement && document.contains(opener)) opener.focus();
 		};
