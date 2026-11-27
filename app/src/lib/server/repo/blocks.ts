@@ -94,6 +94,21 @@ export function forItem(meId: string, itemId: string): BlockRow[] {
 		.all();
 }
 
+/** minutes of the earliest live block per linked item in one query (ICS feed; same rule as forItem[0]) */
+export function earliestLength(ids: string[]): Map<string, number> {
+	const m = new Map<string, number>();
+	const uniq = [...new Set(ids)];
+	for (let i = 0; i < uniq.length; i += 500)
+		for (const r of db()
+			.select({ itemId: blocks.itemId, startAt: blocks.startAt, endAt: blocks.endAt })
+			.from(blocks)
+			.where(and(inArray(blocks.itemId, uniq.slice(i, i + 500)), live))
+			.orderBy(asc(blocks.startAt))
+			.all())
+			if (r.itemId && !m.has(r.itemId)) m.set(r.itemId, durationMin(r.startAt, r.endAt));
+	return m;
+}
+
 function checkRange(s: string, e: string) {
 	if (e <= s) bad('end must be after start');
 	if (durationMin(s, e) > MAX_MIN) bad('block max 7 days');

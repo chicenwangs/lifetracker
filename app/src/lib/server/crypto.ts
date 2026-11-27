@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomInt, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { env } from './env';
 
 export const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -17,6 +17,11 @@ export function newId(prefix: string): string {
 /** 160-bit session token. */
 export function sessionToken(): string {
 	return randomBase32(32);
+}
+
+/** 256-bit URL-safe calendar feed token (card 07). Only its SHA-256 is stored. */
+export function icsToken(): string {
+	return randomBytes(32).toString('base64url');
 }
 
 export function sha256hex(s: string): string {

@@ -96,9 +96,21 @@ export function setPasswordHash(id: string, hash: string): void {
 	db().update(users).set({ passwordHash: hash }).where(eq(users.id, id)).run();
 }
 
+/** Calendar feed (card 07): only the token's SHA-256 is stored; null = no feed. */
+export function setIcsTokenHash(id: string, hash: string | null): void {
+	db().update(users).set({ icsTokenHash: hash }).where(eq(users.id, id)).run();
+}
+export function icsTokenHash(id: string): string | null {
+	return db().select({ h: users.icsTokenHash }).from(users).where(eq(users.id, id)).get()?.h ?? null;
+}
+export function byIcsTokenHash(hash: string): UserRow | undefined {
+	return db().select().from(users).where(eq(users.icsTokenHash, hash)).get();
+}
+
 /** disabled = no password hash: login fails and loadSession drops any session (auth.ts). Undo = scripts/reset-password.mjs */
 export function disable(id: string): void {
-	db().update(users).set({ passwordHash: null }).where(eq(users.id, id)).run();
+	// belt and braces: a disabled account's calendar feed dies with the session, even if a row still holds one
+	db().update(users).set({ passwordHash: null, icsTokenHash: null }).where(eq(users.id, id)).run();
 }
 export const disabledIds = (): string[] =>
 	db()

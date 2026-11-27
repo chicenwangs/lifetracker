@@ -46,6 +46,8 @@ export interface ItemDTO {
 	occurrenceDate?: string;
 	/** YYYY-MM-DD start date of the repeating series (#72) */
 	seriesDate?: string;
+	/** stored excluded local dates of a repeating series (#72); ICS export, card 07 */
+	exdates?: string[];
 	/** someone else's calendar, shared with me (read-only) */
 	theirs?: boolean;
 	owner?: PartnerTag;
