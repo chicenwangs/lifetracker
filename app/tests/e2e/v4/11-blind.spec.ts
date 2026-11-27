@@ -110,7 +110,9 @@ function dbAll<T>(sql: string, ...args: unknown[]): T[] {
 	}
 }
 const dbQ = <T>(sql: string, ...args: unknown[]): T => dbAll<T>(sql, ...args)[0]!;
-const journalCount = () => dbQ<{ n: number }>('SELECT count(*) AS n FROM undo_actions').n;
+const journalTotal = () => dbQ<{ n: number }>('SELECT count(*) AS n FROM undo_actions').n;
+const journalLive = () =>
+	dbQ<{ n: number }>('SELECT count(*) AS n FROM undo_actions WHERE undone_at IS NULL').n;
 const myCal = () =>
 	dbQ<{ id: string }>(
 		"SELECT id FROM calendars WHERE owner_id = (SELECT id FROM users WHERE username = 'jeremy') AND is_default = 1", // prettier-ignore
@@ -314,7 +316,7 @@ test('C8 more than 2 000 VEVENTs refuses the whole import inline with the count 
 			ev(`UID:${uid(`many-${i}`)}`, `SUMMARY:Blind11 many ${i}`, at('2026-03-02', '09:00')),
 		),
 	);
-	const before = journalCount();
+	const before = journalTotal();
 	await input().setInputFiles(file(text, 'many.ics'));
 	const alert = page.locator('.preview .alert');
 	await expect(alert).toContainText('2001 events');
@@ -328,7 +330,7 @@ test('C8 more than 2 000 VEVENTs refuses the whole import inline with the count 
 			`${PREFIX}%`,
 		).n,
 	).toBe(0);
-	expect(journalCount()).toBe(before);
+	expect(journalTotal()).toBe(before);
 });
 
 // ---- C9 ---------------------------------------------------------------------------------------------------
@@ -404,7 +406,8 @@ test('C10 the import is one undo entry and the toast Undo removes every inserted
 	await Promise.all([page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/settings/import'), importBtn(1).click()]); // prettier-ignore
 	await expect(page.locator('.toast')).toContainText('Imported 1 event');
 
-	const journal = journalCount();
+	const totalBefore = journalTotal();
+	const liveBefore = journalLive();
 	const next = wrap(
 		ev(`UID:${keep}`, 'SUMMARY:Blind11 C10 changed', at(today, '11:00')),
 		ev(`UID:${uid('undo-new1')}`, 'SUMMARY:Blind11 C10 new 1', at(today, '09:00')),
@@ -414,7 +417,8 @@ test('C10 the import is one undo entry and the toast Undo removes every inserted
 	await Promise.all([page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/settings/import'), importBtn(3).click()]); // prettier-ignore
 	const toast = page.locator('.toast');
 	await expect(toast).toContainText('Imported 3 events');
-	expect(journalCount()).toBe(journal + 1); // one entry for the whole import
+	expect(journalTotal()).toBe(totalBefore + 1); // one entry for the whole import
+	expect(journalLive()).toBe(liveBefore + 1);
 	expect(
 		dbQ<{ label: string }>('SELECT label FROM undo_actions ORDER BY created_at DESC, rowid DESC LIMIT 1')
 			.label,
@@ -427,10 +431,8 @@ test('C10 the import is one undo entry and the toast Undo removes every inserted
 	expect(rowByUid(uid('undo-new1'))).toBeUndefined(); // every inserted row is gone
 	expect(rowByUid(uid('undo-new2'))).toBeUndefined();
 	expect(rowByUid(keep)).toMatchObject({ title: 'Blind11 C10 orig', time: '09:00' });
-	expect(journalCount()).toBe(journal + 1); // one action, marked undone - no second entry
-	expect(dbQ<{ n: number }>('SELECT count(*) AS n FROM undo_actions WHERE undone_at IS NULL').n).toBe(
-		journal,
-	);
+	expect(journalTotal()).toBe(totalBefore + 1); // one action, marked undone - no second entry
+	expect(journalLive()).toBe(liveBefore); // the import entry is now undone
 });
 
 // ---- C11 ---------------------------------------------------------------------------------------------------
