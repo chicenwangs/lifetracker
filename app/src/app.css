@@ -693,3 +693,61 @@ main .card:nth-child(n + 4) {
 		overscroll-behavior-y: contain;
 	}
 }
+
+/* ---- print (v4 card 06, D-V4-07 / D-V4-18): a fridge plan — one A4 landscape sheet, black on white.
+   Shell rules live here; the week page adds its own layout rules (7 columns at any width). ---- */
+@page {
+	size: A4 landscape;
+	margin: 10mm;
+}
+@media print {
+	/* one palette whatever theme is on screen: print is always black on white */
+	:root,
+	:root[data-theme='dark'] {
+		--page: #fff;
+		--page-base: #fff;
+		--ground: #fff;
+		--card: #fff;
+		--raised: #fff;
+		--border: #000;
+		--card-edge: #000;
+		--rule: #bbb;
+		--ink: #000;
+		--quiet: #333;
+		--input: #000;
+		--link: #000;
+		--strip-a: #fff;
+		--strip-b: #fff;
+		--strip-c: #fff;
+		--strip-ink: #000;
+		--seg-on: #000;
+		--seg-on-ink: #fff;
+		--hover: #fff;
+		--band: transparent;
+		--today-line: #000;
+		--shadow-card: none;
+		--shadow-btn: none;
+		color-scheme: light;
+	}
+	html,
+	body {
+		background: #fff !important;
+		color: #000 !important;
+	}
+	body {
+		padding: 0 !important;
+	}
+	/* the shell never prints: header, phone tab bar, toasts, the offline ribbon and any open overlay */
+	.hdr,
+	.mbar,
+	.toast,
+	.centre,
+	.offline,
+	.scrim,
+	.dlg,
+	.tcard,
+	.dim,
+	.pal {
+		display: none !important;
+	}
+}

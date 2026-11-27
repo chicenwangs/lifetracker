@@ -31,6 +31,7 @@
 	let side: HTMLElement | undefined = $state();
 	let notEl: HTMLElement | undefined = $state();
 	let dragging = $state<'block' | 'item' | null>(null);
+	let menu = $state(false);
 	let weekCal: WeekCalendar | undefined = $state();
 	// empty-slot drag -> command box (same grammar as N; default planner, /calendar optional)
 	let slot = $state<{ key: number; date: string; start: number; end: number; x: number; y: number } | null>(
@@ -268,6 +269,23 @@
 				<a href="/?m={data.from.slice(0, 7)}">Month</a>
 				<span class="on">Week</span>
 			</div>
+			<div class="menu-wrap">
+				<button
+					class="round"
+					type="button"
+					aria-haspopup="menu"
+					aria-expanded={menu}
+					aria-label="Week menu"
+					onclick={() => (menu = !menu)}>⋯</button
+				>
+				{#if menu}
+					<div use:backCloses={() => (menu = false)} class="menu card" role="menu">
+						<button role="menuitem" type="button" onclick={() => ((menu = false), window.print())}
+							>Print week</button
+						>
+					</div>
+				{/if}
+			</div>
 		</div>
 		<div class="types"><TypeBar /></div>
 		{#if side}
@@ -393,6 +411,8 @@
 	</div>
 {/if}
 
+<svelte:window onclick={(e) => menu && !(e.target as HTMLElement).closest('.menu-wrap') && (menu = false)} />
+
 <style>
 	.types {
 		padding: 8px 20px;
@@ -506,6 +526,35 @@
 	}
 	.sp {
 		flex: 1;
+	}
+	.menu-wrap {
+		position: relative;
+	}
+	.menu {
+		position: absolute;
+		right: 0;
+		top: 38px;
+		z-index: 20;
+		min-width: 160px;
+		padding: 4px;
+		display: flex;
+		flex-direction: column;
+	}
+	.menu button {
+		text-align: left;
+		min-height: 32px;
+		padding: 0 10px;
+		background: none;
+		border: 0;
+		border-radius: 6px;
+		color: var(--ink);
+		font: inherit;
+		font-size: 13px;
+		cursor: pointer;
+	}
+	.menu button:hover {
+		background: var(--pill);
+		color: var(--pill-ink);
 	}
 	.view {
 		display: flex;
@@ -647,5 +696,34 @@
 	}
 	.row:hover {
 		box-shadow: -2px 2px 0 var(--accent);
+	}
+
+	/* card 06 (D-V4-07, D-V4-18): print = the fridge plan. Shell rules are global (app.css);
+	   here = the week layout: 7 columns at any width (a phone-width print is never blank). */
+	@media print {
+		.phone {
+			display: none !important;
+		}
+		.wrap {
+			display: block !important;
+			padding: 0;
+		}
+		.wkc {
+			overflow: visible;
+		}
+		.bar {
+			background: none;
+			padding: 0 0 8px;
+		}
+		/* :global: OverlapToggle's button lives in a child component */
+		.bar :global(button),
+		.menu-wrap,
+		.bar .sp,
+		.view,
+		.types,
+		.foot,
+		.side {
+			display: none !important;
+		}
 	}
 </style>
