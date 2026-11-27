@@ -50,6 +50,8 @@ export default defineConfig({
 			SETUP_TOKEN: 'e2e-setup-token-long-enough',
 			PORT: String(PORT),
 			HOST: '127.0.0.1',
+			// same as the image (Dockerfile): form uploads reach the app, which caps non-upload bodies itself
+			BODY_SIZE_LIMIT: '26M',
 			REMINDER_POLL_INTERVAL_MS: '2000', // reminders fire within the test's wait
 		},
 	},

@@ -31,7 +31,7 @@ If this doc and BREAKDOWN disagree on behaviour: BREAKDOWN wins, then fix this d
 
 ### 1.3 Import a calendar file (PR 11) · board D-I1 / M-I1
 - Settings › Import › `Calendar file (.ics)` → file picker (≤ 1 MB).
-- Preview (dialog / full sheet):
+- Preview (inline panel in the Import page, like the Notion import section — not `Dialog.svelte`; D-V4-29 supersedes the earlier "dialog / full sheet"):
   - Big line: "38 events · 12 repeating · 3 skipped"
   - `Put them in type` select (default: first type with Month calendar off, else None).
   - "Skipped (3)" disclosure: one row each, reason in plain words ("repeats by week number — not supported").

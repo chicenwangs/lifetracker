@@ -276,6 +276,101 @@ export function create(meId: string, input: ItemCreate): ItemRow {
 	return mustOwn(meId, id);
 }
 
+// ---------- ICS import (card 11, D-V4-12 / D-V4-29) ----------
+/** one imported planner row; title/date/time/rule come from the parser, never from the client */
+export interface IcsRow {
+	uid: string;
+	title: string;
+	type: string | null;
+	date: string;
+	time: string | null;
+	endDate: string | null;
+	rrule: string | null;
+	exdates: string[];
+}
+
+/** live rows of `calendarId` carrying one of these UIDs (trashed rows never match, D-V4-29) */
+export function icsIds(calendarId: string, uids: readonly string[]): Map<string, string> {
+	const m = new Map<string, string>();
+	const uniq = [...new Set(uids.filter(Boolean))];
+	for (let i = 0; i < uniq.length; i += 500)
+		for (const r of db()
+			.select({ id: items.id, uid: items.icsUid })
+			.from(items)
+			.where(and(eq(items.calendarId, calendarId), live, inArray(items.icsUid, uniq.slice(i, i + 500))))
+			.all())
+			if (r.uid) m.set(r.uid, r.id);
+	return m;
+}
+
+/** checkCap for a batch: refuse when `adding` new rows would pass ROW_CAP */
+export function checkCapFor(calendarId: string, adding: number): void {
+	if (adding <= 0) return;
+	const n = db()
+		.select({ n: sql<number>`count(*)` })
+		.from(items)
+		.where(eq(items.calendarId, calendarId))
+		.get()?.n;
+	if ((n ?? 0) + adding > ROW_CAP)
+		bad(`limit reached (${ROW_CAP} per account). Empty the trash or contact the admin.`);
+}
+
+/** insert one imported row: source stays NULL, no reminders, todo status (C7) */
+export function insertFromIcs(calendarId: string, meId: string, x: IcsRow): string {
+	const v = itemCreateSchema.parse({
+		title: x.title,
+		type: x.type,
+		date: x.date,
+		time: x.time,
+		endDate: x.endDate,
+		rrule: x.rrule,
+	});
+	const now = nowUtcIso();
+	const id = newId('itm');
+	db()
+		.insert(items)
+		.values({
+			id,
+			calendarId,
+			title: v.title,
+			type: v.type,
+			status: 'todo',
+			date: v.date,
+			time: v.time,
+			endDate: v.endDate && v.date && v.endDate > v.date ? v.endDate : null,
+			rrule: v.rrule,
+			exdates: x.exdates.length ? x.exdates : null,
+			icsUid: x.uid,
+			createdAt: now,
+			updatedAt: now,
+			createdBy: meId,
+			updatedBy: meId,
+		})
+		.run();
+	return id;
+}
+
+/** refresh title/time/rule (+exdates) of a live imported row in my calendar; never its date (C9) */
+export function updateFromIcs(
+	calendarId: string,
+	meId: string,
+	id: string,
+	x: Pick<IcsRow, 'title' | 'time' | 'rrule' | 'exdates'>,
+): void {
+	db()
+		.update(items)
+		.set({
+			title: x.title,
+			time: x.time,
+			rrule: x.rrule,
+			exdates: x.exdates.length ? x.exdates : null,
+			updatedAt: nowUtcIso(),
+			updatedBy: meId,
+		})
+		.where(and(eq(items.id, id), eq(items.calendarId, calendarId), live))
+		.run();
+}
+
 /** Alt-drag copy (D-09 allowlist): title, type, time, span length, notes. Never status, audit, steps, secret flag. */
 export function duplicateTo(meId: string, id: string, date: string): ItemRow {
 	const src = mustOwn(meId, id);
