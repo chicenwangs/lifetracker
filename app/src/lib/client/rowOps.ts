@@ -37,9 +37,14 @@ export async function change(
 ) {
 	try {
 		// #163: Undo = the server's undo journal (a repeating date was detached; a reverse PATCH would copy it again)
-		const r = await patch<{ undo?: UndoRef; item?: { id: string } }>(path(x), body);
+		const r = await patch<{ undo?: UndoRef; item?: { id: string }; stale?: boolean }>(path(x), body);
 		opts.onResult?.(r);
 		await refresh();
+		// card 09: a stale from-completion tick changed nothing — say so, never a false "Done"
+		if (r.stale) {
+			showToast(`"${nameOf(x)}" changed elsewhere — refreshed.`);
+			return;
+		}
 		const u = r.undo;
 		showToast(text, {
 			undo: u

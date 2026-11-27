@@ -591,17 +591,50 @@ describe('MUST 3 the finished occurrence’s other reminders', () => {
 		expect(doneCopies('Route reminder')).toBe(1);
 	});
 
-	it('the reminder route marks a stale reminder handled without a second completion or journal entry', async () => {
+	it('a future-dated series completes on the first fired exact reminder Done, whatever its creation day', async () => {
 		const t = today();
-		const i = mkComplete({ title: 'Route stale', date: addDays(t, 3), time: '09:00', rrule: 'FREQ=DAILY' });
-		const r = rem.add(me, 'planner_item', i.id, { offset: '1d' }); // due t+2
-		items.patch(me, i.id, { date: t }); // the series moved; the reminder still names the old date
-		const before = undoCount();
+		const i = mkComplete({ title: 'First done', date: addDays(t, 3), time: '09:00', rrule: 'FREQ=DAILY' });
+		// an exact reminder created today for a series dated three days ahead, already fired
+		const r = rem.add(me, 'planner_item', i.id, { at: localToUtc(addDays(t, 4), '09:00', TZ) });
+		handle()
+			.sqlite.prepare("UPDATE reminders SET status = 'sent', created_at = ? WHERE id = ?")
+			.run(localToUtc(addDays(t, -2), '08:00', TZ), r.id); // created two days ago: not the occurrence day
 		const res = await actRoute(r.id);
 		expect(res.status).toBe(200);
-		expect(items.mustOwn(me, i.id).date).toBe(t); // no completion
-		expect(undoCount()).toBe(before); // no journal entry
-		expect(doneCopies('Route stale')).toBe(0);
+		expect(items.mustOwn(me, i.id).date).toBe(addDays(t, 1)); // completed: today + interval
+		expect(doneCopies('First done')).toBe(1);
+
+		// the same reminder again: a 404, no second copy, no further move
+		const again = await actRoute(r.id);
+		expect(again.status).toBe(404);
+		expect(items.mustOwn(me, i.id).date).toBe(addDays(t, 1));
+		expect(doneCopies('First done')).toBe(1);
+	});
+
+	it('a day-before first action still completes: an overdue series and a backdated reminder', async () => {
+		const t = today();
+		// (a) the same reminder Done after its creation day has moved on
+		const a = mkComplete({ title: 'Day before', date: t, time: '09:00', rrule: 'FREQ=DAILY' });
+		const ra = rem.add(me, 'planner_item', a.id, { at: localToUtc(addDays(t, 2), '09:00', TZ) });
+		handle()
+			.sqlite.prepare("UPDATE reminders SET status = 'sent', created_at = ? WHERE id = ?")
+			.run(localToUtc(addDays(t, -1), '08:00', TZ), ra.id);
+		rem.act(me, ra.id, 'done');
+		expect(items.mustOwn(me, a.id).date).toBe(addDays(t, 1));
+		expect(doneCopies('Day before')).toBe(1);
+
+		// (b) an overdue series whose exact reminder already fired
+		const b = mkComplete({
+			title: 'Overdue first',
+			date: addDays(t, -3),
+			time: '09:00',
+			rrule: 'FREQ=DAILY',
+		});
+		const rb = rem.add(me, 'planner_item', b.id, { at: localToUtc(addDays(t, 1), '09:00', TZ) });
+		handle().sqlite.prepare("UPDATE reminders SET status = 'sent' WHERE id = ?").run(rb.id);
+		rem.act(me, rb.id, 'done');
+		expect(items.mustOwn(me, b.id).date).toBe(addDays(t, 1));
+		expect(doneCopies('Overdue first')).toBe(1);
 	});
 
 	it('a tick completion with the seen date cancels an open exact reminder; a relative one moves (C8)', async () => {

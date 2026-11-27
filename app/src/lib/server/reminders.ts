@@ -24,7 +24,7 @@ import { undoable } from './undo';
 export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record';
 const db = () => handle().sqlite;
 export const MAX_OPEN = 500;
-type Row = { id: string; owner_id: string; source_type: Source; source_id: string; rule_kind: 'relative' | 'absolute'; rel_value: number | null; rel_unit: Unit | null; at_time: string | null; due_at: string | null; status: string; attempts: number; sent_at: string | null; created_at: string }; // prettier-ignore
+type Row = { id: string; owner_id: string; source_type: Source; source_id: string; rule_kind: 'relative' | 'absolute'; rel_value: number | null; rel_unit: Unit | null; at_time: string | null; due_at: string | null; status: string; attempts: number; sent_at: string | null }; // prettier-ignore
 
 export interface SourceInfo {
 	title: string;
@@ -439,34 +439,23 @@ export function act(
 			const info = sourceInfo(ownerId, 'planner_item', r.source_id);
 			const rep = info?.repeat;
 			let target = r.source_id;
-			/** card 09 MUST 1: the date the reminder was for, so a from-completion replay no-ops */
+			/** card 09 MUST 2: the series date the reminder's Done is for */
 			let seenDate: string | undefined;
 			if (rep?.fromCompletion) {
-				// a from-completion series has one date and no occurrences: never build id@date (a snoozed or
-				// exact reminder can point after it, and an old EXDATE on that date must stay dormant)
-				const ref =
-					r.rule_kind === 'relative' && r.rel_value && r.rel_unit && r.due_at
-						? isoPlus(r.due_at, offsetMs(r.rel_value, r.rel_unit))
-						: null;
-				if (ref) seenDate = utcToLocal(ref, rep.tz).date;
-				// a fired exact reminder keeps its own occurrence instant: the day it was attached to, not the
-				// series' current date, so a completion that already moved the series cannot pass this check
-				else if (r.status === 'sent' || r.status === 'missed')
-					seenDate = utcToLocal(r.created_at, rep.tz).date;
-				else seenDate = rep.date;
+				// a reminder Done always names the live series date: the completion cancels the acting row and
+				// every exact sibling, so a second Done is a 404 (never id@date: the series has one date)
+				seenDate = rep.date;
 			} else if (rep && r.due_at) {
 				const ref = r.rule_kind === 'relative' && r.rel_value && r.rel_unit ? isoPlus(r.due_at, offsetMs(r.rel_value, r.rel_unit)) : r.due_at; // prettier-ignore
 				const from = utcToLocal(ref, rep.tz).date;
 				const occ = expandRRule(rep.date, rep.rrule, rep.exdates, from, addDays(from, 400))[0];
 				if (occ) target = `${r.source_id}@${occ}`;
 			}
-			// a reminder from the occurrence before the series last moved: mark it handled, change nothing else
-			const stale = !!rep?.fromCompletion && seenDate !== undefined && seenDate !== rep.date;
 			let completed = false;
 			try {
-				if (rep?.fromCompletion && !stale) {
+				if (rep?.fromCompletion) {
 					// card 09: the finished occurrence's exact reminders die with it — every status, the acting
-					// one included — all in this action's undo entry
+					// one included — all in this action's undo entry; that cancellation is the idempotency
 					const exact = exactReminderIds(ownerId, r.source_id);
 					const res = undoable(
 						ownerId,

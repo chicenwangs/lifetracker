@@ -1,10 +1,11 @@
 // In-app reminder channel (PRD §8, #112): while the app is open, check for reminders that went off and show each once.
 // Actions match the Android notification: Done · Snooze 10 min · Tomorrow; tapping opens that item's sheet.
 import { goto } from '$app/navigation';
-import { ApiError, get, post } from './api';
+import { get, post } from './api';
 import { calendarChanged } from './bus.svelte';
 import { openItem } from './peek.svelte';
 import { invalidateAll } from './refresh';
+import { actReminder, type ReminderAction } from './reminderAction';
 import { showToast, toast } from './toast.svelte';
 
 type Hit = {
@@ -17,16 +18,9 @@ type Hit = {
 	more?: number;
 };
 
-async function act(id: string, action: 'done' | 'snooze10' | 'tomorrow') {
-	let gone = false;
-	try {
-		await post(`/api/reminders/${id}`, { action });
-	} catch (e) {
-		// card 09: a completion already cancelled this reminder — treat it as handled, never as a rejected action
-		if (!(e instanceof ApiError && e.status === 404)) throw e;
-		gone = true;
-	}
-	if (gone || action === 'done') {
+async function act(id: string, action: ReminderAction) {
+	const refresh = await actReminder(id, action, (rid, a) => post(`/api/reminders/${rid}`, { action: a }));
+	if (refresh) {
 		calendarChanged();
 		await invalidateAll();
 	}
