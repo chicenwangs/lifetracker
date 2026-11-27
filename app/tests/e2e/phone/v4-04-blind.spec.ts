@@ -225,7 +225,7 @@ test('C8 collapse on phone: landscape starts collapsed on Home and /today, portr
 	await check(`/?d=${today}`); // Home (the phone lands on /today unless ?d is present)
 });
 
-test('C9 toast vs sheet: with a BottomSheet open the toast sits 8 px above the sheet top edge, never over its button row', async () => {
+test('C9 toast vs sheet: 8 px above the sheet when there is room, clamped fully on screen in landscape, never over its button row', async () => {
 	const today = await klToday();
 	const title = `${PREFIX}C9 ${P}`;
 	const it = await make({ title, date: addDays(today, -1) });

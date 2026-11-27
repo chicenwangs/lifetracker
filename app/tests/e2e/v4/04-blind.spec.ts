@@ -326,7 +326,11 @@ test('C11 permission: a partner item never appears in my strip and my bulk move 
 		const pSlip = n.locator('section[aria-label="Slipped"]');
 		const theirsName = `${theirsTitle}, ${pretty(addDays(today, -1))}`; // #298: title + date
 		await expect(pSlip.getByRole('button', { name: theirsName, exact: true })).toBeVisible();
-		await expect(pSlip.getByRole('button', { name: `${mineTitle}, ${pretty(addDays(today, -1))}`, exact: true })).toHaveCount(0); // prettier-ignore
+		await expect(pSlip.locator('li').filter({ hasText: mineTitle })).toHaveCount(0); // prettier-ignore
+
+		// while it is still overdue, a partner row must not slip into my strip at all
+		await page.goto('/');
+		await expect(slip().locator('li').filter({ hasText: theirsTitle })).toHaveCount(0); // prettier-ignore
 
 		// the partner's bulk move writes only their rows
 		await pSlip.getByRole('button', { name: 'Move all to today' }).click();
@@ -338,6 +342,7 @@ test('C11 permission: a partner item never appears in my strip and my bulk move 
 		// my strip: mine, never theirs, no row actions for theirs
 		await page.goto('/');
 		await expect(slip().getByRole('button', { name: `${mineTitle}, ${pretty(addDays(today, -1))}`, exact: true })).toBeVisible(); // prettier-ignore
+		await expect(slip().locator('li').filter({ hasText: theirsTitle })).toHaveCount(0); // date-agnostic
 		await expect(slip().getByRole('button', { name: theirsName, exact: true })).toHaveCount(0);
 		await expect(page.getByRole('button', { name: `Actions for ${theirsTitle}` })).toHaveCount(0); // prettier-ignore
 		await expect(page.getByRole('button', { name: `Actions for ${mineTitle}` })).toBeVisible();
