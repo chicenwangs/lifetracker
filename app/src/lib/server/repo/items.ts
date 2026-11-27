@@ -1,5 +1,5 @@
 // Items. ALL scoping here: only rows in calendars owned by `me` (P2 adds grants via access.ts).
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, notInArray, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db, handle } from '../db';
 import { blocks, calendars, items, users } from '../schema';
@@ -668,6 +668,78 @@ export function allDayUnblocked(meId: string, from: string, to: string): ItemRow
 		)
 		.orderBy(asc(items.date), asc(items.title))
 		.all();
+}
+
+/** Card 04 (C1/C2): rows the Slipped strip shows. Own, live, top-level, one-off items dated before
+ *  `today`, not done, hidden types out (untyped = 'None', D-V4-05). */
+const SLIPPED_CAP = 50;
+
+function slippedWhere(meId: string, today: string) {
+	const cals = myCalendarIds(meId);
+	if (!cals.length) return null;
+	const hidden = db().select({ h: users.hiddenTypes }).from(users).where(eq(users.id, meId)).get()?.h ?? [];
+	const conds = [
+		inArray(items.calendarId, cals),
+		live,
+		isNull(items.parentId),
+		isNull(items.rrule),
+		lt(sql`COALESCE(${items.endDate}, ${items.date})`, today),
+		or(eq(items.status, 'todo'), eq(items.status, 'doing')),
+	];
+	if (hidden.length) conds.push(notInArray(sql`COALESCE(${items.type}, 'None')`, hidden));
+	return and(...conds);
+}
+
+/** C1: `items` capped for the strip, `total` = every matching row (newest date first) */
+export function slipped(meId: string, today: string): { items: ItemDTO[]; total: number } {
+	const where = slippedWhere(meId, today);
+	if (!where) return { items: [], total: 0 };
+	const total =
+		db()
+			.select({ n: sql<number>`count(*)` })
+			.from(items)
+			.where(where)
+			.get()?.n ?? 0;
+	const rows = db()
+		.select()
+		.from(items)
+		.where(where)
+		.orderBy(desc(items.date), asc(items.createdAt))
+		.limit(SLIPPED_CAP)
+		.all();
+	return { items: withCounts(rows), total };
+}
+
+/** every slipped row (no cap): the bulk move takes all of them, not just the shown 50 */
+export const slippedRows = (meId: string, today: string): ItemRow[] => {
+	const where = slippedWhere(meId, today);
+	if (!where) return [];
+	return db().select().from(items).where(where).all();
+};
+
+/** C5: move every slipped row to `today`: the card 03 "Today" rule (the time stays, a span moves with it) */
+export function moveSlipped(meId: string, today: string): number {
+	const rows = slippedRows(meId, today);
+	const now = nowUtcIso();
+	handle().sqlite.transaction(() => {
+		for (const r of rows) {
+			if (!r.date) continue;
+			// same rule as card 03's "Today": the time stays, a real span moves with the date, a
+			// zero span is no span (the item schema stores it as null)
+			const span = r.endDate ? diffDays(r.date, r.endDate) : 0;
+			db()
+				.update(items)
+				.set({
+					date: today,
+					endDate: span > 0 ? addDays(today, span) : null,
+					updatedAt: now,
+					updatedBy: meId,
+				})
+				.where(eq(items.id, r.id))
+				.run();
+		}
+	})();
+	return rows.length;
 }
 
 export function steps(meId: string, id: string): ItemRow[] {

@@ -2,6 +2,7 @@
 // (The "To do today · no time set" list was removed, owner 2026-11-16.)
 import type { PageServerLoad } from './$types';
 import { getCalendar } from '$lib/server/calendar';
+import * as itemsRepo from '$lib/server/repo/items';
 import { addDays, clipToDay, isDate, todayLocal, weekStartOf } from '$lib/time';
 
 export const load: PageServerLoad = ({ locals, url }) => {
@@ -25,5 +26,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		day,
 		week: { from, busy },
 		cal: getCalendar(me, day, addDays(day, 1)),
+		// card 04: the same strip as Home, from the real today (not the viewed ?d= day)
+		slipped: itemsRepo.slipped(me.id, today),
 	};
 };

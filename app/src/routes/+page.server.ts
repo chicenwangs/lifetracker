@@ -32,5 +32,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 		month_: getCalendar(me, range.from, range.to),
 		planner: getCalendar(me, day, addDays(day, 1)),
 		due: itemsRepo.withCounts(itemsRepo.dueOn(me.id, day)),
+		// card 04: overdue one-off items, always from the real today (never the planner's ?d= day)
+		slipped: itemsRepo.slipped(me.id, today),
 	};
 };
