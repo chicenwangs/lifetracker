@@ -88,9 +88,11 @@ export const users = sqliteTable(
 		notifyKeep: integer('notify_keep', { mode: 'boolean' }).notNull().default(true),
 		notifyPages: integer('notify_pages', { mode: 'boolean' }).notNull().default(true),
 		createdAt: text('created_at').notNull().default(nowZ),
+		/** v3.3 digest: local HH:MM send time, NULL = off. Its HH:MM CHECK is in drizzle/0011 SQL. */
+		digestTime: text('digest_time'),
 	},
 	// v2 column CHECKs (theme_mode, tour_state, region, qa_target, block_min, hidden_types) are in drizzle/0003 SQL:
-	// adding them here makes drizzle-kit rebuild `users` and drop the hand-patched COLLATE NOCASE.
+	// adding them here makes drizzle-kit rebuild `users` and drop the hand-patched COLLATE NOCASE. Same for digest_time (0011).
 	() => [check('users_role', inList('role', ['admin', 'member']))],
 );
 export const sessions = sqliteTable(
@@ -201,11 +203,18 @@ export const items = sqliteTable(
 		deletedAt: text('deleted_at'),
 		deletedBatch: text('deleted_batch'),
 		source: text('source'),
+		/** v3.3: next date counts from completion (1) instead of the scheduled date (0 = old behaviour) */
+		repeatFromCompletion: integer('repeat_from_completion', { mode: 'boolean' }).notNull().default(false),
+		/** v3.3: VEVENT UID of an imported row (source stays NULL); one live row per calendar + UID */
+		icsUid: text('ics_uid'),
 	},
 	(t) => [
 		index('items_cal_range').on(t.calendarId, t.date, sql`COALESCE(end_date, date)`),
 		index('items_parent').on(t.parentId),
 		index('items_course').on(t.courseId),
+		uniqueIndex('items_ics_uid')
+			.on(t.calendarId, t.icsUid)
+			.where(sql`ics_uid IS NOT NULL AND deleted_at IS NULL`),
 		check('items_title_len', sql`length(title) BETWEEN 1 AND 300`),
 		check('items_status', inList('status', STATUSES)),
 		check('items_date_fmt', sql`date IS NULL OR date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'`),
@@ -268,6 +277,8 @@ export const itemTypes = sqliteTable(
 		isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
 		createdAt: text('created_at').notNull(),
 		updatedAt: text('updated_at').notNull(),
+		/** v3.3: 1 = shows on the month grid (old behaviour); 0 = Week/Today only */
+		onCalendar: integer('on_calendar', { mode: 'boolean' }).notNull().default(true),
 	},
 	(t) => [
 		uniqueIndex('item_types_owner_key').on(t.ownerId, t.key),
