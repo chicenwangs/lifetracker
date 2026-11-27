@@ -5,7 +5,7 @@ import { undoable } from '$lib/server/undo';
 import {
 	afterCompletion,
 	cancelIds,
-	exactReminderIds,
+	completionReminderIds,
 	recalcOwner,
 	splitSeries,
 } from '$lib/server/reminders';
@@ -40,9 +40,9 @@ export const PATCH = api(async (e) => {
 	if (items.isStaleCompletion(cur, p.status, p.seenDate))
 		return json({ item: items.withCounts([items.mustOwn(u.id, id)])[0], stale: true });
 	const completing = !!cur.rrule && cur.date !== null && cur.repeatFromCompletion && p.status === 'done';
-	// the finished occurrence's exact reminders go with it, in this action's undo entry. A request without
+	// the finished occurrence's reminders go with it, in this action's undo entry. A request without
 	// `seenDate` is an older/API caller (the optional residual): it completes but keeps the old reminder set.
-	const siblings = completing && p.seenDate !== undefined ? exactReminderIds(u.id, cur.id) : [];
+	const siblings = completing && p.seenDate !== undefined ? completionReminderIds(u.id, cur.id) : [];
 	const r = undoable(
 		u.id,
 		`${what(p)} "${cur.title}"`,
@@ -53,8 +53,9 @@ export const PATCH = api(async (e) => {
 			const made = result.id !== cur.id ? [result.id] : [];
 			if (result.doneCopyId) made.push(result.doneCopyId);
 			if (result.doneCopyId) {
-				// standing relative rules move with the new date; the completed occurrence's exact ones are done
+				// standing relative rules move with the new date; recreate the next reminder, then cancel the finished set
 				recalcOwner(u.id);
+				afterCompletion(u.id, cur.id);
 				cancelIds(u.id, siblings);
 			}
 			return { result, created: made.map((i) => ({ t: 'items' as const, id: i })) };
@@ -62,7 +63,6 @@ export const PATCH = api(async (e) => {
 	);
 	if (p.scope === 'following' && r.result.id !== cur.id) splitSeries(u.id, cur.id, r.result.id); // #296
 	if (!r.result.doneCopyId) recalcOwner(u.id);
-	if (r.result.doneCopyId) afterCompletion(u.id, cur.id); // C8: recreate a reminder that already fired
 	return json({ item: items.withCounts([r.result])[0], undo: r.undo });
 });
 

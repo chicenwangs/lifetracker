@@ -720,6 +720,74 @@ describe('MUST 3 the finished occurrence’s other reminders', () => {
 		expect(reminderStatus(a.id)).toBe('sent'); // the acting row is back to its pre-action state
 		expect(reminderStatus(b.id)).toBe('sent'); // the cancelled sibling is restored too
 	});
+
+	it('two fired relative reminders: Done on one files one copy and cancels both; Done on the other is a 404', async () => {
+		const t = today();
+		const i = mkComplete({ title: 'Fired rel two', date: addDays(t, 3), time: '09:00', rrule: 'FREQ=DAILY' });
+		const a = rem.add(me, 'planner_item', i.id, { offset: '1d' }); // due t+2
+		const b = rem.add(me, 'planner_item', i.id, { offset: '2d' }); // due t+1
+		handle().sqlite.prepare("UPDATE reminders SET status = 'sent' WHERE id IN (?, ?)").run(a.id, b.id);
+
+		rem.act(me, a.id, 'done');
+		expect(doneCopies('Fired rel two')).toBe(1);
+		expect(reminderStatus(a.id)).toBe('cancelled'); // the acting row, whatever its kind
+		expect(reminderStatus(b.id)).toBe('cancelled'); // the fired relative sibling went with the occurrence
+		const moved = items.mustOwn(me, i.id).date;
+		expect(moved).toBe(addDays(t, 1));
+
+		expect(() => rem.act(me, b.id, 'done')).toThrow();
+		expect((await actRoute(b.id)).status).toBe(404);
+		expect(items.mustOwn(me, i.id).date).toBe(moved);
+		expect(doneCopies('Fired rel two')).toBe(1);
+	});
+
+	it('the same fired relative reminder Done twice: the second is a 404 and files no second copy', async () => {
+		const t = today();
+		const i = mkComplete({
+			title: 'Fired rel same',
+			date: addDays(t, 3),
+			time: '09:00',
+			rrule: 'FREQ=DAILY',
+		});
+		const r = rem.add(me, 'planner_item', i.id, { offset: '1d' }); // due t+2
+		handle().sqlite.prepare("UPDATE reminders SET status = 'sent' WHERE id = ?").run(r.id);
+
+		rem.act(me, r.id, 'done');
+		expect(doneCopies('Fired rel same')).toBe(1);
+		expect(reminderStatus(r.id)).toBe('cancelled');
+		const moved = items.mustOwn(me, i.id).date;
+		expect(moved).toBe(addDays(t, 1));
+
+		expect(() => rem.act(me, r.id, 'done')).toThrow();
+		expect((await actRoute(r.id)).status).toBe(404);
+		expect(items.mustOwn(me, i.id).date).toBe(moved);
+		expect(doneCopies('Fired rel same')).toBe(1);
+	});
+
+	it('Undo restores fired relative reminder rows and the series', () => {
+		const t = today();
+		const i = mkComplete({
+			title: 'Fired rel undo',
+			date: addDays(t, 3),
+			time: '09:00',
+			rrule: 'FREQ=DAILY',
+		});
+		const a = rem.add(me, 'planner_item', i.id, { offset: '1d' });
+		const b = rem.add(me, 'planner_item', i.id, { offset: '2d' });
+		handle().sqlite.prepare("UPDATE reminders SET status = 'sent' WHERE id IN (?, ?)").run(a.id, b.id);
+		rem.act(me, a.id, 'done');
+		expect(doneCopies('Fired rel undo')).toBe(1);
+
+		const last = handle()
+			.sqlite.prepare('SELECT id FROM undo_actions ORDER BY created_at DESC, rowid DESC LIMIT 1')
+			.get() as { id: string };
+		undo(me, last.id);
+
+		expect(items.mustOwn(me, i.id).date).toBe(addDays(t, 3));
+		expect(doneCopies('Fired rel undo')).toBe(0);
+		expect(reminderStatus(a.id)).toBe('sent');
+		expect(reminderStatus(b.id)).toBe('sent');
+	});
 });
 
 describe('C7 slipped', () => {

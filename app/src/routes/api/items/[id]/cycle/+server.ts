@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { api, bad, me } from '$lib/server/http';
 import * as items from '$lib/server/repo/items';
 import { undoable } from '$lib/server/undo';
-import { afterCompletion, cancelIds, exactReminderIds, recalcOwner } from '$lib/server/reminders';
+import { afterCompletion, cancelIds, completionReminderIds, recalcOwner } from '$lib/server/reminders';
 import { zDate } from '$lib/server/validate';
 import { nextStatus } from '$lib/types';
 
@@ -24,9 +24,9 @@ export const POST = api(async (e) => {
 	if (items.isStaleCompletion(cur, next, seenDate))
 		return json({ item: items.withCounts([items.mustOwn(u.id, id)])[0], stale: true });
 	const completing = !!cur.rrule && cur.date !== null && cur.repeatFromCompletion && next === 'done';
-	// the finished occurrence's exact reminders go with it, in this action's undo entry. A tick without
+	// the finished occurrence's reminders go with it, in this action's undo entry. A tick without
 	// `seenDate` is an older/API caller (the optional residual): it completes but keeps the old reminder set.
-	const siblings = completing && seenDate !== undefined ? exactReminderIds(u.id, cur.id) : [];
+	const siblings = completing && seenDate !== undefined ? completionReminderIds(u.id, cur.id) : [];
 	const r = undoable(
 		u.id,
 		`Status "${cur.title}"`,
@@ -37,14 +37,14 @@ export const POST = api(async (e) => {
 			const made = result.id !== cur.id ? [result.id] : [];
 			if (result.doneCopyId) made.push(result.doneCopyId);
 			if (result.doneCopyId) {
-				// standing relative rules move with the new date; the completed occurrence's exact ones are done
+				// standing relative rules move with the new date; recreate the next reminder, then cancel the finished set
 				recalcOwner(u.id);
+				afterCompletion(u.id, cur.id);
 				cancelIds(u.id, siblings);
 			}
 			return { result, created: made.map((i) => ({ t: 'items' as const, id: i })) };
 		},
 	);
 	if (!r.result.doneCopyId) recalcOwner(u.id); // card 09 C8 (D-V4-27): a moved series takes its reminders along
-	if (r.result.doneCopyId) afterCompletion(u.id, cur.id);
 	return json({ item: items.withCounts([r.result])[0], undo: r.undo });
 });

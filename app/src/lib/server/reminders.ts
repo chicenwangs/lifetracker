@@ -260,16 +260,17 @@ export function removeIds(ownerId: string, ids: string[]): void {
 	for (const id of ids) st.run(id, ownerId);
 }
 
-/** Card 09: the series' exact (or snoozed) reminders — scheduled, processing or already fired. A from-completion
- *  completion cancels all of them: they belong to the occurrence being finished. A relative rule is a standing
- *  rule and moves with the date instead (C8). */
-export function exactReminderIds(ownerId: string, sourceId: string, exceptId?: string): string[] {
+/** Card 09: reminders the finished occurrence takes with it — every exact/snoozed row (any status) and the
+ *  relative rows that already fired. A scheduled relative rule is a standing rule and moves with the date (C8). */
+export function completionReminderIds(ownerId: string, sourceId: string): string[] {
 	const rows = db()
 		.prepare(
-			`SELECT id FROM reminders WHERE owner_id = ? AND source_type = 'planner_item' AND source_id = ? AND rule_kind = 'absolute' AND status IN ('scheduled','processing','sent','missed')`,
+			`SELECT id FROM reminders WHERE owner_id = ? AND source_type = 'planner_item' AND source_id = ?
+			 AND ((rule_kind = 'absolute' AND status IN ('scheduled','processing','sent','missed'))
+			   OR (rule_kind = 'relative' AND status IN ('sent','missed')))`,
 		)
 		.all(ownerId, sourceId) as { id: string }[];
-	return rows.map((r) => r.id).filter((id) => id !== exceptId);
+	return rows.map((r) => r.id);
 }
 
 /** cancel reminders by id (the caller's undo entry captures them first); a row already gone is skipped */
@@ -442,8 +443,8 @@ export function act(
 			/** card 09 MUST 2: the series date the reminder's Done is for */
 			let seenDate: string | undefined;
 			if (rep?.fromCompletion) {
-				// a reminder Done always names the live series date: the completion cancels the acting row and
-				// every exact sibling, so a second Done is a 404 (never id@date: the series has one date)
+				// a reminder Done always names the live series date; the completion cancels the acting row (every
+				// kind) and the occurrence's other fired rows, so a second Done is a 404 (never id@date)
 				seenDate = rep.date;
 			} else if (rep && r.due_at) {
 				const ref = r.rule_kind === 'relative' && r.rel_value && r.rel_unit ? isoPlus(r.due_at, offsetMs(r.rel_value, r.rel_unit)) : r.due_at; // prettier-ignore
@@ -451,27 +452,23 @@ export function act(
 				const occ = expandRRule(rep.date, rep.rrule, rep.exdates, from, addDays(from, 400))[0];
 				if (occ) target = `${r.source_id}@${occ}`;
 			}
-			let completed = false;
 			try {
 				if (rep?.fromCompletion) {
-					// card 09: the finished occurrence's exact reminders die with it — every status, the acting
-					// one included — all in this action's undo entry; that cancellation is the idempotency
-					const exact = exactReminderIds(ownerId, r.source_id);
-					const res = undoable(
+					// card 09: the finished occurrence's reminders die with it — the acting row whatever its kind,
+					// every exact row and the relative ones already fired — all in this action's undo entry
+					const finish = [...new Set([id, ...completionReminderIds(ownerId, r.source_id)])];
+					undoable(
 						ownerId,
 						`Status "${info?.title ?? 'item'}"`,
-						[
-							{ t: 'items', id: target },
-							{ t: 'reminders', id },
-							...exact.map((rid) => ({ t: 'reminders' as const, id: rid })),
-						],
+						[{ t: 'items', id: target }, ...finish.map((rid) => ({ t: 'reminders' as const, id: rid }))],
 						() => {
 							markSent();
 							const result = itemsRepo.patch(ownerId, target, { status: 'done', seenDate });
 							if (result.doneCopyId) {
-								// standing relative rules move with the new date; exact reminders die with the occurrence
+								// standing relative rules move with the new date; recreate first, then cancel the fired set
 								recalcOwner(ownerId, now);
-								cancelIds(ownerId, exact, now);
+								afterCompletion(ownerId, r.source_id, now);
+								cancelIds(ownerId, finish, now);
 							}
 							return {
 								result,
@@ -479,7 +476,6 @@ export function act(
 							};
 						},
 					);
-					completed = !!res.result.doneCopyId;
 				} else {
 					markSent();
 					itemsRepo.patch(ownerId, target, { status: 'done', seenDate });
@@ -487,8 +483,6 @@ export function act(
 			} catch {
 				/* item gone meanwhile: the reminder is still marked handled */
 			}
-			// card 09 C8: the moved series takes its open reminders along, a fired one is recreated
-			if (completed) afterCompletion(ownerId, r.source_id, now);
 		} else {
 			markSent();
 			if (r.source_type === 'planner_block')
