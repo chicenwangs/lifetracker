@@ -22,6 +22,7 @@ const toDTO = (r: Row): ItemTypeDTO => ({
 	shareDefault: r.shareDefault,
 	countsDown: r.countsDown,
 	isDefault: r.isDefault,
+	onCalendar: r.onCalendar,
 });
 
 export function list(ownerId: string): ItemTypeDTO[] {
@@ -91,7 +92,15 @@ export const createSchema = z
 	})
 	.strict();
 export const patchSchema = z
-	.object({ name: zName, bg: zColor, slug: zSlug, countsDown: z.boolean(), shareDefault: z.boolean(), isDefault: z.literal(true) })
+	.object({
+		name: zName,
+		bg: zColor,
+		slug: zSlug,
+		countsDown: z.boolean(),
+		shareDefault: z.boolean(),
+		onCalendar: z.boolean(),
+		isDefault: z.literal(true),
+	})
 	.partial()
 	.strict(); // prettier-ignore
 

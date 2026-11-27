@@ -34,6 +34,7 @@ describe('item types', () => {
 		expect(l.map((t) => [t.key, t.name, t.slug])).toEqual(BUILTIN_TYPES.map((t) => [t.key, t.name, t.slug]));
 		expect(l.filter((t) => t.isDefault).map((t) => t.key)).toEqual(['Event']);
 		expect(l.filter((t) => t.countsDown).map((t) => t.key)).toEqual(['Exam']);
+		expect(l.every((t) => t.onCalendar)).toBe(true); // card 10: Month calendar on = old behaviour
 		const sql = readFileSync('drizzle/0003_v2_foundations.sql', 'utf8').replace(/ AS \w+/g, '');
 		for (const t of BUILTIN_TYPES)
 			expect(sql).toContain(`'${t.key}', '${t.name}', '${t.bg}', '${t.ink}', '${t.slug}'`);
@@ -65,8 +66,9 @@ describe('item types', () => {
 			me,
 			items.itemCreateSchema.parse({ title: 'rent', type: t.key, date: '2026-11-20' }),
 		);
-		types.patch(me, t.id, types.patchSchema.parse({ name: 'Payments' }));
+		types.patch(me, t.id, types.patchSchema.parse({ name: 'Payments', onCalendar: false }));
 		expect(items.getOwn(me, i.id)?.type).toBe(t.key);
+		expect(types.list(me).find((x) => x.id === t.id)?.onCalendar).toBe(false);
 	});
 
 	it('delete moves items to the chosen type; one undo puts everything back', () => {

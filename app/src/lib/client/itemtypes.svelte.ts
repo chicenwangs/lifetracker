@@ -37,3 +37,12 @@ export function shown<T extends { type: string | null; theirs?: boolean; itemTyp
 		(r) => r.theirs || !typesState.hidden.includes(('itemType' in r ? r.itemType : null) ?? r.type ?? 'None'),
 	);
 }
+
+/** card 10: the Month-only filter — my own items of a type with "Month calendar" off. Items only: a block's
+ * type is never checked, so month cells keep their block dots (D-V4-11, D-V4-28). Runs on its own flag set,
+ * independent of `hidden`. Partner rows and `No type` are never filtered. */
+export function shownOnMonth<T extends { type: string | null; theirs?: boolean }>(items: T[]): T[] {
+	const off = typesState.list.filter((t) => !t.onCalendar).map((t) => t.key);
+	if (!off.length) return items;
+	return items.filter((i) => i.theirs || !i.type || !off.includes(i.type));
+}

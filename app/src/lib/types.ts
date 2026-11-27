@@ -15,6 +15,8 @@ export interface ItemTypeDTO {
 	shareDefault: boolean;
 	countsDown: boolean;
 	isDefault: boolean;
+	/** card 10: show my items of this type on the Month grids (default true = old behaviour) */
+	onCalendar: boolean;
 	/** items + blocks using it (Settings only) */
 	used?: number;
 }

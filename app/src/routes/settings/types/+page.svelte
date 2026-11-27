@@ -77,9 +77,9 @@
 	<table>
 		<thead>
 			<tr
-				><th>Order</th><th>Colour</th><th>Name</th><th>Quick add</th><th>Used</th><th>Counts down</th><th
-					>Share by default</th
-				><th></th></tr
+				><th class="ord">Order</th><th>Colour</th><th>Name</th><th>Quick add</th><th>Month calendar</th><th
+					class="used">Used</th
+				><th class="counts">Counts down</th><th class="shares">Share by default</th><th></th></tr
 			>
 		</thead>
 		<tbody>
@@ -130,8 +130,19 @@
 							onchange={(e) => save(t, { slug: e.currentTarget.value })}
 						/></td
 					>
-					<td class="num">{t.used ?? 0}</td>
+					<td class="num used">{t.used ?? 0}</td>
 					<td
+						><label class="cb"
+							><input
+								type="checkbox"
+								role="switch"
+								aria-label="Month calendar for {t.name}"
+								checked={t.onCalendar}
+								onchange={(e) => save(t, { onCalendar: e.currentTarget.checked })}
+							/></label
+						></td
+					>
+					<td class="counts"
 						><label class="cb"
 							><input
 								type="checkbox"
@@ -141,7 +152,7 @@
 							/></label
 						></td
 					>
-					<td
+					<td class="shares"
 						><label class="cb"
 							><input
 								type="checkbox"
@@ -167,6 +178,7 @@
 			{/each}
 		</tbody>
 	</table>
+	<p class="hint">Off = hidden on Month, still on Week, Today and reminders.</p>
 	<p class="hint">New types: the + at the end of the type bar on Home or Week.</p>
 </section>
 
@@ -259,6 +271,33 @@
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.color {
 			min-height: 48px;
+		}
+		/* D-V4-28: phone keeps Colour, Name, Quick add and Month calendar (plus the delete cell) and fits with no
+		   sideways scroll; Order, Used, Counts down and Share by default are desktop-only (5 columns x 68 px leaves
+		   every input its 48 dp tap area) */
+		.ord,
+		.used,
+		.counts,
+		.shares {
+			display: none;
+		}
+		table {
+			table-layout: fixed;
+		}
+		th,
+		td {
+			padding: 6px 2px;
+			overflow-wrap: anywhere;
+		}
+		.color {
+			width: 100%;
+			min-width: 0;
+		}
+		td input:not([type]) {
+			min-width: 0;
+		}
+		.slug input {
+			width: 100%;
 		}
 	}
 	.scrim {
