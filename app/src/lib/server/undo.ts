@@ -56,6 +56,15 @@ export function undoable<T>(
 	})();
 } // prettier-ignore
 
+/** card 11: a row restored to live must not fight the partial ics_uid index with a re-imported twin */
+function withoutIcsUid(row: Row, id: string): Row {
+	if (row.ics_uid == null || row.deleted_at != null) return row;
+	const twin = db()
+		.prepare(`SELECT 1 FROM items WHERE calendar_id = ? AND ics_uid = ? AND deleted_at IS NULL AND id <> ?`)
+		.get(row.calendar_id, row.ics_uid, id);
+	return twin ? { ...row, ics_uid: null } : row;
+}
+
 /** undo the newest live action of this user (or a given one). Returns its label. */
 export function undo(userId: string, id?: string): { label: string } {
 	return db().transaction(() => {
@@ -79,13 +88,14 @@ export function undo(userId: string, id?: string): { label: string } {
 			if (!r.before) db().prepare(`DELETE FROM ${r.t} WHERE id = ?`).run(r.id);
 		for (const r of [...rows].sort((x, y) => (x.t === y.t ? Number(!!x.before?.parent_id) - Number(!!y.before?.parent_id) : order(x.t) - order(y.t)))) {
 			if (!r.before) continue;
-			const cols = Object.keys(r.before).filter((c) => c !== 'id');
+			const values = r.t === 'items' ? withoutIcsUid(r.before, r.id) : r.before;
+			const cols = Object.keys(values).filter((c) => c !== 'id');
 			if (get(r.t, r.id)) {
 				// UPDATE, never INSERT OR REPLACE: REPLACE deletes the row first and fires ON DELETE SET NULL on children
-				db().prepare(`UPDATE ${r.t} SET ${cols.map((c) => `"${c}" = @${c}`).join(', ')} WHERE id = @id`).run(r.before);
+				db().prepare(`UPDATE ${r.t} SET ${cols.map((c) => `"${c}" = @${c}`).join(', ')} WHERE id = @id`).run(values);
 			} else {
-				const all = Object.keys(r.before);
-				db().prepare(`INSERT INTO ${r.t} (${all.map((c) => `"${c}"`).join(', ')}) VALUES (${all.map((c) => `@${c}`).join(', ')})`).run(r.before);
+				const all = Object.keys(values);
+				db().prepare(`INSERT INTO ${r.t} (${all.map((c) => `"${c}"`).join(', ')}) VALUES (${all.map((c) => `@${c}`).join(', ')})`).run(values);
 			}
 		}
 		db().prepare(`UPDATE undo_actions SET undone_at = ? WHERE id = ?`).run(now, a.id);
