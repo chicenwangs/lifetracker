@@ -17,7 +17,7 @@
 		prettyDate,
 		prettyTime,
 	} from '$lib/time';
-	import { typeName, typeOf } from '$lib/client/itemtypes.svelte';
+	import { typeName, typeOf, shownOnMonth } from '$lib/client/itemtypes.svelte';
 	import { colorsFor, typeClass } from '$lib/colors';
 	import { badge, entryColors, theirClasses } from '$lib/client/partner';
 	import OverlapToggle from './OverlapToggle.svelte';
@@ -75,7 +75,7 @@
 
 	function toEvents(list: ItemDTO[]): EventInput[] {
 		const out: EventInput[] = [];
-		for (const i of list) {
+		for (const i of shownOnMonth(list)) {
 			const fc = itemToFc(i);
 			if (!fc) continue;
 			const c = entryColors(i);

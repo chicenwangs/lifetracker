@@ -2,6 +2,7 @@
 // (owner's timezone, hidden types, colours, order, countdowns) so the native side only draws strings.
 import { agenda } from './agenda';
 import { getCalendar } from './calendar';
+import { digestNext } from './digest';
 import * as itemTypes from './repo/itemtypes';
 import * as itemsRepo from './repo/items';
 import * as keep from './repo/keep';
@@ -117,5 +118,7 @@ export function nativeSync(me: App.SafeUser, now = Date.now()) {
 		countdowns,
 		notes,
 		reminders: upcoming(me.id, now),
+		/** card 12: one exact alarm for the next local digest time; null = off, marked, or nothing on */
+		digest: digestNext(me, now),
 	};
 }

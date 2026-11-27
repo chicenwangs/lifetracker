@@ -26,6 +26,8 @@ declare global {
 			notifyPlanner: boolean;
 			notifyKeep: boolean;
 			notifyPages: boolean;
+			/** daily digest local HH:MM (card 12); null = off */
+			digestTime: string | null;
 		}
 		interface SessionInfo {
 			id: string;

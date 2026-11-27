@@ -6,6 +6,9 @@ import { handle } from './db';
 import { env } from './env';
 import { newId } from './crypto';
 import { advanceRepeating, sourceInfo, type Source } from './reminders';
+import { digestDue, digestKey, digestText, purgeDigest } from './digest';
+import * as usersRepo from './repo/users';
+import * as meta from './repo/meta';
 import { isoPlus, nowUtcIso } from '$lib/time';
 
 const db = () => handle().sqlite;
@@ -128,6 +131,29 @@ export async function pushTo(
 // ---------- reminders tick ----------
 type Claimed = { id: string; owner_id: string; source_type: Source; source_id: string; rule_kind: string; rel_value: number | null; rel_unit: string | null; due_at: string; attempts: number }; // prettier-ignore
 
+/**
+ * Daily agenda digest (card 12, C5/C6, D-V4-13 / D-V4-19 / D-V4-30): one push per local day once the user's time
+ * has come. The date is marked only when a live subscription took it; with none (or a failure) it stays unmarked
+ * so /api/native can still set the Android alarm and the next tick retries. `send` is injectable for the tests.
+ */
+export async function runDigests(now = Date.now(), send: typeof pushTo = pushTo): Promise<number> {
+	let sent = 0;
+	for (const u of usersRepo.list()) {
+		const date = digestDue(u, now);
+		if (!date) continue;
+		const text = digestText(u, date) as string;
+		const res = await send(u.id, { title: text, route: '/today' }); // no body, no reminder row, no undo
+		if (res.sent >= 1) {
+			meta.set(digestKey(u.id, date), nowUtcIso(now));
+			sent++;
+		} else if (res.failed) {
+			console.error(`[job] digest push failed (retried next tick): ${res.error ?? 'push service error'}`);
+		}
+	}
+	purgeDigest(now);
+	return sent;
+}
+
 export async function tick(now = Date.now()): Promise<number> {
 	const t = nowUtcIso(now);
 	// stuck = the process died mid-send. Count it as a try, so a send that kills the process can't loop forever.
@@ -182,6 +208,7 @@ export async function tick(now = Date.now()): Promise<number> {
 		set(late ? 'missed' : 'sent', res.failed && !res.sent ? ", last_error = 'push failed, in-app only'" : '');
 		advanceRepeating(r.id, r.owner_id, now);
 	}
+	await runDigests(now);
 	return claimed.length;
 }
 

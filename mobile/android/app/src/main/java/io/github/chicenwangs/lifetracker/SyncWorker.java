@@ -37,7 +37,7 @@ public class SyncWorker extends Worker {
             else c.getSharedPreferences(Native.PREFS, 0).edit().putBoolean("signedOut", false).apply();
         } else {
             c.getSharedPreferences(Native.PREFS, 0).edit().putString("sync", j.toString()).putBoolean("signedOut", false).apply();
-            Reminders.schedule(c, j.optJSONArray("reminders"));
+            Reminders.schedule(c, j.optJSONArray("reminders"), j.optJSONObject("digest"));
         }
         Widgets.updateAll(c);
         return Result.success();

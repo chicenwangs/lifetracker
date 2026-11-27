@@ -10,6 +10,11 @@
 
 	let { data } = $props();
 	const u = $derived(data.user as App.SafeUser);
+	/** the first switch to On sends 07:30 from the client (D-V4-30: no server-side default write) */
+	const FIRST_ON = '07:30';
+	/** the stored value: a failed save puts the time field back here (C12) */
+	const digestTime = $derived(u.digestTime ?? FIRST_ON);
+	const digestOn = $derived(!!u.digestTime);
 	let perm = $state<NotificationPermission | 'unsupported'>('default');
 	let subscribed = $state(false);
 	let server = $state<{ available: boolean; publicKey: string | null; devices: number } | null>(null);
@@ -73,6 +78,25 @@
 		} catch (e) {
 			showError(e);
 		}
+	}
+	/** Daily agenda (card 12): users column only, so no undo toast — Off is the reversal (C11) */
+	async function setDigest(next: string | null, input?: HTMLInputElement) {
+		busy = true;
+		try {
+			await patch('/api/me/prefs', { digestTime: next });
+			await invalidateAll();
+			showToast('Saved');
+		} catch (e) {
+			if (input) input.value = digestTime; // C12: the control returns to the stored value
+			showError(e);
+		} finally {
+			busy = false;
+		}
+	}
+	function digestAt(e: Event & { currentTarget: HTMLInputElement }) {
+		const v = e.currentTarget.value;
+		if (/^([01]\d|2[0-3]):[0-5]\d$/.test(v)) void setDigest(v, e.currentTarget);
+		else e.currentTarget.value = digestTime; // a cleared/partial field shows the stored value again
 	}
 	const PERM: Record<string, string> = { granted: 'Allowed', denied: 'Blocked (change it in the browser\'s site settings)', default: 'Not asked yet', unsupported: "This browser can't do push" }; // prettier-ignore
 </script>
@@ -159,6 +183,40 @@
 	<p class="hint">Off = those reminders are skipped (not saved for later). No quiet hours (D-15).</p>
 </section>
 
+<section class="card panel">
+	<h2>Daily agenda</h2>
+	<div class="digest">
+		<div class="seg" role="group" aria-label="Daily agenda">
+			<button
+				type="button"
+				aria-pressed={!digestOn}
+				disabled={busy}
+				class:on={!digestOn}
+				onclick={() => setDigest(null)}>Off</button
+			>
+			<button
+				type="button"
+				aria-pressed={digestOn}
+				disabled={busy}
+				class:on={digestOn}
+				onclick={() => setDigest(u.digestTime ?? FIRST_ON)}>On</button
+			>
+		</div>
+		{#if digestOn}
+			<input
+				class="input time"
+				type="time"
+				aria-label="Daily agenda time"
+				value={digestTime}
+				disabled={busy}
+				onchange={digestAt}
+			/>
+		{/if}
+	</div>
+	<p class="hint">One notification a day with today's items and blocks. Nothing on → no notification.</p>
+	<p class="preview">{data.digestPreview ?? 'Nothing on today.'}</p>
+</section>
+
 <style>
 	.state {
 		display: grid;
@@ -186,6 +244,57 @@
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.opt {
 			min-height: 48px;
+		}
+	}
+	/* card 12: Off | On + time; the preview chip wraps instead of scrolling sideways on phone */
+	.digest {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+	.seg {
+		display: inline-flex;
+		border-radius: 8px;
+		overflow: hidden;
+		border: 1.5px solid var(--border);
+		background: var(--card);
+	}
+	.seg button {
+		border: 0;
+		background: none;
+		color: var(--ink);
+		font-size: 14px;
+		font-weight: 600;
+		padding: 0 14px;
+		height: 32px;
+		cursor: pointer;
+	}
+	.seg button + button {
+		border-left: 1px solid var(--border);
+	}
+	.seg button.on {
+		background: var(--pill);
+		color: var(--pill-ink);
+	}
+	.time {
+		width: 120px;
+	}
+	.preview {
+		align-self: flex-start;
+		max-width: 100%;
+		overflow-wrap: anywhere;
+		font-size: 13px;
+		padding: 6px 10px;
+		border-radius: 999px;
+		background: var(--pill);
+		color: var(--pill-ink);
+	}
+	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
+		.seg button {
+			height: auto;
+			min-height: 48px;
+			min-width: 48px;
 		}
 	}
 </style>
