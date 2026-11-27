@@ -1,11 +1,13 @@
 // Blind tests for card 05, from its Done-when lines only: C1 (the range query), C2 (type visibility),
-// C4 (getCalendar equality, three fixtures), C5 (read-only), C6 (the 400s), C7 (repeats / hidden / other user).
+// C3 (native countdowns keep a hidden type), C4 (getCalendar equality, three fixtures), C5 (read-only),
+// C6 (the 400s), C7 (repeats / hidden / other user).
 // No builder test (agenda.test.ts / native.test.ts) was opened.
 import { beforeEach, describe, expect, it } from 'vitest';
 import { freshDb } from './helpers';
 import { handle } from '../../src/lib/server/db';
 import { agenda } from '../../src/lib/server/agenda';
 import { getCalendar } from '../../src/lib/server/calendar';
+import { nativeSync } from '../../src/lib/server/native';
 import { ApiFail } from '../../src/lib/server/http';
 import * as usersRepo from '../../src/lib/server/repo/users';
 import * as items from '../../src/lib/server/repo/items';
@@ -164,6 +166,37 @@ describe('C2 type visibility', () => {
 		expect(withNone.items.some((i) => i.id === untyped.id)).toBe(false);
 		// a private item of a visible type stays
 		expect(withNone.items.some((i) => i.id === secret.id)).toBe(true);
+	});
+});
+
+describe('C3 native countdowns', () => {
+	it('C3 keeps a hidden countsDown item in nativeSync countdowns while dropping it from rows and days', () => {
+		const NOW = Date.parse('2026-12-02T02:00:00Z'); // 10:00 in Kuala Lumpur, so `day` = 2026-12-02
+		const DAY = '2026-12-02';
+		const exam = itemTypes.create(meId, {
+			name: 'Blind countdown',
+			bg: '#778899',
+			countsDown: true,
+			shareDefault: false,
+		});
+		const item = mk(meId, { title: 'C3 exam', date: DAY, time: '09:00', type: exam.key });
+
+		// control: the fixture really is in the native week before its type is hidden
+		const shown = nativeSync(meNow(), NOW);
+		expect(shown.rows.some((r) => r.id === item.id)).toBe(true);
+		expect(shown.days.find((d) => d.date === DAY)?.top.some((t) => t.title === 'C3 exam')).toBe(true);
+		expect(shown.countdowns.some((c) => c.id === item.id)).toBe(true);
+
+		usersRepo.setPrefs(meId, { hiddenTypes: [exam.key] });
+		const hidden = nativeSync(meNow(), NOW);
+		// C3: `ahead` still uses getCalendar (D-V4-06), so the countdown survives the hidden type
+		expect(hidden.countdowns.some((c) => c.id === item.id)).toBe(true);
+		expect(hidden.countdowns.find((c) => c.id === item.id)?.days).toBe(0);
+		// ...while the week built from agenda applies the hidden type to rows and the 7-day list
+		expect(hidden.rows.some((r) => r.id === item.id)).toBe(false);
+		const day = hidden.days.find((d) => d.date === DAY);
+		expect(day).toBeDefined();
+		expect(day?.top.some((t) => t.title === 'C3 exam')).toBe(false);
 	});
 });
 
