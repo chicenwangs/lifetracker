@@ -55,5 +55,17 @@ export function slugMap(types: Pick<ItemTypeDTO, 'key' | 'slug'>[]): Record<stri
 	return m;
 }
 
+/** card 10, Month-only rule (D-V4-11, D-V4-28): my own items of a type with "Month calendar" off. Items only —
+ *  blocks never pass through here, so month cells keep their dots. Partner rows and `No type` stay. Strict:
+ *  only `onCalendar === false` is off, so a stale payload without the field keeps the old behaviour. */
+export function monthHidden<T extends { type: string | null; theirs?: boolean }>(
+	items: T[],
+	types: Pick<ItemTypeDTO, 'key' | 'onCalendar'>[],
+): T[] {
+	const off = new Set(types.filter((t) => t.onCalendar === false).map((t) => t.key));
+	if (!off.size) return items;
+	return items.filter((i) => i.theirs || !i.type || !off.has(i.type));
+}
+
 export const defaultTypes = (): ItemTypeDTO[] =>
 	BUILTIN_TYPES.map((t, i) => ({ ...t, id: `builtin_${i}`, position: i, builtin: true }));

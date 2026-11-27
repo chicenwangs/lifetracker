@@ -1,5 +1,5 @@
 // The signed-in user's item types (from the root layout load). Every list, legend, picker and colour reads this.
-import { defaultTypes } from '$lib/itemtypes';
+import { defaultTypes, monthHidden } from '$lib/itemtypes';
 import type { ItemTypeDTO } from '$lib/types';
 
 export const typesState = $state<{ list: ItemTypeDTO[]; hidden: string[] }>({
@@ -40,9 +40,8 @@ export function shown<T extends { type: string | null; theirs?: boolean; itemTyp
 
 /** card 10: the Month-only filter — my own items of a type with "Month calendar" off. Items only: a block's
  * type is never checked, so month cells keep their block dots (D-V4-11, D-V4-28). Runs on its own flag set,
- * independent of `hidden`. Partner rows and `No type` are never filtered. */
+ * independent of `hidden`. Partner rows and `No type` are never filtered. The rule itself is `monthHidden`
+ * (shared with the phone Month server load, so SSR and the client cannot drift). */
 export function shownOnMonth<T extends { type: string | null; theirs?: boolean }>(items: T[]): T[] {
-	const off = typesState.list.filter((t) => !t.onCalendar).map((t) => t.key);
-	if (!off.length) return items;
-	return items.filter((i) => i.theirs || !i.type || !off.includes(i.type));
+	return monthHidden(items, typesState.list);
 }

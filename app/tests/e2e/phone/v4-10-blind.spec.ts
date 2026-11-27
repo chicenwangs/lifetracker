@@ -183,21 +183,31 @@ test('C4 phone Month: my off-type item leaves the dots and agenda, a block of th
 	const stamp = Date.now().toString(36);
 	const title = PREFIX + `C4 item ${stamp}`;
 	const label = PREFIX + `C4 block ${stamp}`;
+	const cell = cellOf(today);
+	/** "Sat 28 Nov 2026, 3 planned" -> 3 */
+	const planned = async () =>
+		Number((await cell.getAttribute('aria-label'))?.match(/, (\d+) planned$/)?.[1] ?? -1);
+
+	// the shared e2e DB holds other specs' rows on today: measure the change, never an absolute count
+	await page.goto(`/month?m=${ym}&d=${today}`);
+	const before = await planned();
+	expect(before).toBeGreaterThanOrEqual(0);
+
 	await makeItem({ title, type: 'Work', date: today, time: '14:00' });
 	await makeBlock(label, today);
 
 	await page.goto(`/month?m=${ym}&d=${today}`);
-	const cell = cellOf(today);
-	await expect(cell).toHaveAttribute('aria-label', /, 2 planned$/);
-	await expect(cell.locator('.dots i')).toHaveCount(2);
+	await expect.poll(planned).toBe(before + 2); // the item and the block
+	await expect(cell.locator('.dots i')).toHaveCount(Math.min(3, before + 2));
 	await expect(agenda().getByText(title, { exact: true })).toBeVisible();
 	await expect(agenda().getByText(label, { exact: true })).toBeVisible();
 
 	await setWork(false);
 	await page.goto(`/month?m=${ym}&d=${today}`);
-	await expect(cell).toHaveAttribute('aria-label', /, 1 planned$/); // the block only
-	await expect(cell.locator('.dots i')).toHaveCount(1);
-	await expect(cell.locator('.dots b')).toHaveCount(0);
+	await expect.poll(planned).toBe(before + 1); // the block only
+	await expect(cell.locator('.dots i')).toHaveCount(Math.min(3, before + 1));
+	if (before + 1 > 3) await expect(cell.locator('.dots b')).toHaveCount(1);
+	else await expect(cell.locator('.dots b')).toHaveCount(0);
 	await expect(agenda().getByText(label, { exact: true })).toBeVisible();
 	await expect(agenda().getByText(title, { exact: true })).toHaveCount(0);
 	await expect(page.getByText(title)).toHaveCount(0); // absent, no disabled chip
@@ -205,7 +215,8 @@ test('C4 phone Month: my off-type item leaves the dots and agenda, a block of th
 
 // ---- C7 ---------------------------------------------------------------------------------------------------
 test('C7 phone Month: a day whose only item is hidden looks empty, with no "+N hidden" marker', async () => {
-	const month = (await klToday()).slice(0, 7);
+	// a month far enough ahead that no other spec writes on its 12th/13th
+	const month = await page.evaluate(() => new Date(Date.now() + 40 * 86_400_000).toISOString().slice(0, 7));
 	const day = `${month}-12`;
 	const control = `${month}-13`;
 	const stamp = Date.now().toString(36);

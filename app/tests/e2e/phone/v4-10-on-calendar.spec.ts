@@ -1,6 +1,6 @@
 // Card 10 (D-V4-11, D-V4-28) on phone: Settings › Types fits without sideways scroll (Order and Used hidden,
-// Month calendar kept, 48 dp switch, Back to Settings), and the phone Month grid drops my items of an off type
-// while planner blocks keep their dots and rows.
+// Month calendar in the row, Counts down and Share by default stacked underneath, each 48 dp, Back to Settings),
+// and the phone Month grid drops my items of an off type while planner blocks keep their dots and rows.
 import { expect, test, type Page } from '@playwright/test';
 import { expectTargets48, noDesktopHints, signIn } from './helpers';
 
@@ -67,7 +67,7 @@ test('C2/C9 phone Settings › Types: Month calendar switch, 48 dp, Order and Us
 	await expect(page.getByRole('columnheader', { name: 'Month calendar' })).toBeVisible();
 	await expect(page.getByRole('columnheader', { name: 'Order' })).toBeHidden();
 	await expect(page.getByRole('columnheader', { name: 'Used', exact: true })).toBeHidden();
-	// the two older flag columns sit out too: five narrow columns keep every input at 48 dp with no sideways scroll
+	// the two older flag columns move under the name (stacked row), so their headers go but the switches stay
 	await expect(page.getByRole('columnheader', { name: 'Counts down' })).toBeHidden();
 	await expect(page.getByRole('columnheader', { name: 'Share by default' })).toBeHidden();
 	const widths = await page.evaluate(() => {
@@ -93,6 +93,43 @@ test('C2/C9 phone Settings › Types: Month calendar switch, 48 dp, Order and Us
 	});
 	expect(Math.round(label.w)).toBeGreaterThanOrEqual(48);
 	expect(Math.round(label.h)).toBeGreaterThanOrEqual(48);
+
+	// C9/D-V4-28: the two older flags are NOT dropped on phone — they sit in the stacked row, each a 48 dp label
+	const counts = page.getByRole('checkbox', { name: 'Work counts down' });
+	const shares = page.getByRole('checkbox', { name: 'Share Work by default' });
+	await expect(counts).toBeVisible();
+	await expect(shares).toBeVisible();
+	await expect(
+		page.getByText('Counts down', { exact: true }).filter({ visible: true }).first(),
+	).toBeVisible();
+	await expect(
+		page.getByText('Share by default', { exact: true }).filter({ visible: true }).first(),
+	).toBeVisible();
+	for (const box of [counts, shares]) {
+		const b = await box.evaluate((n) => {
+			const r = (n.closest('label') as HTMLElement).getBoundingClientRect();
+			return { w: r.width, h: r.height };
+		});
+		expect(Math.round(b.w)).toBeGreaterThanOrEqual(48);
+		expect(Math.round(b.h)).toBeGreaterThanOrEqual(48);
+	}
+	// …and they save through the same path, off a reload
+	const flag = (key: 'countsDown' | 'shareDefault') =>
+		page.evaluate(
+			async ([k]) => {
+				const r = await fetch('/api/item-types');
+				const j = (await r.json()) as {
+					types: { key: string; countsDown: boolean; shareDefault: boolean }[];
+				};
+				return j.types.find((t) => t.key === 'Work')?.[k as 'countsDown' | 'shareDefault'];
+			},
+			[key] as const,
+		);
+	await counts.click();
+	await expect.poll(() => flag('countsDown')).toBe(true);
+	await counts.click();
+	await expect.poll(() => flag('countsDown')).toBe(false);
+
 	await expectTargets48(page);
 	await noDesktopHints(page);
 
@@ -152,6 +189,11 @@ test('C4/C8 phone Month: off type items leave the dots and agenda, blocks keep t
 		await expect(page.getByText(`Phone block ${stamp}`)).toBeVisible();
 		await expect.poll(planned).toBe(n - 1);
 		await noDesktopHints(page);
+
+		// the server HTML already leaves it out: no hidden item for a frame before hydration
+		const html = await (await page.request.get(`/month?m=${ym}&d=${today}`)).text();
+		expect(html).not.toContain(`Phone class ${stamp}`);
+		expect(html).toContain(`Phone block ${stamp}`);
 
 		// C8: back on → it returns
 		await page.goto('/settings/types');

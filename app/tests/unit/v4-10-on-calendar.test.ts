@@ -7,9 +7,9 @@ import * as itemTypes from '../../src/lib/server/repo/itemtypes';
 import * as items from '../../src/lib/server/repo/items';
 import * as sharekeys from '../../src/lib/server/repo/sharekeys';
 import { undo } from '../../src/lib/server/undo';
-import { BUILTIN_TYPES, defaultTypes } from '../../src/lib/itemtypes';
+import { BUILTIN_TYPES, defaultTypes, monthHidden } from '../../src/lib/itemtypes';
 import { initTypes, shown, shownOnMonth } from '../../src/lib/client/itemtypes.svelte';
-import type { BlockDTO, ItemDTO } from '../../src/lib/types';
+import type { BlockDTO, ItemDTO, ItemTypeDTO } from '../../src/lib/types';
 
 let me: string;
 let other: string;
@@ -115,6 +115,26 @@ describe('on_calendar type flag', () => {
 		initTypes(itemTypes.list(me), []);
 		const all = [item('mine', 'Work')];
 		expect(shownOnMonth(all)).toBe(all);
+	});
+
+	it('C7 only an explicit false is off: a stale payload without the field keeps every item', () => {
+		// e.g. a cached DTO from before migration 0011: missing must mean "on", never "hide everything"
+		const stale = defaultTypes().map((t) => {
+			const c: Partial<ItemTypeDTO> = { ...t };
+			delete c.onCalendar;
+			return c as ItemTypeDTO;
+		});
+		initTypes(stale, []);
+		const all = [item('mine', 'Work'), item('other', 'Event')];
+		expect(shownOnMonth(all)).toBe(all);
+		// the shared pure rule says the same
+		expect(monthHidden(all, stale)).toBe(all);
+		expect(
+			monthHidden(
+				all,
+				defaultTypes().map((t) => ({ ...t, onCalendar: false })),
+			),
+		).toEqual([]);
 	});
 
 	it('C8 round trip writes only the flag; the item, name, colour, slug and use count stay', () => {

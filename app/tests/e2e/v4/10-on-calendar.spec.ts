@@ -92,7 +92,26 @@ test('C1/C2 every type row has a Month calendar switch, on by default, saved wit
 	await page.goto('/settings/types');
 	await expect(page.getByRole('columnheader', { name: 'Month calendar' })).toBeVisible();
 	await expect(page.getByText('Off = hidden on Month, still on Week, Today and reminders.')).toBeVisible();
-	await expect(page.locator('tbody tr')).toHaveCount(list.length);
+	await expect(page.locator('tbody tr:not(.extra)')).toHaveCount(list.length);
+	// header and body agree: Used sits before Month calendar, and the switch is the Month calendar column's cell
+	const headAt = (s: string) =>
+		page
+			.locator(s)
+			.first()
+			.evaluate((n) => (n as HTMLTableCellElement).cellIndex);
+	const firstRow = page.locator('tbody tr:not(.extra)').first();
+	const cellAt = (s: string) =>
+		firstRow
+			.locator(s)
+			.first()
+			.evaluate((n) => (n as HTMLTableCellElement).cellIndex);
+	expect(await cellAt('td.used')).toBe(await headAt('th.used'));
+	expect(await cellAt('td:has([role="switch"])')).toBe(await headAt('th:nth-child(6)'));
+	// the older two flags stay as normal columns on desktop (the stacked row is phone-only)
+	await expect(page.getByRole('checkbox', { name: 'Work counts down' })).toBeVisible();
+	await expect(page.getByRole('checkbox', { name: 'Share Work by default' })).toBeVisible();
+	await expect(page.locator('tbody tr.extra').first()).toBeHidden();
+	await expect(page.locator('tbody tr.extra')).toHaveCount(list.length); // present for phone, hidden here
 	for (const t of list)
 		await expect(page.getByRole('switch', { name: `Month calendar for ${t.name}` })).toBeChecked();
 	await expect(page.getByRole('button', { name: /^Save/ })).toHaveCount(0); // toggles save at once
