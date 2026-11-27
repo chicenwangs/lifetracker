@@ -1,7 +1,7 @@
 # Card 05 · refactor: `agenda()` query
 
 - Source: BREAKDOWN PR 5 (lines 39–42) · PLAN §3B, §8 PR 5 · DESIGN — (no screen) · decisions D-V4-06 · no board
-- Needs: — · Size: S · Branch: `v4/05-agenda-query`
+- Needs: — · Size: S · Branch: `v4/05-agenda`
 
 ## What
 
