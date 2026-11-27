@@ -78,6 +78,13 @@
       "when": 1794900000000,
       "tag": "0010_v2_default_reminder",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1795770000000,
+      "tag": "0011_v33_columns",
+      "breakpoints": true
     }
   ]
 }
