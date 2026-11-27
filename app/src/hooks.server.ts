@@ -33,7 +33,8 @@ export const init: ServerInit = async () => {
 };
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-const PUBLIC = [/^\/login\/?$/, /^\/signup\/?$/, /^\/setup\/?$/, /^\/healthz\/?$/];
+// /cal/<token>.ics = the public calendar feed (card 07): fetched by calendar apps, not the browser session
+const PUBLIC = [/^\/login\/?$/, /^\/signup\/?$/, /^\/setup\/?$/, /^\/healthz\/?$/, /^\/cal\//];
 const isPublic = (p: string) => PUBLIC.some((r) => r.test(p));
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -93,9 +94,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 	res.headers.set('X-Frame-Options', 'DENY');
 	res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 	res.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
-	res.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
+	// the feed is public and fetched by a calendar app: no same-origin resource block, keep its own cache header
+	const feed = path.startsWith('/cal/');
+	if (!feed) res.headers.set('Cross-Origin-Resource-Policy', 'same-origin');
 	if (e.ORIGIN.startsWith('https://')) res.headers.set('Strict-Transport-Security', 'max-age=31536000'); // browsers ignore it over http
-	if (event.locals.user) res.headers.set('Cache-Control', 'private, no-store');
+	if (event.locals.user && !feed) res.headers.set('Cache-Control', 'private, no-store');
 	return res;
 };
 

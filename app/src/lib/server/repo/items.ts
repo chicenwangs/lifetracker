@@ -60,6 +60,7 @@ export function toDTO(r: ItemRow, counts?: { done: number; total: number }): Ite
 		dto.seriesId = r.seriesId ?? baseItemId(r.id);
 		dto.occurrenceDate = r.occurrenceDate ?? r.date ?? undefined;
 		dto.seriesDate = r.seriesDate ?? r.date ?? undefined;
+		dto.exdates = parseExdates(r.exdates); // card 07: the ICS feed writes one EXDATE per stored date
 	}
 	return dto;
 }
@@ -103,6 +104,20 @@ function stepCountsChunk(ids: string[]): Map<string, { done: number; total: numb
 export function withCounts(rows: ItemRow[]): ItemDTO[] {
 	const c = stepCounts([...new Set(rows.map((r) => baseItemId(r.id)))]);
 	return rows.map((r) => toDTO(r, c.get(baseItemId(r.id))));
+}
+
+/** notes of a set of items in one query (ICS DESCRIPTION, D-V4-37: never one query per series) */
+export function notesFor(ids: string[]): Map<string, string | null> {
+	const m = new Map<string, string | null>();
+	const uniq = [...new Set(ids)];
+	for (let i = 0; i < uniq.length; i += 500)
+		for (const r of db()
+			.select({ id: items.id, notes: items.notes })
+			.from(items)
+			.where(inArray(items.id, uniq.slice(i, i + 500)))
+			.all())
+			m.set(r.id, r.notes);
+	return m;
 }
 
 /** items overlapping [from, to) local dates, including expanded occurrences of repeating items (#72). */

@@ -10,6 +10,7 @@ Owner: Jeremy (`chicenwangs`). Target: Ubuntu homelab, Docker Compose, public at
 
 - Web app: personal calendar + day planner. Users sign up, plan their days, and can share a read-only view of their calendar with each other by swapping codes.
 - One container (Node 22, SvelteKit server) + one SQLite file. No other database, no cache, no queue. **v2: one kind of outbound call** — Web Push to the browsers' push services over HTTPS 443 (`*.notify.windows.com`, `fcm.googleapis.com`, `*.push.apple.com`, `updates.push.services.mozilla.com`), only when VAPID keys are set (D-23). The app refuses any other push host (no requests to URLs a user picks). Link previews stay off.
+- Public routes, no login: `GET /healthz` (ops health, nothing private) and `GET /cal/<token>.ics` (v4, card 07: one user's read-only calendar feed). The feed token is a random 256-bit URL segment; the DB stores only its SHA-256, the Settings page shows the URL once (Rotate / Turn off), and every bad or rotated token gets the same `404 {}`. It is rate-limited per client IP (120 requests per 15-minute window, every request counts, over = `429`), makes no outbound call, needs no env var, and sends `Cache-Control: private, max-age=300`. Calendar apps re-fetch on their own schedule; 5 minutes is the minimum freshness, not a promise of instant sync.
 - Expected load: a handful of users. One replica only (SQLite = one writer). Do not scale horizontally.
 - Second container `cloudflared` publishes it. No inbound ports on the router.
 

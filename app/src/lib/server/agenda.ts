@@ -7,10 +7,16 @@ import { bad } from './http';
 import { addDays, diffDays, isDate, localToUtc } from '$lib/time';
 import type { CalendarPayload } from '$lib/types';
 
-export function agenda(me: App.SafeUser, from: string, to: string): CalendarPayload {
+export function agenda(
+	me: App.SafeUser,
+	from: string,
+	to: string,
+	opts: { maxDays?: number } = {},
+): CalendarPayload {
 	if (!isDate(from) || !isDate(to)) bad('from/to must be YYYY-MM-DD');
 	const span = diffDays(from, to);
-	if (span <= 0 || span > 62) bad('range 1..62 days');
+	const maxDays = opts.maxDays ?? 62;
+	if (span <= 0 || span > maxDays) bad(`range 1..${maxDays} days`);
 	const cal = calendarsRepo.defaultFor(me.id);
 	const items = itemsRepo
 		.withCounts(itemsRepo.inRange(cal.id, from, to).filter((i) => !i.parentId))
