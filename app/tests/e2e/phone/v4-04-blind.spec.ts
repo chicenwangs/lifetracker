@@ -123,10 +123,18 @@ test.afterEach(async () => {
 
 const slip = () => page.locator('section[aria-label="Slipped"]');
 const rowOf = (title: string) => slip().locator('li').filter({ hasText: title });
+/** rows already slipped before this test (a full phone run shares one DB) */
+async function slipTotal() {
+	const cap = slip().locator('.cap');
+	return (await cap.count()) ? Number((await cap.first().innerText()).split('·')[1]?.trim()) : 0;
+}
+const movedToast = (n: number) => `Moved ${n} slipped item${n === 1 ? '' : 's'} to today`;
 const taller48 = async (el: Locator) =>
 	(await el.evaluateAll((ns) => ns.map((n) => n.getBoundingClientRect().height))).every((h) => h >= 48);
 
 test('C7 phone: the strip sits at the top of /today, tap opens the item sheet, swipes tick and delete with Undo, ⋯ is the shared ActionSheet, 48 dp, Back closes first, no key hints', async () => {
+	await page.goto('/today');
+	const base = await slipTotal(); // rows already slipped before this test: assert the delta
 	const today = await klToday();
 	const title = `${PREFIX}C7 ${P}`;
 	const it = await make({ title, date: addDays(today, -2), time: '08:00' });
@@ -138,7 +146,7 @@ test('C7 phone: the strip sits at the top of /today, tap opens the item sheet, s
 	const a = await s.boundingBox();
 	const b = await page.locator('header.day').boundingBox();
 	expect(a && b && a.y < b.y).toBe(true); // at the top of the day view
-	await expect(s.locator('.toggle')).toContainText(`Slipped · 1`);
+	await expect(s.locator('.toggle')).toContainText(`Slipped · ${base + 1}`);
 
 	// landscape starts collapsed (C8): open the list so its rows and ⋯ are reachable
 	const toggle = s.locator('.toggle');
@@ -192,6 +200,8 @@ test('C7 phone: the strip sits at the top of /today, tap opens the item sheet, s
 });
 
 test('C8 collapse on phone: landscape starts collapsed on Home and /today, portrait starts expanded, and toggling reloads nothing and changes no data', async () => {
+	await page.goto('/today');
+	const base = await slipTotal(); // rows already slipped before this test
 	const today = await klToday();
 	const title = `${PREFIX}C8 ${P}`;
 	const it = await make({ title, date: addDays(today, -1) });
@@ -202,7 +212,7 @@ test('C8 collapse on phone: landscape starts collapsed on Home and /today, portr
 		await page.goto(url);
 		const s = slip();
 		const toggle = s.locator('.toggle');
-		await expect(toggle).toContainText('Slipped · 1');
+		await expect(toggle).toContainText(`Slipped · ${base + 1}`);
 		await expect(s.locator('.chev')).toBeVisible(); // header with the count and chevron
 		await expect(toggle).toHaveAttribute('aria-expanded', String(expanded));
 		if (expanded) await expect(rowOf(title)).toBeVisible();
@@ -226,6 +236,8 @@ test('C8 collapse on phone: landscape starts collapsed on Home and /today, portr
 });
 
 test('C9 toast vs sheet: 8 px above the sheet when there is room, clamped fully on screen in landscape, never over its button row', async () => {
+	await page.goto('/today');
+	const base = await slipTotal(); // rows already slipped before this test
 	const today = await klToday();
 	const title = `${PREFIX}C9 ${P}`;
 	const it = await make({ title, date: addDays(today, -1) });
@@ -243,7 +255,7 @@ test('C9 toast vs sheet: 8 px above the sheet when there is room, clamped fully 
 	// behind the scrim so the global rule can be measured
 	await page.getByRole('button', { name: 'Move all to today' }).evaluate((n) => (n as HTMLElement).click());
 	const toast = page.locator('.toast');
-	await expect(toast).toContainText('Moved 1 slipped item to today');
+	await expect(toast).toContainText(movedToast(base + 1));
 	const geom = () =>
 		page.evaluate(() => {
 			const panel = document.querySelector('[role="dialog"][aria-label^="Actions for"]')!;

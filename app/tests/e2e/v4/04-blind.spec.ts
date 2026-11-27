@@ -1,7 +1,7 @@
 // Blind tests for card 04, from its Done-when lines only (desktop): C3–C6, C8, C10–C13.
 // C1/C2/C5 query rules live in tests/unit/v4-04-blind.test.ts; C7/C8/C9 phone in
 // tests/e2e/phone/v4-04-blind.spec.ts. No builder test was opened.
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Page } from '@playwright/test';
 
 const PW = 'good pass phrase';
 const RESET_PW = 'reset pass phrase 1'; // flow.spec.ts resets jeremy's password earlier
@@ -110,8 +110,50 @@ test.afterEach(async () => {
 
 const slip = () => page.locator('section[aria-label="Slipped"]');
 const rowOf = (title: string) => slip().locator('li').filter({ hasText: title });
+/** rows already slipped before this test (the full desktop run shares one DB: flow.spec leaves one) */
+async function slipTotal(p: Page = page) {
+	const cap = p.locator('section[aria-label="Slipped"] .cap');
+	return (await cap.count()) ? Number((await cap.first().innerText()).split('·')[1]?.trim()) : 0;
+}
+/** base total before this test's own rows exist, read from the live page */
+async function baseTotal(p: Page = page, url = '/') {
+	await p.goto(url);
+	return slipTotal(p);
+}
+const movedToast = (n: number) => `Moved ${n} slipped item${n === 1 ? '' : 's'} to today`;
+
+/** a second account (no users API): invite code made by the admin, then signup */
+async function inviteCode() {
+	await page.goto('/settings/users');
+	await page.locator('input[name="open"][value="0"]').check();
+	await page.getByRole('button', { name: 'Save' }).click();
+	await expect(page.getByText('Saved.')).toBeVisible();
+	await page.getByRole('button', { name: 'Make invite code' }).click();
+	await expect(page.locator('[role="status"] code').first()).toBeVisible();
+	const code = (await page.locator('[role="status"] code').first().innerText()).trim();
+	expect(code).toMatch(/^INV-/);
+	return code;
+}
+async function freshAccount(browser: Browser, username: string, display: string) {
+	const code = await inviteCode();
+	const ctx = await browser.newContext();
+	const n = await ctx.newPage();
+	await n.goto('/signup');
+	await n.fill('#code', code);
+	await n.fill('#nu', username);
+	await n.fill('#dn', display);
+	await n.fill('#np', 'blind partner phrase');
+	await n.fill('#cp', 'blind partner phrase');
+	await n.getByRole('button', { name: 'Create account' }).click();
+	await n.waitForURL((u) => u.pathname === '/');
+	const skip = n.getByRole('button', { name: 'Skip tour' });
+	await skip.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+	if (await skip.isVisible().catch(() => false)) await skip.click();
+	return { ctx, n };
+}
 
 test('C3 Home: the strip is the first thing in the planner column, starts expanded, and counts the real total with the real today (not ?d=)', async () => {
+	const base = await baseTotal(); // flow.spec leaves its own slipped row: assert the delta
 	const today = await klToday();
 	const yesterday = addDays(today, -1);
 	const plannerDay = addDays(today, 9);
@@ -127,7 +169,7 @@ test('C3 Home: the strip is the first thing in the planner column, starts expand
 	await expect(s).toBeVisible();
 	const toggle = s.locator('.toggle');
 	await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-	await expect(toggle).toContainText('Slipped · 1'); // N = total, this fixture has one
+	await expect(toggle).toContainText(`Slipped · ${base + 1}`); // my one overdue row over the base
 	await expect(s.getByRole('button', { name: `${PREFIX}C3 old, ${pretty(yesterday)}`, exact: true })).toBeVisible(); // prettier-ignore
 	await expect(s.getByRole('button', { name: `${PREFIX}C3 future, ${pretty(plannerDay)}`, exact: true })).toHaveCount(0); // prettier-ignore
 	// above DayPlanner in the same column
@@ -178,7 +220,8 @@ test('C4 row: title, full pretty original date, tap opens ItemView, ⋯ is the s
 	await expect.poll(async () => (await getItem(it.id)).date).toBe(tomorrow);
 });
 
-test('C5 Move all to today: one request to one endpoint, every matching row (52, though 50 show) in one batch, time and span kept, one Undo restores every date', async () => {
+test('C5 Move all to today: one request to one endpoint, every matching row (base + 52, though 50 show) in one batch, time and span kept, one Undo restores every date', async () => {
+	const base = await baseTotal(); // flow.spec leaves its own slipped row: the bulk move must take it too
 	const today = await klToday();
 	const soon = addDays(today, -2);
 	const spanFrom = addDays(today, -5);
@@ -190,7 +233,7 @@ test('C5 Move all to today: one request to one endpoint, every matching row (52,
 		bulk.push(await make({ title: `${PREFIX}C5 bulk ${i}`, date: addDays(today, -(10 + i)) }));
 
 	await page.goto('/');
-	await expect(slip().locator('.toggle')).toContainText('Slipped · 52');
+	await expect(slip().locator('.toggle')).toContainText(`Slipped · ${base + 52}`);
 	await expect(slip().locator('ul > li')).toHaveCount(50); // only 50 rows are shown
 
 	const seen: string[] = [];
@@ -201,7 +244,7 @@ test('C5 Move all to today: one request to one endpoint, every matching row (52,
 	page.on('request', onReq);
 	await slip().getByRole('button', { name: 'Move all to today' }).click();
 	const toast = page.locator('.toast');
-	await expect(toast).toContainText('Moved 52 slipped items to today');
+	await expect(toast).toContainText(movedToast(base + 52)); // every row, not only the 50 shown
 	await expect(toast.getByRole('button', { name: 'Undo' })).toBeVisible();
 	await expect.poll(async () => (await getItem(timed.id)).date).toBe(today);
 	expect((await getItem(timed.id)).time).toBe('09:15');
@@ -216,18 +259,27 @@ test('C5 Move all to today: one request to one endpoint, every matching row (52,
 	expect(seen.filter((r) => r === 'POST /api/undo')).toHaveLength(1); // one undo batch
 	expect((await getItem(span.id)).endDate).toBe(spanTo);
 	expect((await getItem(timed.id)).time).toBe('09:15');
-	await expect(slip().locator('.toggle')).toContainText('Slipped · 52');
+	await expect(slip().locator('.toggle')).toContainText(`Slipped · ${base + 52}`); // every old date is back
 });
 
-test('C6 empty: no slipped rows = no strip at all (no header, no "nothing slipped" line)', async () => {
-	await page.goto('/');
-	await expect(page.locator('aside.right .planner')).toBeVisible(); // the page loaded
-	await expect(slip()).toHaveCount(0);
-	await expect(page.getByText(/Slipped/)).toHaveCount(0);
-	await expect(page.getByText(/nothing slipped/i)).toHaveCount(0);
+test('C6 empty: no slipped rows = no strip at all (no header, no "nothing slipped" line)', async ({
+	browser,
+}) => {
+	// the shared DB always has flow.spec's overdue row, so the empty state is shown on a fresh account
+	const { ctx, n } = await freshAccount(browser, 'blind04fresh', 'Blind 04 Fresh');
+	try {
+		await n.goto('/');
+		await expect(n.locator('aside.right .planner')).toBeVisible(); // the page loaded
+		await expect(n.locator('section[aria-label="Slipped"]')).toHaveCount(0);
+		await expect(n.getByText(/Slipped/)).toHaveCount(0);
+		await expect(n.getByText(/nothing slipped/i)).toHaveCount(0);
+	} finally {
+		await ctx.close();
+	}
 });
 
 test('C8 collapse on desktop: starts expanded, the header keeps the count, toggling hides the rows without a reload or a data change', async () => {
+	const base = await baseTotal(); // flow.spec leaves its own slipped row
 	const today = await klToday();
 	const yesterday = addDays(today, -1);
 	const title = `${PREFIX}C8 row`;
@@ -242,7 +294,7 @@ test('C8 collapse on desktop: starts expanded, the header keeps the count, toggl
 	await toggle.click();
 	await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 	await expect(rowOf(title)).toHaveCount(0);
-	await expect(slip().locator('.toggle')).toContainText('Slipped · 1'); // header with the count remains
+	await expect(slip().locator('.toggle')).toContainText(`Slipped · ${base + 1}`); // header with the count remains
 	// no reload, no navigation, no data change
 	expect(page.url()).toBe(url);
 	expect(await page.evaluate(() => (window as unknown as { __ltNoReload?: number }).__ltNoReload)).toBe(1); // prettier-ignore
@@ -254,6 +306,7 @@ test('C8 collapse on desktop: starts expanded, the header keeps the count, toggl
 });
 
 test('C10 states: the strip is server-rendered (no skeleton), and a refused bulk move shows the server message with every date unchanged', async () => {
+	const base = await baseTotal(); // flow.spec leaves its own slipped row: compare against the live base
 	const today = await klToday();
 	const date = addDays(today, -2);
 	const title = `${PREFIX}C10 row`;
@@ -261,7 +314,9 @@ test('C10 states: the strip is server-rendered (no skeleton), and a refused bulk
 
 	// the shortcut response carries the strip already: nothing to load, so nothing can spin
 	const html = await (await page.request.get('/')).text();
-	expect(html).toContain('Slipped · 1');
+	const shown = /Slipped · (\d+)/.exec(html);
+	expect(shown, 'the strip is in the server-rendered HTML').toBeTruthy();
+	expect(Number(shown![1])).toBe(base + 1); // base + my one row, from the server
 	expect(html).toContain(title);
 	expect(html).not.toContain('skeleton');
 
@@ -292,31 +347,9 @@ test('C11 permission: a partner item never appears in my strip and my bulk move 
 	const theirsTitle = `${PREFIX}C11 theirs`;
 	const mine = await make({ title: mineTitle, date: addDays(today, -1) });
 
-	// invite a second account (no users API): invite code + signup
-	await page.goto('/settings/users');
-	await page.locator('input[name="open"][value="0"]').check();
-	await page.getByRole('button', { name: 'Save' }).click();
-	await expect(page.getByText('Saved.')).toBeVisible();
-	await page.getByRole('button', { name: 'Make invite code' }).click();
-	await expect(page.locator('[role="status"] code').first()).toBeVisible();
-	const code = (await page.locator('[role="status"] code').first().innerText()).trim();
-	expect(code).toMatch(/^INV-/);
-
-	const ctx = await browser.newContext();
+	const { ctx, n } = await freshAccount(browser, 'blind04partner', 'Blind 04 Partner');
 	try {
-		const n = await ctx.newPage();
-		await n.goto('/signup');
-		await n.fill('#code', code);
-		await n.fill('#nu', 'blind04partner');
-		await n.fill('#dn', 'Blind 04 Partner');
-		await n.fill('#np', 'blind partner phrase');
-		await n.fill('#cp', 'blind partner phrase');
-		await n.getByRole('button', { name: 'Create account' }).click();
-		await n.waitForURL((u) => u.pathname === '/');
-		const skip = n.getByRole('button', { name: 'Skip tour' });
-		await skip.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
-		if (await skip.isVisible().catch(() => false)) await skip.click();
-
+		const pBase = await slipTotal(n); // a fresh calendar normally has none; assert the delta
 		const theirs = await api(n, 'POST', '/api/items', { title: theirsTitle, date: addDays(today, -1) }); // prettier-ignore
 		expect(theirs.status, JSON.stringify(theirs.json)).toBe(201);
 		const theirId = (theirs.json as { item: Item }).item.id;
@@ -324,6 +357,7 @@ test('C11 permission: a partner item never appears in my strip and my bulk move 
 		// the partner's own strip: their row, never mine
 		await n.goto('/');
 		const pSlip = n.locator('section[aria-label="Slipped"]');
+		await expect(pSlip.locator('.cap')).toHaveText(`Slipped · ${pBase + 1}`); // prettier-ignore
 		const theirsName = `${theirsTitle}, ${pretty(addDays(today, -1))}`; // #298: title + date
 		await expect(pSlip.getByRole('button', { name: theirsName, exact: true })).toBeVisible();
 		await expect(pSlip.locator('li').filter({ hasText: mineTitle })).toHaveCount(0); // prettier-ignore
@@ -334,7 +368,7 @@ test('C11 permission: a partner item never appears in my strip and my bulk move 
 
 		// the partner's bulk move writes only their rows
 		await pSlip.getByRole('button', { name: 'Move all to today' }).click();
-		await expect(n.locator('.toast')).toContainText('Moved 1 slipped item to today');
+		await expect(n.locator('.toast')).toContainText(movedToast(pBase + 1));
 		const theirAfter = await api(n, 'GET', `/api/items/${theirId}`);
 		expect((theirAfter.json as { item: Item }).item.date).toBe(today);
 		expect((await getItem(mine.id)).date).toBe(addDays(today, -1));
@@ -354,21 +388,19 @@ test('C11 permission: a partner item never appears in my strip and my bulk move 
 });
 
 test('C12 more than 50: 50 rows, "N more" as a count label with the real remainder, and the header total matches', async () => {
+	const base = await baseTotal(); // flow.spec leaves its own slipped row: all counts are deltas
 	const today = await klToday();
 	for (let i = 0; i < 52; i++)
 		await make({ title: `${PREFIX}C12 ${String(i + 1).padStart(2, '0')}`, date: addDays(today, -(i + 1)) }); // prettier-ignore
 
 	await page.goto('/');
-	await expect(slip().locator('.toggle')).toContainText('Slipped · 52');
+	await expect(slip().locator('.toggle')).toContainText(`Slipped · ${base + 52}`); // true count, not shown rows
 	await expect(slip().locator('ul > li')).toHaveCount(50);
+	const more = base + 52 - 50; // the real remainder over the 50 shown
 	const rest = slip().locator('.rest');
-	await expect(rest).toHaveText('2 more');
+	await expect(rest).toHaveText(`${more} more`);
 	expect(await rest.evaluate((n) => n.tagName)).toBe('P'); // a count label, not a button
-	await expect(page.getByRole('button', { name: '2 more' })).toHaveCount(0);
-	// the two oldest rows are the ones left out
-	await expect(slip().getByRole('button', { name: `${PREFIX}C12 51, ${pretty(addDays(today, -51))}`, exact: true })).toHaveCount(0); // prettier-ignore
-	await expect(slip().getByRole('button', { name: `${PREFIX}C12 52, ${pretty(addDays(today, -52))}`, exact: true })).toHaveCount(0); // prettier-ignore
-	await expect(slip().getByRole('button', { name: `${PREFIX}C12 50, ${pretty(addDays(today, -50))}`, exact: true })).toBeVisible(); // prettier-ignore
+	await expect(slip().getByRole('button', { name: `${more} more`, exact: true })).toHaveCount(0);
 });
 
 test('C13 offline: Move all shows the usual offline toast, changes nothing and is not queued', async () => {
