@@ -38,11 +38,13 @@
 	import { colorsFor } from '$lib/colors';
 	import {
 		baseItemId,
+		describeFromCompletion,
 		describeRRule,
 		formatRRule,
 		nthWeekdayOfDate,
 		parseRRule,
 		presetsForDate,
+		qualifiesFromCompletion,
 		WD_CODES,
 		WD_SHORT,
 		type Freq,
@@ -226,7 +228,15 @@
 	async function save(p: Record<string, unknown>) {
 		if (!it) return;
 		let body = p;
-		if (it.rrule && !('rrule' in p) && !('scope' in p)) {
+		// card 09 C2 (D-V4-10): a from-completion series is one row — no this/following/all dialog.
+		// The flag itself is a series-level setting, so it never asks either.
+		if (
+			it.rrule &&
+			!it.repeatFromCompletion &&
+			!('rrule' in p) &&
+			!('scope' in p) &&
+			!('repeatFromCompletion' in p)
+		) {
 			const scope = await askScope(`Edit repeating item "${it.title}"?`, { ok: 'Save' });
 			if (!scope) {
 				await load();
@@ -281,6 +291,8 @@
 	let cEndKind = $state<'never' | 'until' | 'count'>('never');
 	let cUntil = $state('');
 	let cCount = $state(5);
+	/** card 09 C2: writable derived — a failed save puts the radio back to the stored flag */
+	let fromCompletion = $derived(!!it?.repeatFromCompletion);
 
 	function openCustomRepeat() {
 		if (!it?.date) return;
@@ -384,7 +396,8 @@
 
 	async function startNotes(e?: MouseEvent) {
 		if ((e?.target as HTMLElement | undefined)?.closest('a')) return; // let links work
-		if (it?.rrule) {
+		// card 09 C2: a from-completion series is one row — no this/following/all dialog
+		if (it?.rrule && !it.repeatFromCompletion) {
 			const scope = await askScope(`Edit notes on repeating item "${it.title}"?`, { ok: 'Edit' });
 			if (!scope) return;
 			notesScope = scope;
@@ -768,6 +781,32 @@
 								</label>
 							{/if}
 						{/if}
+						{#if qualifiesFromCompletion(curRRule)}
+							<!-- card 09 C1/C2 (O-9, D-V4-10, D-V4-27): shown for a daily/monthly rule with no BYDAY/UNTIL/COUNT -->
+							<div class="prop rfc" role="radiogroup" aria-label="Next one counts from">
+								<span aria-hidden="true">Next one counts from</span>
+								<label class="opt">
+									<input
+										type="radio"
+										name="next-from"
+										bind:group={fromCompletion}
+										value={false}
+										onchange={() => save({ repeatFromCompletion: false })}
+									/>
+									<span>Scheduled date</span>
+								</label>
+								<label class="opt">
+									<input
+										type="radio"
+										name="next-from"
+										bind:group={fromCompletion}
+										value={true}
+										onchange={() => save({ repeatFromCompletion: true })}
+									/>
+									<span>When I finish it</span>
+								</label>
+							</div>
+						{/if}
 					{/if}
 					<label class="prop check" title="Shows as Busy to anyone you share with">
 						<input
@@ -778,6 +817,9 @@
 						<span>Keep secret</span>
 					</label>
 				</div>
+				{#if it.rrule && it.repeatFromCompletion}
+					<p class="rfc-sum">{describeFromCompletion(it.rrule)}</p>
+				{/if}
 				{#if postponeOpen && it.date}
 					<div
 						class="card box resched"
@@ -1206,6 +1248,32 @@
 		color: var(--ink);
 		font-weight: 600;
 	}
+	/* card 09 C1/C3: the from-completion row and its summary */
+	.prop.rfc {
+		flex-basis: 100%;
+		justify-content: flex-start;
+		gap: 4px;
+	}
+	.opt {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		min-height: 24px;
+		padding: 0 6px;
+		cursor: pointer;
+		font-size: 13px;
+		font-weight: 600;
+	}
+	.prop.rfc .opt input {
+		width: 15px;
+		height: 15px;
+		accent-color: var(--ink);
+	}
+	.rfc-sum {
+		font-size: 13px;
+		color: var(--quiet);
+		overflow-wrap: anywhere;
+	}
 	.prop.pmenu {
 		padding: 0;
 	}
@@ -1461,6 +1529,28 @@
 			gap: 12px;
 		}
 		.prop.check input {
+			width: 22px;
+			height: 22px;
+		}
+		/* card 09 C11: the two radios are rows with a 48 dp label hit area */
+		.prop.rfc {
+			flex-direction: column;
+			align-items: stretch;
+			justify-content: flex-start;
+			gap: 0;
+			padding: 8px 4px;
+		}
+		.prop.rfc > span {
+			min-height: 48px;
+			display: flex;
+			align-items: center;
+		}
+		.opt {
+			min-height: 48px;
+			gap: 12px;
+			font-size: 15px;
+		}
+		.prop.rfc .opt input {
 			width: 22px;
 			height: 22px;
 		}

@@ -48,6 +48,8 @@ export interface ItemDTO {
 	seriesDate?: string;
 	/** stored excluded local dates of a repeating series (#72); ICS export, card 07 */
 	exdates?: string[];
+	/** card 09: the next date counts from completion instead of the scheduled date (D-V4-10) */
+	repeatFromCompletion?: boolean;
 	/** someone else's calendar, shared with me (read-only) */
 	theirs?: boolean;
 	owner?: PartnerTag;

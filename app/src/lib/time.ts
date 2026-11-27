@@ -51,6 +51,15 @@ export function diffDays(a: string, b: string): number {
 	const [y2, m2, d2] = parts(b);
 	return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86_400_000);
 }
+/** add N calendar months, clamped to the target month's last day (31 Jan + 1 = 28/29 Feb) */
+export function addMonths(date: string, n: number): string {
+	const [y, m, d] = parts(date);
+	const total = y * 12 + (m - 1) + n;
+	const ty = Math.floor(total / 12);
+	const tm = total - ty * 12; // 0..11
+	const last = new Date(Date.UTC(ty, tm + 1, 0)).getUTCDate();
+	return makeDate(ty, tm + 1, Math.min(d, last));
+}
 /** Mon=1 .. Sun=7 */
 export function weekdayOf(date: string): number {
 	const [y, m, d] = parts(date);

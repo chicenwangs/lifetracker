@@ -8,14 +8,16 @@ import { notFound, bad } from '../http';
 import { zDate, zIsoZ, zStatus, zTime, zTitle, zType, zId } from '../validate';
 import * as calendarsRepo from './calendars';
 import * as itemTypesRepo from './itemtypes';
-import { addDays, diffDays, nowUtcIso } from '$lib/time';
+import { addDays, diffDays, nowUtcIso, todayLocal, DEFAULT_TZ } from '$lib/time';
 import {
 	baseItemId,
 	countBefore,
 	expandRRule,
 	formatRRule,
+	nextFromCompletion,
 	parseExdates,
 	parseRRule,
+	qualifiesFromCompletion,
 	retargetRRule,
 	splitOccId,
 	withUntil,
@@ -26,6 +28,8 @@ export type ItemRow = typeof items.$inferSelect & {
 	seriesId?: string;
 	occurrenceDate?: string;
 	seriesDate?: string;
+	/** card 09 C9: the done copy the completion created, for the route's undo journal (never a DTO field) */
+	doneCopyId?: string;
 };
 
 const live = isNull(items.deletedAt);
@@ -62,6 +66,8 @@ export function toDTO(r: ItemRow, counts?: { done: number; total: number }): Ite
 		dto.seriesDate = r.seriesDate ?? r.date ?? undefined;
 		dto.exdates = parseExdates(r.exdates); // card 07: the ICS feed writes one EXDATE per stored date
 	}
+	// card 09: a from-completion series shows only its stored date, everywhere
+	if (r.repeatFromCompletion) dto.repeatFromCompletion = true;
 	return dto;
 }
 
@@ -120,7 +126,8 @@ export function notesFor(ids: string[]): Map<string, string | null> {
 	return m;
 }
 
-/** items overlapping [from, to) local dates, including expanded occurrences of repeating items (#72). */
+/** items overlapping [from, to) local dates, including expanded occurrences of repeating items (#72).
+ *  Card 09 C4 (D-V4-10): a from-completion series is one row on its stored date — no future ghosts. */
 export function inRange(calendarId: string, from: string, to: string): ItemRow[] {
 	const plain = db()
 		.select()
@@ -129,7 +136,7 @@ export function inRange(calendarId: string, from: string, to: string): ItemRow[]
 			and(
 				eq(items.calendarId, calendarId),
 				live,
-				isNull(items.rrule),
+				or(isNull(items.rrule), eq(items.repeatFromCompletion, true)),
 				isNotNull(items.date),
 				lt(items.date, to),
 				gte(sql`COALESCE(${items.endDate}, ${items.date})`, from),
@@ -144,6 +151,7 @@ export function inRange(calendarId: string, from: string, to: string): ItemRow[]
 				eq(items.calendarId, calendarId),
 				live,
 				isNotNull(items.rrule),
+				eq(items.repeatFromCompletion, false),
 				isNotNull(items.date),
 				lt(items.date, to),
 			),
@@ -305,6 +313,8 @@ export const itemPatchSchema = z
 		notes: z.string().max(20_000).nullable(),
 		private: z.boolean(),
 		rrule: zRRule.nullable(),
+		/** card 09 C2: the next date counts from completion (only for a qualifying daily/monthly rule) */
+		repeatFromCompletion: z.boolean(),
 		/** repeating edit scope (#72): 'this' detaches one date, 'following' splits the series, 'all' updates the series */
 		scope: z.enum(['this', 'following', 'all']),
 		/** #105 offline edit timestamp (UTC Z): if server's updatedAt >= editedAt, server wins */
@@ -324,6 +334,8 @@ function statusStamps(prev: ItemRow, s: Status, now: string) {
 /** #296: the rule really generates `occDate` (detached dates count: they are still the rule's dates) */
 export function isOccurrence(cur: ItemRow, occDate: string): boolean {
 	if (!cur.rrule || !cur.date) return false;
+	// card 09 C4 (D-V4-10): a from-completion series exists only on its stored date
+	if (cur.repeatFromCompletion) return occDate === cur.date;
 	const span = cur.endDate ? diffDays(cur.date, cur.endDate) : 0;
 	return expandRRule(cur.date, cur.rrule, [], occDate, addDays(occDate, 1), span).includes(occDate);
 }
@@ -345,7 +357,7 @@ function detachOccurrence(meId: string, cur: ItemRow, occDate: string, p: ItemPa
 	if (date === null || endDate === date) endDate = null;
 	return handle().sqlite.transaction(() => {
 		addExdate(meId, cur, occDate, now);
-		return create(
+		const made = create(
 			meId,
 			itemCreateSchema.parse({
 				title: p.title ?? cur.title,
@@ -359,6 +371,63 @@ function detachOccurrence(meId: string, cur: ItemRow, occDate: string, p: ItemPa
 				rrule: null,
 			}),
 		);
+		// O-11 (card 09 C15): finishing one occurrence leaves the series at todo; the copy keeps done
+		if (made.status === 'done')
+			db()
+				.update(items)
+				.set({ status: 'todo', startedAt: null, completedAt: null, updatedAt: now, updatedBy: meId })
+				.where(eq(items.id, cur.id))
+				.run();
+		return made;
+	})();
+}
+
+/** owner timezone for the "today" of a completion (patch only receives the owner id) */
+function timezoneOf(meId: string): string {
+	return db().select({ tz: users.timezone }).from(users).where(eq(users.id, meId)).get()?.tz ?? DEFAULT_TZ;
+}
+
+/**
+ * Card 09 C5/C6 (D-V4-10, D-V4-27, O-11): finishing a from-completion series files a done copy dated today
+ * and moves the series to today + interval. `doneCopyId` lets the route journal the copy in the same entry.
+ */
+function completeFromCompletion(meId: string, cur: ItemRow, now: string): ItemRow {
+	const from = cur.date;
+	if (!from || !cur.rrule) return cur;
+	const today = todayLocal(timezoneOf(meId));
+	const next = nextFromCompletion(today, cur.rrule);
+	if (!next) return cur;
+	const span = cur.endDate ? diffDays(from, cur.endDate) : 0;
+	return handle().sqlite.transaction(() => {
+		const copy = create(
+			meId,
+			itemCreateSchema.parse({
+				title: cur.title,
+				type: cur.type,
+				status: 'done',
+				date: today,
+				time: cur.time,
+				endDate: span > 0 ? addDays(today, span) : null,
+				notes: cur.notes,
+				private: cur.private,
+				rrule: null,
+			}),
+		);
+		db()
+			.update(items)
+			.set({
+				date: next,
+				// C6: an existing end_date shifts by the same delta
+				endDate: cur.endDate ? addDays(cur.endDate, diffDays(from, next)) : null,
+				status: 'todo',
+				startedAt: null,
+				completedAt: null,
+				updatedAt: now,
+				updatedBy: meId,
+			})
+			.where(eq(items.id, cur.id))
+			.run();
+		return { ...mustOwn(meId, cur.id), doneCopyId: copy.id };
 	})();
 }
 
@@ -366,18 +435,23 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	const { id, occDate } = splitOccId(rawId);
 	const cur = mustOwn(meId, id);
 	// #158/#163: that date was already detached into its own row; editing it again would make a second copy
-	if (occDate && parseExdates(cur.exdates).includes(occDate)) notFound();
+	if (occDate && !cur.repeatFromCompletion && parseExdates(cur.exdates).includes(occDate)) notFound();
 	if (occDate && cur.rrule && !isOccurrence(cur, occDate)) notFound(); // #296: a made-up @date is not an occurrence
 	const { scope, editedAt, ...fields } = p;
 	// #105 offline edit made before the server copy last changed: the server wins
 	if (editedAt && cur.updatedAt > editedAt) return cur;
 	if (fields.type !== undefined) itemTypesRepo.mustHave(meId, fields.type);
 
+	// Card 09 C5/C6 (D-V4-10, D-V4-27): a from-completion series has one occurrence and no edit scope.
+	// A tick to done files the done copy and moves the series; any other edit changes the whole row.
+	if (cur.rrule && cur.date && cur.repeatFromCompletion && fields.status === 'done')
+		return completeFromCompletion(meId, cur, nowUtcIso());
+
 	// Repeating occurrence handling (#72):
 	// - Ticking status (only `status` changed, no `scope`) detaches that single occurrence date.
 	// - `scope === 'this'` (or dragging an occurrence date on the calendar without scope) detaches that date.
 	// - `scope === 'following'` truncates the existing series before `occDate` and starts a new series at `occDate`.
-	if (cur.rrule && cur.date) {
+	if (cur.rrule && cur.date && !cur.repeatFromCompletion) {
 		const targetOcc = occDate ?? cur.date;
 		const keys = Object.keys(fields);
 		const onlyStatus = keys.length === 1 && keys[0] === 'status';
@@ -443,7 +517,14 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	let date = fields.date !== undefined ? fields.date : cur.date;
 	let endDate = fields.endDate !== undefined ? fields.endDate : cur.endDate;
 	// #296: "Does not repeat" must not put the series back on a date it already detached into its own row
-	if (fields.rrule === null && fields.date === undefined && cur.rrule && cur.date) {
+	// (card 09: old EXDATEs are dormant while the series counts from completion)
+	if (
+		fields.rrule === null &&
+		fields.date === undefined &&
+		cur.rrule &&
+		cur.date &&
+		!cur.repeatFromCompletion
+	) {
 		const ex = parseExdates(cur.exdates);
 		if (ex.includes(cur.date)) {
 			const span = cur.endDate ? diffDays(cur.date, cur.endDate) : 0;
@@ -472,6 +553,9 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 	if (fields.parentId && steps(meId, id).length) bad('an item with steps cannot become a step');
 	if ((fields.parentId ?? cur.parentId) && rrule) bad('steps cannot repeat');
 	const now = nowUtcIso();
+	// card 09 C1 (O-9): a rule that stops qualifying drops the flag in the same edit
+	const repeatFromCompletion =
+		(fields.repeatFromCompletion ?? cur.repeatFromCompletion) && qualifiesFromCompletion(rrule);
 	db()
 		.update(items)
 		.set({
@@ -480,6 +564,7 @@ export function patch(meId: string, rawId: string, p: ItemPatch): ItemRow {
 			time,
 			endDate,
 			rrule,
+			repeatFromCompletion,
 			...(rrule === null ? { exdates: null } : {}),
 			...(fields.status ? statusStamps(cur, fields.status, now) : {}),
 			updatedAt: now,
@@ -685,8 +770,8 @@ export function allDayUnblocked(meId: string, from: string, to: string): ItemRow
 		.all();
 }
 
-/** Card 04 (C1/C2): rows the Slipped strip shows. Own, live, top-level, one-off items dated before
- *  `today`, not done, hidden types out (untyped = 'None', D-V4-05). */
+/** Card 04 (C1/C2): rows the Slipped strip shows. Own, live, top-level, one-offs and from-completion
+ *  series (O-1 item 1 / card 09 C7) dated before `today`, not done, hidden types out (untyped = 'None', D-V4-05). */
 const SLIPPED_CAP = 50;
 
 function slippedWhere(meId: string, today: string) {
@@ -697,7 +782,7 @@ function slippedWhere(meId: string, today: string) {
 		inArray(items.calendarId, cals),
 		live,
 		isNull(items.parentId),
-		isNull(items.rrule),
+		or(isNull(items.rrule), eq(items.repeatFromCompletion, true)),
 		lt(sql`COALESCE(${items.endDate}, ${items.date})`, today),
 		or(eq(items.status, 'todo'), eq(items.status, 'doing')),
 	];

@@ -31,8 +31,10 @@ export function targetDate(kind: RescheduleKind, today: string): string {
 	return addDays(today, wd <= 4 ? 1 : 8 - wd);
 }
 
-/** the shown occurrence of a repeating series (`id@date` with a rule); its postpone detaches it */
-export const isOccurrence = (x: ItemDTO): boolean => !!x.rrule && splitOccId(x.id).occDate !== null;
+/** the shown occurrence of a repeating series (`id@date` with a rule); its postpone detaches it.
+ *  A from-completion series has no occurrences: its single row is the series itself (card 09 D-V4-10). */
+export const isOccurrence = (x: ItemDTO): boolean =>
+	!!x.rrule && !x.repeatFromCompletion && splitOccId(x.id).occDate !== null;
 
 export function reschedule(
 	x: ItemDTO,

@@ -30,7 +30,15 @@ export interface SourceInfo {
 	/** UTC Z instant the item happens, null = none (no date) */
 	ref: string | null;
 	/** repeating item fields (#72) for per-occurrence relative reminders */
-	repeat?: { date: string; time: string | null; rrule: string; exdates: string[]; tz: string };
+	repeat?: {
+		date: string;
+		time: string | null;
+		rrule: string;
+		exdates: string[];
+		tz: string;
+		/** card 09: the series counts from completion, so only its stored date exists */
+		fromCompletion?: boolean;
+	};
 	/** trashed / deleted / gone = reminders stop (D-16: archived notes still remind) */
 	live: boolean;
 	route: string;
@@ -42,14 +50,21 @@ export function sourceInfo(ownerId: string, type: Source, rawId: string): Source
 	const id = type === 'planner_item' ? baseItemId(rawId) : rawId;
 	const tz = (db().prepare(`SELECT timezone FROM users WHERE id = ?`).get(ownerId) as { timezone: string } | undefined)?.timezone ?? 'Asia/Kuala_Lumpur'; // prettier-ignore
 	if (type === 'planner_item') {
-		const r = db().prepare(`SELECT i.title, i.date, i.time, i.rrule, i.exdates, i.deleted_at FROM items i JOIN calendars c ON c.id = i.calendar_id WHERE i.id = ? AND c.owner_id = ?`).get(id, ownerId) as { title: string; date: string | null; time: string | null; rrule: string | null; exdates: string | null; deleted_at: string | null } | undefined; // prettier-ignore
+		const r = db().prepare(`SELECT i.title, i.date, i.time, i.rrule, i.exdates, i.repeat_from_completion, i.deleted_at FROM items i JOIN calendars c ON c.id = i.calendar_id WHERE i.id = ? AND c.owner_id = ?`).get(id, ownerId) as { title: string; date: string | null; time: string | null; rrule: string | null; exdates: string | null; repeat_from_completion: number; deleted_at: string | null } | undefined; // prettier-ignore
 		return (
 			r && {
 				title: r.title,
 				ref: r.date ? itemRef(r.date, r.time, tz) : null,
 				repeat:
 					r.date && r.rrule
-						? { date: r.date, time: r.time, rrule: r.rrule, exdates: parseExdates(r.exdates), tz }
+						? {
+								date: r.date,
+								time: r.time,
+								rrule: r.rrule,
+								exdates: parseExdates(r.exdates),
+								tz,
+								fromCompletion: !!r.repeat_from_completion,
+							}
 						: undefined,
 				live: !r.deleted_at,
 				route: `/item/${id}`,
@@ -114,6 +129,9 @@ const dueOf = (
 	if (r.rule_kind === 'absolute') return r.at_time;
 	if (!r.rel_value || !r.rel_unit) return null;
 	const ms = offsetMs(r.rel_value, r.rel_unit);
+	// card 09 (D-V4-10): a from-completion series has one scheduled date; the reminder follows that date only
+	if (info.repeat?.fromCompletion)
+		return isoPlus(itemRef(info.repeat.date, info.repeat.time, info.repeat.tz), -ms);
 	if (info.repeat) return nextRepeatDue(info.repeat, ms, now);
 	return info.ref ? isoPlus(info.ref, -ms) : null;
 };
@@ -248,6 +266,8 @@ export function advanceRepeating(id: string, ownerId: string, now = Date.now()):
 	const info = sourceInfo(ownerId, r.source_type, r.source_id);
 	if (!info?.live || !info.repeat) return;
 	const rep = info.repeat;
+	// card 09 (D-V4-10): one reminder per scheduled date; a from-completion series moves it only on completion
+	if (rep.fromCompletion) return;
 	let nextDue: string | null;
 	if (r.rule_kind === 'relative') {
 		if (!r.rel_value || !r.rel_unit) return;
@@ -286,6 +306,45 @@ export function advanceRepeating(id: string, ownerId: string, now = Date.now()):
 		db()
 			.prepare(`INSERT INTO reminders (id, owner_id, source_type, source_id, rule_kind, rel_value, rel_unit, at_time, due_at, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'absolute', NULL, NULL, ?, ?, 'scheduled', ?, ?)`)
 			.run(newRemId, ownerId, r.source_type, r.source_id, nextDue, nextDue, t, t); // prettier-ignore
+}
+
+/**
+ * Card 09 C8 (D-V4-27): a from-completion series moved its date. `recalcOwner` moves every open reminder;
+ * one that already fired cannot be recalculated, so its rule schedules the next one from the new date.
+ * An exact-time reminder stays at its chosen instant (no next one to create).
+ */
+export function afterCompletion(ownerId: string, sourceId: string, now = Date.now()): void {
+	const rep = sourceInfo(ownerId, 'planner_item', sourceId)?.repeat;
+	if (!rep?.fromCompletion) return;
+	const fired = db()
+		.prepare(
+			`SELECT * FROM reminders WHERE owner_id = ? AND source_type = 'planner_item' AND source_id = ? AND status IN ('sent','missed') ORDER BY due_at DESC`,
+		)
+		.all(ownerId, sourceId) as Row[];
+	if (!fired.length) return;
+	const open = db()
+		.prepare(
+			`SELECT * FROM reminders WHERE owner_id = ? AND source_type = 'planner_item' AND source_id = ? AND status IN ('scheduled','processing')`,
+		)
+		.all(ownerId, sourceId) as Row[];
+	const ruleKey = (r: Row) =>
+		r.rule_kind === 'relative' ? `rel:${r.rel_value}:${r.rel_unit}` : `abs:${r.at_time}`;
+	const openRules = new Set(open.map(ruleKey));
+	const t = nowUtcIso(now);
+	const seen = new Set<string>();
+	for (const r of fired) {
+		const k = ruleKey(r);
+		if (openRules.has(k) || seen.has(k)) continue;
+		seen.add(k);
+		if (r.rule_kind !== 'relative' || !r.rel_value || !r.rel_unit) continue;
+		const due = isoPlus(itemRef(rep.date, rep.time, rep.tz), -offsetMs(r.rel_value, r.rel_unit));
+		if (Date.parse(due) <= now) continue;
+		const dup = db().prepare(`SELECT 1 FROM reminders WHERE source_type = ? AND source_id = ? AND due_at = ? AND status IN ('scheduled','processing')`).get('planner_item', sourceId, due); // prettier-ignore
+		if (dup) continue;
+		db()
+			.prepare(`INSERT INTO reminders (id, owner_id, source_type, source_id, rule_kind, rel_value, rel_unit, at_time, due_at, status, created_at, updated_at) VALUES (?, ?, 'planner_item', ?, 'relative', ?, ?, NULL, ?, 'scheduled', ?, ?)`)
+			.run(newId('rem'), ownerId, sourceId, r.rel_value, r.rel_unit, due, t, t); // prettier-ignore
+	}
 }
 
 /** Android app: scheduled reminders due in the next `ms`, for local alarms. Kinds the owner turned off are left out. */
@@ -358,6 +417,11 @@ export function act(
 			}
 			try {
 				itemsRepo.patch(ownerId, target, { status: 'done' });
+				// card 09 (C8): a from-completion series moved; open reminders follow, a fired one is recreated
+				if (rep?.fromCompletion) {
+					recalcOwner(ownerId, now);
+					afterCompletion(ownerId, r.source_id, now);
+				}
 			} catch {
 				/* item gone meanwhile: the reminder is still marked handled */
 			}

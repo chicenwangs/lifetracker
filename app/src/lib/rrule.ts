@@ -1,6 +1,6 @@
 // Repeating items (RFC 5545 RRULE subset, #72). Pure, shared client + server.
 // All dates are owner-local 'YYYY-MM-DD' (never new Date('YYYY-MM-DD')).
-import { addDays, isDate, makeDate, prettyDate, weekdayOf } from './time';
+import { addDays, addMonths, isDate, makeDate, prettyDate, weekdayOf } from './time';
 
 export const FREQS = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const;
 export type Freq = (typeof FREQS)[number];
@@ -316,4 +316,38 @@ export function retargetRRule(raw: string, oldDate: string, newDate: string): st
 /** #155: occurrences (exdated ones too, as COUNT counts them) a series has before `date` */
 export function countBefore(startDate: string, raw: string, date: string): number {
 	return expandRRule(startDate, raw, [], startDate, date).length;
+}
+
+/**
+ * Card 09 C1 (O-9, D-V4-10, D-V4-27): a rule may count from completion only when it is daily or monthly
+ * and has no BYDAY, no UNTIL and no COUNT. A weekly rule always carries BYDAY, so it never qualifies.
+ */
+export function qualifiesFromCompletion(raw: string | null | undefined): boolean {
+	const r = parseRRule(raw);
+	if (!r || (r.freq !== 'DAILY' && r.freq !== 'MONTHLY')) return false;
+	return !r.byday?.length && !r.until && !r.count;
+}
+
+/** C6: the date a from-completion series takes when finished on `today` (+ interval days / months, clamped). */
+export function nextFromCompletion(today: string, raw: string | null | undefined): string | null {
+	const r = parseRRule(raw);
+	if (!r || !isDate(today)) return null;
+	if (r.freq === 'DAILY') return addDays(today, r.interval);
+	if (r.freq === 'MONTHLY') return addMonths(today, r.interval);
+	return null;
+}
+
+/** C3: the Repeat-box summary line under a from-completion series. */
+export function describeFromCompletion(raw: string | null | undefined): string {
+	const r = parseRRule(raw);
+	if (!r) return '';
+	const base =
+		r.freq === 'MONTHLY'
+			? r.interval === 1
+				? 'Monthly'
+				: `Every ${r.interval} months`
+			: r.interval === 1
+				? 'Daily'
+				: `Every ${r.interval} days`;
+	return `${base}, counted from when you finish`;
 }
