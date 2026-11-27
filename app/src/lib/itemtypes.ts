@@ -5,11 +5,11 @@ export const MAX_TYPES = 10; // D-24: 10 total incl. the 5 built-ins
 
 /** seeded for every account (same rows as drizzle/0003). Keys = v1 values already in the data. */
 export const BUILTIN_TYPES = [
-	{ key: 'Work', name: 'Work', bg: '#CED3EE', ink: '#00003D', slug: 'work', shareDefault: false, countsDown: false, isDefault: false },
-	{ key: 'Exam', name: 'Deadline', bg: '#B84A44', ink: '#FFFFFF', slug: 'deadline', shareDefault: false, countsDown: true, isDefault: false },
-	{ key: 'Event', name: 'Event', bg: '#D3EECE', ink: '#00003D', slug: 'event', shareDefault: true, countsDown: false, isDefault: true },
-	{ key: 'Hobby', name: 'Hobby', bg: '#FAEDB8', ink: '#00003D', slug: 'hobby', shareDefault: false, countsDown: false, isDefault: false },
-	{ key: 'Dating', name: 'Date', bg: '#EECFD4', ink: '#00003D', slug: 'date', shareDefault: true, countsDown: false, isDefault: false },
+	{ key: 'Work', name: 'Work', bg: '#CED3EE', ink: '#00003D', slug: 'work', shareDefault: false, countsDown: false, isDefault: false, onCalendar: true },
+	{ key: 'Exam', name: 'Deadline', bg: '#B84A44', ink: '#FFFFFF', slug: 'deadline', shareDefault: false, countsDown: true, isDefault: false, onCalendar: true },
+	{ key: 'Event', name: 'Event', bg: '#D3EECE', ink: '#00003D', slug: 'event', shareDefault: true, countsDown: false, isDefault: true, onCalendar: true },
+	{ key: 'Hobby', name: 'Hobby', bg: '#FAEDB8', ink: '#00003D', slug: 'hobby', shareDefault: false, countsDown: false, isDefault: false, onCalendar: true },
+	{ key: 'Dating', name: 'Date', bg: '#EECFD4', ink: '#00003D', slug: 'date', shareDefault: true, countsDown: false, isDefault: false, onCalendar: true },
 ] as const; // prettier-ignore
 
 /** v1 quick-add words that keep working for the built-in they always meant */
@@ -53,6 +53,18 @@ export function slugMap(types: Pick<ItemTypeDTO, 'key' | 'slug'>[]): Record<stri
 	for (const [w, k] of Object.entries(LEGACY_SLUGS)) if (keys.has(k)) m[w] = k;
 	for (const t of types) m[t.slug] = t.key;
 	return m;
+}
+
+/** card 10, Month-only rule (D-V4-11, D-V4-28): my own items of a type with "Month calendar" off. Items only —
+ *  blocks never pass through here, so month cells keep their dots. Partner rows and `No type` stay. Strict:
+ *  only `onCalendar === false` is off, so a stale payload without the field keeps the old behaviour. */
+export function monthHidden<T extends { type: string | null; theirs?: boolean }>(
+	items: T[],
+	types: Pick<ItemTypeDTO, 'key' | 'onCalendar'>[],
+): T[] {
+	const off = new Set(types.filter((t) => t.onCalendar === false).map((t) => t.key));
+	if (!off.size) return items;
+	return items.filter((i) => i.theirs || !i.type || !off.has(i.type));
 }
 
 export const defaultTypes = (): ItemTypeDTO[] =>

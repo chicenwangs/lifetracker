@@ -75,11 +75,17 @@
 	<span class="hint">{types.length} / {MAX_TYPES} types. "No type" is always there and doesn't count.</span>
 
 	<table>
+		<colgroup>
+			<col class="ord" /><col class="col-colour" /><col class="col-name" /><col class="col-slug" /><col
+				class="used"
+			/><col class="col-month" /><col class="counts" /><col class="shares" /><col class="col-del" />
+		</colgroup>
 		<thead>
 			<tr
-				><th>Order</th><th>Colour</th><th>Name</th><th>Quick add</th><th>Used</th><th>Counts down</th><th
-					>Share by default</th
-				><th></th></tr
+				><th class="ord">Order</th><th class="col-colour">Colour</th><th class="col-name">Name</th><th
+					class="col-slug">Quick add</th
+				><th class="used">Used</th><th class="col-month">Month calendar</th><th class="counts">Counts down</th
+				><th class="shares">Share by default</th><th class="col-del"></th></tr
 			>
 		</thead>
 		<tbody>
@@ -130,8 +136,19 @@
 							onchange={(e) => save(t, { slug: e.currentTarget.value })}
 						/></td
 					>
-					<td class="num">{t.used ?? 0}</td>
+					<td class="num used">{t.used ?? 0}</td>
 					<td
+						><label class="cb"
+							><input
+								type="checkbox"
+								role="switch"
+								aria-label="Month calendar for {t.name}"
+								checked={t.onCalendar}
+								onchange={(e) => save(t, { onCalendar: e.currentTarget.checked })}
+							/></label
+						></td
+					>
+					<td class="counts"
 						><label class="cb"
 							><input
 								type="checkbox"
@@ -141,7 +158,7 @@
 							/></label
 						></td
 					>
-					<td
+					<td class="shares"
 						><label class="cb"
 							><input
 								type="checkbox"
@@ -164,9 +181,34 @@
 						{/if}
 					</td>
 				</tr>
+				<!-- phone only (D-V4-28): the two older flags sit under the name, so every switch keeps its 48 dp tap
+				     area without a sideways scroll; desktop shows them as the columns above -->
+				<tr class="extra">
+					<td colspan="9">
+						<div class="flags">
+							<label class="cb"
+								><input
+									type="checkbox"
+									aria-label="{t.name} counts down"
+									checked={t.countsDown}
+									onchange={(e) => save(t, { countsDown: e.currentTarget.checked })}
+								/>Counts down</label
+							>
+							<label class="cb"
+								><input
+									type="checkbox"
+									aria-label="Share {t.name} by default"
+									checked={t.shareDefault}
+									onchange={(e) => save(t, { shareDefault: e.currentTarget.checked })}
+								/>Share by default</label
+							>
+						</div>
+					</td>
+				</tr>
 			{/each}
 		</tbody>
 	</table>
+	<p class="hint">Off = hidden on Month, still on Week, Today and reminders.</p>
 	<p class="hint">New types: the + at the end of the type bar on Home or Week.</p>
 </section>
 
@@ -238,6 +280,10 @@
 	.num {
 		text-align: right;
 	}
+	/* phone-only stacked flags row, see the media query */
+	.extra {
+		display: none;
+	}
 	.mini {
 		min-width: 24px;
 		min-height: 24px;
@@ -259,6 +305,87 @@
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.color {
 			min-height: 48px;
+		}
+		/* D-V4-28: phone keeps Colour, Name, Quick add and Month calendar (plus the delete cell) in the main row;
+		   Counts down and Share by default move to the stacked row under it, so all seven stay reachable at 48 dp
+		   with no sideways scroll */
+		.extra {
+			display: table-row;
+		}
+		.extra > td {
+			padding: 0 2px 6px;
+			border-top: 0;
+		}
+		.extra .flags {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0 12px;
+		}
+		.extra .cb {
+			padding-right: 2px;
+		}
+		table {
+			table-layout: fixed;
+		}
+		/* five columns inside 344 px. Hidden cells stay in the row (visibility, not display:none) so the other
+		   cells keep their column, the <col> widths below land on the right columns, and header and body agree. */
+		th.ord,
+		td.ord,
+		th.used,
+		td.used,
+		th.counts,
+		td.counts,
+		th.shares,
+		td.shares {
+			visibility: hidden;
+			width: 0;
+			padding: 0;
+			border: 0;
+			overflow: hidden;
+			font-size: 0; /* the header text must not wrap inside a 0-width column and add height */
+			line-height: 0;
+		}
+		/* their controls must not keep the row tall or take focus (the Used cell holds text only) */
+		.ord > *,
+		.counts > *,
+		.shares > * {
+			display: none;
+		}
+		col.ord,
+		col.used,
+		col.counts,
+		col.shares {
+			width: 0;
+		}
+		.col-colour {
+			width: 16%;
+		}
+		.col-name {
+			width: 32.5%;
+		}
+		.col-slug {
+			width: 17.5%;
+		}
+		.col-month {
+			width: 17%;
+		}
+		.col-del {
+			width: 17%;
+		}
+		th,
+		td {
+			padding: 6px 2px;
+			overflow-wrap: anywhere;
+		}
+		.color {
+			width: 100%;
+			min-width: 0;
+		}
+		td input:not([type]) {
+			min-width: 0;
+		}
+		.slug input {
+			width: 100%;
 		}
 	}
 	.scrim {
