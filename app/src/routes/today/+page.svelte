@@ -4,8 +4,17 @@
 <script lang="ts">
 	import GestureHint from '$lib/components/GestureHint.svelte';
 	import ActionSheet from '$lib/components/ActionSheet.svelte';
-	import { askText } from '$lib/client/dialog.svelte';
+	import { askDate, askText } from '$lib/client/dialog.svelte';
 	import { cycleRow, deleteRow, moveRow, toggleDone } from '$lib/client/rowOps';
+	import {
+		isOccurrence,
+		PICK_DATE,
+		reschedule,
+		rescheduleTo,
+		RESCHEDULE,
+		SKIP_LABEL,
+		skipRow,
+	} from '$lib/client/reschedule';
 	import { rowGestures } from '$lib/client/rowGestures';
 	import { peerSwipe } from '$lib/client/peerSwipe';
 	import { buzz } from '$lib/client/haptics';
@@ -21,7 +30,8 @@
 	import { openAdd } from '$lib/client/mobile.svelte';
 	import { colorsFor } from '$lib/colors';
 	import StatusSquare from '$lib/components/StatusSquare.svelte';
-	import { addDays, clock, nowLocalMinutes, prettyDate, utcToLocal } from '$lib/time';
+	import { addDays, clock, isDate, nowLocalMinutes, prettyDate, utcToLocal } from '$lib/time';
+	import { get } from '$lib/client/api';
 	import { nextStatus, type BlockDTO, type ItemDTO, type Status } from '$lib/types';
 
 	let { data } = $props();
@@ -138,12 +148,46 @@
 	const actionsFor = (e: Entry) => {
 		const r = rowOf(e);
 		if (!r) return [];
+		const item = e.item;
+		// card 03 (D-V4-04 / D-V4-16): the shared reschedule list; Skip only on a repeating occurrence
+		const move = item?.date
+			? [
+					...RESCHEDULE.map((a) => ({
+						label: a.label,
+						run: async () => {
+							const blockDay = await linkedBlockDay(item.id);
+							await reschedule(item, a.kind, refreshDay, { blockDay });
+						},
+					})),
+					{ label: PICK_DATE, run: () => pickReschedule(item) },
+				]
+			: [];
+		const skip =
+			item && isOccurrence(item) ? [{ label: SKIP_LABEL, run: () => skipRow(item, refreshDay) }] : [];
 		return [
 			{ label: r.status === 'done' ? 'Not done' : 'Done', run: () => toggleDone(r, refreshDay) },
 			{ label: 'Move…', run: () => moveByTime(e, r) },
+			...move,
+			...skip,
 			{ label: 'Delete', danger: true, run: () => deleteRow(r, refreshDay) },
 		];
 	};
+	/** C7: the earliest linked block's day (it stays where it is). The calendar payload only carries the viewed
+	 *  day's blocks, so read the item's own blocks (the view route lists every live one). */
+	async function linkedBlockDay(itemId: string): Promise<string | null> {
+		try {
+			const v = await get<{ blocks: BlockDTO[] }>(`/api/items/${encodeURIComponent(itemId)}/view`);
+			const b = [...v.blocks].sort((a, c) => (a.startAt < c.startAt ? -1 : 1))[0];
+			return b ? utcToLocal(b.startAt, tz).date : null;
+		} catch {
+			return null; // the move itself reports a real failure
+		}
+	}
+	async function pickReschedule(item: ItemDTO) {
+		const d = await askDate(`Postpone "${item.title}" to`, { value: item.date ?? data.day, ok: 'Move' });
+		if (!d || !isDate(d)) return;
+		await rescheduleTo(item, d, refreshDay, { blockDay: await linkedBlockDay(item.id) });
+	}
 
 	// ---------- wheel ----------
 	let wheel: HTMLDivElement | undefined = $state();

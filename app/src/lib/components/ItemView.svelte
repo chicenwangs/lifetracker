@@ -34,7 +34,7 @@
 	import Markdown from './Markdown.svelte';
 	import DayPlanner from './DayPlanner.svelte';
 	import { typeOf, typesState } from '$lib/client/itemtypes.svelte';
-	import { askScope, type RepeatScope } from '$lib/client/dialog.svelte';
+	import { askDate, askScope, type RepeatScope } from '$lib/client/dialog.svelte';
 	import { colorsFor } from '$lib/colors';
 	import {
 		baseItemId,
@@ -48,7 +48,7 @@
 		type Freq,
 		type WdCode,
 	} from '$lib/rrule';
-	import { addDays, examCountdown, prettyDate, todayLocal, utcToLocal, weekdayOf } from '$lib/time';
+	import { addDays, examCountdown, isDate, prettyDate, todayLocal, utcToLocal, weekdayOf } from '$lib/time';
 	import {
 		nextStatus,
 		type BlockDTO,
@@ -58,6 +58,16 @@
 		type UndoRef,
 	} from '$lib/types';
 	import { cycleRow } from '$lib/client/rowOps';
+	import {
+		isOccurrence,
+		PICK_DATE,
+		reschedule,
+		rescheduleTo,
+		RESCHEDULE,
+		SKIP_LABEL,
+		skipRow,
+		type RescheduleKind,
+	} from '$lib/client/reschedule';
 	import { undoLast } from '$lib/client/undo.svelte';
 	import { get, patch, post } from '$lib/client/api';
 	import { enqueueAction, isOffline } from '$lib/client/offline';
@@ -149,6 +159,12 @@
 			if (n !== loadSeq) return;
 			const back = takeCameFrom(viewId);
 			if (back) {
+				// C5 / D-V4-16: Undo removed the detached occurrence this sheet shows (toast Undo or Ctrl+Z) -> close
+				if (postponedDetach && peek) {
+					postponedDetach = false;
+					onclose?.();
+					return;
+				}
 				// #278: Undo deleted the row this sheet followed: fall back to the row it came from
 				detached = null;
 				if (!peek) return void showAt(back); // the page route reloads with it
@@ -470,6 +486,61 @@
 		void duplicate('item', baseItemId(it.id), { date: it.date ?? todayLocal(v?.tz ?? 'Asia/Kuala_Lumpur') });
 	}
 
+	// ---------- reschedule (card 03, D-V4-04 / D-V4-16) ----------
+	let postponeOpen = $state(false);
+	let postponedDetach = false;
+	/** C7: the earliest linked planner block's local day (D-V4-08 rule); it stays where it is */
+	function linkedBlockDay(): string | null {
+		if (!v?.blocks.length) return null;
+		const b = [...v.blocks].sort((a, c) => (a.startAt < c.startAt ? -1 : 1))[0];
+		return b ? utcToLocal(b.startAt, v.tz).date : null;
+	}
+	function rescheduleOpts(cur: ItemDTO) {
+		return {
+			blockDay: linkedBlockDay(),
+			// C6: the sheet follows the detached row, as it does for a date edit
+			onResult: (r: { item?: { id: string } }) => {
+				postponedDetach = !!r.item && r.item.id !== cur.id;
+				follow(cur.id, r);
+			},
+			// C5 / D-V4-16: Undo deleted the detached row this sheet shows -> close it, don't show a dead row
+			onUndone: () => {
+				const gone = postponedDetach;
+				postponedDetach = false;
+				if (gone && peek) return onclose?.();
+				return changed();
+			},
+		};
+	}
+	function postpone(kind: RescheduleKind) {
+		const cur = it;
+		if (!cur?.date) return;
+		postponeOpen = false;
+		postponedDetach = false;
+		void reschedule(cur, kind, changed, rescheduleOpts(cur));
+	}
+	async function pickPostpone() {
+		const cur = it;
+		if (!cur?.date) return;
+		postponeOpen = false;
+		postponedDetach = false;
+		const d = await askDate(`Postpone "${cur.title}" to`, { value: cur.date, ok: 'Move' });
+		if (!d || !isDate(d)) return;
+		await rescheduleTo(cur, d, changed, rescheduleOpts(cur));
+	}
+	async function skipThisOne() {
+		const cur = it;
+		if (!cur || !isOccurrence(cur)) return;
+		postponeOpen = false;
+		await skipRow(cur, async () => {
+			// the occurrence is gone: close the sheet (peek) or show the series (item page)
+			if (peek) {
+				onchanged?.();
+				onclose?.();
+			} else showAt(baseItemId(cur.id));
+		});
+	}
+
 	const fmtZ = (z: string | null) => (z ? prettyDate(z.slice(0, 10)) : '—');
 	const fmtBlock = (b: BlockDTO) => {
 		if (!v) return { date: '', text: '' };
@@ -600,6 +671,17 @@
 							onchange={(e) => save({ date: e.currentTarget.value || null })}
 						/>
 					</label>
+					{#if it.date}
+						<div class="prop pmenu">
+							<button
+								class="postp"
+								type="button"
+								aria-haspopup="true"
+								aria-expanded={postponeOpen}
+								onclick={() => (postponeOpen = !postponeOpen)}>Postpone ▾</button
+							>
+						</div>
+					{/if}
 					<label class="prop">
 						<span>Time</span>
 						<input
@@ -696,6 +778,22 @@
 						<span>Keep secret</span>
 					</label>
 				</div>
+				{#if postponeOpen && it.date}
+					<div
+						class="card box resched"
+						role="group"
+						aria-label="Postpone"
+						use:backCloses={() => (postponeOpen = false)}
+					>
+						{#each RESCHEDULE as a (a.kind)}
+							<button class="ra" type="button" onclick={() => postpone(a.kind)}>{a.label}</button>
+						{/each}
+						<button class="ra" type="button" onclick={pickPostpone}>{PICK_DATE}</button>
+						{#if isOccurrence(it)}
+							<button class="ra" type="button" onclick={skipThisOne}>{SKIP_LABEL}</button>
+						{/if}
+					</div>
+				{/if}
 				{#if customRepeat && it.date}
 					{@const nth = nthWeekdayOfDate(it.date)}
 					<div
@@ -1108,6 +1206,44 @@
 		color: var(--ink);
 		font-weight: 600;
 	}
+	.prop.pmenu {
+		padding: 0;
+	}
+	.postp {
+		height: 30px;
+		padding: 0 12px;
+		border: 0;
+		border-radius: 8px;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.postp:hover {
+		background: var(--hover);
+	}
+	/* card 03: the reschedule list (inline panel; phone = one 48 dp row each) */
+	.resched {
+		padding: 8px;
+		gap: 2px;
+	}
+	.ra {
+		min-height: 32px;
+		padding: 0 10px;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 14px;
+		text-align: left;
+		cursor: pointer;
+	}
+	.ra:hover {
+		background: var(--hover);
+	}
 
 	/* ---- the page body ---- */
 	.doc {
@@ -1327,6 +1463,14 @@
 		.prop.check input {
 			width: 22px;
 			height: 22px;
+		}
+		.postp {
+			height: 48px;
+			font-size: 15px;
+		}
+		.ra {
+			min-height: 48px;
+			font-size: 16px;
 		}
 	}
 </style>

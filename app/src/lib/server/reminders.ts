@@ -7,7 +7,16 @@ import { newId } from './crypto';
 import { bad, notFound } from './http';
 import { itemRef, offsetMs, parseOffset, type Unit } from '$lib/remind';
 import { baseItemId, expandRRule, parseExdates } from '$lib/rrule';
-import { addDays, diffDays, isoPlus, localToUtc, nowUtcIso, todayLocal, utcToLocal } from '$lib/time';
+import {
+	addDays,
+	DEFAULT_TZ,
+	diffDays,
+	isoPlus,
+	localToUtc,
+	nowUtcIso,
+	todayLocal,
+	utcToLocal,
+} from '$lib/time';
 import type { ReminderDTO } from '$lib/types';
 import * as itemsRepo from './repo/items';
 
@@ -195,6 +204,41 @@ export function splitSeries(ownerId: string, oldId: string, toId: string, now = 
 	}
 	recalc(ownerId, 'planner_item', oldId, now);
 	recalc(ownerId, 'planner_item', toId, now);
+}
+
+/**
+ * Card 03 C10 (D-V4-04): after one occurrence was skipped. Its absolute reminders are deleted inside the
+ * route's undo entry (see absoluteInRange/removeIds); relative reminders re-resolve through recalc, so a
+ * "1 day before" reminder is due at the next occurrence.
+ */
+export function afterSkip(ownerId: string, now = Date.now()): void {
+	recalcOwner(ownerId, now);
+}
+
+/** ids of absolute reminders due inside the local date span [from, to]: the skip route journals their deletion */
+export function absoluteInRange(ownerId: string, sourceId: string, from: string, to: string): string[] {
+	const tz =
+		(db().prepare(`SELECT timezone FROM users WHERE id = ?`).get(ownerId) as { timezone: string } | undefined)
+			?.timezone ?? DEFAULT_TZ;
+	const last = to < from ? from : to;
+	const rows = db()
+		.prepare(
+			`SELECT id, due_at FROM reminders WHERE owner_id = ? AND source_type = 'planner_item' AND source_id = ? AND rule_kind = 'absolute' AND status IN ('scheduled','processing')`,
+		)
+		.all(ownerId, sourceId) as { id: string; due_at: string | null }[];
+	return rows
+		.filter((r) => {
+			if (!r.due_at) return false;
+			const day = utcToLocal(r.due_at, tz).date;
+			return day >= from && day <= last;
+		})
+		.map((r) => r.id);
+}
+
+/** delete reminders by id (the skip route runs this inside its undo entry); a row already gone is skipped */
+export function removeIds(ownerId: string, ids: string[]): void {
+	const st = db().prepare(`DELETE FROM reminders WHERE id = ? AND owner_id = ?`);
+	for (const id of ids) st.run(id, ownerId);
 }
 
 /** After a reminder on a repeating item fires (#72, #261), schedule the next occurrence if one exists. */

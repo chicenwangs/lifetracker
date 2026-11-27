@@ -13,6 +13,14 @@ export type Ask =
 			done: (v: string | null) => void;
 	  }
 	| {
+			kind: 'date';
+			text: string;
+			ok: string;
+			value: string;
+			label: string;
+			done: (v: string | null) => void;
+	  }
+	| {
 			kind: 'scope';
 			text: string;
 			ok: string;
@@ -50,6 +58,20 @@ export function askText(text: string, opts: { value?: string; ok?: string; label
 			value: opts.value ?? '',
 			label: opts.label ?? text,
 			done: (v) => done(v === null ? null : v.trim()),
+		}),
+	);
+}
+
+/** a native date picker in the shared dialog (reschedule "Pick date…"): YYYY-MM-DD or null */
+export function askDate(text: string, opts: { value?: string; ok?: string; label?: string } = {}) {
+	return new Promise<string | null>((done) =>
+		open({
+			kind: 'date',
+			text,
+			ok: opts.ok ?? 'OK',
+			value: opts.value ?? '',
+			label: opts.label ?? text,
+			done: (v) => done(v === null || v === '' ? null : v),
 		}),
 	);
 }

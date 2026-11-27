@@ -481,6 +481,17 @@ export function cycle(meId: string, rawId: string): ItemRow {
 	return patch(meId, rawId, { status: nextStatus(cur.status) });
 }
 
+/** Card 03 C8: Skip one occurrence = exactly one EXDATE (no new row, the series is otherwise unchanged). */
+export function skip(meId: string, rawId: string): ItemRow {
+	const { id, occDate } = splitOccId(rawId);
+	const cur = mustOwn(meId, id);
+	if (!occDate || !cur.rrule || !cur.date) return notFound();
+	if (parseExdates(cur.exdates).includes(occDate)) return notFound(); // already skipped / edited apart
+	if (!isOccurrence(cur, occDate)) return notFound(); // a made-up @date is not an occurrence (#296)
+	addExdate(meId, cur, occDate, nowUtcIso());
+	return mustOwn(meId, id);
+}
+
 // ---------- delete / trash (FR-I5) ----------
 /** rows a delete of this item touches (for the undo journal): it, its live steps, their live blocks */
 export function deleteSet(meId: string, id: string): { t: 'items' | 'blocks'; id: string }[] {

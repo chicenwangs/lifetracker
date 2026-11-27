@@ -5,6 +5,7 @@ Newest first. Latest release = v3.1.2 (2026-11-24; v3.1.1 + v3.1.0 2026-11-20, v
 
 ## v4.0.0 (in progress, 2026-11-26 →)
 
+- Reschedule (card 03, D-V4-04, D-V4-16): one list — Today · Tomorrow · Next weekday · +1 week · Pick date… — beside the Date field in the item sheet (desktop + phone) and in the phone Today row ⋯ sheet. `Skip this one` on a repeating occurrence (one EXDATE, no new row). Postpone keeps the time, moves a multi-day `endDate` by the same span and (on `id@date`) detaches that one occurrence with no scope dialog; one toast names the earliest linked block's day; Undo restores both dates and closes the item sheet when Undo deleted the row it showed. Offline: postpone queues ("Waiting to sync"), Skip only toasts. Undated items hide Postpone.
 - Keep: Restore from Trash works (BREAKDOWN PR 1, D-V4-02).
 - Phone Add sheet: rapid taps after "Save note" no longer reach the row underneath (#378, 250 ms tap shield, Undo toast exempt).
 - Phone status squares: rapid taps on a row's square no longer change another row (the list re-renders after the first tick); Home, Today and the item sheet tick once (#379, same shield, raised before the POST).
