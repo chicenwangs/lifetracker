@@ -724,11 +724,14 @@ export function moveSlipped(meId: string, today: string): number {
 	handle().sqlite.transaction(() => {
 		for (const r of rows) {
 			if (!r.date) continue;
+			// same rule as card 03's "Today": the time stays, a real span moves with the date, a
+			// zero span is no span (the item schema stores it as null)
+			const span = r.endDate ? diffDays(r.date, r.endDate) : 0;
 			db()
 				.update(items)
 				.set({
 					date: today,
-					endDate: r.endDate ? addDays(today, diffDays(r.date, r.endDate)) : null,
+					endDate: span > 0 ? addDays(today, span) : null,
 					updatedAt: now,
 					updatedBy: meId,
 				})

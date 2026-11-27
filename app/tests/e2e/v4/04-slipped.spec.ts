@@ -123,11 +123,14 @@ test('C4 a row opens the item sheet; ⋯ is the shared ActionSheet with the card
 }) => {
 	await signIn(page);
 	const title = `C4 row ${Date.now().toString(36)}`;
-	const id = await mkItem(page, { title, date: await plusDays(page, -2) });
+	const date = await plusDays(page, -2);
+	const id = await mkItem(page, { title, date });
 	const tomorrow = await plusDays(page, 1);
+	// #298: the accessible name is the visible title + date
+	const name = `${title}, ${pretty(date)}`;
 	try {
 		await page.goto('/');
-		await rows(page).filter({ hasText: title }).getByRole('button', { name: title, exact: true }).click();
+		await rows(page).filter({ hasText: title }).getByRole('button', { name, exact: true }).click();
 		await expect(page.getByRole('dialog', { name: 'Item' })).toBeVisible();
 		await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
 		await page.keyboard.press('Escape');

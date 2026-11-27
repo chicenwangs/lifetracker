@@ -36,6 +36,15 @@ const day = (page: Page, n: number) =>
 const slip = (page: Page) => page.locator('main section[aria-label="Slipped"]');
 const rows = (page: Page) => slip(page).locator('li');
 const row = (page: Page, title: string) => rows(page).filter({ hasText: title });
+/** the row's accessible name: the visible title + date (#298, the app's prettyDate) */
+const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const pretty = (d: string) => {
+	const [y = 0, m = 1, day = 1] = d.split('-').map(Number);
+	const wd = (new Date(Date.UTC(y, m - 1, day)).getUTCDay() + 6) % 7;
+	return `${WD[wd]} ${day} ${MONTHS[m - 1]} ${y}`;
+};
+const rowName = (title: string, date: string) => `${title}, ${pretty(date)}`;
 /** landscape starts collapsed (C8); anything that needs rows opens the strip first */
 async function expand(page: Page) {
 	const t = slip(page).locator('.toggle');
@@ -51,7 +60,8 @@ test('C7 the strip sits at the top of /today: tap = item sheet, ⋯ = the shared
 }) => {
 	await signIn(page);
 	const title = `C7 top ${RUN}`;
-	const id = await mkItem(page, { title, date: await day(page, -3) });
+	const past = await day(page, -3);
+	const id = await mkItem(page, { title, date: past });
 	try {
 		await page.goto('/today');
 		await expect(slip(page)).toBeVisible();
@@ -62,7 +72,9 @@ test('C7 the strip sits at the top of /today: tap = item sheet, ⋯ = the shared
 		expect(s && h && s.y < h.y).toBe(true);
 
 		await expand(page);
-		await row(page, title).getByRole('button', { name: title, exact: true }).click();
+		await row(page, title)
+			.getByRole('button', { name: rowName(title, past), exact: true })
+			.click();
 		const sheet = page.getByRole('dialog', { name: 'Item' });
 		await expect(sheet).toBeVisible();
 		await expect(sheet.getByRole('heading', { level: 1, name: title })).toBeVisible();
@@ -145,6 +157,43 @@ test('C8 phone landscape starts collapsed on /today and Home; portrait expanded;
 	}
 });
 
+test('C8 the landscape first paint is already collapsed (CSS, before hydration)', async ({
+	browser,
+}, info) => {
+	const { viewport, isMobile, hasTouch, userAgent, deviceScaleFactor } = info.project.use;
+	const ctx = await browser.newContext({
+		serviceWorkers: 'block',
+		viewport,
+		isMobile,
+		hasTouch,
+		userAgent,
+		deviceScaleFactor,
+	});
+	const p = await ctx.newPage();
+	try {
+		await signIn(p);
+		const title = `C8 paint ${RUN}`;
+		const id = await mkItem(p, { title, date: await day(p, -3) });
+		// no app JS at all: what the server sent is the first paint, nothing can collapse it later
+		let blocked = 0;
+		await p.route('**/_app/**/*.js', (r) => {
+			blocked++;
+			return r.abort();
+		});
+		await p.goto('/today');
+		expect(blocked).toBeGreaterThan(0); // the app really did not hydrate
+		await expect(slip(p)).toBeVisible();
+		await expect(slip(p).locator('.cap')).toHaveText(/Slipped · \d+/);
+		const landscape = !!viewport && viewport.width > viewport.height;
+		if (landscape)
+			await expect(slip(p).locator('li').first()).toBeHidden(); // hidden by the media rule
+		else await expect(row(p, title)).toBeVisible();
+		await drop(p, id);
+	} finally {
+		await ctx.close();
+	}
+});
+
 test('C5 Move all to today on phone: one batch, every date moves and one Undo brings them back', async ({
 	page,
 }) => {
@@ -175,28 +224,43 @@ test('C5 Move all to today on phone: one batch, every date moves and one Undo br
 	}
 });
 
-test('C9 a toast with a sheet open sits 8 px above the sheet, never over its button row', async ({
+test('C9 a toast with a sheet open sits 8 px above it, is clamped on screen in landscape and never covers the actions', async ({
 	page,
 }) => {
 	await signIn(page);
 	const title = `C9 toast ${RUN}`;
-	const id = await mkItem(page, { title, date: await day(page, 0), time: '10:00' });
+	const id = await mkItem(page, { title, date: await day(page, -1) });
+	const vp = page.viewportSize();
+	const landscape = !!vp && vp.width > vp.height;
 	try {
 		await page.goto('/today');
-		await page.locator('.ent .t', { hasText: title }).click();
-		const sheet = page.getByRole('dialog', { name: 'Item' });
+		await expand(page);
+		await row(page, title)
+			.getByRole('button', { name: `Actions for ${title}` })
+			.click();
+		const sheet = page.getByRole('dialog', { name: `Actions for ${title}` });
 		await expect(sheet).toBeVisible();
-		// a write inside the open sheet: the toast lands while the sheet stays
-		await sheet.getByRole('button', { name: /^Not started/ }).click();
-		await expect(page.locator('.toast')).toContainText(`Started: "${title}"`);
-		// bottom = 100dvh - sheet top + 8, i.e. the toast's bottom edge is 8 px above the sheet's top edge
+		// a toast while the sheet stays open (a reminder does this): click the page button behind the scrim
+		await slip(page).getByRole('button', { name: 'Move all to today' }).evaluate((n) => (n as HTMLElement).click()); // prettier-ignore
+		await expect(page.locator('.toast')).toContainText('to today');
+		const geom = () =>
+			page.evaluate(() => {
+				const t = document.querySelector('.toast')!.getBoundingClientRect();
+				const panel = document.querySelector('[role="dialog"][aria-label^="Actions for"]')!.getBoundingClientRect(); // prettier-ignore
+				const act = document.querySelector('[role="dialog"][aria-label^="Actions for"] .act')!.getBoundingClientRect(); // prettier-ignore
+				return { top: t.top, bottom: t.bottom, panelTop: panel.top, actTop: act.top, h: innerHeight }; // prettier-ignore
+			});
+		// O-10 / D-V4-17: 8 px above the sheet top when there is room; a 92dvh landscape sheet has none,
+		// so there the clamp wins and the toast stays fully on screen — either way it never reaches the actions
 		await expect
 			.poll(async () => {
-				const t = await page.locator('.toast').boundingBox();
-				const p = await sheet.boundingBox();
-				return t && p ? Math.round(p.y - (t.y + t.height)) : -1;
+				const g = await geom();
+				if (g.top < 0 || g.bottom > g.h) return `off-screen ${Math.round(g.top)}`;
+				if (g.bottom > g.actTop) return 'over the actions';
+				if (!landscape && Math.round(g.panelTop - g.bottom) !== 8) return 'no 8 px gap';
+				return 'ok';
 			})
-			.toBe(8);
+			.toBe('ok');
 	} finally {
 		await drop(page, id);
 	}

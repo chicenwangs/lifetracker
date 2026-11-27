@@ -35,7 +35,9 @@ async function signIn(p: Page) {
 }
 
 test.beforeAll(async ({ browser }) => {
-	page = await (await browser.newContext()).newPage();
+	// page.route() cannot see requests a controlling service worker re-issues, so the C10 route stub
+	// was flaky; block the SW for this file (same as expiry.spec.ts)
+	page = await (await browser.newContext({ serviceWorkers: 'block' })).newPage();
 	await signIn(page);
 });
 test.afterAll(() => page.context().close());
@@ -88,11 +90,11 @@ const addDays = (date: string, n: number) =>
 	new Date(Date.parse(`${date}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-/** the app's prettyDate: "Mon 30 Nov 2026" */
+/** the app's prettyDate: "Mon 30 Nov 2026" (the day is not zero-padded) */
 function pretty(date: string) {
 	const t = new Date(`${date}T00:00:00Z`);
 	const wd = t.getUTCDay() === 0 ? 7 : t.getUTCDay();
-	return `${WD[wd - 1]} ${String(t.getUTCDate()).padStart(2, '0')} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`; // prettier-ignore
+	return `${WD[wd - 1]} ${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`; // prettier-ignore
 }
 
 /** remove my own rows so no test sees another test's leftovers */
@@ -126,8 +128,8 @@ test('C3 Home: the strip is the first thing in the planner column, starts expand
 	const toggle = s.locator('.toggle');
 	await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 	await expect(toggle).toContainText('Slipped · 1'); // N = total, this fixture has one
-	await expect(s.getByRole('button', { name: `${PREFIX}C3 old`, exact: true })).toBeVisible();
-	await expect(s.getByRole('button', { name: `${PREFIX}C3 future`, exact: true })).toHaveCount(0); // prettier-ignore
+	await expect(s.getByRole('button', { name: `${PREFIX}C3 old, ${pretty(yesterday)}`, exact: true })).toBeVisible(); // prettier-ignore
+	await expect(s.getByRole('button', { name: `${PREFIX}C3 future, ${pretty(plannerDay)}`, exact: true })).toHaveCount(0); // prettier-ignore
 	// above DayPlanner in the same column
 	const above = await s.evaluate((n) => {
 		const planner = document.querySelector('aside.right .planner');
@@ -147,7 +149,7 @@ test('C4 row: title, full pretty original date, tap opens ItemView, ⋯ is the s
 	await expect(row.locator('.title')).toHaveText(title);
 	await expect(row.locator('.date')).toHaveText(pretty(date)); // "Mon 18 Nov 2026", the full prettyDate
 
-	await row.getByRole('button', { name: title, exact: true }).click();
+	await row.getByRole('button', { name: `${title}, ${pretty(date)}`, exact: true }).click();
 	const view = page.getByRole('dialog', { name: 'Item' });
 	await expect(view).toBeVisible();
 	await expect(page).toHaveURL(new RegExp(`/item/${it.id}$`));
@@ -322,8 +324,9 @@ test('C11 permission: a partner item never appears in my strip and my bulk move 
 		// the partner's own strip: their row, never mine
 		await n.goto('/');
 		const pSlip = n.locator('section[aria-label="Slipped"]');
-		await expect(pSlip.getByRole('button', { name: theirsTitle, exact: true })).toBeVisible();
-		await expect(pSlip.getByRole('button', { name: mineTitle, exact: true })).toHaveCount(0);
+		const theirsName = `${theirsTitle}, ${pretty(addDays(today, -1))}`; // #298: title + date
+		await expect(pSlip.getByRole('button', { name: theirsName, exact: true })).toBeVisible();
+		await expect(pSlip.getByRole('button', { name: `${mineTitle}, ${pretty(addDays(today, -1))}`, exact: true })).toHaveCount(0); // prettier-ignore
 
 		// the partner's bulk move writes only their rows
 		await pSlip.getByRole('button', { name: 'Move all to today' }).click();
@@ -334,8 +337,8 @@ test('C11 permission: a partner item never appears in my strip and my bulk move 
 
 		// my strip: mine, never theirs, no row actions for theirs
 		await page.goto('/');
-		await expect(slip().getByRole('button', { name: mineTitle, exact: true })).toBeVisible();
-		await expect(slip().getByRole('button', { name: theirsTitle, exact: true })).toHaveCount(0);
+		await expect(slip().getByRole('button', { name: `${mineTitle}, ${pretty(addDays(today, -1))}`, exact: true })).toBeVisible(); // prettier-ignore
+		await expect(slip().getByRole('button', { name: theirsName, exact: true })).toHaveCount(0);
 		await expect(page.getByRole('button', { name: `Actions for ${theirsTitle}` })).toHaveCount(0); // prettier-ignore
 		await expect(page.getByRole('button', { name: `Actions for ${mineTitle}` })).toBeVisible();
 
@@ -358,9 +361,9 @@ test('C12 more than 50: 50 rows, "N more" as a count label with the real remaind
 	expect(await rest.evaluate((n) => n.tagName)).toBe('P'); // a count label, not a button
 	await expect(page.getByRole('button', { name: '2 more' })).toHaveCount(0);
 	// the two oldest rows are the ones left out
-	await expect(slip().getByRole('button', { name: `${PREFIX}C12 51`, exact: true })).toHaveCount(0); // prettier-ignore
-	await expect(slip().getByRole('button', { name: `${PREFIX}C12 52`, exact: true })).toHaveCount(0); // prettier-ignore
-	await expect(slip().getByRole('button', { name: `${PREFIX}C12 50`, exact: true })).toBeVisible();
+	await expect(slip().getByRole('button', { name: `${PREFIX}C12 51, ${pretty(addDays(today, -51))}`, exact: true })).toHaveCount(0); // prettier-ignore
+	await expect(slip().getByRole('button', { name: `${PREFIX}C12 52, ${pretty(addDays(today, -52))}`, exact: true })).toHaveCount(0); // prettier-ignore
+	await expect(slip().getByRole('button', { name: `${PREFIX}C12 50, ${pretty(addDays(today, -50))}`, exact: true })).toBeVisible(); // prettier-ignore
 });
 
 test('C13 offline: Move all shows the usual offline toast, changes nothing and is not queued', async () => {

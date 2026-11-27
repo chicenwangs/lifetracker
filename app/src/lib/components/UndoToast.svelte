@@ -176,10 +176,12 @@
 			transform: none;
 			bottom: calc(76px + env(safe-area-inset-bottom));
 		}
-		/* O-10 / D-V4-17: an open BottomSheet publishes its top edge; the toast sits 8 px above it so it
-		   never covers the sheet's button row */
+		/* O-10 / D-V4-17: an open BottomSheet publishes its height; the phone sheet is flush to the
+		   viewport bottom, so its top edge is (100dvh - height) and the toast sits 8 px above it, never
+		   covering the sheet's button row. A 92 dvh sheet (phone landscape) leaves too little room, so
+		   the lift is clamped to keep a 48 dp toast fully on screen (the gap shrinks there). */
 		:global(html[data-sheet]) .wrap {
-			bottom: calc(100dvh - var(--sheet-top, 50dvh) + 8px);
+			bottom: min(calc(var(--sheet-h, 50dvh) + 8px), calc(100dvh - 64px));
 		}
 		.toast {
 			max-width: none;

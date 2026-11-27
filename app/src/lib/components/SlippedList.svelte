@@ -18,14 +18,18 @@
 	let { items, total, refresh }: { items: ItemDTO[]; total: number; refresh: () => void | Promise<void> } =
 		$props();
 
-	// C8 / O-4: expanded by default, collapsed on phone landscape only (the app's phone rule, second half)
-	let open = $state(true);
+	// C8 / O-4: expanded everywhere but phone landscape. `null` = not chosen yet: the list renders, and the
+	// landscape media query hides it on the first paint (no full list then jump); onMount settles the state.
+	const LANDSCAPE = '(pointer: coarse) and (max-height: 500px)';
+	let open = $state<boolean | null>(null);
 	onMount(() => {
-		open = !matchMedia('(pointer: coarse) and (max-height: 500px)').matches;
+		open = !matchMedia(LANDSCAPE).matches;
 	});
 
 	let acting = $state<ItemDTO | null>(null);
 	const nameOf = (i: ItemDTO) => i.title || 'Untitled';
+	/** #298: the accessible name carries the visible title + date (label-content-name-mismatch) */
+	const rowName = (i: ItemDTO) => (i.date ? `${nameOf(i)}, ${prettyDate(i.date)}` : nameOf(i));
 	const more = $derived(total - items.length);
 
 	// C4: the card 03 list, applied to this row (a slipped row never repeats, so no Skip)
@@ -56,15 +60,15 @@
 </script>
 
 {#if total}
-	<section class="slip card" aria-label="Slipped">
+	<section class="slip card" aria-label="Slipped" data-open={open === null ? undefined : String(open)}>
 		<div class="head">
-			<button class="toggle" type="button" aria-expanded={open} onclick={() => (open = !open)}>
+			<button class="toggle" type="button" aria-expanded={open !== false} onclick={() => (open = !open)}>
 				<span class="chev" aria-hidden="true"></span>
 				<span class="cap">Slipped · {total}</span>
 			</button>
 			<button class="all" type="button" onclick={moveAll}>Move all to today</button>
 		</div>
-		{#if open}
+		{#if open !== false}
 			<ul>
 				{#each items as i (i.id)}
 					<li
@@ -73,7 +77,7 @@
 							remove: () => deleteRow(i, refresh),
 						}}
 					>
-						<button class="t" type="button" aria-label={nameOf(i)} onclick={() => openItem(i.id)}>
+						<button class="t" type="button" aria-label={rowName(i)} onclick={() => openItem(i.id)}>
 							<span class="title">{nameOf(i)}</span>
 							<span class="date">{i.date ? prettyDate(i.date) : ''}</span>
 						</button>
@@ -210,6 +214,14 @@
 		}
 		.more {
 			width: 48px;
+		}
+	}
+	/* C8 / O-4: phone landscape starts collapsed, in the first paint too (before hydration);
+	   data-open=true is the user's explicit expand */
+	@media (pointer: coarse) and (max-height: 500px) {
+		.slip:not([data-open='true']) ul,
+		.slip:not([data-open='true']) .rest {
+			display: none;
 		}
 	}
 </style>

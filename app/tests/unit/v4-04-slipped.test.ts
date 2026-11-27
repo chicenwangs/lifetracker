@@ -135,6 +135,16 @@ describe('C5 Move all to today', () => {
 		expect(items.slipped(me, TODAY).total).toBe(3);
 	});
 
+	it('a zero span is no span: a legacy end_date == date becomes null, like the card 03 move', () => {
+		const i = mk({ title: 'zero span', date: '2026-11-20', endDate: '2026-11-21' });
+		handle().sqlite.prepare('UPDATE items SET end_date = date WHERE id = ?').run(i.id); // a row written before the schema rule
+		const r = undoable(me, 'Move slipped items to today', [{ t: 'items', id: i.id }], () => ({
+			result: items.moveSlipped(me, TODAY),
+		}));
+		expect(r.result).toBe(1);
+		expect(items.mustOwn(me, i.id)).toMatchObject({ date: TODAY, endDate: null });
+	});
+
 	it('moves more than the 50 shown: the bulk move is not capped', () => {
 		Array.from({ length: 55 }, (_, i) => mk({ title: `b${i}`, date: addDays('2026-01-01', i) }));
 		const shown = items.slipped(me, TODAY);

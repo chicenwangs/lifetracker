@@ -93,6 +93,16 @@ const klToday = () =>
 	page.evaluate(() => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(new Date())); // prettier-ignore
 const addDays = (date: string, n: number) =>
 	new Date(Date.parse(`${date}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** the app's prettyDate: "Mon 30 Nov 2026" (the day is not zero-padded) */
+function pretty(date: string) {
+	const t = new Date(`${date}T00:00:00Z`);
+	const wd = t.getUTCDay() === 0 ? 7 : t.getUTCDay();
+	return `${WD[wd - 1]} ${t.getUTCDate()} ${MONTHS[t.getUTCMonth()]} ${t.getUTCFullYear()}`; // prettier-ignore
+}
+/** the row button's accessible name: the visible title + date (#298) */
+const rowName = (title: string, date: string) => `${title}, ${pretty(date)}`;
 
 async function sweep() {
 	const today = await klToday();
@@ -133,7 +143,8 @@ test('C7 phone: the strip sits at the top of /today, tap opens the item sheet, s
 	// landscape starts collapsed (C8): open the list so its rows and ⋯ are reachable
 	const toggle = s.locator('.toggle');
 	if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
-	const titleBtn = s.getByRole('button', { name: title, exact: true });
+	const name = rowName(title, it.date!); // #298: the accessible name carries title + date
+	const titleBtn = s.getByRole('button', { name, exact: true });
 	await expect(titleBtn).toBeVisible();
 
 	// tap = the item sheet
@@ -166,10 +177,10 @@ test('C7 phone: the strip sits at the top of /today, tap opens the item sheet, s
 	const toast = page.locator('.toast');
 	await expect(toast).toContainText(`Done: "${title}"`);
 	await expect.poll(async () => (await get(it.id)).item?.status).toBe('done');
-	await expect(s.getByRole('button', { name: title, exact: true })).toHaveCount(0); // done rows leave the strip
+	await expect(s.getByRole('button', { name, exact: true })).toHaveCount(0); // done rows leave the strip
 	await toast.getByRole('button', { name: 'Undo' }).click();
 	await expect.poll(async () => (await get(it.id)).item?.status).toBe('todo');
-	await expect(s.getByRole('button', { name: title, exact: true })).toBeVisible();
+	await expect(s.getByRole('button', { name, exact: true })).toBeVisible();
 
 	// swipe left = delete, with Undo on the toast
 	await swipe(page, rowOf(title), 'left');
@@ -177,7 +188,7 @@ test('C7 phone: the strip sits at the top of /today, tap opens the item sheet, s
 	await expect.poll(async () => (await get(it.id)).status).toBe(404);
 	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
 	await expect.poll(async () => (await get(it.id)).status).toBe(200);
-	await expect(s.getByRole('button', { name: title, exact: true })).toBeVisible();
+	await expect(s.getByRole('button', { name, exact: true })).toBeVisible();
 });
 
 test('C8 collapse on phone: landscape starts collapsed on Home and /today, portrait starts expanded, and toggling reloads nothing and changes no data', async () => {
@@ -241,21 +252,27 @@ test('C9 toast vs sheet: with a BottomSheet open the toast sits 8 px above the s
 			return {
 				panelTop: panel.getBoundingClientRect().top,
 				wrapBottom: wrap.getBoundingClientRect().bottom,
+				toastTop: t.getBoundingClientRect().top,
 				toastBottom: t.getBoundingClientRect().bottom,
+				firstActTop: document.querySelector('[role="dialog"] .act')!.getBoundingClientRect().top, // prettier-ignore
+				h: innerHeight,
 			};
 		});
-	// O-10 / D-V4-17: 8 px above the sheet's top edge (the toast may still be rising for 240 ms)
+	const landscape = P === 'phone-landscape';
+	// O-10 / D-V4-17: 8 px above the sheet's top edge (the toast may still be rising for 240 ms). A 92 dvh
+	// landscape sheet leaves ~33 px, so there the lift is clamped: the toast stays fully on screen instead.
 	await expect
 		.poll(async () => {
 			const g = await geom();
-			return Math.abs(g.panelTop - g.wrapBottom - 8);
+			if (g.toastTop < 0 || g.toastBottom > g.h) return 'off-screen';
+			return landscape ? 'on-screen' : Math.abs(g.panelTop - g.wrapBottom - 8) <= 1 ? 'on-screen' : 'gap';
 		})
-		.toBeLessThanOrEqual(1);
-	// and therefore never over the sheet (its button row is below the top edge)
+		.toBe('on-screen');
+	// and therefore never over the sheet's button row
 	await expect
 		.poll(async () => {
 			const g = await geom();
-			return g.toastBottom - g.panelTop;
+			return g.toastBottom - g.firstActTop;
 		})
 		.toBeLessThanOrEqual(0);
 	// the card names the stacking too: toast layer 100 above the sheet layer (80 on phone)
