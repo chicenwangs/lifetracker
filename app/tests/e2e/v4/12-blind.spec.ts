@@ -1,7 +1,7 @@
 // Blind tests for card 12 (daily digest) on desktop, from its Done-when lines only:
 // C1 (row, first On sends 07:30, server-rendered preview, Off), C2 (saves HH:MM / NULL), C11 (no undo),
 // C12 (error reverts, empty day says "Nothing on today."). No builder test was opened.
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import Database from 'better-sqlite3';
 import { join } from 'node:path';
 
@@ -107,6 +107,14 @@ const itemsIn = (text: string) => Number(/^(\d+) item/.exec(text)?.[1] ?? NaN);
 const toggle = (name: 'Off' | 'On') =>
 	page.getByRole('group', { name: 'Daily agenda' }).getByRole('button', { name, exact: true });
 
+/** sign-up starts invite-only: leave it that way for the next file (04/06/07 pattern) */
+async function lockSignup() {
+	await page.goto('/settings/users');
+	await page.locator('input[name="open"][value="0"]').check();
+	await page.getByRole('button', { name: 'Save', exact: true }).click();
+	await expect(page.getByText('Saved.', { exact: true })).toBeVisible();
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async ({ browser }) => {
@@ -115,6 +123,7 @@ test.beforeAll(async ({ browser }) => {
 	await signIn(page);
 });
 test.afterAll(async () => {
+	await lockSignup().catch(() => {});
 	await cleanUp();
 	await api('PATCH', '/api/me/prefs', { digestTime: null }).catch(() => {});
 	await page.context().close();
@@ -298,23 +307,27 @@ test('C12 states: a failed save alerts and returns the control to the stored val
 	}
 	expect(digestTimeOf()).toBe('07:30');
 
-	// empty: a brand-new account's today has nothing on
-	await page.goto('/settings/users');
-	await page.locator('input[name="open"][value="1"]').check();
-	await page.getByRole('button', { name: 'Save', exact: true }).click();
-	await expect(page.getByText('Saved.', { exact: true })).toBeVisible();
-
-	const username = 'blind12' + Date.now().toString(36);
-	const ctx = await browser.newContext();
+	// empty: an invited fresh account's today has nothing on, independent of the shared DB
+	await lockSignup();
+	let ctx: BrowserContext | null = null;
 	try {
+		await page.getByRole('button', { name: 'Make invite code' }).click();
+		const codeEl = page.locator('[role="status"] code').first();
+		await expect(codeEl).toBeVisible();
+		const code = (await codeEl.innerText()).trim();
+		expect(code).toMatch(/^INV-/);
+
+		const username = 'blind12' + Date.now().toString(36);
+		ctx = await browser.newContext();
 		const np = await ctx.newPage();
 		await np.goto('/signup');
-		await np.fill('input[name="username"]', username);
-		await np.fill('input[name="displayName"]', 'Blind Twelve');
-		await np.fill('input[name="password"]', 'blind twelve pass');
-		await np.fill('input[name="confirm"]', 'blind twelve pass');
-		await np.click('button[type=submit]');
-		await expect(np).not.toHaveURL(/\/(signup|login)/);
+		await np.fill('#code', code);
+		await np.fill('#nu', username);
+		await np.fill('#dn', 'Blind Twelve');
+		await np.fill('#np', 'blind twelve pass');
+		await np.fill('#cp', 'blind twelve pass');
+		await np.getByRole('button', { name: 'Create account' }).click();
+		await np.waitForURL((u) => u.pathname === '/');
 		const skip = np.getByRole('button', { name: 'Skip tour' });
 		await skip.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
 		if (await skip.isVisible().catch(() => false)) await skip.click();
@@ -325,6 +338,7 @@ test('C12 states: a failed save alerts and returns the control to the stored val
 		const html = await (await np.request.get('/settings/notifications')).text();
 		expect(previewFrom(html)).toBe('Nothing on today.');
 	} finally {
-		await ctx.close();
+		await ctx?.close();
+		await lockSignup(); // leave sign-up invite-only as found
 	}
 });
