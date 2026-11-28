@@ -127,6 +127,14 @@ test('C1/C2/C3 five presets in order, cap disabled with its helper, a name alrea
 	await page.keyboard.press('Escape');
 	await expect(rows).toHaveCount(0);
 
+	// Back closes the desktop menu first and stays on Settings (every menu root owns a history entry)
+	await add.click();
+	await expect(rows).toHaveCount(5);
+	await expect.poll(() => page.evaluate(() => !!history.state?.['sveltekit:states']?.layer)).toBe(true);
+	await page.goBack();
+	await expect(rows).toHaveCount(0);
+	await expect(page).toHaveURL(/\/settings\/types$/);
+
 	// C3: the built-in Event renamed to Class -> the Class preset is greyed with "(have it)" and does nothing
 	const event = (await types(page)).find((t) => t.key === 'Event') as TypeRow;
 	await api(page, 'PATCH', `/api/item-types/${event.id}`, { name: 'Class' });

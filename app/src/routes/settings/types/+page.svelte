@@ -253,7 +253,9 @@
 		{#if full}<span class="hint">Remove a type to add more</span>{/if}
 		{#if presetOpen && !full && !isPhone()}
 			<!-- inside the relative wrapper: the menu hangs under the button, never at the viewport's corner -->
-			<div class="presets card">{@render presetRows()}</div>
+			<div class="presets card" use:backCloses={() => (presetOpen = false)}>
+				{@render presetRows()}
+			</div>
 		{/if}
 	</div>
 	{#if presetOpen && !full && isPhone()}
