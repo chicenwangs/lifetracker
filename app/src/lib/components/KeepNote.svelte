@@ -8,10 +8,18 @@
 	import ActionSheet from './ActionSheet.svelte';
 	import BottomSheet from './BottomSheet.svelte';
 	import { page } from '$app/state';
-	import { onMount, tick } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { get, patch, post } from '$lib/client/api';
 	import { isPhone } from '$lib/client/phone';
 	import { enqueue, isOffline, noteQueued } from '$lib/client/offline';
+	import {
+		canDictate,
+		dictate,
+		isPermissionError,
+		markRationale,
+		needsRationale,
+		stopDictation,
+	} from '$lib/client/speech';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import type { BinderDTO, ChecklistItem, LabelDTO, NoteDTO } from '$lib/types';
 
@@ -39,8 +47,13 @@
 	} = $props();
 	let sharing = $state(false);
 	// phone (#107): top bar Back · Pin · bell · ⋮, bottom + · colour; the rest in sheets
-	let sheet = $state<'add' | 'more' | 'colour' | 'labels' | 'remind' | null>(null);
+	let sheet = $state<'add' | 'more' | 'colour' | 'labels' | 'remind' | 'speak' | null>(null);
 	let fileInput: HTMLInputElement | undefined = $state();
+	// voice note (card 13): app only, own text notes
+	let canSpeak = $state(false);
+	let listening = $state(false);
+	let denied = $state(false);
+	let bodyEl: HTMLTextAreaElement | undefined = $state();
 
 	// svelte-ignore state_referenced_locally
 	const start = note;
@@ -65,6 +78,7 @@
 	let dirty = false;
 	let saving: Promise<void> | null = null;
 	let tmp = 0;
+	const BODY_MAX = 20000; // the textarea's cap; a dictated insert never goes past it (C8)
 
 	const hasContent = () =>
 		!!(title.trim() || body.trim() || items.some((i) => i.text.trim()) || images.length);
@@ -254,7 +268,14 @@
 	// up/down = reorder among its siblings, sideways ≥ 40 px = indent / outdent. Keys: Alt+↑/↓, Tab/Shift+Tab.
 	let drag = $state<{ id: string; x0: number; y0: number } | null>(null);
 	let phone = $state(false); // desktop keeps the grip out of the Tab order and the a11y tree (#281); after mount so hydration agrees
-	onMount(() => (phone = isPhone()));
+	onMount(() => {
+		phone = isPhone();
+		canSpeak = canDictate(); // C4: a browser has no plugin, so no mic
+	});
+	onDestroy(() => {
+		gone = true;
+		if (listening) stopDictation(); // C5: closing the note takes the microphone with it
+	});
 	let dragged = false; // a real drag must not also count as a tap on the grip
 	let moving = $state<string | null>(null); // row id whose Move / Indent sheet is open (phone tap path, #285)
 	// closures over the plain id: the sheet clears `moving` before run() fires (#324)
@@ -362,6 +383,49 @@
 			} finally {
 				uploading--;
 			}
+		}
+	}
+
+	// ---------- voice note (card 13, app only) ----------
+	let gone = false; // the note closed while the phone was still finishing
+	let seq = 0; // taps can overlap: only the newest sets the button state back to idle
+	async function dictateTap() {
+		if (needsRationale()) {
+			markRationale(); // C6/C7: first tap of a session, before Android's own dialog, never again after a denial
+			sheet = 'speak';
+			return;
+		}
+		const mine = ++seq;
+		listening = !listening; // a second tap stops: the plugin resolves with whatever arrived
+		try {
+			const text = await dictate();
+			if (!text.trim()) return; // nothing heard: the note stays as it was (C8)
+			insertSpeech(text);
+			denied = false;
+		} catch (e) {
+			if (isPermissionError(e)) denied = true; // C7: greyed, never disabled — the next tap still calls listen()
+		} finally {
+			if (mine === seq) listening = false;
+		}
+	}
+	function startDictation() {
+		sheet = null;
+		void dictateTap();
+	}
+	/** the words go in at the caret; nothing around them changes (C8) */
+	function insertSpeech(text: string) {
+		if (gone) return;
+		const el = bodyEl;
+		const at = el?.selectionStart ?? body.length;
+		const words = text.slice(0, Math.max(0, BODY_MAX - body.length));
+		if (!words) return;
+		el?.focus();
+		el?.setSelectionRange(at, at); // collapse: dictation never replaces the selected text
+		// C11: execCommand inserts as a real edit, so the textarea's own Ctrl+Z removes the dictated words
+		if (!el || !document.execCommand('insertText', false, words)) {
+			body = body.slice(0, at) + words + body.slice(at); // fallback: no editing command (old WebView)
+			changed();
+			void tick().then(() => el?.setSelectionRange(at + words.length, at + words.length));
 		}
 	}
 
@@ -518,8 +582,39 @@
 			autofocus={!start}
 		/>
 		{#if type === 'text'}
-			<textarea class="body" placeholder="Note" bind:value={body} oninput={changed} maxlength="20000" rows="6"
-			></textarea>
+			<div class="composer">
+				<textarea
+					class="body"
+					placeholder={listening ? 'Listening…' : 'Note'}
+					bind:value={body}
+					bind:this={bodyEl}
+					oninput={changed}
+					maxlength={BODY_MAX}
+					rows="6"></textarea>
+				{#if canSpeak && shared !== 'view'}
+					<button
+						class="mic"
+						class:listening
+						class:denied
+						type="button"
+						aria-label="Speak note"
+						aria-pressed={listening}
+						onclick={dictateTap}
+						><svg
+							width="22"
+							height="22"
+							viewBox="0 0 24 24"
+							fill={listening ? 'currentColor' : 'none'}
+							stroke="currentColor"
+							stroke-width="2"
+							aria-hidden="true"
+							><rect x="9" y="3" width="6" height="11" rx="3" /><path
+								d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"
+							/></svg
+						></button
+					>
+				{/if}
+			</div>
 		{:else}
 			<ul class="items" aria-label="Checklist">
 				{#each items as it, i (it.id)}
@@ -817,6 +912,16 @@
 			quick
 		/>
 	</BottomSheet>
+{:else if sheet === 'speak'}
+	<BottomSheet label="Use the microphone?" onclose={() => (sheet = null)}>
+		<h2 class="sh">Use the microphone?</h2>
+		<p class="micnote">Life Tracker only listens while this button is on.</p>
+		<p class="micnote">Speech is turned into text by Android's speech service, on your phone when it can.</p>
+		<div class="microw">
+			<button class="btn ghost" type="button" onclick={() => (sheet = null)}>Not now</button>
+			<button class="btn primary" type="button" onclick={startDictation}>Continue</button>
+		</div>
+	</BottomSheet>
 {/if}
 <svelte:window onbeforeunload={(e) => (dirty || saving) && e.preventDefault()} />
 
@@ -879,6 +984,61 @@
 		min-height: 120px;
 		font-size: 14px;
 		line-height: 1.5;
+	}
+	/* card 13: the body keeps the full width whether or not the app shows a mic beside it */
+	.composer {
+		display: flex;
+		gap: 8px;
+		align-items: flex-end;
+	}
+	.composer .body {
+		flex: 1;
+		min-width: 0;
+	}
+	.mic {
+		flex: none;
+		width: 48px;
+		height: 48px;
+		border-radius: 50%;
+		border: 1.5px solid var(--rule);
+		background: var(--card);
+		color: inherit;
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+	}
+	.mic.listening {
+		background: var(--ink);
+		border-color: var(--ink);
+		color: var(--card);
+		animation: mic-listen 1.2s ease-out infinite;
+	}
+	.mic.denied {
+		opacity: 0.45;
+	}
+	@keyframes mic-listen {
+		from {
+			box-shadow: 0 0 0 0 color-mix(in srgb, var(--ink) 50%, transparent);
+		}
+		to {
+			box-shadow: 0 0 0 12px transparent;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.mic.listening {
+			animation: none;
+		}
+	}
+	.micnote {
+		margin: 0 4px;
+		font-size: 14px;
+		color: var(--quiet);
+	}
+	.microw {
+		display: flex;
+		gap: 10px;
+		justify-content: flex-end;
+		padding: 4px 4px 0;
 	}
 	.items {
 		list-style: none;
@@ -1168,6 +1328,13 @@
 		.body {
 			flex: 1 1 auto;
 			resize: none;
+		}
+		.composer {
+			flex: 1 1 auto;
+			min-height: 0;
+		}
+		.composer .body {
+			align-self: stretch;
 		}
 		.bar {
 			margin-top: auto;

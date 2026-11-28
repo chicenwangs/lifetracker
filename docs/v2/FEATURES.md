@@ -89,7 +89,7 @@ Layout: title · search · New note · binder nav · label filter · Pinned (if 
 
 | ID | Tag | Behaviour |
 |---|---|---|
-| K-NOTE | CORE | New note opens editable instantly. Title + body optional. Autosave on debounce + blur, no Save button. Totally empty note discarded on exit (tested). Save fail keeps text + retry. |
+| K-NOTE | CORE | New note opens editable instantly. Title + body optional. Autosave on debounce + blur, no Save button. Totally empty note discarded on exit (tested). Save fail keeps text + retry. Android app only (card 13): a 48 dp mic in a text note turns speech into text at the caret (Android's own service, `RECORD_AUDIO` asked on the first tap after a short rationale); text only, nothing recorded, stored or sent; the web has no mic. |
 | K-CHECK | CORE | Add (last empty row/Add), inline edit, check/uncheck one item only, reorder (drag + menu/keyboard), delete, nest (max D-10, never flatten silently), collapse. Completed stay visible (hide = optional filter). |
 | K-IMG | CORE | Pick/paste image, progress, thumb, lightbox, remove ref (file kept if used elsewhere). Bad type/too big (limits from server, D-12) → readable error. Upload fail → note kept, retry. Broken preview → filename card. |
 | K-DRAW | EXT | Canvas, strokes, canvas undo (wins over app undo while focused), clear (confirm/undoable), save, reopen + edit (vector data, not just PNG), remove. Palette/width/eraser/export spec before build. |
