@@ -45,6 +45,14 @@ describe('item types', () => {
 		expect(() => add('Eleven')).toThrow(/10 types/);
 	});
 
+	it('create takes onCalendar (default true) and stores it (card 14 C5)', () => {
+		const on = add('Quiet');
+		expect(on.onCalendar).toBe(true);
+		const off = add('Off', { onCalendar: false });
+		expect(off.onCalendar).toBe(false);
+		expect(types.list(me).find((t) => t.id === off.id)?.onCalendar).toBe(false);
+	});
+
 	it('slug: reserved words and duplicates refused', () => {
 		expect(() => add('Calendar')).toThrow(/already a quick-add option/);
 		add('Side project');

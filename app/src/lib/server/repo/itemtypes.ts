@@ -5,7 +5,7 @@ import { db, txImmediate } from '../db';
 import { blocks, calendars, itemTypes, items } from '../schema';
 import { newId } from '../crypto';
 import { bad, notFound } from '../http';
-import { BUILTIN_TYPES, inkFor, MAX_TYPES, RESERVED_SLUGS, slugify } from '$lib/itemtypes';
+import { BUILTIN_TYPES, inkFor, MAX_TYPES, RESERVED_SLUGS, slugify, TYPE_PRESETS } from '$lib/itemtypes';
 import type { ItemTypeDTO } from '$lib/types';
 import { nowUtcIso } from '$lib/time';
 
@@ -89,6 +89,7 @@ export const createSchema = z
 		slug: zSlug.optional(),
 		countsDown: z.boolean().default(false),
 		shareDefault: z.boolean().default(false),
+		onCalendar: z.boolean().default(true),
 	})
 	.strict();
 export const patchSchema = z
@@ -119,7 +120,7 @@ const own = (ownerId: string, id: string): Row =>
 		.where(and(eq(itemTypes.id, id), eq(itemTypes.ownerId, ownerId)))
 		.get() ?? notFound();
 
-export function create(ownerId: string, input: z.infer<typeof createSchema>): ItemTypeDTO {
+export function create(ownerId: string, input: Create): ItemTypeDTO {
 	return txImmediate(() => {
 		const all = list(ownerId);
 		if (all.length >= MAX_TYPES) bad(`You have ${MAX_TYPES} types. Delete one first.`, 'type_cap');
@@ -140,11 +141,27 @@ export function create(ownerId: string, input: z.infer<typeof createSchema>): It
 				position: Math.max(-1, ...all.map((t) => t.position)) + 1,
 				countsDown: input.countsDown,
 				shareDefault: input.shareDefault,
+				onCalendar: input.onCalendar ?? true, // absent = old behaviour
 				createdAt: now,
 				updatedAt: now,
 			})
 			.run();
 		return toDTO(own(ownerId, id));
+	});
+}
+
+/** card 14 (O-1 item 6, D-V4-21): one starter type. Same create path, so cap + slug checks run in its
+ *  transaction; a taken slug is the existing `bad_slug` error naming the type that owns it. */
+export function createPreset(ownerId: string, slug: string): ItemTypeDTO {
+	const p = TYPE_PRESETS.find((x) => x.slug === slug);
+	if (!p) return bad('Unknown preset', 'bad_preset');
+	return create(ownerId, {
+		name: p.name,
+		bg: p.bg,
+		slug: p.slug,
+		countsDown: p.countsDown,
+		shareDefault: p.shareDefault,
+		onCalendar: p.onCalendar,
 	});
 }
 

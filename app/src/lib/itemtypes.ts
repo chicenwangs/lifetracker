@@ -21,6 +21,16 @@ export const RESERVED_SLUGS = ['calendar', 'cal', 'both', 'planner', 'plan', 'ti
 /** picker swatches for new types (curated, readable with navy or white text). Partner teal #0F766E left out. */
 export const TYPE_SWATCHES = ['#CED3EE', '#D3EECE', '#FAEDB8', '#EECFD4', '#B84A44', '#C9DAE7', '#E5D4F5', '#F7D9B8', '#BFE3DC', '#E6E7F0', '#3D5A80', '#6D28D9']; // prettier-ignore
 
+/** card 14 (O-1 item 6, D-V4-21): one-tap starter types, in menu order. Each fills one free slot and never
+ *  overwrites. Colours follow board D-T1; Study takes the next unused swatch (#C9DAE7). */
+export const TYPE_PRESETS = [
+	{ name: 'Class', slug: 'class', bg: '#D3EECE', onCalendar: false, countsDown: false, shareDefault: false },
+	{ name: 'Errand', slug: 'errand', bg: '#FAEDB8', onCalendar: true, countsDown: false, shareDefault: false },
+	{ name: 'Health', slug: 'health', bg: '#EECFD4', onCalendar: true, countsDown: false, shareDefault: false },
+	{ name: 'Chore', slug: 'chore', bg: '#E6E7F0', onCalendar: true, countsDown: false, shareDefault: false },
+	{ name: 'Study', slug: 'study', bg: '#C9DAE7', onCalendar: true, countsDown: false, shareDefault: false },
+] as const; // prettier-ignore
+
 export const slugify = (name: string) =>
 	name
 		.toLowerCase()
