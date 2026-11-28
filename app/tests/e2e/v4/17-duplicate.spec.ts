@@ -167,7 +167,7 @@ test('C2 the copy opens with the same blocks in the same order; the source row i
 	expect(after.page.doc).toEqual(before.page.doc);
 });
 
-test('MUST type then Duplicate copies the typed title and text (editor + pending 500 ms title save flushed first)', async ({
+test('C1/C2 type then Duplicate copies the typed title and text (editor + pending 500 ms title save flushed first)', async ({
 	page,
 }) => {
 	const title = `Dup flush ${stamp()}`;
