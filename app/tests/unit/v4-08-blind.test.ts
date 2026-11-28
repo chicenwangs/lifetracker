@@ -311,7 +311,7 @@ it('C3 schema.ts, the 0011 snapshot and the journal all carry the four columns',
 });
 
 // ---- C4 --------------------------------------------------------------------------------------------------
-it('C4 migrateDb applies 0000-0011 on an empty, a v3.1.2-shaped and a new DB, stays sound, and a second run is a no-op', () => {
+it('C4 migrateDb applies every migration on an empty, a v3.1.2-shaped and a new DB, stays sound, and a second run is a no-op', () => {
 	// 1. empty
 	const empty = migrateInMemory();
 	const count = readJournal().entries.length;

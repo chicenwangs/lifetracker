@@ -202,7 +202,7 @@ it('C3 schema.ts, the hand-written snapshot and the journal agree on all four co
 });
 
 // ---------- C4: empty DB, twice ----------
-it('C4 migrateDb runs 0000-0011 on an empty DB and a second run changes nothing', () => {
+it('C4 migrateDb runs 0000-0012 on an empty DB and a second run changes nothing', () => {
 	const h = migrated();
 	try {
 		expect(h.sqlite.pragma('integrity_check', { simple: true })).toBe('ok');

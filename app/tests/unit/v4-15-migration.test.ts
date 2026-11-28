@@ -6,8 +6,9 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { getTableColumns } from 'drizzle-orm';
 import { afterAll, expect, it } from 'vitest';
-import { migrateDb, openDb, type Handle } from '../../src/lib/server/db';
+import { migrateDb, openDb, setHandle, type Handle } from '../../src/lib/server/db';
 import { pages, REMINDER_SOURCES } from '../../src/lib/server/schema';
+import { sourceInfo } from '../../src/lib/server/reminders';
 
 const SRC = resolve('drizzle');
 const SQL = readFileSync(join(SRC, '0012_v4_pages.sql'), 'utf8');
@@ -290,7 +291,7 @@ it('C4 schema.ts, snapshot 0012 and the journal agree on both columns and page_t
 	expect(c.coverAttachmentId).toMatchObject({ name: 'cover_attachment_id', notNull: false });
 });
 
-it('C5 REMINDER_SOURCES includes page_todo and changes nothing else', () => {
+it('C5 REMINDER_SOURCES includes page_todo and sourceInfo ignores it', () => {
 	expect(REMINDER_SOURCES).toEqual([
 		'planner_item',
 		'planner_block',
@@ -298,6 +299,27 @@ it('C5 REMINDER_SOURCES includes page_todo and changes nothing else', () => {
 		'database_record',
 		'page_todo',
 	]);
+	// a real record with this id resolves as database_record; page_todo must not fall through to it
+	const h = migrated();
+	try {
+		seedBase(h);
+		addPage(h, 'pg_1');
+		h.sqlite.exec(`
+			INSERT INTO page_databases (id, owner_id, page_id, title, created_at, updated_at) VALUES ('pdb_1', 'usr_a', 'pg_1', 'Stuff', '${Z}', '${Z}');
+			INSERT INTO database_records (id, database_id, page_id, position, created_at, updated_at) VALUES ('rec_1', 'pdb_1', NULL, 0, '${Z}', '${Z}');
+			INSERT INTO database_properties (id, database_id, name, property_type, position, created_at, updated_at) VALUES ('dbp_1', 'pdb_1', 'Name', 'title', 0, '${Z}', '${Z}');
+			INSERT INTO database_values (record_id, property_id, value_json, updated_at) VALUES ('rec_1', 'dbp_1', '"Secret row"', '${Z}');
+		`);
+		setHandle(h);
+		expect(sourceInfo('usr_a', 'database_record', 'rec_1')).toMatchObject({
+			title: 'Secret row',
+			route: '/pages/pg_1',
+			kind: 'pages',
+		});
+		expect(sourceInfo('usr_a', 'page_todo', 'rec_1')).toBeUndefined();
+	} finally {
+		h.sqlite.close();
+	}
 });
 
 // ---------- C6: empty DB ----------

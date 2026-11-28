@@ -97,6 +97,7 @@ export function sourceInfo(ownerId: string, type: Source, rawId: string): Source
 			}
 		);
 	}
+	if (type !== 'database_record') return undefined; // page_todo has no resolver until card 30
 	const r = db().prepare(`SELECT r.page_id, d.page_id AS db_page FROM database_records r JOIN page_databases d ON d.id = r.database_id WHERE r.id = ? AND d.owner_id = ?`).get(id, ownerId) as { page_id: string | null; db_page: string } | undefined; // prettier-ignore
 	if (!r) return undefined;
 	const t = db().prepare(`SELECT v.value_json FROM database_values v JOIN database_properties p ON p.id = v.property_id WHERE v.record_id = ? AND p.property_type = 'title'`).get(id) as { value_json: string } | undefined; // prettier-ignore
