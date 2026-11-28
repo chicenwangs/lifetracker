@@ -7,7 +7,7 @@ import { newId } from '../crypto';
 import { ApiFail, bad, notFound } from '../http';
 import * as fts from '../search';
 import * as attachments from '../attachments';
-import { accessOf } from './shares';
+import { accessOf, level } from './shares';
 import { nowUtcIso } from '$lib/time';
 import type { PageDTO, PageNode } from '$lib/types';
 
@@ -70,12 +70,15 @@ export function get(ownerId: string, id: string, opened = true, viewer = ownerId
 		crumbs.unshift({ id: pr.id, title: pr.title });
 		p = pr.parent_page_id;
 	}
-	// titles for internal links, resolved now (renames show at once). Unknown / not mine / trashed = unavailable.
+	// titles for internal links, resolved now (renames show at once). Unknown / inaccessible / trashed = unavailable.
+	// card 17 fix: a link the viewer can open resolves by its real title even when someone else owns it (a copy of a
+	// page shared with me keeps its link to the source), never an id the viewer cannot open.
 	const targets = linksIn(doc);
 	const links: PageDTO['links'] = {};
 	for (const t of targets) {
-		const tr = row(ownerId, t);
-		links[t] = tr && !tr.deleted_at && sees(t) ? { title: tr.title, archived: !!tr.archived_at } : null;
+		const a = level('page', viewer, t);
+		const tr = a ? row(a.ownerId, t) : undefined;
+		links[t] = tr && !tr.deleted_at ? { title: tr.title, archived: !!tr.archived_at } : null;
 	}
 	return {
 		id: r.id,

@@ -142,6 +142,13 @@ describe('C2 the copy holds the same top-level blocks with new page_blocks ids; 
 	it('C2 same node types/JSON in the same order, every block id new, source revision/updatedAt unchanged', async () => {
 		const target = page('Blind17 link target');
 		const src = page('Blind17 C2 source');
+		// D-V4-23 fix: only images the duplicator owns survive; this one is mine, so it is copied
+		const att = 'att_cccccccccccccccc';
+		handle()
+			.sqlite.prepare(
+				`INSERT INTO attachments (id, owner_id, storage_key, original_name, mime_type, byte_size, status, created_at) VALUES (?, ?, ?, 'blind17.png', 'image/png', 1, 'ready', ?)`,
+			)
+			.run(att, me, att, new Date().toISOString());
 		const d = doc(
 			para('first paragraph'),
 			{ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'A heading' }] },
@@ -159,7 +166,7 @@ describe('C2 the copy holds the same top-level blocks with new page_blocks ids; 
 				type: 'table',
 				content: [{ type: 'tableRow', content: [{ type: 'tableCell', content: [para('cell')] }] }],
 			},
-			{ type: 'image', attrs: { src: '/api/attachments/att_blind17', alt: 'a picture' } },
+			{ type: 'image', attrs: { src: `/api/attachments/${att}`, alt: 'a picture' } },
 			{ type: 'paragraph', content: [{ type: 'text', text: 'see ' }, linkNode(target.id)] },
 		);
 		pages.update(me, src.id, { doc: d });

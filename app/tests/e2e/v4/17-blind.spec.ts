@@ -6,10 +6,24 @@
 // the request runs so a double tap makes one copy; an empty page copies to an empty editor).
 // No builder test was opened.
 import { expect, test, type Page, type Route } from '@playwright/test';
+import Database from 'better-sqlite3';
+import { join } from 'node:path';
 
 const PW = 'good pass phrase';
 const RESET_PW = 'reset pass phrase 1'; // flow.spec.ts may reset jeremy's password earlier in the run
 const PREFIX = 'Blind17 ';
+
+/** undo journal straight from the e2e DB (the screen cannot show "no row was written") */
+function journalCount(): number {
+	const dir = process.env.E2E_DIR;
+	if (!dir) throw new Error('E2E_DIR missing');
+	const db = new Database(join(dir, 'app.db'), { readonly: true });
+	try {
+		return (db.prepare('SELECT count(*) AS n FROM undo_actions').get() as { n: number }).n;
+	} finally {
+		db.close();
+	}
+}
 
 let page: Page;
 const made = new Set<string>();
@@ -288,11 +302,10 @@ test('C8 desktop: the toast Undo trashes the copy through DELETE and Trash can r
 
 	// no journal row: the global undo has nothing to replay, and Ctrl+Z on a page stays in the editor
 	await page.goto(`/pages/${src.id}`);
+	const journalBefore = journalCount();
 	const copy2 = await duplicateUI(src.id);
 	await expect(page.locator('.toast')).toContainText('Duplicated');
-	const undo = await api(page, 'POST', '/api/undo', {});
-	expect(undo.status).toBe(404);
-	expect((undo.json as { error?: { code: string } }).error?.code).toBe('nothing_to_undo');
+	expect(journalCount()).toBe(journalBefore); // the duplicate wrote no undo_actions row
 	await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
 	await page.keyboard.press('Control+z');
 	await expect(treeLink('Copy of ' + PREFIX + 'C8 source')).toHaveCount(1);

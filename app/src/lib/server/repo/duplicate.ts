@@ -4,11 +4,25 @@
 import { txImmediate } from '../db';
 import * as pages from './pages';
 import * as databases from './databases';
+import * as attachments from '../attachments';
 import { level } from './shares';
-import { notFound } from '../http';
+import { bad, notFound } from '../http';
 import type { PageDTO } from '$lib/types';
 
 type Node = { type?: string; attrs?: Record<string, unknown>; content?: unknown[] };
+
+/** D-V4-23: only images the duplicator owns survive a copy; a foreign file would be a broken node */
+function stripImages(n: unknown, keep: Set<string>): void {
+	const node = n as Node;
+	if (!node?.content) return;
+	node.content = node.content.filter((c) => {
+		const child = c as Node;
+		if (child?.type !== 'image') return true;
+		const id = /att_[0-9a-z]{16}/.exec(String(child.attrs?.src ?? ''))?.[0];
+		return !!id && keep.has(id);
+	});
+	for (const c of node.content) stripImages(c, keep);
+}
 
 function databaseIds(n: unknown, out = new Set<string>()): Set<string> {
 	const node = n as Node;
@@ -46,9 +60,14 @@ export function duplicate(viewerId: string, sourceId: string): PageDTO {
 	const mine = access.ownerId === viewerId;
 	return txImmediate(() => {
 		const src = pages.get(access.ownerId, sourceId, false, viewerId);
+		// hidden in the UI; the API refuses them too (no archived pages, no database records copied as pages)
+		if (src.archived) bad('Restore the page first.', 'archived');
+		if (databases.isRecordPage(sourceId)) bad("A database record's page can't be copied.", 'record_page');
 		const title = cutTitle(`Copy of ${src.title || 'Untitled'}`);
 		const parentId = mine ? src.parentId : null;
 		const doc = structuredClone(src.doc) as unknown as Node & { type: 'doc'; content: unknown[] };
+		const atts = [...new Set(JSON.stringify(doc).match(/att_[0-9a-z]{16}/g) ?? [])];
+		stripImages(doc, attachments.ownedBy(viewerId, atts));
 		const copy = pages.create(viewerId, { parentId, title });
 		const ids = new Map<string, string>();
 		for (const old of databaseIds(doc)) ids.set(old, databases.copySchema(viewerId, old, copy.id));

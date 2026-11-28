@@ -2,6 +2,7 @@
 // a database copied as schema only with view configs remapped, no children/shares/pins, a shared page copied
 // to the viewer, no journal row, and a failed run that leaves nothing behind.
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { RequestEvent } from '@sveltejs/kit';
 import { freshDb } from './helpers';
 import { handle } from '../../src/lib/server/db';
 import * as usersRepo from '../../src/lib/server/repo/users';
@@ -10,6 +11,7 @@ import * as dbs from '../../src/lib/server/repo/databases';
 import * as shares from '../../src/lib/server/repo/shares';
 import { duplicate } from '../../src/lib/server/repo/duplicate';
 import { undo } from '../../src/lib/server/undo';
+import { POST as duplicatePost } from '../../src/routes/api/pages/[id]/duplicate/+server';
 
 let me: string;
 let other: string;
@@ -35,6 +37,26 @@ const count = (q: string, ...a: unknown[]) =>
 			.sqlite.prepare(q)
 			.get(...a) as { n: number }
 	).n;
+const asUser = (id: string) =>
+	({ id, username: id, displayName: id, role: 'member' }) as unknown as App.SafeUser;
+/** the real route handler, with only what it reads */
+function event(userId: string, id: string): RequestEvent {
+	return {
+		locals: { user: asUser(userId) },
+		params: { id },
+		request: new Request(`http://localhost/api/pages/${id}/duplicate`, { method: 'POST' }),
+	} as unknown as RequestEvent;
+}
+async function post(userId: string, id: string) {
+	const res = await duplicatePost(event(userId, id));
+	return { status: res.status, json: (await res.json()) as { error?: { code: string } } };
+}
+const addAttachment = (id: string, ownerId: string) =>
+	handle()
+		.sqlite.prepare(
+			`INSERT INTO attachments (id, owner_id, storage_key, original_name, mime_type, byte_size, status, created_at) VALUES (?, ?, ?, 'x.png', 'image/png', 1, 'ready', ?)`,
+		)
+		.run(id, ownerId, id, new Date().toISOString());
 
 describe('v4 card 17 · duplicate page', () => {
 	it('C1 title "Copy of <title>" (Untitled when empty, cut at 300), same parent, directly below the source', () => {
@@ -238,5 +260,75 @@ describe('v4 card 17 · duplicate page', () => {
 		expect(
 			count(`SELECT count(*) AS n FROM database_views v JOIN page_databases d ON d.id = v.database_id WHERE d.owner_id = ?`, other), // prettier-ignore
 		).toBe(0);
+	});
+
+	it('C3 the copy of a shared page resolves its self-link by title (never "unavailable"); unseen targets stay null', () => {
+		const src = page('Shared links');
+		const secret = page('Secret target');
+		pages.update(me, src.id, { doc: doc({ type: 'paragraph', content: [link(src.id), link(secret.id)] }) }); // prettier-ignore
+		shares.put('page', me, src.id, shares.shareSchema.parse({ username: 'neina', permission: 'view' }));
+		const copy = duplicate(other, src.id);
+		const info = pages.get(other, copy.id, false);
+		expect(info.links[src.id]).toEqual({ title: 'Shared links', archived: false });
+		expect(info.links[secret.id]).toBeNull();
+		// the source owner still keeps its own view of its links
+		expect(pages.get(me, src.id, false).links[secret.id]).toEqual({
+			title: 'Secret target',
+			archived: false,
+		});
+	});
+
+	it('C2 D-V4-23 a shared page copy keeps only images the duplicator owns', () => {
+		const theirs = 'att_aaaaaaaaaaaaaaaa'; // the source owner's file
+		const mine = 'att_bbbbbbbbbbbbbbbb'; // the duplicator's file
+		addAttachment(theirs, me);
+		addAttachment(mine, other);
+		const src = page('Shared images');
+		pages.update(me, src.id, {
+			doc: doc({ type: 'image', attrs: { src: `/api/attachments/${theirs}`, alt: 'theirs' } }, p('between'), {
+				type: 'image',
+				attrs: { src: `/api/attachments/${mine}`, alt: 'mine' },
+			}),
+		});
+		shares.put('page', me, src.id, shares.shareSchema.parse({ username: 'neina', permission: 'view' }));
+		const copy = duplicate(other, src.id);
+		const flat = JSON.stringify(pages.get(other, copy.id, false).doc);
+		expect(flat).toContain(mine);
+		expect(flat).not.toContain(theirs);
+		expect(flat).toContain('between');
+		expect(
+			sql<{ attachment_id: string }>(
+				`SELECT attachment_id FROM attachment_refs WHERE source_type = 'page_block' AND source_id = ?`,
+				copy.id,
+			).map((r) => r.attachment_id),
+		).toEqual([mine]);
+		// the source keeps its own picture and reference
+		expect(JSON.stringify(pages.get(me, src.id, false).doc)).toContain(theirs);
+		expect(
+			sql<{ attachment_id: string }>(
+				`SELECT attachment_id FROM attachment_refs WHERE source_type = 'page_block' AND source_id = ?`,
+				src.id,
+			).map((r) => r.attachment_id),
+		).toEqual([theirs]);
+	});
+
+	it('C9 the route refuses archived pages and database-record pages with 400 and creates nothing', async () => {
+		const archived = page('Archived source');
+		pages.archive(me, archived.id);
+		// a database record page
+		const db = dbs.create(me, { pageId: null, title: 'Record page db' });
+		const row = dbs.addRecord(me, db.id);
+		const rec = dbs.recordPage(me, row.id);
+		const before = count(`SELECT count(*) AS n FROM pages`);
+		const a = await post(me, archived.id);
+		expect(a.status).toBe(400);
+		expect(a.json.error?.code).toBe('archived');
+		const r = await post(me, rec);
+		expect(r.status).toBe(400);
+		expect(r.json.error?.code).toBe('record_page');
+		expect(count(`SELECT count(*) AS n FROM pages`)).toBe(before);
+		// the same route still duplicates a normal page
+		const ok = page('Normal');
+		expect((await post(me, ok.id)).status).toBe(201);
 	});
 });

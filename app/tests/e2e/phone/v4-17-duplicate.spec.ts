@@ -50,6 +50,8 @@ test.afterAll(() => page.context().close());
 test('C10 Duplicate is a 48 dp row in the page actions surface; the copy opens from the Pages tree and Back works', async () => {
 	await page.goto(`/pages/${id}`);
 	await menu(page).click();
+	await expect(page.getByRole('dialog', { name: 'Page actions' })).toBeVisible(); // the shared BottomSheet, not the desktop popover
+	await expect(page.locator('.menu')).toHaveCount(0);
 	await expect(dupRow(page)).toBeVisible();
 	await expectTappable(dupRow(page));
 	const box = (await dupRow(page).boundingBox())!;

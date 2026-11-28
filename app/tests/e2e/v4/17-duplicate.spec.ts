@@ -167,6 +167,44 @@ test('C2 the copy opens with the same blocks in the same order; the source row i
 	expect(after.page.doc).toEqual(before.page.doc);
 });
 
+test('MUST type then Duplicate copies the typed title and text (editor + pending 500 ms title save flushed first)', async ({
+	page,
+}) => {
+	const title = `Dup flush ${stamp()}`;
+	const src = await mkPage(page, title);
+	await page.goto(`/pages/${src}`);
+	// slow every PATCH: without the flush the POST would race the pending saves and copy the old row
+	const slow = (url: URL) => url.pathname === `/api/pages/${src}`;
+	await page.route(slow, async (route) => {
+		if (route.request().method() === 'PATCH') await new Promise((r) => setTimeout(r, 800));
+		await route.continue();
+	});
+	try {
+		const typedTitle = `Typed title ${stamp()}`;
+		const typedBody = `Typed body ${stamp()}`;
+		await page.getByLabel('Page title').fill(typedTitle);
+		await page.getByLabel('Page content').click();
+		await page.keyboard.type(typedBody);
+		// no waiting for either debounce (title 500 ms, editor 600 ms): straight to Duplicate
+		await menu(page).click();
+		await page.getByRole('menuitem', { name: 'Duplicate' }).click();
+		await expect(toast(page)).toBeVisible();
+		await treeLinks(page)
+			.filter({ hasText: `Copy of ${typedTitle}` })
+			.click();
+		await expect(page.getByLabel('Page title')).toHaveValue(`Copy of ${typedTitle}`);
+		await expect(page.getByLabel('Page content')).toContainText(typedBody);
+		// the source kept the typed text/title too
+		const srcDoc = (await api(page, 'GET', `/api/pages/${src}`)).j as {
+			page: { title: string; doc: unknown };
+		};
+		expect(srcDoc.page.title).toBe(typedTitle);
+		expect(JSON.stringify(srcDoc.page.doc)).toContain(typedBody);
+	} finally {
+		await page.unroute(slow);
+	}
+});
+
 test('C8 Undo trashes the copy via DELETE (Trash restores it) and never touches the source', async ({
 	page,
 }) => {
@@ -208,7 +246,37 @@ test('C6 a page shared with me offers Duplicate; the copy is mine, at my root, w
 	browser,
 }) => {
 	const title = `Dup c6 ${stamp()}`;
-	const id = await mkPage(page, title, [p('Shared body')]);
+	const id = await mkPage(page, title);
+	// the source owner's own picture: a copy by someone else must not keep it (D-V4-23)
+	const att = await page.evaluate(async (name) => {
+		const bin = Uint8Array.from(
+			atob(
+				'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+			),
+			(c) => c.charCodeAt(0),
+		);
+		const r = await fetch(`/api/attachments?name=${encodeURIComponent(name)}`, {
+			method: 'POST',
+			headers: { 'content-type': 'image/png' },
+			body: bin,
+		});
+		return ((await r.json()) as { attachment: { id: string } }).attachment.id;
+	}, `dup6-${stamp()}.png`);
+	// a self-link plus the owner's image: the copy must resolve the link (never "unavailable") and drop the file
+	expect(
+		(
+			await api(page, 'PATCH', `/api/pages/${id}`, {
+				doc: {
+					type: 'doc',
+					content: [
+						p('Shared body'),
+						{ type: 'image', attrs: { src: `/api/attachments/${att}`, alt: 'Owner picture' } },
+						{ type: 'paragraph', content: [{ type: 'pageLink', attrs: { pageId: id } }] },
+					],
+				},
+			})
+		).s,
+	).toBe(200);
 	const them = await partner(browser, page);
 	try {
 		expect(
@@ -226,7 +294,14 @@ test('C6 a page shared with me offers Duplicate; the copy is mine, at my root, w
 		await copy.click();
 		await expect(them.p).toHaveURL(new RegExp(`/pages/${copyId}$`));
 		await expect(them.p.getByLabel('Page title')).toHaveValue(`Copy of ${title}`);
-		await expect(them.p.getByLabel('Page content')).toContainText('Shared body');
+		const content = them.p.getByLabel('Page content');
+		await expect(content).toContainText('Shared body');
+		// the self-link resolves through the share, with the source's title
+		await expect(content.locator('a.pl')).toHaveText('↗ ' + title);
+		await expect(content.locator('a.pl')).toHaveAttribute('href', `/pages/${id}`);
+		await expect(content).not.toContainText('Unavailable page');
+		// the source owner's image node is gone (only the duplicator's files survive)
+		await expect(content.locator('img[alt="Owner picture"]')).toHaveCount(0);
 		const mine = (await api(them.p, 'GET', `/api/pages/${copyId}`)).j as {
 			page: { access: string; title: string };
 		};
