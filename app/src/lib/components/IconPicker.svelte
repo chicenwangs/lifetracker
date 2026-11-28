@@ -35,6 +35,13 @@
 	});
 
 	function key(e: KeyboardEvent) {
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			onclose();
+			return; // Esc works everywhere in the popover, Remove included
+		}
+		// arrows and Enter belong to the grid: the Remove button keeps its own activation
+		if (e.target instanceof Element && e.target.closest('.rm')) return;
 		const step = STEPS[e.key];
 		if (step !== undefined) {
 			e.preventDefault();
@@ -43,9 +50,6 @@
 			e.preventDefault();
 			const picked = ICONS[at];
 			if (picked) onpick(picked);
-		} else if (e.key === 'Escape') {
-			e.preventDefault();
-			onclose();
 		}
 	}
 </script>

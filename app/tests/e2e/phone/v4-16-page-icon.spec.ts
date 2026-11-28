@@ -52,6 +52,10 @@ test('C1 the phone entry is the ⋯ sheet row, the desktop button is not shown, 
 	await expect(icon).toHaveText('📄');
 	const size = await icon.evaluate((n) => getComputedStyle(n).fontSize);
 	expect(size).toBe('44px');
+	// DESIGN §2.1: on the phone the icon sits in its own block above the title
+	const ib = (await icon.boundingBox())!;
+	const tb = (await page.getByLabel('Page title').boundingBox())!;
+	expect(ib.y + ib.height).toBeLessThanOrEqual(tb.y + 1);
 	// and it survives a reload (the PATCH went through)
 	await page.reload();
 	await expect(page.getByRole('img', { name: 'Page icon' })).toHaveText('📄');

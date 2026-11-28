@@ -56,11 +56,13 @@ export function undoable<T>(
 	})();
 } // prettier-ignore
 
-/** D-V4-22: an icon change bumps `pages.revision`; writing the old number back would 409 the next editor
- *  save (the editor keeps the newer one). Undo keeps the current revision and writes everything else back. */
-function withoutRevision(row: Row): Row {
+/** D-V4-22: two `pages` columns must not be written back by an undo. `revision` would 409 the next
+ *  editor save (the editor holds the newer one), and `last_opened_at` is read-state: restoring an old
+ *  value would move the page backwards in Recents. Everything else is restored. */
+function withoutVolatile(row: Row): Row {
 	const out = { ...row };
 	delete out.revision;
+	delete out.last_opened_at;
 	return out;
 }
 
@@ -111,7 +113,7 @@ export function undo(userId: string, id?: string): { label: string } {
 				r.t === 'items'
 					? withoutIcsUid(r.before, r.id)
 					: r.t === 'pages'
-						? withoutRevision(r.before)
+						? withoutVolatile(r.before)
 						: r.before;
 			const cols = Object.keys(values).filter((c) => c !== 'id');
 			if (get(r.t, r.id)) {

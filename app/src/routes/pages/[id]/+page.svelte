@@ -54,7 +54,9 @@
 	}
 	async function saveTitle() {
 		try {
-			await editor?.flush(); // one writer at a time: the revision must line up
+			// one writer at a time: the revision must line up. A failed flush (e.g. a 409) must not
+			// bump the revision, or the stale editor would overwrite the other writer's text.
+			if ((await editor?.flush()) === false) return;
 			const r = await patch<{ page: PageDTO }>(`/api/pages/${pg.id}`, { title });
 			editor?.setRevision(r.page.revision);
 			saveState = 'saved';
@@ -74,7 +76,9 @@
 	async function pickIcon(icon: string | null) {
 		closeIcon();
 		try {
-			await editor?.flush(); // one writer at a time: the revision must line up
+			// same guard: a failed text save means this editor is stale; the icon PATCH would hand it
+			// the newest revision and the next keystroke would silently overwrite the other writer
+			if ((await editor?.flush()) === false) return;
 			const r = await patch<{ page: PageDTO; undo?: UndoRef }>(`/api/pages/${pg.id}`, { icon });
 			editor?.setRevision(r.page.revision);
 			await invalidateAll();
@@ -272,8 +276,8 @@
 		</div>
 	</div>
 	<div class="body">
+		{#if pg.icon}<span class="picon" role="img" aria-label="Page icon">{pg.icon}</span>{/if}
 		<div class="head">
-			{#if pg.icon}<span class="picon" role="img" aria-label="Page icon">{pg.icon}</span>{/if}
 			<div class="iconwrap">
 				{#if canEdit}
 					<button
@@ -506,12 +510,13 @@
 		.bar .wide {
 			display: none;
 		}
-		/* card 16 (DESIGN §2.1 line 66): the icon shows at 44 px, the entry is the ⋯ sheet row */
+		/* card 16 (DESIGN §2.1 line 66): the icon shows at 44 px above the title, the entry is the ⋯ sheet row */
 		.iconwrap {
 			display: none;
 		}
 		.picon {
 			display: block;
+			margin: 0 0 4px;
 			font-size: 44px;
 			line-height: 1;
 		}

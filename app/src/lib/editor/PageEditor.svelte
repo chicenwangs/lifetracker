@@ -136,13 +136,15 @@
 		timer = setTimeout(flush, 600);
 	}
 	let inflight: Promise<void> | null = null;
-	export async function flush(): Promise<void> {
+	/** true = nothing was pending or the save went through; false = the text is still here and unsaved */
+	export async function flush(): Promise<boolean> {
 		if (timer) clearTimeout(timer);
 		timer = null;
 		if (inflight) await inflight;
-		if (!pending || !editor) return;
+		if (!pending || !editor) return true;
 		pending = false;
 		const doc = editor.getJSON();
+		let ok = true;
 		inflight = (async () => {
 			try {
 				const r = await patch<{ page: PageDTO }>(`/api/pages/${page.id}`, { doc, revision });
@@ -150,6 +152,7 @@
 				onstate?.(pending ? 'saving' : 'saved');
 				onsaved?.(r.page);
 			} catch (e) {
+				ok = false;
 				pending = true; // text stays here; next change or Retry tries again
 				const conflict = (e as { status?: number }).status === 409;
 				onstate?.(conflict ? 'conflict' : 'failed');
@@ -159,6 +162,7 @@
 			}
 		})();
 		await inflight;
+		return ok;
 	}
 	export const setRevision = (r: number) => (revision = r);
 	export const retry = () => ((pending = true), flush());

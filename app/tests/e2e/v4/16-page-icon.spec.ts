@@ -139,6 +139,35 @@ test('C2 the desktop popover is 320 px, 8 × 5 of 36 px cells; arrows + Enter pi
 	await expect(iconBtn(page)).toHaveText('📝');
 });
 
+test('C2 Remove keeps its own Enter: the highlighted emoji is not picked while Remove has focus', async ({
+	page,
+}) => {
+	const id = await mkPage(page, `Icon c2b ${stamp()}`);
+	expect((await api(page, 'PATCH', `/api/pages/${id}`, { icon: '🎓' })).s).toBe(200);
+	await page.goto(`/pages/${id}`);
+	await iconBtn(page).click();
+	const dlg = picker(page);
+	await expect(dlg).toBeVisible();
+	await page.keyboard.press('Tab');
+	const remove = dlg.getByRole('button', { name: 'Remove' });
+	await expect(remove).toBeFocused();
+	const sent = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith(`/api/pages/${id}`));
+	await page.keyboard.press('Enter');
+	// Remove ran (icon: null), not the highlighted emoji
+	expect((await sent).postDataJSON()).toEqual({ icon: null });
+	await expect(page.getByRole('button', { name: 'Add icon' })).toBeVisible();
+});
+
+test('C4 the graph list row shows the icon with the title, like the canvas label', async ({ page }) => {
+	const title = `Icon c4 ${stamp()}`;
+	const id = await mkPage(page, title);
+	expect((await api(page, 'PATCH', `/api/pages/${id}`, { icon: '📗' })).s).toBe(200);
+	await page.goto('/pages/graph');
+	await page.getByRole('button', { name: 'Show as list instead' }).click();
+	const row = page.getByRole('list', { name: 'Pages and their links' }).getByRole('link', { name: title });
+	await expect(row).toContainText(`📗 ${title}`);
+});
+
 test('C3 pick an emoji: PATCH, the icon survives a reload and the sidebar shows it; Remove goes back to "Add icon"', async ({
 	page,
 }) => {
@@ -185,6 +214,62 @@ test('C5 an icon change keeps unsaved editor text and the revision in line (no 4
 	await page.reload();
 	await expect(page.getByLabel('Page content')).toContainText('Before the icon and after');
 	await expect(iconBtn(page)).toHaveText('🧪');
+});
+
+test('C5 a stale editor + another save: picking an icon is refused, the conflict stays and their text is kept', async ({
+	page,
+}) => {
+	const id = await mkPage(page, `Icon c5b ${stamp()}`);
+	await page.goto(`/pages/${id}`);
+	const editor = page.getByLabel('Page content');
+	await editor.click();
+	await page.keyboard.type('mine saved first');
+	await expect(page.getByText('Saved', { exact: true })).toBeVisible();
+	const before = (await api(page, 'GET', `/api/pages/${id}`)).j as { page: { revision: number } };
+	// another writer saves first: this open editor is now stale (its revision is one behind)
+	const theirs = await page.evaluate(
+		async ([pid, revision]) => {
+			const r = await fetch(`/api/pages/${pid}`, {
+				method: 'PATCH',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					doc: {
+						type: 'doc',
+						content: [{ type: 'paragraph', content: [{ type: 'text', text: 'their text' }] }],
+					},
+					revision,
+				}),
+			});
+			return r.status;
+		},
+		[id, before.page.revision] as const,
+	);
+	expect(theirs).toBe(200);
+	// type in the stale editor, then pick an icon: the flush fails, so no icon PATCH and no new revision
+	await editor.click();
+	await page.keyboard.type(' mine after');
+	await page.getByRole('button', { name: 'Add icon' }).click();
+	await picker(page).getByRole('button', { name: '📄', exact: true }).click();
+	await expect(page.getByText(/Changed elsewhere/)).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Add icon' })).toBeVisible(); // the pick was refused
+	const afterPick = (await api(page, 'GET', `/api/pages/${id}`)).j as {
+		page: { icon: string | null; revision: number };
+	};
+	expect(afterPick.page.icon).toBeNull();
+	expect(afterPick.page.revision).toBe(before.page.revision + 1); // only their save bumped it
+	// typing again tries to save and must still be a 409: their text is never overwritten
+	const attempt = page.waitForRequest((r) => r.method() === 'PATCH' && r.url().endsWith(`/api/pages/${id}`));
+	await editor.click();
+	await page.keyboard.type(' and again');
+	await attempt;
+	await page.waitForTimeout(300);
+	const now = (await api(page, 'GET', `/api/pages/${id}`)).j as {
+		page: { revision: number; doc: { content: unknown[] } };
+	};
+	const serverText = JSON.stringify(now.page.doc);
+	expect(serverText).toContain('their text');
+	expect(serverText).not.toContain('mine');
+	expect(now.page.revision).toBe(before.page.revision + 1);
 });
 
 test('C8 the icon toast Undo puts the previous icon back, and removing is undoable too', async ({ page }) => {

@@ -241,7 +241,9 @@
 						{@const out = g0.edges.filter((e) => e.source === n.id && e.relation === 'link').length}
 						{@const inn = g0.edges.filter((e) => e.target === n.id && e.relation === 'link').length}
 						<li>
-							<a href="/pages/{n.id}" class:arch={n.archived}>{n.title || 'Untitled'}</a>
+							<a href="/pages/{n.id}" class:arch={n.archived}
+								>{(n.icon ? `${n.icon} ` : '') + (n.title || 'Untitled')}</a
+							>
 							<span class="hint"
 								>{n.archived ? 'archived · ' : ''}{out} links out · {inn} in{n.parentId
 									? ` · in ${title(n.parentId)}`

@@ -42,6 +42,12 @@ const blocks = (id: string) =>
 	}[];
 const undoCount = () =>
 	(handle().sqlite.prepare('SELECT count(*) AS n FROM undo_actions').get() as { n: number }).n;
+const lastOpened = (id: string) =>
+	(
+		handle().sqlite.prepare('SELECT last_opened_at FROM pages WHERE id = ?').get(id) as {
+			last_opened_at: string;
+		}
+	).last_opened_at;
 
 /** the real PATCH route, as the given signed-in user */
 const patchRoute = async (user: App.SafeUser, id: string, b: unknown) => {
@@ -152,15 +158,23 @@ describe('C8 undo', () => {
 		const p = pages.create(owner.id, { parentId: null, title: 'Undo icon' });
 		pages.update(owner.id, p.id, { icon: '📄' });
 		const beforeRevision = row(p.id).revision;
+		// an old Recents value in the journal's before-row must not come back with the icon
+		handle()
+			.sqlite.prepare(`UPDATE pages SET last_opened_at = '2000-01-01T00:00:00.000Z' WHERE id = ?`)
+			.run(p.id);
 		const set = await patchRoute(owner, p.id, { icon: '📚' });
 		const afterRevision = row(p.id).revision;
 		expect(afterRevision).toBe(beforeRevision + 1);
 		pages.get(owner.id, p.id); // the client re-reads the page after a save: last_opened_at moves
+		const opened = lastOpened(p.id);
+		expect(opened).not.toBe('2000-01-01T00:00:00.000Z');
 		undo(owner.id, set.json.undo?.id);
 		expect(row(p.id).icon).toBe('📄');
 		// D-V4-22: undo must not write the old revision back (the editor still holds the newer one)
 		expect(row(p.id).revision).toBe(afterRevision);
 		expect(set.json.page?.revision).toBe(afterRevision);
+		// ...nor the old last_opened_at (Recents stays where the page was last opened)
+		expect(lastOpened(p.id)).toBe(opened);
 		// the next text save with the revision the client knows is accepted, not a 409
 		const saved = pages.update(owner.id, p.id, { doc: doc(para('after undo')), revision: afterRevision });
 		expect(saved.revision).toBe(afterRevision + 1);
