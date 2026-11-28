@@ -23,8 +23,4 @@
     <string name="sc_add_item">Add item</string>
     <string name="sc_new_note">New note</string>
     <string name="sc_today">Today</string>
-    <!-- voice note (card 13): the microphone permission alias, said in the app before Android asks (D-V4-20) -->
-    <string name="microphone_permission_name">Microphone</string>
-    <string name="microphone_permission_rationale">Life Tracker only listens while this button is on.</string>
-    <string name="microphone_permission_note">Speech is turned into text by Android\'s speech service, on your phone when it can.</string>
 </resources>

@@ -78,6 +78,7 @@
 	let dirty = false;
 	let saving: Promise<void> | null = null;
 	let tmp = 0;
+	const BODY_MAX = 20000; // the textarea's cap; a dictated insert never goes past it (C8)
 
 	const hasContent = () =>
 		!!(title.trim() || body.trim() || items.some((i) => i.text.trim()) || images.length);
@@ -414,11 +415,18 @@
 	/** the words go in at the caret; nothing around them changes (C8) */
 	function insertSpeech(text: string) {
 		if (gone) return;
-		const at = bodyEl?.selectionStart ?? body.length;
-		body = body.slice(0, at) + text + body.slice(at);
-		const end = at + text.length;
-		changed(); // C11: the note's own autosave stays the only writer, so no undo entry and no toast
-		void tick().then(() => bodyEl?.setSelectionRange(end, end));
+		const el = bodyEl;
+		const at = el?.selectionStart ?? body.length;
+		const words = text.slice(0, Math.max(0, BODY_MAX - body.length));
+		if (!words) return;
+		el?.focus();
+		el?.setSelectionRange(at, at); // collapse: dictation never replaces the selected text
+		// C11: execCommand inserts as a real edit, so the textarea's own Ctrl+Z removes the dictated words
+		if (!el || !document.execCommand('insertText', false, words)) {
+			body = body.slice(0, at) + words + body.slice(at); // fallback: no editing command (old WebView)
+			changed();
+			void tick().then(() => el?.setSelectionRange(at + words.length, at + words.length));
+		}
 	}
 
 	const toggle = (list: string[], v: string) =>
@@ -581,7 +589,7 @@
 					bind:value={body}
 					bind:this={bodyEl}
 					oninput={changed}
-					maxlength="20000"
+					maxlength={BODY_MAX}
 					rows="6"></textarea>
 				{#if canSpeak && shared !== 'view'}
 					<button

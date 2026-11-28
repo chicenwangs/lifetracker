@@ -162,7 +162,7 @@
 	.scrim {
 		position: fixed;
 		inset: 0;
-		z-index: 72; /* above the Keep note card (71): a sheet can open from inside a dialog */
+		z-index: 72; /* above the Keep note card (71) */
 		background: var(--scrim);
 		/* via a var: the CSS minifier otherwise keeps only the -webkit- form (Firefox needs the plain one) */
 		--sheet-blur: blur(8px);

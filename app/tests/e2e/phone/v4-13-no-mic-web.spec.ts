@@ -181,6 +181,29 @@ test('C10 Back closes the rationale sheet before the note; the sheet’s buttons
 	await expect(note).toBeVisible(); // Back closed only the sheet
 });
 
+test('C8 a dictated insert never pushes the note past its 20 000-character cap', async ({ page }) => {
+	await fakeApp(page);
+	await signIn(page);
+	const big = 'a'.repeat(19_995);
+	const note = await openNote(page, `Cap ${Date.now().toString(36)}`, big);
+	const body = note.getByRole('textbox').nth(1);
+	const speak = mic(note);
+
+	await speak.click();
+	await page
+		.getByRole('dialog', { name: 'Use the microphone?' })
+		.getByRole('button', { name: 'Continue' })
+		.click();
+	// the caret is at the end: only 5 of the 10 dictated characters fit
+	await body.evaluate((el) => {
+		const ta = el as HTMLTextAreaElement;
+		ta.setSelectionRange(ta.value.length, ta.value.length);
+	});
+	await say(page, '0123456789');
+	await expect.poll(() => value(body)).toBe(`${big}01234`);
+	expect(await caret(body)).toEqual([20_000, 20_000]);
+});
+
 test('C8/C12 empty and failed dictation: the note stays unchanged and the button returns to idle', async ({
 	page,
 }) => {

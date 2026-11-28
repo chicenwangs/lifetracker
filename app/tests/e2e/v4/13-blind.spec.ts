@@ -165,14 +165,16 @@ test("C11 dictation only types: no new undo entry, no toast, the note's autosave
 		}, id);
 	expect(await body()).toBe('alpha appended');
 
-	// the note's own text undo applies: a real typed edit is undone in the field (the dictated insert is a
-	// programmatic value change, which browsers never put on their undo stack), and the server journal is untouched
+	// C11: the note's own text undo applies to the dictation itself — Ctrl+Z removes the dictated words
 	await ta.click();
+	await p.keyboard.press('Control+z');
+	await expect.poll(async () => (await ta.inputValue()).trim()).toBe('alpha');
+	// a typed edit still undoes normally too, and the server journal is untouched
 	await p.keyboard.press('End');
 	await p.keyboard.type(' typed');
-	await expect(ta).toHaveValue('alpha appended typed');
+	await expect(ta).toHaveValue('alpha typed');
 	await p.keyboard.press('Control+z');
-	await expect.poll(async () => (await ta.inputValue()).trim()).toBe('alpha appended'); // the field undid it
+	await expect.poll(async () => (await ta.inputValue()).trim()).toBe('alpha');
 	await p.waitForTimeout(500);
 	expect(reqs.filter((r) => r === 'POST /api/undo')).toEqual([]);
 	await expect(p.locator('.undid')).toHaveCount(0);
