@@ -11,14 +11,23 @@ type ThemeBars = {
 	setDark(opts: { dark: boolean }): Promise<void>;
 };
 type Session = { signOut(): Promise<void> };
+/** card 13: Android's own speech recognizer, text only (mobile/…/Speech.java) */
+type Speech = { listen(opts: { preferOffline?: boolean }): Promise<{ text: string }> };
 type Cap = {
 	isNativePlatform?: () => boolean;
-	Plugins?: { Updater?: Updater; SystemBars?: SystemBars; ThemeBars?: ThemeBars; Session?: Session };
+	Plugins?: {
+		Updater?: Updater;
+		SystemBars?: SystemBars;
+		ThemeBars?: ThemeBars;
+		Session?: Session;
+		Speech?: Speech;
+	};
 };
 const cap = () => (globalThis as { Capacitor?: Cap }).Capacitor;
 
 export const isApp = () => !!cap()?.isNativePlatform?.();
 export const updater = () => cap()?.Plugins?.Updater;
+export const speech = () => cap()?.Plugins?.Speech;
 /** #201: the Android app drops its alarms, notifications, cached sync and widget data (no-op on the web) */
 export const signOutNative = (): Promise<void> =>
 	cap()
