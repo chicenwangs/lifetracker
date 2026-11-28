@@ -102,13 +102,18 @@ export function backCloses(_node: HTMLElement, close: () => void) {
 			// timer could fire after a new navigation began. Links and goto() have set leaving by now.
 			const mine = { id, dropped: false };
 			pending = mine;
-			queueMicrotask(() => {
-				if (mine.dropped) return;
-				if (pending === mine) pending = null;
-				if (leaving || !ours(id)) return;
-				skip++;
-				history.back();
-			});
+			// two microtasks: when Svelte destroys this layer before mounting its replacement in the same flush,
+			// the new layer's mount microtask still sees `pending` and reuses the entry instead of pushing a
+			// second one (one sheet swapped for another = one Back, one visible change)
+			queueMicrotask(() =>
+				queueMicrotask(() => {
+					if (mine.dropped) return;
+					if (pending === mine) pending = null;
+					if (leaving || !ours(id)) return;
+					skip++;
+					history.back();
+				}),
+			);
 		},
 	};
 }

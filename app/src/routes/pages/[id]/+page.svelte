@@ -10,11 +10,14 @@
 	import DbCell from '$lib/database/DbCell.svelte';
 	import ShareDialog from '$lib/components/ShareDialog.svelte';
 	import IconPicker from '$lib/components/IconPicker.svelte';
+	import BottomSheet from '$lib/components/BottomSheet.svelte';
+	import { isPhone } from '$lib/client/phone';
 	import type { PageDTO, PageNode, UndoRef } from '$lib/types';
 
 	let { data } = $props();
 	const pg = $derived(data.page as PageDTO);
 	const tree = $derived(data.tree as PageNode[]);
+	const phone = isPhone(); // the menu opens after mount: the phone sheet vs the desktop popover
 	let title = $state('');
 	let saveState = $state<'idle' | 'saving' | 'saved' | 'failed' | 'conflict'>('idle');
 	let editor: PageEditor | undefined = $state();
@@ -22,6 +25,7 @@
 	let moving = $state(false);
 	let sharing = $state(false);
 	let iconOpen = $state(false);
+	let duping = $state(false);
 	let iconBtn: HTMLButtonElement | undefined = $state();
 	const mine = $derived(pg.access === 'owner');
 	const canEdit = $derived(pg.access !== 'view');
@@ -47,24 +51,44 @@
 	}
 
 	let tt: ReturnType<typeof setTimeout> | null = null;
+	/** title saves run one at a time: two PATCHes could return out of order and hand the editor an old revision */
+	let titleChain: Promise<boolean> = Promise.resolve(true);
 	function onTitle() {
 		saveState = 'saving';
 		if (tt) clearTimeout(tt);
-		tt = setTimeout(saveTitle, 500);
+		tt = setTimeout(() => {
+			tt = null;
+			void queueTitleSave();
+		}, 500);
 	}
-	async function saveTitle() {
+	function queueTitleSave(): Promise<boolean> {
+		titleChain = titleChain.then(saveTitle);
+		return titleChain;
+	}
+	async function saveTitle(): Promise<boolean> {
 		try {
 			// one writer at a time: the revision must line up. A failed flush (e.g. a 409) must not
 			// bump the revision, or the stale editor would overwrite the other writer's text.
-			if ((await editor?.flush()) === false) return;
+			if ((await editor?.flush()) === false) return false;
 			const r = await patch<{ page: PageDTO }>(`/api/pages/${pg.id}`, { title });
 			editor?.setRevision(r.page.revision);
 			saveState = 'saved';
 			await invalidateAll();
+			return true;
 		} catch (e) {
 			saveState = 'failed';
 			showError(e);
+			return false;
 		}
+	}
+	/** card 17 fix: a title still inside the 500 ms window (or being saved now) is saved before a duplicate copies it */
+	async function flushTitle(): Promise<boolean> {
+		if (tt) {
+			clearTimeout(tt);
+			tt = null;
+			return queueTitleSave();
+		}
+		return titleChain;
 	}
 
 	// card 16 (D-V4-22): the icon is its own journaled mutation; the editor keeps its text and revision
@@ -128,6 +152,41 @@
 			showToast('Restored');
 		} catch (e) {
 			showError(e);
+		}
+	}
+	// card 17 (D-V4-23): no journal row; the toast Undo trashes the copy through the normal DELETE, so it
+	// stays restorable from Trash and Ctrl+Z never touches it.
+	async function duplicatePage() {
+		if (duping) return; // C11: a double tap makes one copy
+		duping = true;
+		try {
+			// copy what is on screen, never the last autosave: editor text, then the pending title
+			if ((await editor?.flush()) === false) return; // the editor shows its own conflict state
+			if (!(await flushTitle())) return;
+			const r = await post<{ page: PageDTO }>(`/api/pages/${pg.id}/duplicate`);
+			menu = false;
+			const copy = r.page.id;
+			showToast('Duplicated', {
+				undo: async () => {
+					try {
+						await del(`/api/pages/${copy}`);
+						await invalidateAll();
+					} catch (e) {
+						showError(e);
+					}
+				},
+			});
+			// the toast/Undo must exist even when the refresh fails: the copy is already on the server
+			try {
+				await invalidateAll();
+			} catch {
+				/* a reload shows the copy; the server write is done */
+			}
+		} catch (e) {
+			menu = false;
+			showError(e);
+		} finally {
+			duping = false;
 		}
 	}
 	async function trash() {
@@ -232,46 +291,58 @@
 				aria-label="Page menu"
 				onclick={() => (menu = !menu)}>⋯</button
 			>
-			{#if menu}
-				<div use:backCloses={() => (menu = false)} class="menu card" role="menu">
-					{#if canEdit}
-						<!-- phone (D-V4-22): the icon entry lives here, not beside the title. The menu stays
-						     mounted under the sheet so Back closes the picker first (one history layer) -->
-						<button role="menuitem" type="button" class="narrow" onclick={() => (iconOpen = true)}
-							>Add icon</button
-						>
-					{/if}
-					{#if mine}
+			{#snippet pageActions(mobile: boolean)}
+				{#if mobile && canEdit}
+					<button role="menuitem" type="button" onclick={() => ((menu = false), (iconOpen = true))}
+						>Add icon</button
+					>
+				{/if}
+				{#if mine}
+					{#if mobile}
 						<!-- phone (#98): Pin + Share live here, the bar only has room for ⋯ -->
-						{#if !pg.archived}<button role="menuitem" type="button" class="narrow" onclick={pin}
+						{#if !pg.archived}<button role="menuitem" type="button" onclick={pin}
 								>{pg.pinned ? 'Unpin from header' : 'Pin to header'}</button
 							>{/if}
-						<button
-							role="menuitem"
-							type="button"
-							class="narrow"
-							onclick={() => ((sharing = true), (menu = false))}>Share…</button
+						<button role="menuitem" type="button" onclick={() => ((sharing = true), (menu = false))}
+							>Share…</button
 						>
-						<button role="menuitem" type="button" onclick={() => ((moving = true), (menu = false))}
-							>Move to…</button
-						>
-						<button role="menuitem" type="button" onclick={() => reorder(-1)}>Move up</button>
-						<button role="menuitem" type="button" onclick={() => reorder(1)}>Move down</button>
 					{/if}
-					<button
-						role="menuitem"
-						type="button"
-						onclick={() => (
-							navigator.clipboard?.writeText(location.href),
-							(menu = false),
-							showToast('Link copied')
-						)}>Copy link</button
+					<button role="menuitem" type="button" onclick={() => ((moving = true), (menu = false))}
+						>Move to…</button
 					>
-					{#if mine}
-						{#if !pg.archived}<button role="menuitem" type="button" onclick={archive}>Archive</button>{/if}
-						<button role="menuitem" type="button" class="danger" onclick={trash}>Delete…</button>
-					{/if}
-				</div>
+					<button role="menuitem" type="button" onclick={() => reorder(-1)}>Move up</button>
+					<button role="menuitem" type="button" onclick={() => reorder(1)}>Move down</button>
+					<div class="rule" role="separator"></div>
+				{/if}
+				{#if !pg.archived && !rec}
+					<button role="menuitem" type="button" disabled={duping} onclick={duplicatePage}>Duplicate</button>
+				{/if}
+				<button
+					role="menuitem"
+					type="button"
+					onclick={() => (
+						navigator.clipboard?.writeText(location.href),
+						(menu = false),
+						showToast('Link copied')
+					)}>Copy link</button
+				>
+				{#if mine}
+					{#if !pg.archived}<button role="menuitem" type="button" onclick={archive}>Archive</button>{/if}
+					<button role="menuitem" type="button" class="danger" onclick={trash}>Delete…</button>
+				{/if}
+			{/snippet}
+			{#if menu}
+				{#if phone}
+					<BottomSheet label="Page actions" onclose={() => (menu = false)}>
+						<div class="sheetmenu" role="menu" aria-label="Page actions">
+							{@render pageActions(true)}
+						</div>
+					</BottomSheet>
+				{:else}
+					<div use:backCloses={() => (menu = false)} class="menu card" role="menu">
+						{@render pageActions(false)}
+					</div>
+				{/if}
 			{/if}
 		</div>
 	</div>
@@ -503,9 +574,6 @@
 		font-size: 12px;
 		color: var(--quiet);
 	}
-	.menu .narrow {
-		display: none;
-	}
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.bar .wide {
 			display: none;
@@ -519,12 +587,6 @@
 			margin: 0 0 4px;
 			font-size: 44px;
 			line-height: 1;
-		}
-		.menu .narrow {
-			display: block;
-		}
-		.menu-wrap .menu button {
-			min-height: 48px; /* beats the base 32 px rule below (#223) */
 		}
 		.crumbs a {
 			display: inline-flex;
@@ -574,6 +636,47 @@
 	}
 	.menu .danger {
 		color: var(--exam-edge);
+	}
+	.menu .rule {
+		height: 1px;
+		margin: 4px 6px;
+		background: var(--rule);
+	}
+	.menu button:disabled {
+		opacity: 0.55;
+		cursor: default;
+	}
+	.sheetmenu {
+		display: flex;
+		flex-direction: column;
+	}
+	.sheetmenu button {
+		text-align: left;
+		min-height: 48px;
+		padding: 0 10px;
+		background: none;
+		border: 0;
+		border-radius: 8px;
+		color: var(--ink);
+		font: inherit;
+		font-size: 15px;
+		cursor: pointer;
+	}
+	.sheetmenu button:hover {
+		background: var(--pill);
+		color: var(--pill-ink);
+	}
+	.sheetmenu .danger {
+		color: var(--exam-edge);
+	}
+	.sheetmenu .rule {
+		height: 1px;
+		margin: 4px 6px;
+		background: var(--rule);
+	}
+	.sheetmenu button:disabled {
+		opacity: 0.55;
+		cursor: default;
 	}
 	.moveto {
 		display: flex;

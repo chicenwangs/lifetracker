@@ -171,6 +171,14 @@ export function syncRefs(
 	}
 }
 
+/** card 17 (D-V4-23): of `ids`, the files this user owns - the only images a duplicate keeps */
+export function ownedBy(userId: string, ids: string[]): Set<string> {
+	const q = db().prepare(
+		`SELECT 1 FROM attachments WHERE id = ? AND owner_id = ? AND status = 'ready' AND deleted_at IS NULL`,
+	);
+	return new Set(ids.filter((id) => q.get(id, userId)));
+}
+
 /** link an attachment to its source (Keep note, page block …) */
 export function addRef(ownerId: string, attachmentId: string, sourceType: string, sourceId: string): void {
 	const r = db().prepare(`SELECT owner_id, status FROM attachments WHERE id = ?`).get(attachmentId) as { owner_id: string; status: string } | undefined;

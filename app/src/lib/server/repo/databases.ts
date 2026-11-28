@@ -5,6 +5,7 @@ import { handle, txImmediate } from '../db';
 import { newId } from '../crypto';
 import { ApiFail, bad, notFound } from '../http';
 import * as pages from './pages';
+import { needDb } from './shares';
 import {
 	checkValue,
 	compare,
@@ -72,6 +73,53 @@ export function create(
 				doc: { type: 'doc', content: [{ type: 'database', attrs: { databaseId: id } }] },
 			});
 		return { id, pageId };
+	});
+}
+
+/** every old property id used by a view config (sort, filters, hidden, order, later board group) -> the copy's id */
+const remapProps = (cfg: unknown, ids: Map<string, string>): unknown =>
+	typeof cfg === 'string'
+		? (ids.get(cfg) ?? cfg)
+		: Array.isArray(cfg)
+			? cfg.map((x) => remapProps(x, ids))
+			: cfg && typeof cfg === 'object'
+				? Object.fromEntries(Object.entries(cfg).map(([k, v]) => [k, remapProps(v, ids)]))
+				: cfg;
+
+/** card 17 fix: a database record's page is no page to duplicate (the UI hides the row; the API refuses too) */
+export const isRecordPage = (pageId: string): boolean =>
+	!!db().prepare(`SELECT 1 FROM database_records WHERE page_id = ?`).get(pageId);
+
+/** card 17 (O-3, D-V4-23): copy a database's schema - properties + views, no records - onto a page the viewer
+ *  owns; view configs are remapped to the copy's property ids. Returns the new database id. */
+export function copySchema(viewerId: string, sourceDbId: string, targetPageId: string): string {
+	return txImmediate(() => {
+		const src = own(needDb(viewerId, sourceDbId), sourceDbId);
+		pages.get(viewerId, targetPageId, false);
+		const id = newId('pdb');
+		const t = now();
+		db()
+			.prepare(`INSERT INTO page_databases (id, owner_id, page_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
+			.run(id, viewerId, targetPageId, src.title, t, t); // prettier-ignore
+		const ids = new Map<string, string>();
+		const srcProps = db()
+			.prepare(`SELECT id, name, property_type, config_json, position FROM database_properties WHERE database_id = ? ORDER BY position`)
+			.all(sourceDbId) as { id: string; name: string; property_type: PropType; config_json: string; position: number }[]; // prettier-ignore
+		for (const p of srcProps) {
+			const nid = newId('pdp');
+			ids.set(p.id, nid);
+			db()
+				.prepare(`INSERT INTO database_properties (id, database_id, name, property_type, config_json, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+				.run(nid, id, p.name, p.property_type, p.config_json, p.position, t, t); // prettier-ignore
+		}
+		const srcViews = db()
+			.prepare(`SELECT id, name, view_type, config_json, position FROM database_views WHERE database_id = ? ORDER BY position`)
+			.all(sourceDbId) as { name: string; view_type: DbView['type']; config_json: string; position: number }[]; // prettier-ignore
+		for (const v of srcViews)
+			db()
+				.prepare(`INSERT INTO database_views (id, database_id, name, view_type, config_json, position) VALUES (?, ?, ?, ?, ?, ?)`)
+				.run(newId('pdv'), id, v.name, v.view_type, JSON.stringify(remapProps(JSON.parse(v.config_json), ids)), v.position); // prettier-ignore
+		return id;
 	});
 }
 
