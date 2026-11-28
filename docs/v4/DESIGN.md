@@ -46,7 +46,7 @@ If this doc and BREAKDOWN disagree on behaviour: BREAKDOWN wins, then fix this d
 
 ### 1.5 Voice in Keep quick note (PR 13, app only) · board M-V1
 - Mic button inside the composer, right of the text field, 48 dp. Idle = outline mic. Listening = filled mic + pulsing ring + text "Listening…" as placeholder.
-- First tap → Android permission rationale sheet: "Life Tracker uses the microphone only while you hold this on. Speech is turned into text on your phone." `Continue` · `Not now`.
+- First tap → Android permission rationale sheet: "Life Tracker only listens while this button is on." then, verbatim (O-7), "Speech is turned into text by Android's speech service, on your phone when it can." `Continue` · `Not now` (D-V4-20).
 - Denied → mic greyed, tap shows toast "Microphone is off for Life Tracker. Turn it on in Android settings."
 
 ---
