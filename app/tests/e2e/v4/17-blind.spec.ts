@@ -1,7 +1,8 @@
 // Blind tests for card 17 (duplicate page) on desktop, from its Done-when lines only:
 // C7 (Duplicate in the second ⋯ group after Move to…, toast "Duplicated · Undo", the copy in the sidebar
 // directly below the original, the original stays open), C2 (the copy opens with the same blocks),
-// C8 (the toast Undo trashes the copy through DELETE, restorable from Trash, Ctrl+Z never touches it),
+// C8 (the toast Undo trashes the copy through DELETE, restorable from Trash, and the duplicate writes no
+// journal row — counted in the DB, not by pressing Ctrl+Z in a journal shared with other specs),
 // C9 (two independent copies; a failed duplicate alerts and creates nothing), C11 (the row is disabled while
 // the request runs so a double tap makes one copy; an empty page copies to an empty editor).
 // No builder test was opened.
@@ -268,9 +269,18 @@ test('C2 desktop: opening the copy in the editor shows the same paragraphs, head
 });
 
 // ---- C8 ----------------------------------------------------------------------------------------------------
-test('C8 desktop: the toast Undo trashes the copy through DELETE and Trash can restore it; Ctrl+Z never touches a copy', async () => {
+test('C8 desktop: the toast Undo trashes the copy through DELETE and Trash can restore it; a duplicate writes no journal row', async () => {
 	const src = await makePage(PREFIX + 'C8 source');
 	await page.goto(`/pages/${src.id}`);
+	const srcBefore = (
+		(await api(page, 'GET', `/api/pages/${src.id}`)).json as {
+			page: { revision: number; updatedAt: string };
+		}
+	).page;
+	// D-V4-23: undo = the toast trashes the copy through DELETE, never a journal entry. The e2e DB journal is
+	// shared with the specs that ran before this file, so the count (not a Ctrl+Z press, which would undo THEIR
+	// row) is the honest assertion; on a page Ctrl+Z is the editor's own undo anyway.
+	const journalBefore = journalCount();
 	await openMenu();
 	const before = new Set((await tree()).map((n) => n.id));
 	await menu().getByRole('menuitem', { name: 'Duplicate' }).click();
@@ -284,12 +294,14 @@ test('C8 desktop: the toast Undo trashes the copy through DELETE and Trash can r
 		.toBe(1);
 	const copy = fresh[0]!;
 	made.add(copy.id);
+	expect(journalCount()).toBe(journalBefore); // the duplicate wrote no undo_actions row
 
 	const deleted = page.waitForResponse(
 		(r) => r.request().method() === 'DELETE' && r.url().endsWith(`/api/pages/${copy.id}`),
 	);
 	await page.locator('.toast').getByRole('button', { name: 'Undo' }).click();
 	expect((await deleted).status()).toBe(200);
+	expect(journalCount()).toBe(journalBefore); // the toast Undo is a plain DELETE, also journal-free
 	await expect(treeLink('Copy of ' + PREFIX + 'C8 source')).toHaveCount(0);
 	expect((await api(page, 'GET', `/api/pages/${copy.id}`)).status).toBe(404);
 	expect((await api(page, 'GET', `/api/pages/${src.id}`)).status).toBe(200);
@@ -300,17 +312,20 @@ test('C8 desktop: the toast Undo trashes the copy through DELETE and Trash can r
 	await expect(row).toBeVisible();
 	await expect(row.getByRole('button', { name: 'Restore' })).toBeVisible();
 
-	// no journal row: the global undo has nothing to replay, and Ctrl+Z on a page stays in the editor
+	// a second copy: still no journal row, the copy survives, and the source is never altered
 	await page.goto(`/pages/${src.id}`);
-	const journalBefore = journalCount();
 	const copy2 = await duplicateUI(src.id);
 	await expect(page.locator('.toast')).toContainText('Duplicated');
-	expect(journalCount()).toBe(journalBefore); // the duplicate wrote no undo_actions row
-	await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-	await page.keyboard.press('Control+z');
+	expect(journalCount()).toBe(journalBefore);
 	await expect(treeLink('Copy of ' + PREFIX + 'C8 source')).toHaveCount(1);
 	expect((await api(page, 'GET', `/api/pages/${copy2.id}`)).status).toBe(200);
-	expect((await api(page, 'GET', `/api/pages/${src.id}`)).status).toBe(200);
+	const srcAfter = (
+		(await api(page, 'GET', `/api/pages/${src.id}`)).json as {
+			page: { revision: number; updatedAt: string };
+		}
+	).page;
+	expect(srcAfter.revision).toBe(srcBefore.revision);
+	expect(srcAfter.updatedAt).toBe(srcBefore.updatedAt);
 });
 
 // ---- C9 ----------------------------------------------------------------------------------------------------
