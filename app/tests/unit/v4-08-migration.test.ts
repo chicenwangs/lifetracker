@@ -180,7 +180,8 @@ it('C3 schema.ts, the hand-written snapshot and the journal agree on all four co
 	const journal = JSON.parse(readFileSync(join(SRC, 'meta/_journal.json'), 'utf8')) as {
 		entries: { idx: number; when: number; tag: string }[];
 	};
-	expect(journal.entries).toHaveLength(12);
+	// 0011 is entry 11; later cards append entries without touching these four columns
+	expect(journal.entries.slice(0, 12).map((e) => e.idx)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 	expect(journal.entries[11]).toMatchObject({ idx: 11, tag: '0011_v33_columns' });
 	expect(journal.entries[11]!.when).toBeGreaterThan(journal.entries[10]!.when);
 
@@ -208,11 +209,14 @@ it('C4 migrateDb runs 0000-0011 on an empty DB and a second run changes nothing'
 		expect(h.sqlite.pragma('foreign_key_check')).toEqual([]);
 		const applied = () =>
 			(h.sqlite.prepare('SELECT count(*) AS c FROM __drizzle_migrations').get() as { c: number }).c;
-		expect(applied()).toBe(12);
+		const expected = (
+			JSON.parse(readFileSync(join(SRC, 'meta/_journal.json'), 'utf8')) as { entries: unknown[] }
+		).entries.length;
+		expect(applied()).toBe(expected);
 		const before = { tables: tables(h), snap: snap(h) };
 		const shape = Object.fromEntries(before.tables.map((t) => [t, cols(h, t)]));
 		migrateDb(h);
-		expect(applied()).toBe(12);
+		expect(applied()).toBe(expected);
 		expect(tables(h)).toEqual(before.tables);
 		expect(Object.fromEntries(tables(h).map((t) => [t, cols(h, t)]))).toEqual(shape);
 		expect(snap(h)).toEqual(before.snap);

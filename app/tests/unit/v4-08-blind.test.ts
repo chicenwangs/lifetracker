@@ -303,9 +303,10 @@ it('C3 schema.ts, the 0011 snapshot and the journal all carry the four columns',
 	});
 
 	const journal = readJournal();
-	expect(journal.entries).toHaveLength(12);
-	expect(journal.entries.map((e) => e.idx)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-	expect(journal.entries[11]).toMatchObject({ idx: 11, tag: '0011_v33_columns', breakpoints: true });
+	// 0011 is entry 11; later cards append entries and keep this prefix
+	expect(journal.entries.slice(0, 12).map((e) => e.idx)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+	expect(journal.entries[11]).toMatchObject({ idx: 11, tag: '0011_v33_columns' });
+	expect(journal.entries[11]!.breakpoints).toBe(true);
 	for (const e of journal.entries) expect(existsSync(join(DRIZZLE, `${e.tag}.sql`))).toBe(true);
 });
 
@@ -313,23 +314,24 @@ it('C3 schema.ts, the 0011 snapshot and the journal all carry the four columns',
 it('C4 migrateDb applies 0000-0011 on an empty, a v3.1.2-shaped and a new DB, stays sound, and a second run is a no-op', () => {
 	// 1. empty
 	const empty = migrateInMemory();
+	const count = readJournal().entries.length;
 	expect(health(empty.sqlite)).toEqual({ integrity: 'ok', fk: [] });
-	expect(appliedMigrations(empty.sqlite)).toHaveLength(12);
-	expect(appliedMigrations(empty.sqlite).at(-1)).toBe(readJournal().entries[11]!.when);
+	expect(appliedMigrations(empty.sqlite)).toHaveLength(count);
+	expect(appliedMigrations(empty.sqlite).at(-1)).toBe(readJournal().entries.at(-1)!.when);
 	const first = snapshot(empty.sqlite);
 	migrateDb(empty);
 	expect(health(empty.sqlite)).toEqual({ integrity: 'ok', fk: [] });
 	expect(snapshot(empty.sqlite)).toEqual(first);
-	expect(appliedMigrations(empty.sqlite)).toHaveLength(12);
+	expect(appliedMigrations(empty.sqlite)).toHaveLength(count);
 
-	// 2. upgrade from the v3.1.2 shape: 0000-0010 + rows, then 0011
+	// 2. upgrade from the v3.1.2 shape: 0000-0010 + rows, then every later migration
 	const old = preV33();
 	seedV312(old.sqlite);
 	expect(hasColumn(old.sqlite, 'items', 'repeat_from_completion')).toBe(false);
 	expect(hasColumn(old.sqlite, 'users', 'digest_time')).toBe(false);
 	migrateDb(old);
 	expect(health(old.sqlite)).toEqual({ integrity: 'ok', fk: [] });
-	expect(appliedMigrations(old.sqlite)).toHaveLength(12);
+	expect(appliedMigrations(old.sqlite)).toHaveLength(count);
 	const upgraded = snapshot(old.sqlite);
 	migrateDb(old);
 	expect(health(old.sqlite)).toEqual({ integrity: 'ok', fk: [] });
@@ -347,7 +349,7 @@ it('C4 migrateDb applies 0000-0011 on an empty, a v3.1.2-shaped and a new DB, st
 	migrateDb(fresh);
 	expect(health(fresh.sqlite)).toEqual({ integrity: 'ok', fk: [] });
 	expect(snapshot(fresh.sqlite)).toEqual(seeded);
-	expect(appliedMigrations(fresh.sqlite)).toHaveLength(12);
+	expect(appliedMigrations(fresh.sqlite)).toHaveLength(count);
 });
 
 // ---- C5 --------------------------------------------------------------------------------------------------

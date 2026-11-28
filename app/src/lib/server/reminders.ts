@@ -21,7 +21,7 @@ import type { ReminderDTO } from '$lib/types';
 import * as itemsRepo from './repo/items';
 import { undoable } from './undo';
 
-export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record';
+export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record' | 'page_todo';
 const db = () => handle().sqlite;
 export const MAX_OPEN = 500;
 type Row = { id: string; owner_id: string; source_type: Source; source_id: string; rule_kind: 'relative' | 'absolute'; rel_value: number | null; rel_unit: Unit | null; at_time: string | null; due_at: string | null; status: string; attempts: number; sent_at: string | null }; // prettier-ignore

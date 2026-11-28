@@ -474,6 +474,10 @@ export const pages = sqliteTable(
 		}),
 		title: text('title').notNull().default(''),
 		icon: text('icon'),
+		coverAttachmentId: text('cover_attachment_id').references(() => attachments.id, {
+			onDelete: 'set null',
+		}),
+		isTemplate: integer('is_template', { mode: 'boolean' }).notNull().default(false),
 		position: real('position').notNull(),
 		archivedAt: text('archived_at'),
 		archivedBatch: text('archived_batch'),
@@ -658,7 +662,13 @@ export const databaseViews = sqliteTable(
 );
 
 // ---------- v2: Reminders + push (DESIGN §13, §5) ----------
-export const REMINDER_SOURCES = ['planner_item', 'planner_block', 'keep_note', 'database_record'] as const;
+export const REMINDER_SOURCES = [
+	'planner_item',
+	'planner_block',
+	'keep_note',
+	'database_record',
+	'page_todo',
+] as const;
 export const reminders = sqliteTable(
 	'reminders',
 	{
