@@ -21,7 +21,7 @@ import type { ReminderDTO } from '$lib/types';
 import * as itemsRepo from './repo/items';
 import { undoable } from './undo';
 
-export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record';
+export type Source = 'planner_item' | 'planner_block' | 'keep_note' | 'database_record' | 'page_todo';
 const db = () => handle().sqlite;
 export const MAX_OPEN = 500;
 type Row = { id: string; owner_id: string; source_type: Source; source_id: string; rule_kind: 'relative' | 'absolute'; rel_value: number | null; rel_unit: Unit | null; at_time: string | null; due_at: string | null; status: string; attempts: number; sent_at: string | null }; // prettier-ignore
@@ -97,6 +97,7 @@ export function sourceInfo(ownerId: string, type: Source, rawId: string): Source
 			}
 		);
 	}
+	if (type !== 'database_record') return undefined; // page_todo has no resolver until card 30
 	const r = db().prepare(`SELECT r.page_id, d.page_id AS db_page FROM database_records r JOIN page_databases d ON d.id = r.database_id WHERE r.id = ? AND d.owner_id = ?`).get(id, ownerId) as { page_id: string | null; db_page: string } | undefined; // prettier-ignore
 	if (!r) return undefined;
 	const t = db().prepare(`SELECT v.value_json FROM database_values v JOIN database_properties p ON p.id = v.property_id WHERE v.record_id = ? AND p.property_type = 'title'`).get(id) as { value_json: string } | undefined; // prettier-ignore
