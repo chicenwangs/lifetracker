@@ -84,7 +84,7 @@
 					x: Math.cos(i) * Math.sqrt(i + 1),
 					y: Math.sin(i) * Math.sqrt(i + 1),
 					size: 4 + Math.min(10, Math.sqrt(deg) * 2),
-					label: (n.title || 'Untitled') + (n.archived ? ' · archived' : ''),
+					label: (n.icon ? `${n.icon} ` : '') + (n.title || 'Untitled') + (n.archived ? ' · archived' : ''),
 					color: n.archived ? quiet : n.kind === 'record' ? '#3d5a80' : ink,
 				});
 			});

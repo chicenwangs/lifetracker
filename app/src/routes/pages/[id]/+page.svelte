@@ -9,6 +9,7 @@
 	import PageEditor from '$lib/editor/PageEditor.svelte';
 	import DbCell from '$lib/database/DbCell.svelte';
 	import ShareDialog from '$lib/components/ShareDialog.svelte';
+	import IconPicker from '$lib/components/IconPicker.svelte';
 	import type { PageDTO, PageNode, UndoRef } from '$lib/types';
 
 	let { data } = $props();
@@ -20,7 +21,10 @@
 	let menu = $state(false);
 	let moving = $state(false);
 	let sharing = $state(false);
+	let iconOpen = $state(false);
+	let iconBtn: HTMLButtonElement | undefined = $state();
 	const mine = $derived(pg.access === 'owner');
+	const canEdit = $derived(pg.access !== 'view');
 	// new page opened: take its title; a reload of the same page keeps what is being typed
 	let shownId = '';
 	$effect.pre(() => {
@@ -58,6 +62,29 @@
 		} catch (e) {
 			saveState = 'failed';
 			showError(e);
+		}
+	}
+
+	// card 16 (D-V4-22): the icon is its own journaled mutation; the editor keeps its text and revision
+	function closeIcon() {
+		iconOpen = false;
+		menu = false; // opened from the phone ⋯ row: both layers close together
+		iconBtn?.focus();
+	}
+	async function pickIcon(icon: string | null) {
+		closeIcon();
+		try {
+			await editor?.flush(); // one writer at a time: the revision must line up
+			const r = await patch<{ page: PageDTO; undo?: UndoRef }>(`/api/pages/${pg.id}`, { icon });
+			editor?.setRevision(r.page.revision);
+			await invalidateAll();
+			const u = r.undo;
+			showToast(icon ? 'Icon set' : 'Icon removed', {
+				undo: u && (async () => void ((await undoLast(u.id)) && (await invalidateAll()))),
+			});
+		} catch (e) {
+			showError(e);
+			await invalidateAll(); // C9: show what the server really has
 		}
 	}
 
@@ -203,6 +230,13 @@
 			>
 			{#if menu}
 				<div use:backCloses={() => (menu = false)} class="menu card" role="menu">
+					{#if canEdit}
+						<!-- phone (D-V4-22): the icon entry lives here, not beside the title. The menu stays
+						     mounted under the sheet so Back closes the picker first (one history layer) -->
+						<button role="menuitem" type="button" class="narrow" onclick={() => (iconOpen = true)}
+							>Add icon</button
+						>
+					{/if}
 					{#if mine}
 						<!-- phone (#98): Pin + Share live here, the bar only has room for ⋯ -->
 						{#if !pg.archived}<button role="menuitem" type="button" class="narrow" onclick={pin}
@@ -238,16 +272,35 @@
 		</div>
 	</div>
 	<div class="body">
-		<input
-			class="title"
-			autocomplete="off"
-			placeholder="Untitled"
-			aria-label="Page title"
-			maxlength="300"
-			readonly={pg.access === 'view'}
-			bind:value={title}
-			oninput={onTitle}
-		/>
+		<div class="head">
+			{#if pg.icon}<span class="picon" role="img" aria-label="Page icon">{pg.icon}</span>{/if}
+			<div class="iconwrap">
+				{#if canEdit}
+					<button
+						class="iconbtn"
+						class:empty={!pg.icon}
+						type="button"
+						bind:this={iconBtn}
+						aria-label={pg.icon ? `Page icon ${pg.icon}` : 'Add icon'}
+						aria-expanded={iconOpen}
+						onclick={() => (iconOpen = !iconOpen)}>{pg.icon ?? 'Add icon'}</button
+					>
+				{:else if pg.icon}
+					<span class="iconbtn shown" role="img" aria-label="Page icon">{pg.icon}</span>
+				{/if}
+			</div>
+			<input
+				class="title"
+				autocomplete="off"
+				placeholder="Untitled"
+				aria-label="Page title"
+				maxlength="300"
+				readonly={pg.access === 'view'}
+				bind:value={title}
+				oninput={onTitle}
+			/>
+			{#if iconOpen && canEdit}<IconPicker value={pg.icon} onpick={pickIcon} onclose={closeIcon} />{/if}
+		</div>
 		{#if !mine}<p class="shared" role="status">
 				Shared with you · {pg.access === 'edit' ? 'you can edit' : 'view only'}
 			</p>{/if}
@@ -378,10 +431,60 @@
 		max-width: none;
 		padding: 28px 40px 40px;
 	}
+	.head {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin: 0 0 12px;
+	}
+	.iconwrap {
+		flex: none;
+	}
+	/* card 16 (DESIGN §2.1): 56 px emoji button left of the title, faint "Add icon" when empty */
+	.iconbtn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 56px;
+		height: 56px;
+		min-width: 24px;
+		min-height: 24px;
+		padding: 0;
+		border: 0;
+		border-radius: 10px;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 56px;
+		line-height: 1;
+		cursor: pointer;
+	}
+	.iconbtn:hover {
+		background: var(--hover);
+	}
+	.iconbtn.empty {
+		width: auto;
+		height: auto;
+		padding: 0 4px;
+		font-size: 13px;
+		color: var(--faint);
+		white-space: nowrap;
+	}
+	.iconbtn.shown {
+		cursor: default;
+	}
+	.iconbtn.shown:hover {
+		background: none;
+	}
+	.picon {
+		display: none;
+	}
 	.title {
 		display: block;
-		width: 100%;
-		margin: 0 0 12px;
+		flex: 1;
+		min-width: 0;
+		margin: 0;
 		padding: 0;
 		font: inherit;
 		font-size: 32px;
@@ -402,6 +505,15 @@
 	@media (max-width: 699px), (pointer: coarse) and (max-height: 500px) {
 		.bar .wide {
 			display: none;
+		}
+		/* card 16 (DESIGN §2.1 line 66): the icon shows at 44 px, the entry is the ⋯ sheet row */
+		.iconwrap {
+			display: none;
+		}
+		.picon {
+			display: block;
+			font-size: 44px;
+			line-height: 1;
 		}
 		.menu .narrow {
 			display: block;

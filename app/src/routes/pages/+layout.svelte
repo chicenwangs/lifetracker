@@ -438,6 +438,11 @@
 			flex-direction: column;
 			padding: 8px 12px 24px;
 		}
+		/* card 16: a column + align-items:flex-start would size .main to its content, and the 44 px
+		   page icon would widen the whole page instead of the title taking the remaining width */
+		.main {
+			align-self: stretch;
+		}
 		.tree {
 			position: static;
 			width: 100%;
