@@ -296,7 +296,11 @@
 				items={shown(data.cal.items)}
 				blocks={shown(data.cal.blocks)}
 				dragSource={side}
-				oncycleitem={(id) => wrap(() => post(`/api/items/${id}/cycle`)).catch(() => {})}
+				oncycleitem={(id) => {
+					// card 09 MUST 2: the tick carries the series date it saw, so a replay cannot complete twice
+					const seen = data.cal.items.find((i) => i.id === id)?.date;
+					wrap(() => post(`/api/items/${id}/cycle`, seen ? { seenDate: seen } : undefined)).catch(() => {});
+				}}
 				oncycleblock={(id) => wrap(() => post(`/api/blocks/${id}/cycle`)).catch(() => {})}
 				onmoveitem={moveItem}
 				onmoveblock={(id, s, e) => wrap(() => patch(`/api/blocks/${id}`, { startAt: s, endAt: e }))}

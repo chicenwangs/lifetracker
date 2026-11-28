@@ -50,6 +50,8 @@ function fold(line: string): string {
 function event(key: string, r: ItemDTO, input: FeedInput, stamp: string): string[] {
 	const start = r.seriesDate ?? r.date;
 	if (!start) return [];
+	// card 09 C10 (D-V4-27): a from-completion series is one event at its date — no RRULE, no EXDATE
+	const once = !!r.repeatFromCompletion;
 	const allDay = !r.time;
 	const span = r.date && r.endDate ? diffDays(r.date, r.endDate) : 0;
 	const lines = ['BEGIN:VEVENT', `UID:${key}@lifetracker`, `DTSTAMP:${stamp}`];
@@ -61,7 +63,7 @@ function event(key: string, r: ItemDTO, input: FeedInput, stamp: string): string
 		const min = input.blockMin?.(key) ?? DEFAULT_MIN;
 		lines.push(`DTSTART:${icsStamp(s)}`, `DTEND:${icsStamp(toIsoZ(Date.parse(s) + min * 60_000))}`);
 	}
-	const rule = parseRRule(r.rrule);
+	const rule = once ? null : parseRRule(r.rrule);
 	if (rule) {
 		const parts = [`FREQ=${rule.freq}`];
 		if (rule.interval > 1) parts.push(`INTERVAL=${rule.interval}`);
@@ -74,12 +76,13 @@ function event(key: string, r: ItemDTO, input: FeedInput, stamp: string): string
 		else if (rule.count) parts.push(`COUNT=${rule.count}`);
 		lines.push(`RRULE:${parts.join(';')}`);
 	}
-	for (const d of r.exdates ?? [])
-		lines.push(
-			allDay
-				? `EXDATE;VALUE=DATE:${icsDate(d)}`
-				: `EXDATE:${icsStamp(localToUtc(d, r.time as string, input.timezone))}`,
-		);
+	if (!once)
+		for (const d of r.exdates ?? [])
+			lines.push(
+				allDay
+					? `EXDATE;VALUE=DATE:${icsDate(d)}`
+					: `EXDATE:${icsStamp(localToUtc(d, r.time as string, input.timezone))}`,
+			);
 	lines.push(`SUMMARY:${r.private ? 'Busy' : esc(r.title)}`);
 	const notes = input.notes.get(key);
 	if (!r.private && notes) lines.push(`DESCRIPTION:${esc(notes)}`);

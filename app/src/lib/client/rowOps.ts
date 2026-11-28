@@ -37,9 +37,14 @@ export async function change(
 ) {
 	try {
 		// #163: Undo = the server's undo journal (a repeating date was detached; a reverse PATCH would copy it again)
-		const r = await patch<{ undo?: UndoRef; item?: { id: string } }>(path(x), body);
+		const r = await patch<{ undo?: UndoRef; item?: { id: string }; stale?: boolean }>(path(x), body);
 		opts.onResult?.(r);
 		await refresh();
+		// card 09: a stale from-completion tick changed nothing — say so, never a false "Done"
+		if (r.stale) {
+			showToast(`"${nameOf(x)}" changed elsewhere — refreshed.`);
+			return;
+		}
 		const u = r.undo;
 		showToast(text, {
 			undo: u
@@ -66,6 +71,7 @@ const TICK_TEXT: Record<Status, string> = { todo: 'Not started', doing: 'Started
  * Tap a status square (#293, #310): POST /cycle, then a toast with Undo. Offline = queued PATCH. One helper
  * for every tick, so Today and the item sheet cannot drift apart.
  * `onResult` runs before `refresh` (the item sheet follows a repeating date that was detached into its own row).
+ * `seenDate` (card 09 MUST 2) is the series date the tick saw, so a replayed from-completion tick no-ops.
  * #379: the list re-renders on this tick, so a touch burst is shielded from the raise until 250 ms after it;
  * there is no second raise after the refresh (a deliberate double-tap inside the window counts once).
  */
@@ -76,14 +82,24 @@ export async function cycleRow(
 	name: string,
 	refresh: Refresh,
 	onResult?: (r: { item?: { id: string } }) => void,
+	seenDate?: string | null,
 ): Promise<'ok' | 'queued' | 'failed'> {
 	const next = nextStatus(cur);
 	const p = `/api/${kind}/${encodeURIComponent(id)}`;
+	const date = kind === 'items' ? seenDate : null;
 	raiseShield(); // touch / coarse only: desktop ticks stay unshielded
 	try {
-		const r = await post<{ item?: { id: string }; undo?: UndoRef }>(`${p}/cycle`);
+		const r = await post<{ item?: { id: string }; undo?: UndoRef; stale?: boolean }>(
+			`${p}/cycle`,
+			date ? { seenDate: date } : undefined,
+		);
 		onResult?.(r);
 		await refresh();
+		// card 09: a stale from-completion tick changed nothing — say so, never a false "Done"
+		if (r.stale) {
+			showToast(`"${name}" changed elsewhere — refreshed.`);
+			return 'ok';
+		}
 		if (next === 'done') buzz('success');
 		const u = r.undo;
 		showToast(`${TICK_TEXT[next]}: "${name}"`, {
@@ -95,18 +111,25 @@ export async function cycleRow(
 			showError(e);
 			return 'failed';
 		}
-		enqueueAction({ key: p, method: 'PATCH', path: p, payload: { status: next } });
+		enqueueAction({
+			key: p,
+			method: 'PATCH',
+			path: p,
+			payload: { status: next, ...(date ? { seenDate: date } : {}) },
+		});
 		showToast(`${TICK_TEXT[next]}: "${name}" · Waiting to sync`);
 		return 'queued';
 	}
 }
 
-/** swipe right / ⋯ Done: done <-> not done */
+/** swipe right / ⋯ Done: done <-> not done. A from-completion series carries the date the row showed. */
 export function toggleDone(x: Row, refresh: Refresh) {
 	const was: Status = x.status;
 	const now: Status = was === 'done' ? 'todo' : 'done';
 	if (now === 'done') buzz('success');
-	return change(x, { status: now }, now === 'done' ? `Done: "${nameOf(x)}"` : `Not done: "${nameOf(x)}"`, refresh); // prettier-ignore
+	const body: Record<string, unknown> = { status: now };
+	if (now === 'done' && !isBlock(x) && x.date) body.seenDate = x.date;
+	return change(x, body, now === 'done' ? `Done: "${nameOf(x)}"` : `Not done: "${nameOf(x)}"`, refresh);
 }
 
 /** swipe left / ⋯ Delete (Undo in the toast) */

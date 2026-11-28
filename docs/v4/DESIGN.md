@@ -21,9 +21,9 @@ If this doc and BREAKDOWN disagree on behaviour: BREAKDOWN wins, then fix this d
 ### 1.1 Repeat box: from completion (PR 9) · board D-R1 / M-R1
 - Inside the existing Repeat box, below the frequency row:
   `Next one counts from` ◉ `Scheduled date` ○ `When I finish it`
-- Shown only for daily / weekly / monthly with an interval and no weekdays picked. Picking weekdays hides the row and resets to Scheduled.
-- Summary line under the box: "Every 3 days, counted from when you finish".
-- Item rows of a from-completion series show a small ↻✓ glyph instead of ↻ (aria-label "Repeats from completion").
+- Shown only for daily or monthly rules with no weekdays, end date or count (O-9, D-V4-27); a weekly rule always carries BYDAY, so it never qualifies. A rule that stops qualifying clears the flag and hides the row.
+- Summary line under the box: "Every 3 days, counted from when you finish". The state shows here only — no item-row glyph.
+- A from-completion series shows one row, at its date; finishing it files a done copy today and moves the series to today + the interval.
 
 ### 1.2 Types: calendar switch + presets (PR 10, 14) · board D-T1 / M-T1
 - Each type row in Settings › Types gets a switch: `Month calendar` (on by default). Helper under the list: "Off = hidden on Month, still on Week, Today and reminders."

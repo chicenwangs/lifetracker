@@ -112,3 +112,23 @@ export function backCloses(_node: HTMLElement, close: () => void) {
 		},
 	};
 }
+
+/**
+ * Card 09 SHOULD 3: a layer whose surface already pushed its own URL entry (the item peek's /item/<id>).
+ * Back pops that entry and calls `close`; no second entry is added, and closing in the UI steps history
+ * through the caller's own close. Register before/above the layers it may host, like `backCloses`.
+ */
+export function backClosesEntry(_node: HTMLElement, close: () => void) {
+	const layer: Layer = { id: ++ids, close: () => close(), gone: false };
+	stack.push(layer);
+	return {
+		update(next: () => void) {
+			close = next;
+		},
+		destroy() {
+			// `gone` = Back already consumed the caller's entry; otherwise the caller's own close steps history
+			const i = stack.indexOf(layer);
+			if (i >= 0) stack.splice(i, 1);
+		},
+	};
+}

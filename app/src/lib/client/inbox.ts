@@ -5,6 +5,7 @@ import { get, post } from './api';
 import { calendarChanged } from './bus.svelte';
 import { openItem } from './peek.svelte';
 import { invalidateAll } from './refresh';
+import { actReminder, type ReminderAction } from './reminderAction';
 import { showToast, toast } from './toast.svelte';
 
 type Hit = {
@@ -17,9 +18,9 @@ type Hit = {
 	more?: number;
 };
 
-async function act(id: string, action: 'done' | 'snooze10' | 'tomorrow') {
-	await post(`/api/reminders/${id}`, { action });
-	if (action === 'done') {
+async function act(id: string, action: ReminderAction) {
+	const refresh = await actReminder(id, action, (rid, a) => post(`/api/reminders/${rid}`, { action: a }));
+	if (refresh) {
 		calendarChanged();
 		await invalidateAll();
 	}

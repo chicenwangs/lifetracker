@@ -69,3 +69,12 @@ export function closePeek() {
 		calendarChanged();
 	}
 }
+
+/** Card 09 SHOULD 3: Back already popped the peek's own entry — drop the sheet, do not step history again. */
+export function closePeekEntry() {
+	if (!peek.id) return;
+	pushed = false;
+	closing = false;
+	peek.id = null;
+	calendarChanged();
+}

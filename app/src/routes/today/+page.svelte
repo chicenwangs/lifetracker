@@ -105,10 +105,16 @@
 		void qTick;
 		return over[id] ?? (pendingPatch(`/api/${kind}/${id}`)?.status as Status | undefined) ?? cur;
 	};
-	async function cycle(kind: 'items' | 'blocks', id: string, cur: Status, name: string) {
+	async function cycle(
+		kind: 'items' | 'blocks',
+		id: string,
+		cur: Status,
+		name: string,
+		seenDate?: string | null,
+	) {
 		over[id] = nextStatus(cur);
 		// #310: the same tick + Undo toast + offline queue as the item sheet; a queued tick keeps its optimistic status
-		const r = await cycleRow(kind, id, cur, name, invalidateAll);
+		const r = await cycleRow(kind, id, cur, name, invalidateAll, undefined, seenDate);
 		if (r !== 'queued') over = without(over, id);
 	}
 
@@ -343,7 +349,7 @@
 									<StatusSquare
 										status={st}
 										size={20}
-										oncycle={() => e.item && cycle('items', e.key, st, e.item.title)}
+										oncycle={() => e.item && cycle('items', e.key, st, e.item.title, e.item.date)}
 									/>
 								{/if}
 								<button
