@@ -4,6 +4,8 @@ import { api, body, me } from '$lib/server/http';
 import * as pages from '$lib/server/repo/pages';
 import { syncTitleFromPage } from '$lib/server/repo/databases';
 import { need } from '$lib/server/repo/shares';
+import { undoable } from '$lib/server/undo';
+import type { PageDTO, UndoRef } from '$lib/types';
 
 export const GET = api((e) => {
 	const u = me(e);
@@ -16,8 +18,19 @@ export const PATCH = api(async (e) => {
 	const id = e.params.id ?? '';
 	const owner = need('page', u.id, id, 'edit');
 	const p = await body(e, pages.patchSchema);
-	const page = pages.update(owner, id, p, u.id);
+	let page: PageDTO;
+	let undo: UndoRef | undefined;
+	if (p.icon === undefined) page = pages.update(owner, id, p, u.id);
+	else {
+		// card 16 (D-V4-22): an icon change is one undo entry over the pages row; undo keeps `revision`
+		const title = pages.get(owner, id, false).title || 'Untitled';
+		const r = undoable(u.id, `Icon "${title}"`, [{ t: 'pages', id }], () => ({
+			result: pages.update(owner, id, p, u.id),
+		}));
+		page = r.result;
+		undo = r.undo;
+	}
 	if (p.title !== undefined) syncTitleFromPage(page.id, p.title); // record page: the title value follows
-	return json({ page });
+	return json(undo ? { page, undo } : { page });
 });
 export const DELETE = api((e) => json(pages.trash(me(e).id, e.params.id ?? '')));

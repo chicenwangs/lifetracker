@@ -56,6 +56,27 @@ export function undoable<T>(
 	})();
 } // prettier-ignore
 
+/** D-V4-22: two `pages` columns must not be written back by an undo. `revision` would 409 the next
+ *  editor save (the editor holds the newer one), and `last_opened_at` is read-state: restoring an old
+ *  value would move the page backwards in Recents. Everything else is restored. */
+function withoutVolatile(row: Row): Row {
+	const out = { ...row };
+	delete out.revision;
+	delete out.last_opened_at;
+	return out;
+}
+
+/** the "can't undo safely" shape: opening a page moves `last_opened_at` (the client re-reads itself after
+ *  every save), which is not an edit — any other column changing still blocks the undo. */
+function comparable(t: Table, row: Row | null): string {
+	if (row && t === 'pages') {
+		const out = { ...row };
+		delete out.last_opened_at;
+		return JSON.stringify(out);
+	}
+	return JSON.stringify(row);
+}
+
 /** card 11: a row restored to live must not fight the partial ics_uid index with a re-imported twin */
 function withoutIcsUid(row: Row, id: string): Row {
 	if (row.ics_uid == null || row.deleted_at != null) return row;
@@ -79,8 +100,8 @@ export function undo(userId: string, id?: string): { label: string } {
 		const rows = JSON.parse(a.rows) as Snap[];
 		for (const r of rows) {
 			const cur = get(r.t, r.id);
-			const same = JSON.stringify(cur ?? null) === JSON.stringify(r.after);
-			if (!same) throw new ApiFail(409, 'cant_undo', `Can't undo safely: "${a.label}" was changed since.`);
+			if (comparable(r.t, cur ?? null) !== comparable(r.t, r.after))
+				throw new ApiFail(409, 'cant_undo', `Can't undo safely: "${a.label}" was changed since.`);
 		}
 		// parents before children on re-insert (a step needs its item), children first on delete
 		const order = (t: Table) => TABLES.indexOf(t);
@@ -88,7 +109,12 @@ export function undo(userId: string, id?: string): { label: string } {
 			if (!r.before) db().prepare(`DELETE FROM ${r.t} WHERE id = ?`).run(r.id);
 		for (const r of [...rows].sort((x, y) => (x.t === y.t ? Number(!!x.before?.parent_id) - Number(!!y.before?.parent_id) : order(x.t) - order(y.t)))) {
 			if (!r.before) continue;
-			const values = r.t === 'items' ? withoutIcsUid(r.before, r.id) : r.before;
+			const values =
+				r.t === 'items'
+					? withoutIcsUid(r.before, r.id)
+					: r.t === 'pages'
+						? withoutVolatile(r.before)
+						: r.before;
 			const cols = Object.keys(values).filter((c) => c !== 'id');
 			if (get(r.t, r.id)) {
 				// UPDATE, never INSERT OR REPLACE: REPLACE deletes the row first and fires ON DELETE SET NULL on children

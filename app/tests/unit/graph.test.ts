@@ -27,10 +27,13 @@ it('nodes = my live pages (archived flagged), edges = parent + links; other user
 	const theirs = pages.create(other, { parentId: null, title: 'Theirs' });
 	// their link to my page: never an edge in my graph, never a node in theirs
 	pages.update(other, theirs.id, { doc: { type: 'doc', content: [link(a.id)] } });
+	pages.update(me, a.id, { icon: '📄' }); // card 16: the node label carries it
 
 	const g = graph(me);
 	expect(g.nodes.map((n) => n.title).sort()).toEqual(['A', 'B', 'C']);
 	expect(g.nodes.find((n) => n.title === 'B')?.archived).toBe(true);
+	expect(g.nodes.find((n) => n.title === 'A')?.icon).toBe('📄');
+	expect(g.nodes.find((n) => n.title === 'C')?.icon).toBeNull();
 	expect(g.edges).toEqual(
 		expect.arrayContaining([
 			{ source: a.id, target: b.id, relation: 'parent' },
