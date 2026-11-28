@@ -7,19 +7,23 @@ export const PW = 'good pass phrase';
 /** Fresh DB -> /setup as jeremy; already set up -> /login. Skips the desktop tour. */
 export async function signIn(page: Page) {
 	await page.goto('/');
+	let fresh = false;
 	if (page.url().endsWith('/setup')) {
 		await page.fill('#tk', 'e2e-setup-token-long-enough');
 		await page.fill('#p', PW);
 		await page.fill('#cp', PW);
 		await page.click('button[type=submit]');
+		fresh = true;
 	} else if (page.url().includes('/login')) {
 		await page.fill('#u', 'jeremy');
 		await page.fill('#p', PW);
 		await page.click('button[type=submit]');
 	}
 	await expect(page).not.toHaveURL(/\/(setup|login)/);
+	// The tour only exists for a freshly set-up account; a logged-in user never sees it, so do not
+	// spend a 1 s wait on every phone test (500+ of them). A fresh setup still waits for hydration.
 	const skip = page.getByRole('button', { name: 'Skip tour' });
-	await skip.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+	if (fresh) await skip.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
 	if (await skip.isVisible().catch(() => false)) await skip.click();
 	await setHints(page, HINTS); // first-use hints (#104) off, except in hints.spec
 }
