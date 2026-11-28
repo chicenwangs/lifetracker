@@ -22,6 +22,7 @@
 	let moving = $state(false);
 	let sharing = $state(false);
 	let iconOpen = $state(false);
+	let duping = $state(false);
 	let iconBtn: HTMLButtonElement | undefined = $state();
 	const mine = $derived(pg.access === 'owner');
 	const canEdit = $derived(pg.access !== 'view');
@@ -128,6 +129,33 @@
 			showToast('Restored');
 		} catch (e) {
 			showError(e);
+		}
+	}
+	// card 17 (D-V4-23): no journal row; the toast Undo trashes the copy through the normal DELETE, so it
+	// stays restorable from Trash and Ctrl+Z never touches it.
+	async function duplicatePage() {
+		if (duping) return; // C11: a double tap makes one copy
+		duping = true;
+		try {
+			const r = await post<{ page: PageDTO }>(`/api/pages/${pg.id}/duplicate`);
+			menu = false;
+			await invalidateAll();
+			const copy = r.page.id;
+			showToast('Duplicated', {
+				undo: async () => {
+					try {
+						await del(`/api/pages/${copy}`);
+						await invalidateAll();
+					} catch (e) {
+						showError(e);
+					}
+				},
+			});
+		} catch (e) {
+			menu = false;
+			showError(e);
+		} finally {
+			duping = false;
 		}
 	}
 	async function trash() {
@@ -257,6 +285,10 @@
 						>
 						<button role="menuitem" type="button" onclick={() => reorder(-1)}>Move up</button>
 						<button role="menuitem" type="button" onclick={() => reorder(1)}>Move down</button>
+						<div class="rule" role="separator"></div>
+					{/if}
+					{#if !pg.archived && !rec}
+						<button role="menuitem" type="button" disabled={duping} onclick={duplicatePage}>Duplicate</button>
 					{/if}
 					<button
 						role="menuitem"
@@ -574,6 +606,15 @@
 	}
 	.menu .danger {
 		color: var(--exam-edge);
+	}
+	.menu .rule {
+		height: 1px;
+		margin: 4px 6px;
+		background: var(--rule);
+	}
+	.menu button:disabled {
+		opacity: 0.55;
+		cursor: default;
 	}
 	.moveto {
 		display: flex;
