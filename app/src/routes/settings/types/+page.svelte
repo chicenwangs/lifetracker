@@ -2,10 +2,12 @@
 <script lang="ts">
 	import { backCloses } from '$lib/client/layers';
 	import { invalidateAll } from '$lib/client/refresh';
+	import { isPhone } from '$lib/client/phone';
 	import { del, patch, post } from '$lib/client/api';
 	import { showError, showToast } from '$lib/client/toast.svelte';
 	import { undoLast } from '$lib/client/undo.svelte';
-	import { MAX_TYPES, TYPE_SWATCHES } from '$lib/itemtypes';
+	import { MAX_TYPES, TYPE_PRESETS, TYPE_SWATCHES } from '$lib/itemtypes';
+	import BottomSheet from '$lib/components/BottomSheet.svelte';
 	import type { ItemTypeDTO, UndoRef } from '$lib/types';
 
 	let { data } = $props();
@@ -50,6 +52,26 @@
 			});
 		} catch (e) {
 			showError(e);
+		}
+	}
+
+	// ---------- starter presets (card 14, O-1 item 6, D-V4-11, D-V4-21) ----------
+	const full = $derived(types.length >= MAX_TYPES);
+	let presetOpen = $state(false);
+	let adding = $state('');
+	const haveIt = (name: string) => types.some((t) => t.name === name);
+	async function addPreset(p: (typeof TYPE_PRESETS)[number]) {
+		if (adding) return; // two rapid taps = one type
+		adding = p.slug;
+		try {
+			await post('/api/item-types/presets', { slug: p.slug });
+			presetOpen = false;
+			await invalidateAll();
+		} catch (e) {
+			showError(e);
+			if (navigator.onLine) await invalidateAll(); // offline: the stored list is already on screen
+		} finally {
+			adding = '';
 		}
 	}
 </script>
@@ -209,6 +231,36 @@
 		</tbody>
 	</table>
 	<p class="hint">Off = hidden on Month, still on Week, Today and reminders.</p>
+	{#snippet presetRows()}
+		{#each TYPE_PRESETS as p (p.slug)}
+			{@const have = haveIt(p.name)}
+			<button class="preset" type="button" disabled={have || !!adding} onclick={() => addPreset(p)}>
+				<span class="dot" style:background={p.bg} aria-hidden="true"></span>{p.name}{#if have}<span
+						class="hint">(have it)</span
+					>{/if}
+			</button>
+		{/each}
+	{/snippet}
+	<div class="addpreset">
+		<button
+			class="btn sm"
+			type="button"
+			disabled={full}
+			aria-expanded={presetOpen}
+			onclick={() => (presetOpen = !presetOpen)}>+ Add a preset ▾</button
+		>
+		{#if full}<span class="hint">Remove a type to add more</span>{/if}
+	</div>
+	{#if presetOpen && !full}
+		{#if isPhone()}
+			<BottomSheet label="Add a preset" onclose={() => (presetOpen = false)}>
+				<h2>Add a preset</h2>
+				{@render presetRows()}
+			</BottomSheet>
+		{:else}
+			<div class="presets card">{@render presetRows()}</div>
+		{/if}
+	{/if}
 	<p class="hint">New types: the + at the end of the type bar on Home or Week.</p>
 </section>
 
@@ -235,7 +287,17 @@
 		<span class="hint">You can undo for 5 s.</span>
 	</div>
 {/if}
-<svelte:window onkeydown={(e) => e.key === 'Escape' && deleting && (deleting = null)} />
+<svelte:window
+	onkeydown={(e) => {
+		if (e.key !== 'Escape') return;
+		deleting = null;
+		presetOpen = false;
+	}}
+	onclick={(e) => {
+		// desktop popover only: the phone menu is a sheet with its own scrim
+		if (presetOpen && !isPhone() && !(e.target as HTMLElement).closest('.addpreset')) presetOpen = false;
+	}}
+/>
 
 <style>
 	.meter {
@@ -288,6 +350,52 @@
 		min-width: 24px;
 		min-height: 24px;
 		cursor: pointer;
+	}
+	.addpreset {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-wrap: wrap;
+		margin-top: 10px;
+		position: relative;
+	}
+	.presets {
+		position: absolute;
+		top: 36px;
+		left: 0;
+		z-index: 30;
+		min-width: 190px;
+		padding: 6px;
+		display: flex;
+		flex-direction: column;
+	}
+	.preset {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		min-height: 24px;
+		padding: 0 8px;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		color: var(--ink);
+		font: inherit;
+		font-size: 13px;
+		text-align: left;
+		cursor: pointer;
+	}
+	.preset:not(:disabled):hover {
+		background: var(--hover);
+	}
+	.preset:disabled {
+		opacity: 0.55;
+		cursor: default;
+	}
+	.dot {
+		width: 12px;
+		height: 12px;
+		border-radius: 2px;
+		flex: none;
 	}
 	/* phone: the label is the 48 dp tap area (#101) */
 	.cb {
@@ -386,6 +494,12 @@
 		}
 		.slug input {
 			width: 100%;
+		}
+		/* card 14: the preset menu is the shared sheet here, so its rows are 48 dp like every action row */
+		.preset {
+			min-height: 48px;
+			font-size: 16px;
+			padding: 0 4px;
 		}
 	}
 	.scrim {
