@@ -1,8 +1,8 @@
 // Blind tests for card 13 on the phone projects, from its Done-when lines only: C5 (mic + listening),
-// C6 (rationale), C7 (denied), C8 (caret + edit), C10 (48 dp, Back, phone wording), C12 (states).
-// The Android side is driven through my own fake Capacitor bridge: no real dictation is claimed.
+// C6 (rationale), C7 (denied), C8 (caret + edit), C9 (view-only share), C10 (48 dp, Back, phone wording),
+// C12 (states). The Android side is driven through my own fake Capacitor bridge: no real dictation is claimed.
 // No builder test was opened.
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { HINTS, expectTargets48, noDesktopHints, setHints } from './helpers';
 
 const PW = 'good pass phrase';
@@ -93,6 +93,40 @@ const finishOldest = (text: string) =>
 		const s = (window as unknown as { __speech: { resolveOldest: (v: string) => void } }).__speech;
 		s.resolveOldest(t);
 	}, text);
+
+/** a second account, the way the e2e suite makes one: invite-only for a moment, one code, then /signup */
+async function inviteCode() {
+	await page.goto('/settings/users');
+	await page.locator('input[name="open"][value="0"]').check();
+	await page.getByRole('button', { name: 'Save' }).click();
+	await expect(page.getByText('Saved.')).toBeVisible();
+	await page.getByRole('button', { name: 'Make invite code' }).click();
+	await expect(page.locator('[role="status"] code').first()).toBeVisible();
+	const code = (await page.locator('[role="status"] code').first().innerText()).trim();
+	expect(code).toMatch(/^INV-/);
+	return code;
+}
+
+async function freshAccount(browser: Browser, username: string) {
+	const code = await inviteCode();
+	const { viewport, isMobile, hasTouch, userAgent, deviceScaleFactor } = test.info().project.use;
+	const ctx = await browser.newContext({ viewport, isMobile, hasTouch, userAgent, deviceScaleFactor });
+	await installFakeSpeech(ctx); // the app shell, with the plugin, for the second account too
+	const p = await ctx.newPage();
+	await p.goto('/signup');
+	await p.fill('#code', code);
+	await p.fill('#nu', username);
+	await p.fill('#dn', 'Viewer');
+	await p.fill('#np', 'viewer pass phrase');
+	await p.fill('#cp', 'viewer pass phrase');
+	await p.getByRole('button', { name: 'Create account' }).click();
+	await p.waitForURL((u) => u.pathname === '/' || u.pathname === '/today');
+	const skip = p.getByRole('button', { name: 'Skip tour' });
+	await skip.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+	if (await skip.isVisible().catch(() => false)) await skip.click();
+	await setHints(p, HINTS);
+	return { ctx, p };
+}
 
 async function openNote() {
 	// one fresh note per test with its own title: the list may already hold the earlier tests' notes
@@ -313,4 +347,65 @@ test('C10 phone: the mic is 48 dp, the rationale uses the shared sheet and Back 
 	await expect(s).toHaveCount(0);
 	await expect(note()).toBeVisible();
 	await noDesktopHints(page);
+});
+
+test('C9 a note shared view-only never shows the mic, the rationale sheet or the listening state', async ({
+	browser,
+}) => {
+	const viewerName = `view${Math.random().toString(36).slice(2, 7)}`;
+	const { ctx: vctx, p: vp } = await freshAccount(browser, viewerName);
+	// the bridge is in this context: the missing mic below comes from the share, not from a web-only page
+	expect(await vp.evaluate(() => 'Capacitor' in window)).toBe(true);
+
+	// control: the same bridge in the same context shows the mic on the viewer's own note
+	const ownTitle = `${viewerName} own`;
+	await vp.evaluate(async (title) => {
+		await fetch('/api/keep/notes', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ title, body: 'mine' }),
+		});
+	}, ownTitle);
+	await vp.goto('/keep');
+	await vp.locator('article.note', { hasText: ownTitle }).getByText(ownTitle).click();
+	const own = vp.getByRole('dialog', { name: ownTitle, exact: true });
+	await expect(own).toBeVisible();
+	await expect(own.getByRole('button', { name: 'Speak note' })).toBeVisible();
+	await vp.goBack();
+	await expect(own).toHaveCount(0);
+
+	// Jeremy's note, shared view-only with that account
+	await openNote();
+	const shared = await page.evaluate(
+		async ([id, username]) => {
+			const r = await fetch(`/api/shares/note/${id}`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ username, permission: 'view' }),
+			});
+			return { status: r.status, json: (await r.json()) as unknown };
+		},
+		[noteId, viewerName] as const,
+	);
+	expect(shared.status, JSON.stringify(shared.json)).toBe(200);
+
+	// the viewer opens it from Shared with me: no mic, no rationale, no listening state
+	await vp.goto('/keep?scope=shared');
+	await vp.locator('article.note', { hasText: T }).getByText(T).click();
+	const sharedNote = vp.getByRole('dialog', { name: T, exact: true });
+	await expect(sharedNote).toBeVisible();
+	await expect(sharedNote).toContainText('Shared with you');
+	await expect(sharedNote).toContainText('view only');
+	await expect(sharedNote.getByRole('button', { name: 'Speak note' })).toHaveCount(0);
+	await expect(vp.getByRole('dialog', { name: 'Use the microphone?' })).toHaveCount(0);
+	await expect(vp.getByText('Listening…')).toHaveCount(0);
+	await expect(sharedNote.getByRole('textbox').nth(1)).toHaveAttribute('placeholder', 'Note');
+
+	// tapping the composer where the mic would be opens nothing and starts nothing
+	await sharedNote.getByRole('textbox').nth(1).click({ force: true });
+	await expect(vp.getByRole('dialog', { name: 'Use the microphone?' })).toHaveCount(0);
+	await expect(vp.getByText('Listening…')).toHaveCount(0);
+	expect(await vp.evaluate(() => 'Capacitor' in window)).toBe(true); // still the app shell
+
+	await vctx.close();
 });

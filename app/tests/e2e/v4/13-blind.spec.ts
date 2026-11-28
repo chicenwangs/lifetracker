@@ -148,9 +148,8 @@ test("C11 dictation only types: no new undo entry, no toast, the note's autosave
 	await note.getByRole('button', { name: 'Speak note' }).click();
 	const sheet = p.getByRole('dialog', { name: 'Use the microphone?' });
 	await expect(sheet).toBeVisible();
-	// the card's sheet is a phone surface (z-index 80 there); on the desktop layout the note card (71) covers
-	// the sheet's scrim (50), so its button is clicked in the DOM — C6/C10 drive the sheet for real on phone
-	await sheet.getByRole('button', { name: 'Continue' }).evaluate((el) => (el as HTMLButtonElement).click());
+	// BottomSheet's desktop scrim is z-index 72, above the Keep note card (71): the sheet is the top layer
+	await sheet.getByRole('button', { name: 'Continue' }).click();
 	await expect(sheet).toHaveCount(0);
 	await expect(ta).toHaveValue('alpha appended');
 
@@ -166,9 +165,14 @@ test("C11 dictation only types: no new undo entry, no toast, the note's autosave
 		}, id);
 	expect(await body()).toBe('alpha appended');
 
-	// the note's own text undo applies: inside the textarea Ctrl+Z never hits the server journal
-	await ta.focus();
+	// the note's own text undo applies: a real typed edit is undone in the field (the dictated insert is a
+	// programmatic value change, which browsers never put on their undo stack), and the server journal is untouched
+	await ta.click();
+	await p.keyboard.press('End');
+	await p.keyboard.type(' typed');
+	await expect(ta).toHaveValue('alpha appended typed');
 	await p.keyboard.press('Control+z');
+	await expect.poll(async () => (await ta.inputValue()).trim()).toBe('alpha appended'); // the field undid it
 	await p.waitForTimeout(500);
 	expect(reqs.filter((r) => r === 'POST /api/undo')).toEqual([]);
 	await expect(p.locator('.undid')).toHaveCount(0);
