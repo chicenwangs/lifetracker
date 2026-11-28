@@ -93,23 +93,37 @@ test.beforeAll(async ({ browser }) => {
 	page = await (await browser.newContext({ serviceWorkers: 'block' })).newPage();
 	await signIn(page);
 
-	// a partner account to open the view-only and edit-share cases (fresh DB has only jeremy)
-	await page.goto('/settings/users');
-	await page.locator('input[name="open"][value="1"]').check();
-	await page.getByRole('button', { name: 'Save' }).click();
-	await expect(page.getByText('Saved.')).toBeVisible();
+	// a partner account to open the view-only and edit-share cases. Invite only: the open-sign-up route is
+	// capped per IP (OPEN_PER_IP = 5) and the full desktop run has used it before this file.
 	partnerUser = `b16${Date.now().toString(36).slice(-8)}`;
 	partner = await (await browser.newContext()).newPage();
-	await partner.goto('/signup');
-	await partner.fill('#nu', partnerUser);
-	await partner.fill('#dn', 'Blind partner');
-	await partner.fill('#np', PW);
-	await partner.fill('#cp', PW);
-	await partner.getByRole('button', { name: 'Create account' }).click();
-	await partner.waitForURL((u) => u.pathname === '/');
-	const skip = partner.getByRole('button', { name: 'Skip tour' });
-	await skip.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
-	if (await skip.isVisible().catch(() => false)) await skip.click();
+	const inviteOnly = async () => {
+		await page.goto('/settings/users');
+		await page.locator('input[name="open"][value="0"]').check();
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expect(page.getByText('Saved.')).toBeVisible();
+	};
+	try {
+		await inviteOnly();
+		await page.getByRole('button', { name: 'Make invite code' }).click();
+		await expect(page.locator('[role="status"] code').first()).toBeVisible();
+		const code = (await page.locator('[role="status"] code').first().innerText()).trim();
+		expect(code).toMatch(/^INV-/);
+
+		await partner.goto('/signup');
+		await partner.fill('#code', code);
+		await partner.fill('#nu', partnerUser);
+		await partner.fill('#dn', 'Blind partner');
+		await partner.fill('#np', PW);
+		await partner.fill('#cp', PW);
+		await partner.getByRole('button', { name: 'Create account' }).click();
+		await partner.waitForURL((u) => u.pathname === '/');
+		const skip = partner.getByRole('button', { name: 'Skip tour' });
+		await skip.waitFor({ state: 'visible', timeout: 1000 }).catch(() => {});
+		if (await skip.isVisible().catch(() => false)) await skip.click();
+	} finally {
+		await inviteOnly(); // leave the shared e2e DB invite-only, whatever happened above
+	}
 });
 
 test.afterAll(async () => {
