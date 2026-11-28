@@ -69,6 +69,7 @@
 			await invalidateAll();
 		} catch (e) {
 			showError(e);
+			presetOpen = false; // the toast says why; reopening starts clean
 			if (navigator.onLine) await invalidateAll(); // offline: the stored list is already on screen
 		} finally {
 			adding = '';
@@ -250,16 +251,16 @@
 			onclick={() => (presetOpen = !presetOpen)}>+ Add a preset ▾</button
 		>
 		{#if full}<span class="hint">Remove a type to add more</span>{/if}
-	</div>
-	{#if presetOpen && !full}
-		{#if isPhone()}
-			<BottomSheet label="Add a preset" onclose={() => (presetOpen = false)}>
-				<h2>Add a preset</h2>
-				{@render presetRows()}
-			</BottomSheet>
-		{:else}
+		{#if presetOpen && !full && !isPhone()}
+			<!-- inside the relative wrapper: the menu hangs under the button, never at the viewport's corner -->
 			<div class="presets card">{@render presetRows()}</div>
 		{/if}
+	</div>
+	{#if presetOpen && !full && isPhone()}
+		<BottomSheet label="Add a preset" onclose={() => (presetOpen = false)}>
+			<h2>Add a preset</h2>
+			{@render presetRows()}
+		</BottomSheet>
 	{/if}
 	<p class="hint">New types: the + at the end of the type bar on Home or Week.</p>
 </section>

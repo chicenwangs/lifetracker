@@ -2,7 +2,7 @@
 // the menu is the shared BottomSheet reached by tap, no key-hint copy, and Back closes the sheet before the page.
 // Tapping a preset adds it once with no undo toast, and the new type fills the Add sheet's Type chip.
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { bottomBar, expectTargets48, noDesktopHints, signIn } from './helpers';
+import { bottomBar, expectTargets48, expectTappable, noDesktopHints, signIn } from './helpers';
 
 const api = (page: Page, m: string, p: string, b?: unknown) =>
 	page.evaluate(
@@ -74,6 +74,7 @@ test('C10 phones get a 48 dp preset button and 48 dp sheet rows, tap opens them,
 		expect(Math.round(box.w)).toBeGreaterThanOrEqual(48);
 		expect(Math.round(box.h)).toBeGreaterThanOrEqual(48);
 	}
+	await expectTappable(rows); // a finger at each row's centre reaches that row
 	await expectTargets48(page);
 	await noDesktopHints(page);
 

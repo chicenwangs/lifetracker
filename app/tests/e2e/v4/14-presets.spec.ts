@@ -109,6 +109,24 @@ test('C1/C2/C3 five presets in order, cap disabled with its helper, a name alrea
 	await page.keyboard.press('Escape');
 	await expect(rows).toHaveCount(0);
 
+	// the menu hangs under its button (not at the viewport's corner) and a pointer at each row's centre hits
+	// that row — the sticky header must never cover it (regression: the popover was outside the relative wrapper)
+	await add.click();
+	const wrap = (await page.locator('.addpreset').boundingBox())!;
+	const menu = (await page.locator('.presets').boundingBox())!;
+	expect(Math.abs(menu.x - wrap.x)).toBeLessThanOrEqual(1);
+	expect(menu.y).toBeGreaterThanOrEqual(wrap.y + wrap.height - 1);
+	for (const one of await page.locator('.presets .preset').all()) {
+		const hit = await one.evaluate((n) => {
+			const r = n.getBoundingClientRect();
+			const at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+			return !!at && n.contains(at);
+		});
+		expect(hit).toBe(true);
+	}
+	await page.keyboard.press('Escape');
+	await expect(rows).toHaveCount(0);
+
 	// C3: the built-in Event renamed to Class -> the Class preset is greyed with "(have it)" and does nothing
 	const event = (await types(page)).find((t) => t.key === 'Event') as TypeRow;
 	await api(page, 'PATCH', `/api/item-types/${event.id}`, { name: 'Class' });
@@ -160,12 +178,17 @@ test('C4/C6/C8/C11 add Class: one type after the last, no undo toast, /class fil
 	await page.goto('/settings/types');
 	await presetBtn(page).click();
 	const row = presetRow(page, 'Class');
+	// C4: a real pointer click on the first menu row creates it (the row must not sit under the sticky header)
+	await row.click();
+	await expect(page.getByLabel('Name of Class')).toBeVisible();
 	// C8: two rapid clicks in one tick create one type (the page guards the second)
-	await row.evaluate((n) => {
+	await presetBtn(page).click();
+	await presetRow(page, 'Errand').evaluate((n) => {
 		(n as HTMLButtonElement).click();
 		(n as HTMLButtonElement).click();
 	});
-	await expect(page.getByLabel('Name of Class')).toBeVisible();
+	await expect(page.getByLabel('Name of Errand')).toBeVisible();
+	expect((await types(page)).filter((t) => t.slug === 'errand')).toHaveLength(1);
 	const made = (await types(page)).filter((t) => t.slug === 'class');
 	expect(made).toHaveLength(1);
 	const cls = made[0] as TypeRow;
@@ -211,7 +234,8 @@ test('C7/C12 a taken slug is the bad_slug error naming the owner; the list re-re
 		await presetBtn(page).click();
 		await presetRow(page, 'Health').click();
 		await expect(page.getByRole('alert')).toContainText('/health is used by Health hub.');
-		// the menu stays open on the same page state, and the list is still the stored one
+		// the menu closes on the error; the list re-read is still the stored one
+		await expect(page.locator('.presets')).toHaveCount(0);
 		await expect(page.getByLabel('Name of Health hub')).toBeVisible();
 		expect((await types(page)).filter((t) => t.name === 'Health')).toHaveLength(0);
 	} finally {
